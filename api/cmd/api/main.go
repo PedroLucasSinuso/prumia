@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/api"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -57,9 +58,12 @@ func run(args []string) error {
 		return nil
 	}
 
+	router := httpx.NewRouter(cfg.IsProduction(), log)
+	api.Mount(router, api.Server{DB: sqlDB})
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpx.NewRouter(cfg.IsProduction(), sqlDB, log),
+		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
