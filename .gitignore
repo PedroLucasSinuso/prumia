@@ -1,0 +1,42 @@
+# --- Política de versionamento -------------------------------------------------
+# docs/product (spec e plano) é trabalho interno e fica só na máquina local.
+# Versionados: docs/user-guides, docs/developer-guide, docs/brand, CLAUDE.md, openapi/, .claude/settings.json e hooks.
+docs/product/
+
+# --- Segredos e ambiente -------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Claude Code (apenas o pessoal fica fora) ----------------------------------
+.claude/settings.local.json
+.claude/worktrees/
+
+# --- Go ------------------------------------------------------------------------
+/api/bin/
+/api/tmp/
+*.test
+*.out
+coverage.out
+
+# --- Node / front --------------------------------------------------------------
+node_modules/
+/web/dist/
+/web/.vite/
+*.tsbuildinfo
+
+# --- Dados e backups locais ----------------------------------------------------
+/backups/
+*.sql.gz
+*.dump
+/deploy/data/
+
+# --- Editores e SO -------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.swp

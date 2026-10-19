@@ -1,0 +1,992 @@
+openapi: 3.0.3
+info:
+  title: prumia API
+  version: 0.1.0
+  description: |
+    API do prumia (finanças domésticas). Contrato **spec-first**: este arquivo é a fonte de verdade.
+
+    Convenções:
+    - Dinheiro: inteiro em **centavos** (BRL). R$ 660,00 = `66000`.
+    - Datas: `YYYY-MM-DD`. Mês: dia 1 (`2026-10-01`).
+    - Autenticação: cookie de sessão httpOnly (`prumia_session`).
+    - Casa: rotas de negócio ficam sob `/households/{householdId}`; o acesso é validado pela role do usuário.
+    - Erros: `application/problem+json` (ver `Problem`).
+servers:
+  - url: /api
+tags:
+  - { name: auth, description: "Cadastro, login e sessão" }
+  - { name: households, description: "Casas, membros e convites" }
+  - { name: categories, description: "Categorias de despesa" }
+  - { name: invoices, description: "Despesas (contas, parcelas, recorrências)" }
+  - { name: incomes, description: "Receitas (salário, benefício)" }
+  - { name: summary, description: "Resumo mensal" }
+  - { name: boleto, description: "Leitura de boleto" }
+
+security:
+  - cookieAuth: []
+
+paths:
+  # ------------------------------------------------------------------ auth
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      summary: Cria usuário a partir de um convite ou cria uma nova casa
+      description: Sem `inviteToken`, cria o usuário e uma casa nova (o usuário é admin). Com `inviteToken`, entra na casa do convite.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201': { description: "Criado e autenticado", content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Login (define cookie de sessão)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { description: "Autenticado", content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Encerra a sessão
+      responses:
+        '204': { description: "Sessão encerrada" }
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Usuário atual e suas casas
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/password-reset:
+    post:
+      tags: [auth]
+      operationId: resetPassword
+      summary: Redefine a senha com o link gerado por um admin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string }
+                newPassword: { type: string, minLength: 10 }
+      responses:
+        '204': { description: "Senha redefinida" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  # ------------------------------------------------------------ households
+  /households:
+    post:
+      tags: [households]
+      operationId: createHousehold
+      summary: Cria uma casa (o usuário vira admin) com categorias padrão
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string, minLength: 1, maxLength: 80 } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Household' } } } }
+  /households/{householdId}:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [households]
+      operationId: getHousehold
+      summary: Detalhes da casa
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Household' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [households]
+      operationId: updateHousehold
+      summary: Renomeia a casa (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { name: { type: string, minLength: 1, maxLength: 80 } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Household' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [households]
+      operationId: deleteHousehold
+      summary: Exclui a casa (admin, exclusão lógica)
+      responses:
+        '204': { description: "Excluída" }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /households/{householdId}/members:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [households]
+      operationId: listMembers
+      summary: Membros ativos
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Member' } }
+  /households/{householdId}/members/{userId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { $ref: '#/components/parameters/UserId' }
+    patch:
+      tags: [households]
+      operationId: updateMemberRole
+      summary: Altera a role (admin). Mantém ao menos um admin ativo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties: { role: { $ref: '#/components/schemas/Role' } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Member' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [households]
+      operationId: removeMember
+      summary: Remove o membro (admin) ou sai da casa (o próprio). Define `left_at`.
+      responses:
+        '204': { description: "Removido" }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/invites:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    post:
+      tags: [households]
+      operationId: createInvite
+      summary: Gera convite por link (admin). O token só é devolvido nesta resposta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+                expiresInHours: { type: integer, minimum: 1, maximum: 168, default: 48 }
+      responses:
+        '201': { description: "Criado", content: { application/json: { schema: { $ref: '#/components/schemas/InviteCreated' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /households/{householdId}/invites/{inviteId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: inviteId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [households]
+      operationId: revokeInvite
+      summary: Revoga um convite pendente (admin)
+      responses:
+        '204': { description: "Revogado" }
+  /invites/accept:
+    post:
+      tags: [households]
+      operationId: acceptInvite
+      summary: Usuário logado entra em outra casa com um token de convite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties: { token: { type: string } }
+      responses:
+        '200': { description: "Entrou", content: { application/json: { schema: { $ref: '#/components/schemas/Household' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /households/{householdId}/members/{userId}/password-reset-link:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { $ref: '#/components/parameters/UserId' }
+    post:
+      tags: [households]
+      operationId: createPasswordResetLink
+      summary: Gera link de redefinição de senha para um membro (admin de todas as casas dele)
+      responses:
+        '201':
+          description: Criado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresAt]
+                properties:
+                  token: { type: string }
+                  expiresAt: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ------------------------------------------------------------ categories
+  /households/{householdId}/categories:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [categories]
+      operationId: listCategories
+      summary: Categorias da casa
+      parameters:
+        - { name: includeArchived, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Category' } } } } }
+    post:
+      tags: [categories]
+      operationId: createCategory
+      summary: Cria categoria (member+)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CategoryInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/categories/{categoryId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: categoryId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [categories]
+      operationId: updateCategory
+      summary: Edita ou arquiva categoria
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CategoryPatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+    delete:
+      tags: [categories]
+      operationId: deleteCategory
+      summary: Exclui categoria sem uso. Em uso, responde 409 (arquive em vez disso).
+      responses:
+        '204': { description: "Excluída" }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # --------------------------------------------------------------- invoices
+  /households/{householdId}/invoices:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [invoices]
+      operationId: listInvoices
+      summary: Lista invoices (tela do mês). Pagas continuam na lista.
+      parameters:
+        - { name: month, in: query, description: "Mês de competência (dia 1)", schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, overdue, paid] } }
+        - { name: categoryId, in: query, schema: { type: string, format: uuid } }
+        - { name: responsibleUserId, in: query, schema: { type: string, format: uuid } }
+        - { name: purchaseId, in: query, schema: { type: string, format: uuid } }
+        - { name: q, in: query, description: "Busca por descrição", schema: { type: string } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/InvoicePage' } } } }
+    post:
+      tags: [invoices]
+      operationId: createInvoice
+      summary: Cria invoice avulsa (member+)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/invoices/{invoiceId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { $ref: '#/components/parameters/InvoiceId' }
+    get:
+      tags: [invoices]
+      operationId: getInvoice
+      summary: Detalhe da invoice (inclui boleto, se houver)
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [invoices]
+      operationId: updateInvoice
+      summary: Edita invoice. Em série, `scope` define o alcance.
+      parameters:
+        - { $ref: '#/components/parameters/SeriesScope' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoicePatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+    delete:
+      tags: [invoices]
+      operationId: deleteInvoice
+      summary: Exclusão lógica. Em série, `scope` define o alcance.
+      parameters:
+        - { $ref: '#/components/parameters/SeriesScope' }
+      responses:
+        '204': { description: "Excluída" }
+  /households/{householdId}/invoices/{invoiceId}/restore:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { $ref: '#/components/parameters/InvoiceId' }
+    post:
+      tags: [invoices]
+      operationId: restoreInvoice
+      summary: Desfaz a exclusão
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+  /households/{householdId}/invoices/{invoiceId}/pay:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { $ref: '#/components/parameters/InvoiceId' }
+    post:
+      tags: [invoices]
+      operationId: payInvoice
+      summary: Marca como paga (afeta só esta invoice). Pode devolver aviso de saldo de benefício insuficiente.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PayRequest' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/PayResult' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [invoices]
+      operationId: unpayInvoice
+      summary: Desfaz o pagamento
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+  /households/{householdId}/purchases:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [invoices]
+      operationId: listPurchases
+      summary: Compras parceladas ("quando comprei o notebook?")
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/PurchasePage' } } } }
+    post:
+      tags: [invoices]
+      operationId: createPurchase
+      summary: Cria compra parcelada e gera todas as parcelas (passadas e futuras)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Purchase' } } } }
+  /households/{householdId}/purchases/{purchaseId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: purchaseId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [invoices]
+      operationId: getPurchase
+      summary: Compra com todas as parcelas
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Purchase' } } } }
+  /households/{householdId}/recurrences:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [invoices]
+      operationId: listRecurrences
+      summary: Contas recorrentes
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Recurrence' } } } } }
+    post:
+      tags: [invoices]
+      operationId: createRecurrence
+      summary: Cria recorrência e gera invoices até o horizonte
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RecurrenceInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Recurrence' } } } }
+  /households/{householdId}/recurrences/{recurrenceId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: recurrenceId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [invoices]
+      operationId: updateRecurrence
+      summary: Edita ou encerra (end_month) a recorrência
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RecurrencePatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Recurrence' } } } }
+
+  # ---------------------------------------------------------------- incomes
+  /households/{householdId}/incomes:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [incomes]
+      operationId: listIncomes
+      summary: Lançamentos do mês (previstos e recebidos)
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Income' } } } } }
+    post:
+      tags: [incomes]
+      operationId: createIncome
+      summary: Lança receita avulsa
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/IncomeInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+  /households/{householdId}/incomes/{incomeId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: incomeId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [incomes]
+      operationId: updateIncome
+      summary: Ajusta o lançamento do mês (bruto, descontos, data)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/IncomePatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+    delete:
+      tags: [incomes]
+      operationId: deleteIncome
+      summary: Exclusão lógica
+      responses:
+        '204': { description: "Excluída" }
+  /households/{householdId}/incomes/{incomeId}/receive:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: incomeId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [incomes]
+      operationId: receiveIncome
+      summary: Marca como recebida
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { receivedAt: { type: string, format: date, description: "Padrão hoje" } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+  /households/{householdId}/income-sources:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [incomes]
+      operationId: listIncomeSources
+      summary: Fontes recorrentes (previsão de salário e benefício)
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/IncomeSource' } } } } }
+    post:
+      tags: [incomes]
+      operationId: createIncomeSource
+      summary: Cria fonte e gera os lançamentos previstos até o horizonte
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSourceInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSource' } } } }
+  /households/{householdId}/income-sources/{sourceId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: sourceId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [incomes]
+      operationId: updateIncomeSource
+      summary: Edita a fonte. `applyFrom` reaplica o template aos meses previstos a partir dali.
+      parameters:
+        - { name: applyFrom, in: query, schema: { type: string, format: date } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSourcePatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSource' } } } }
+
+  # ---------------------------------------------------------------- summary
+  /households/{householdId}/summary:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [summary]
+      operationId: getMonthlySummary
+      summary: Resumo do mês por competência, com saldos por carteira
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/MonthlySummary' } } } }
+
+  # ----------------------------------------------------------------- boleto
+  /households/{householdId}/boletos/extract:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    post:
+      tags: [boleto]
+      operationId: extractBoleto
+      summary: Extrai dados de um boleto (PDF/PNG/JPG, até 5 MB). Nada é salvo; o usuário revisa antes de criar a invoice.
+      description: |
+        Síncrono. O arquivo fica só em memória. Se o PDF exigir senha, responde 422 com `code=password_required`;
+        reenvie com o campo `password` (usado apenas em memória, nunca gravado nem logado).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                password: { type: string, format: password }
+      responses:
+        '200': { description: "Extraído", content: { application/json: { schema: { $ref: '#/components/schemas/BoletoExtraction' } } } }
+        '413': { description: "Arquivo maior que 5 MB", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '422': { description: "Não foi possível extrair ou senha necessária", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: prumia_session
+
+  parameters:
+    HouseholdId: { name: householdId, in: path, required: true, schema: { type: string, format: uuid } }
+    UserId: { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+    InvoiceId: { name: invoiceId, in: path, required: true, schema: { type: string, format: uuid } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+    Cursor: { name: cursor, in: query, schema: { type: string } }
+    SeriesScope:
+      name: scope
+      in: query
+      description: "`this` = só esta; `following` = esta e as seguintes (parcelas/recorrência)."
+      schema: { type: string, enum: [this, following], default: this }
+
+  responses:
+    BadRequest: { description: "Requisição inválida", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Unauthorized: { description: "Não autenticado", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Forbidden: { description: "Sem permissão", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    NotFound: { description: "Não encontrado", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Conflict: { description: "Conflito de regra de negócio", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    TooManyRequests: { description: "Limite de requisições excedido", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
+  schemas:
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string, description: "Código estável para o front (ex. `password_required`, `last_admin`)" }
+        detail: { type: string }
+        fields:
+          type: object
+          additionalProperties: { type: string }
+          description: Erros por campo
+
+    Cents:
+      type: integer
+      format: int64
+      description: Valor em centavos (BRL)
+    Month:
+      type: string
+      format: date
+      description: Primeiro dia do mês
+    Role: { type: string, enum: [admin, member, viewer] }
+    Wallet: { type: string, enum: [free, benefit] }
+    DeductionKind: { type: string, enum: [inss, irrf, health_plan, health_copay, other] }
+
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 10 }
+        householdName: { type: string, description: "Usado quando não há convite" }
+        inviteToken: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    Me:
+      type: object
+      required: [id, name, email, households]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        households:
+          type: array
+          items:
+            type: object
+            required: [id, name, role]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              role: { $ref: '#/components/schemas/Role' }
+
+    Household:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        createdAt: { type: string, format: date-time }
+    Member:
+      type: object
+      required: [userId, name, email, role, joinedAt]
+      properties:
+        userId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        joinedAt: { type: string, format: date-time }
+    InviteCreated:
+      type: object
+      required: [id, token, role, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        token: { type: string, description: "Só nesta resposta" }
+        role: { $ref: '#/components/schemas/Role' }
+        expiresAt: { type: string, format: date-time }
+
+    Category:
+      type: object
+      required: [id, name, isEssential, sortOrder, archived]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
+        isEssential: { type: boolean }
+        sortOrder: { type: integer }
+        archived: { type: boolean }
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
+        isEssential: { type: boolean, default: false }
+    CategoryPatch:
+      type: object
+      properties:
+        name: { type: string }
+        defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
+        isEssential: { type: boolean }
+        sortOrder: { type: integer }
+        archived: { type: boolean }
+
+    Invoice:
+      type: object
+      required: [id, categoryId, description, amountCents, dueDate, competenceMonth, status]
+      properties:
+        id: { type: string, format: uuid }
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dueDate: { type: string, format: date }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
+        status:
+          type: string
+          enum: [pending, overdue, paid]
+          description: Derivado (não é coluna). `overdue` = pendente com vencimento passado.
+        paid:
+          type: object
+          allOf: [ { $ref: '#/components/schemas/Payment' } ]
+          nullable: true
+        series:
+          type: object
+          allOf: [ { $ref: '#/components/schemas/SeriesRef' } ]
+          nullable: true
+        boleto:
+          type: object
+          allOf: [ { $ref: '#/components/schemas/Boleto' } ]
+          nullable: true
+        notes: { type: string, nullable: true }
+    Payment:
+      type: object
+      required: [paidAt, wallet, amountCents]
+      properties:
+        paidAt: { type: string, format: date }
+        wallet: { $ref: '#/components/schemas/Wallet' }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        paidByUserId: { type: string, format: uuid, nullable: true }
+    SeriesRef:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [installment, recurrence] }
+        purchaseId: { type: string, format: uuid, nullable: true }
+        installmentNumber: { type: integer, nullable: true }
+        installmentsCount: { type: integer, nullable: true }
+        recurrenceId: { type: string, format: uuid, nullable: true }
+    InvoiceInput:
+      type: object
+      required: [categoryId, description, amountCents, dueDate]
+      properties:
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string, minLength: 1, maxLength: 120 }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dueDate: { type: string, format: date }
+        competenceMonth: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Padrão = mês do vencimento" }
+        notes: { type: string, nullable: true }
+        boleto: { type: object, allOf: [ { $ref: '#/components/schemas/Boleto' } ], nullable: true }
+    InvoicePatch:
+      type: object
+      properties:
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dueDate: { type: string, format: date }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
+        notes: { type: string, nullable: true }
+    InvoicePage:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Invoice' } }
+        nextCursor: { type: string, nullable: true }
+    PayRequest:
+      type: object
+      required: [wallet]
+      properties:
+        wallet: { $ref: '#/components/schemas/Wallet' }
+        paidAt: { type: string, format: date, description: "Padrão hoje" }
+        amountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Padrão = valor da invoice (informe se houve juros/desconto)" }
+    PayResult:
+      type: object
+      required: [invoice]
+      properties:
+        invoice: { $ref: '#/components/schemas/Invoice' }
+        warnings:
+          type: array
+          description: Avisos que não bloqueiam (ex. `benefit_balance_insufficient`)
+          items: { type: string }
+
+    Boleto:
+      type: object
+      required: [digitableLine]
+      properties:
+        digitableLine: { type: string, pattern: '^[0-9]{47,48}$' }
+        barcode: { type: string, pattern: '^[0-9]{44}$', nullable: true }
+        beneficiaryName: { type: string, nullable: true }
+        documentAmountCents: { type: integer, allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
+        documentDueDate: { type: string, format: date, nullable: true }
+    BoletoExtraction:
+      type: object
+      required: [boleto, method]
+      properties:
+        boleto: { $ref: '#/components/schemas/Boleto' }
+        method: { type: string, enum: [pdf_text, barcode_image, ocr], description: "Como foi extraído" }
+        duplicateOfInvoiceId: { type: string, format: uuid, nullable: true, description: "Já existe invoice com esta linha digitável" }
+
+    Purchase:
+      type: object
+      required: [id, description, purchaseDate, totalAmountCents, installmentsCount, categoryId]
+      properties:
+        id: { type: string, format: uuid }
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        purchaseDate: { type: string, format: date }
+        totalAmountCents: { $ref: '#/components/schemas/Cents' }
+        installmentsCount: { type: integer }
+        notes: { type: string, nullable: true }
+        installments:
+          type: array
+          items: { $ref: '#/components/schemas/Invoice' }
+    PurchaseInput:
+      type: object
+      required: [categoryId, description, purchaseDate, totalAmountCents, installmentsCount, firstDueDate]
+      properties:
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        purchaseDate: { type: string, format: date }
+        totalAmountCents: { $ref: '#/components/schemas/Cents' }
+        installmentsCount: { type: integer, minimum: 2, maximum: 120 }
+        firstDueDate: { type: string, format: date, description: "Vencimento da 1ª parcela (as demais seguem mensalmente)" }
+        installmentAmountCents:
+          allOf: [ { $ref: '#/components/schemas/Cents' } ]
+          description: Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela.
+        notes: { type: string, nullable: true }
+    PurchasePage:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Purchase' } }
+        nextCursor: { type: string, nullable: true }
+
+    Recurrence:
+      type: object
+      required: [id, categoryId, description, amountCents, dayOfMonth, startMonth]
+      properties:
+        id: { type: string, format: uuid }
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        startMonth: { $ref: '#/components/schemas/Month' }
+        endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        generatedThrough: { $ref: '#/components/schemas/Month' }
+        notes: { type: string, nullable: true }
+    RecurrenceInput:
+      type: object
+      required: [categoryId, description, amountCents, dayOfMonth, startMonth]
+      properties:
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        startMonth: { $ref: '#/components/schemas/Month' }
+        endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        notes: { type: string, nullable: true }
+    RecurrencePatch:
+      type: object
+      properties:
+        categoryId: { type: string, format: uuid }
+        responsibleUserId: { type: string, format: uuid, nullable: true }
+        description: { type: string }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        notes: { type: string, nullable: true }
+
+    Deduction:
+      type: object
+      required: [kind, name, amountCents]
+      properties:
+        kind: { $ref: '#/components/schemas/DeductionKind' }
+        name: { type: string }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+    Income:
+      type: object
+      required: [id, userId, kind, description, wallet, competenceMonth, expectedDate, grossAmountCents, netAmountCents, deductions, received]
+      properties:
+        id: { type: string, format: uuid }
+        sourceId: { type: string, format: uuid, nullable: true }
+        userId: { type: string, format: uuid }
+        kind: { type: string, enum: [salary, benefit, other] }
+        description: { type: string }
+        wallet: { $ref: '#/components/schemas/Wallet' }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
+        expectedDate: { type: string, format: date }
+        grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+        netAmountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Calculado = bruto - descontos (somente leitura)" }
+        received: { type: boolean, description: "`false` = previsto" }
+        receivedAt: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+    IncomeInput:
+      type: object
+      required: [userId, kind, description, competenceMonth, expectedDate, grossAmountCents]
+      properties:
+        userId: { type: string, format: uuid }
+        kind: { type: string, enum: [salary, benefit, other] }
+        description: { type: string }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
+        expectedDate: { type: string, format: date }
+        grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+        notes: { type: string, nullable: true }
+    IncomePatch:
+      type: object
+      properties:
+        description: { type: string }
+        expectedDate: { type: string, format: date }
+        grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+        notes: { type: string, nullable: true }
+    IncomeSource:
+      type: object
+      required: [id, userId, kind, name, grossAmountCents, dayOfMonth, startMonth, deductions]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        kind: { type: string, enum: [salary, benefit, other] }
+        name: { type: string }
+        grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        startMonth: { $ref: '#/components/schemas/Month' }
+        endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+    IncomeSourceInput:
+      type: object
+      required: [userId, kind, name, grossAmountCents, dayOfMonth, startMonth]
+      properties:
+        userId: { type: string, format: uuid }
+        kind: { type: string, enum: [salary, benefit, other] }
+        name: { type: string }
+        grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        startMonth: { $ref: '#/components/schemas/Month' }
+        endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+    IncomeSourcePatch:
+      type: object
+      properties:
+        name: { type: string }
+        grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+
+    WalletBalance:
+      type: object
+      required: [expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents]
+      properties:
+        expectedIncomeCents: { $ref: '#/components/schemas/Cents' }
+        receivedIncomeCents: { $ref: '#/components/schemas/Cents' }
+        paidCents: { $ref: '#/components/schemas/Cents' }
+        balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Recebido - pago (estimativa, não é saldo bancário)" }
+    MonthlySummary:
+      type: object
+      required: [month, wallets, totalPaidCents, totalPendingCents, byCategory]
+      properties:
+        month: { $ref: '#/components/schemas/Month' }
+        wallets:
+          type: object
+          required: [free, benefit]
+          properties:
+            free: { $ref: '#/components/schemas/WalletBalance' }
+            benefit: { $ref: '#/components/schemas/WalletBalance' }
+        totalPaidCents: { $ref: '#/components/schemas/Cents' }
+        totalPendingCents: { $ref: '#/components/schemas/Cents' }
+        byCategory:
+          type: array
+          items:
+            type: object
+            required: [categoryId, totalCents]
+            properties:
+              categoryId: { type: string, format: uuid }
+              totalCents: { $ref: '#/components/schemas/Cents' }
+              paidCents: { $ref: '#/components/schemas/Cents' }
