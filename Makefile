@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
 API := api
+WEB := web
 
 .PHONY: help
 help: ## Lista os comandos
@@ -25,15 +26,17 @@ lint: ## gofmt (verificação) + go vet + valida o OpenAPI + código gerado em d
 	$(MAKE) check-generated
 
 .PHONY: generate
-generate: ## Regenera o código Go a partir do openapi.yaml
+generate: ## Regenera o código Go e os tipos TypeScript a partir do openapi.yaml
 	cd $(API) && go tool oapi-codegen -config oapi-codegen.yaml ../openapi/openapi.yaml
+	cd $(WEB) && npm run --silent generate:api >/dev/null
 
 .PHONY: check-generated
 check-generated: ## Falha se o código gerado estiver desatualizado em relação ao openapi.yaml
-	@tmp=$$(mktemp); cp $(API)/internal/api/gen/api.gen.go $$tmp; \
+	@a=$$(mktemp); b=$$(mktemp); cp $(API)/internal/api/gen/api.gen.go $$a; cp $(WEB)/src/api/schema.d.ts $$b; \
 	$(MAKE) --no-print-directory generate >/dev/null; \
-	if diff -q $$tmp $(API)/internal/api/gen/api.gen.go >/dev/null; then rm -f $$tmp; echo "código gerado em dia"; \
-	else rm -f $$tmp; echo "código gerado estava desatualizado (já regenerado): commite o resultado"; exit 1; fi
+	if diff -q $$a $(API)/internal/api/gen/api.gen.go >/dev/null && diff -q $$b $(WEB)/src/api/schema.d.ts >/dev/null; \
+	then rm -f $$a $$b; echo "código gerado em dia"; \
+	else rm -f $$a $$b; echo "código gerado estava desatualizado (já regenerado): commite o resultado"; exit 1; fi
 
 .PHONY: tidy
 tidy: ## Ajusta o go.mod
@@ -46,3 +49,27 @@ run: ## Sobe a API local (precisa de DATABASE_URL)
 .PHONY: migrate
 migrate: ## Aplica as migrations (precisa de DATABASE_URL)
 	cd $(API) && go run ./cmd/api migrate
+
+.PHONY: web-install
+web-install: ## Instala as dependências do front
+	cd $(WEB) && npm ci
+
+.PHONY: web-test
+web-test: ## Lint, typecheck e testes do front
+	cd $(WEB) && npm run lint && npm run typecheck && npm test
+
+.PHONY: web-build
+web-build: ## Build de produção do front
+	cd $(WEB) && npm run build
+
+.PHONY: web-dev
+web-dev: ## Sobe o front em desenvolvimento (proxy /api -> localhost:8080)
+	cd $(WEB) && npm run dev
+
+.PHONY: web-types
+web-types: ## Regenera os tipos TypeScript a partir do openapi.yaml
+	cd $(WEB) && npm run generate:api
+
+.PHONY: hooks-test
+hooks-test: ## Testa os hooks do Claude Code (guard de Git)
+	python3 -I .claude/hooks/test_git_guard.py
