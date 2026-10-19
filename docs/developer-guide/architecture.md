@@ -35,11 +35,12 @@ handler → service → repository. Interface só onde há teste ou troca real.
 O `openapi/openapi.yaml` é a fonte de verdade da API. Fluxo para mudar ou criar um endpoint:
 
 1. Edite `openapi/openapi.yaml`.
-2. `make generate` regenera `internal/api/gen/api.gen.go` (tipos de request/response e a interface `ServerInterface`).
+2. `make generate` regenera `internal/api/gen/api.gen.go` (tipos de request/response e a interface `ServerInterface`)
+   **e** `web/src/api/schema.d.ts` (tipos do front).
 3. O build quebra em `internal/api` até a nova operação ser tratada: implemente-a no `Server` (ou em um módulo de domínio).
 4. `make lint` valida o OpenAPI e **falha se o código gerado estiver desatualizado** (`make check-generated`).
 
-O arquivo gerado é versionado, para quem clona não precisar gerar nada.
+Os arquivos gerados são versionados, para quem clona não precisar gerar nada.
 
 ### Tipos do domínio no contrato
 O gerador mapeia (em `oapi-codegen.yaml`) `format: date` para `caldate.Date` e `format: int64` para `money.Cents`.
@@ -74,6 +75,6 @@ módulo, apague os stubs correspondentes de `unimplemented.go`.
 |---|---|
 | `make test` | testes do backend |
 | `make lint` | gofmt, go vet, lint do OpenAPI e código gerado em dia |
-| `make generate` | regenera o código a partir do OpenAPI |
+| `make generate` | regenera o código Go e os tipos TypeScript a partir do OpenAPI |
 | `make migrate` | aplica migrations (exige `DATABASE_URL`) |
 | `make run` | sobe a API local (exige `DATABASE_URL`) |

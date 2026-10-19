@@ -49,6 +49,32 @@ def commit_messages(cmd: str) -> list[str]:
     return msgs
 
 
+def segment(cmd: str, start: int) -> str:
+    """Trecho do comando que começa em `start` e vai até o próximo separador (; & | quebra de linha)
+    fora de aspas. Heredocs ($(cat <<EOF ... EOF)) ficam dentro de aspas, então entram inteiros."""
+    quote = ""
+    i = start
+    while i < len(cmd):
+        ch = cmd[i]
+        if quote:
+            if ch == "\\" and quote == '"':
+                i += 2
+                continue
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
+        elif ch in ";&|\n":
+            break
+        i += 1
+    return cmd[start:i]
+
+
+def unquoted(seg: str) -> str:
+    """Troca o conteúdo de strings entre aspas por "" para checar flags sem olhar o texto das mensagens."""
+    return re.sub(r"\"(?:\\.|[^\"\\])*\"|'[^']*'", '""', seg, flags=re.S)
+
+
 def main() -> None:
     try:
         data = json.load(sys.stdin)
@@ -59,25 +85,36 @@ def main() -> None:
     # Só conta como comando quando está no início de um segmento (início, ;, &&, ||, |, parêntese, quebra de linha),
     # para não bloquear texto que apenas menciona "git commit" (echo, grep, comentários).
     start = r"(?:^|[;&|(\n])\s*(?:\w+=\S+\s+)*"
-    is_commit = re.search(start + r"git\b(\s+-\S+(\s+\S+)?)*\s+commit\b", cmd)
-    is_push = re.search(start + r"git\b(\s+-\S+(\s+\S+)?)*\s+push\b", cmd)
-    is_pr = re.search(start + r"gh\s+pr\s+(create|edit)\b", cmd)
-    if is_pr and FORBIDDEN.search(cmd):
+    m_commit = re.search(start + r"(git\b(\s+-\S+(\s+\S+)?)*\s+commit\b)", cmd)
+    m_push = re.search(start + r"(git\b(\s+-\S+(\s+\S+)?)*\s+push\b)", cmd)
+    m_pr = re.search(start + r"(gh\s+pr\s+(create|edit)\b)", cmd)
+
+    # Cada checagem olha só o próprio comando (segmento), não o resto da linha.
+    commit_seg = segment(cmd, m_commit.start(1)) if m_commit else ""
+    push_seg = segment(cmd, m_push.start(1)) if m_push else ""
+    pr_seg = segment(cmd, m_pr.start(1)) if m_pr else ""
+
+    if pr_seg and FORBIDDEN.search(pr_seg):
         block("PR sem atribuição ('Generated with Claude Code', Co-Authored-By).")
-    if not (is_commit or is_push):
-        return
 
-    if "--no-verify" in cmd or (is_commit and re.search(r"\s-[a-zA-Z]*n[a-zA-Z]*\s", cmd + " ") and "--no-edit" not in cmd):
-        block("não use --no-verify (nem -n).")
-    if is_push and re.search(r"(--force\b|--force-with-lease|\s-f\b|\s\+\S+:|\s\+\w)", cmd):
+    for seg in (commit_seg, push_seg):
+        if seg and "--no-verify" in unquoted(seg):
+            block("não use --no-verify.")
+    if commit_seg:
+        flags = unquoted(commit_seg) + " "
+        if "--no-edit" not in flags and re.search(r"\s-[a-zA-Z]*n[a-zA-Z]*\s", flags):
+            block("não use -n (equivale a --no-verify).")
+    if push_seg and re.search(r"(--force\b|--force-with-lease|\s-f\b|\s\+\S+:|\s\+\w)", unquoted(push_seg)):
         block("não use force push.")
-    if FORBIDDEN.search(cmd):
-        block("commit/PR sem trailer de atribuição (Co-Authored-By, 'Generated with Claude Code').")
 
-    if not is_commit or "--no-edit" in cmd:
+    if not commit_seg:
+        return
+    if FORBIDDEN.search(commit_seg):
+        block("commit sem trailer de atribuição (Co-Authored-By, 'Generated with Claude Code').")
+    if "--no-edit" in unquoted(commit_seg):
         return
 
-    msgs = commit_messages(cmd)
+    msgs = commit_messages(commit_seg)
     if not msgs:
         block('use `git commit -m "tag: descrição"` (mensagem obrigatória, inline).')
     if len(msgs) > 1:
