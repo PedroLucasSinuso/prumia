@@ -1,0 +1,47 @@
+# prumia: 3 containers (db, api, web). Uso: `make up` (lê o .env da raiz).
+name: prumia
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-prumia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (rode make env)}
+      POSTGRES_DB: ${POSTGRES_DB:-prumia}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Sem "ports": o banco só é acessível dentro da rede do compose.
+
+  api:
+    build: ../api
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+      AUTO_MIGRATE: "true"
+      DATABASE_URL: postgres://${POSTGRES_USER:-prumia}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prumia}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    # Sem "ports": só o nginx conversa com a API.
+
+  web:
+    build: ../web
+    restart: unless-stopped
+    ports:
+      # Por padrão só o próprio computador acessa. Para testar pelo celular na rede, defina WEB_BIND=0.0.0.0.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
