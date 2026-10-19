@@ -52,7 +52,10 @@ paths:
       tags: [auth]
       operationId: register
       summary: Cria usuário a partir de um convite ou cria uma nova casa
-      description: Sem `inviteToken`, cria o usuário e uma casa nova (o usuário é admin). Com `inviteToken`, entra na casa do convite.
+      description: |
+        Sem `inviteToken`, cria o usuário e uma casa nova (o usuário é admin). Com `inviteToken`, entra na casa do convite.
+        O cadastro **sem convite** só é aceito para o primeiro usuário do sistema, salvo se o servidor tiver
+        `OPEN_REGISTRATION=true`; depois disso responde 403 (`registration_closed`). Define o cookie de sessão.
       security: []
       requestBody:
         required: true
@@ -62,6 +65,7 @@ paths:
       responses:
         '201': { description: "Criado e autenticado", content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
@@ -661,13 +665,15 @@ components:
         email: { type: string, format: email }
         households:
           type: array
-          items:
-            type: object
-            required: [id, name, role]
-            properties:
-              id: { type: string, format: uuid }
-              name: { type: string }
-              role: { $ref: '#/components/schemas/Role' }
+          items: { $ref: '#/components/schemas/HouseholdRef' }
+
+    HouseholdRef:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
 
     Household:
       type: object

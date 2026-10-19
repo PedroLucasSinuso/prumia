@@ -17,6 +17,9 @@ type Config struct {
 	DatabaseURL string         // ex.: postgres://user:senha@db:5432/prumia?sslmode=disable
 	Location    *time.Location // fuso usado para "hoje" (as datas em si não têm fuso)
 	AutoMigrate bool           // aplica as migrations pendentes ao subir (útil no compose)
+	// OpenRegistration permite cadastro sem convite mesmo já havendo usuários. Padrão: fechado
+	// (só o primeiro usuário se cadastra sozinho; os demais entram por convite).
+	OpenRegistration bool
 }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
@@ -31,10 +34,11 @@ func Load() (Config, error) {
 // load recebe a função de leitura como parâmetro para os testes não precisarem mexer no ambiente real.
 func load(get func(string) string) (Config, error) {
 	cfg := Config{
-		Env:         valueOr(get("APP_ENV"), "development"),
-		HTTPAddr:    valueOr(get("HTTP_ADDR"), ":8080"),
-		DatabaseURL: get("DATABASE_URL"),
-		AutoMigrate: get("AUTO_MIGRATE") == "true",
+		Env:              valueOr(get("APP_ENV"), "development"),
+		HTTPAddr:         valueOr(get("HTTP_ADDR"), ":8080"),
+		DatabaseURL:      get("DATABASE_URL"),
+		AutoMigrate:      get("AUTO_MIGRATE") == "true",
+		OpenRegistration: get("OPEN_REGISTRATION") == "true",
 	}
 
 	var problems []error
