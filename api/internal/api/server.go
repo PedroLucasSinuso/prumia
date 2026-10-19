@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
+	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 )
 
@@ -22,19 +23,31 @@ type Pinger interface {
 	PingContext(ctx context.Context) error
 }
 
+// base existe só para colocar Unimplemented um nível mais fundo que os handlers reais. Em Go, quando dois tipos
+// embutidos oferecem o mesmo método, o de nível mais RASO vence; no mesmo nível, o método fica ambíguo e o
+// tipo deixa de satisfazer a interface. Com isso, cada handler real "sobrescreve" o stub 501.
+type base struct{ Unimplemented }
+
 // Server implementa gen.ServerInterface.
 type Server struct {
-	Unimplemented
+	base
+	*auth.Handler
+	*Households
 	DB Pinger
+}
+
+func NewServer(db Pinger, a *auth.Handler, h *Households) Server {
+	return Server{Handler: a, Households: h, DB: db}
 }
 
 // Garantia em tempo de compilação: se Server deixar de satisfazer a interface, o build falha.
 var _ gen.ServerInterface = Server{}
 
 // Mount registra todas as rotas do contrato sob /api.
-func Mount(r gin.IRouter, s gen.ServerInterface) {
+func Mount(r gin.IRouter, s gen.ServerInterface, middlewares ...gen.MiddlewareFunc) {
 	gen.RegisterHandlersWithOptions(r, s, gen.GinServerOptions{
-		BaseURL: "/api",
+		BaseURL:     "/api",
+		Middlewares: middlewares,
 		// Erros de parâmetro (ex.: uuid inválido na URL) saem no mesmo formato problem+json do resto.
 		ErrorHandler: func(c *gin.Context, err error, status int) {
 			httpx.WriteProblem(c, httpx.Problem{Status: status, Code: "bad_request", Detail: err.Error()})

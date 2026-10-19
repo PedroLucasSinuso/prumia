@@ -1,0 +1,556 @@
+{
+  "info": {
+    "name": "prumia API",
+    "description": "Coleção de testes manuais da API (Fases 0-1). Rode as pastas em ordem, com o Collection Runner ou uma a uma. O Postman guarda o cookie de sessão sozinho. Contrato completo: openapi/openapi.yaml.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "household_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Sistema",
+      "item": [
+        {
+          "name": "Saúde da API",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/healthz",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "healthz"
+              ]
+            },
+            "description": "Público. Confirma que API e banco respondem."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 e status ok\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql(\"ok\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Cadastro e sessão",
+      "item": [
+        {
+          "name": "Sem login: /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Rode ANTES do cadastro/login (ou apague os cookies do Postman) para ver o 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 sem sessão\", () => { pm.response.to.have.status(401); pm.expect(pm.response.json().code).to.eql(\"unauthenticated\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastro do 1º usuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pedro\",\n  \"email\": \"pedro@exemplo.com\",\n  \"password\": \"senha-muito-segura\",\n  \"householdName\": \"Casa do Pedro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Banco vazio: cria usuário + casa + 10 categorias padrão e já loga (cookie prumia_session). Se já existir usuário: 403 (ok, use o Login)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Só o PRIMEIRO usuário do sistema pode se cadastrar sem convite. Num banco já usado, o esperado é 403.",
+                  "pm.test(\"201 (banco vazio) ou 403 registration_closed (banco já usado)\", () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([201, 403]);",
+                  "  if (pm.response.code === 201) {",
+                  "    const me = pm.response.json();",
+                  "    pm.expect(me.households).to.have.length(1);",
+                  "    pm.expect(me.households[0].role).to.eql(\"admin\");",
+                  "    pm.collectionVariables.set(\"household_id\", me.households[0].id);",
+                  "    pm.expect(pm.cookies.has(\"prumia_session\")).to.be.true;",
+                  "  } else {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"registration_closed\");",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastro com dados inválidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \" \",\n  \"email\": \"nao-e-email\",\n  \"password\": \"curta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 com erros por campo\", () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  const p = pm.response.json();",
+                  "  pm.expect(p.code).to.eql(\"validation_error\");",
+                  "  pm.expect(p.fields).to.have.keys(\"name\", \"email\", \"password\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login com senha errada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pedro@exemplo.com\",\n  \"password\": \"senha-errada-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 genérico (não revela se o e-mail existe)\", () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql(\"invalid_credentials\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pedro@exemplo.com\",\n  \"password\": \"senha-muito-segura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Use o e-mail e a senha que você cadastrou."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200, cookie httpOnly e casa no corpo\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const me = pm.response.json();",
+                  "  pm.expect(me.email).to.eql(\"pedro@exemplo.com\");",
+                  "  pm.collectionVariables.set(\"household_id\", me.households[0].id);",
+                  "  const c = pm.response.headers.get(\"Set-Cookie\");",
+                  "  pm.expect(c).to.include(\"HttpOnly\");",
+                  "  pm.expect(c).to.include(\"SameSite=Lax\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quem sou eu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 com usuário e casas\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().households.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Casas",
+      "item": [
+        {
+          "name": "Detalhe da casa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 com id da casa\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"household_id\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Membros da casa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"lista com o admin e data de entrada válida\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const m = pm.response.json();",
+                  "  pm.expect(m[0].role).to.eql(\"admin\");",
+                  "  pm.expect(new Date(m[0].joinedAt).getFullYear()).to.be.above(2025);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar outra casa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Casa da Mãe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O usuário vira admin da nova casa (que ganha suas 10 categorias padrão)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 e nome\", () => { pm.response.to.have.status(201); pm.expect(pm.response.json().name).to.eql(\"Casa da Mãe\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Casa inexistente / de outra pessoa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 (não revela se a casa existe)\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Operação ainda não implementada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"501 not_implemented (vem nas próximas fases)\", () => { pm.response.to.have.status(501); pm.expect(pm.response.json().code).to.eql(\"not_implemented\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Encerrar",
+      "item": [
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Depois do logout: /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401: a sessão foi encerrada no servidor\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

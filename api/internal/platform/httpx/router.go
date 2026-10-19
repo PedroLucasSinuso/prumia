@@ -14,6 +14,9 @@ func NewRouter(production bool, log *slog.Logger) *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New() // gin.New() sem middlewares; adicionamos só os nossos
+	// Atrás do nginx (rede privada do Docker), o IP real do cliente vem em X-Forwarded-For. Só confiamos
+	// nesse cabeçalho se a conexão vier de endereços privados; senão qualquer um forjaria o próprio IP.
+	_ = r.SetTrustedProxies([]string{"127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"})
 	r.Use(gin.CustomRecoveryWithWriter(nil, func(c *gin.Context, err any) {
 		log.Error("pânico na requisição", "erro", err, "rota", c.FullPath())
 		Internal(c)

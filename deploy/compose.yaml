@@ -25,6 +25,8 @@ services:
       APP_ENV: ${APP_ENV:-development}
       APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
       AUTO_MIGRATE: "true"
+      # Cadastro sem convite: só o 1º usuário se cadastra sozinho; deixe false depois (ver docs/developer-guide/authentication.md)
+      OPEN_REGISTRATION: ${OPEN_REGISTRATION:-false}
       DATABASE_URL: postgres://${POSTGRES_USER:-prumia}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prumia}?sslmode=disable
     depends_on:
       db:

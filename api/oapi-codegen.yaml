@@ -13,6 +13,9 @@ output-options:
   type-mapping:
     string:
       formats:
+        # e-mail chega como string simples: a validação (com mensagem por campo) é do serviço de auth
+        email:
+          type: string
         date:
           type: caldate.Date
           import: github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate

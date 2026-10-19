@@ -25,8 +25,6 @@ func (Unimplemented) AcceptInvite(c *gin.Context) { notImplemented(c) }
 
 func (Unimplemented) CreateCategory(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
 
-func (Unimplemented) CreateHousehold(c *gin.Context) { notImplemented(c) }
-
 func (Unimplemented) CreateIncome(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
 
 func (Unimplemented) CreateIncomeSource(c *gin.Context, householdId gen.HouseholdId) {
@@ -61,13 +59,9 @@ func (Unimplemented) DeleteInvoice(c *gin.Context, householdId gen.HouseholdId, 
 
 func (Unimplemented) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
 
-func (Unimplemented) GetHousehold(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
 func (Unimplemented) GetInvoice(c *gin.Context, householdId gen.HouseholdId, invoiceId gen.InvoiceId) {
 	notImplemented(c)
 }
-
-func (Unimplemented) GetMe(c *gin.Context) { notImplemented(c) }
 
 func (Unimplemented) GetMonthlySummary(c *gin.Context, householdId gen.HouseholdId, params gen.GetMonthlySummaryParams) {
 	notImplemented(c)
@@ -93,17 +87,11 @@ func (Unimplemented) ListInvoices(c *gin.Context, householdId gen.HouseholdId, p
 	notImplemented(c)
 }
 
-func (Unimplemented) ListMembers(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
 func (Unimplemented) ListPurchases(c *gin.Context, householdId gen.HouseholdId, params gen.ListPurchasesParams) {
 	notImplemented(c)
 }
 
 func (Unimplemented) ListRecurrences(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
-func (Unimplemented) Login(c *gin.Context) { notImplemented(c) }
-
-func (Unimplemented) Logout(c *gin.Context) { notImplemented(c) }
 
 func (Unimplemented) PayInvoice(c *gin.Context, householdId gen.HouseholdId, invoiceId gen.InvoiceId) {
 	notImplemented(c)
@@ -112,8 +100,6 @@ func (Unimplemented) PayInvoice(c *gin.Context, householdId gen.HouseholdId, inv
 func (Unimplemented) ReceiveIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
 	notImplemented(c)
 }
-
-func (Unimplemented) Register(c *gin.Context) { notImplemented(c) }
 
 func (Unimplemented) RemoveMember(c *gin.Context, householdId gen.HouseholdId, userId gen.UserId) {
 	notImplemented(c)
