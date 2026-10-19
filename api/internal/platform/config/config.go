@@ -1,0 +1,63 @@
+// Package config lê a configuração da aplicação das variáveis de ambiente (12-factor).
+// Nada de arquivo de config: no Docker/compose as variáveis vêm do ambiente, e o .env local
+// é carregado pelo próprio compose.
+package config
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+)
+
+type Config struct {
+	Env         string         // "development" ou "production"
+	HTTPAddr    string         // ex.: ":8080"
+	DatabaseURL string         // ex.: postgres://user:senha@db:5432/prumia?sslmode=disable
+	Location    *time.Location // fuso usado para "hoje" (as datas em si não têm fuso)
+}
+
+// IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
+func (c Config) IsProduction() bool { return c.Env == "production" }
+
+// Load lê e valida o ambiente. Devolve (valor, error): o jeito idiomático de Go reportar falhas,
+// no lugar de exceções. Quem chama é obrigado a olhar o erro.
+func Load() (Config, error) {
+	return load(os.Getenv)
+}
+
+// load recebe a função de leitura como parâmetro para os testes não precisarem mexer no ambiente real.
+func load(get func(string) string) (Config, error) {
+	cfg := Config{
+		Env:         valueOr(get("APP_ENV"), "development"),
+		HTTPAddr:    valueOr(get("HTTP_ADDR"), ":8080"),
+		DatabaseURL: get("DATABASE_URL"),
+	}
+
+	var problems []error
+	if cfg.Env != "development" && cfg.Env != "production" {
+		problems = append(problems, fmt.Errorf("APP_ENV inválido %q (use development ou production)", cfg.Env))
+	}
+	if cfg.DatabaseURL == "" {
+		problems = append(problems, errors.New("DATABASE_URL é obrigatório"))
+	}
+	tz := valueOr(get("APP_TIMEZONE"), "America/Sao_Paulo")
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		problems = append(problems, fmt.Errorf("APP_TIMEZONE inválido %q: %w", tz, err))
+	}
+	cfg.Location = loc
+
+	if len(problems) > 0 {
+		return Config{}, errors.Join(problems...) // junta todos os erros de uma vez
+	}
+	return cfg, nil
+}
+
+func valueOr(v, def string) string {
+	if strings.TrimSpace(v) == "" {
+		return def
+	}
+	return v
+}
