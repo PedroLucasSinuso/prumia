@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PostToolUse (Edit|Write): formata o arquivo editado. Silencioso se a ferramenta/arquivo não existir.
+# PostToolUse (Edit|Write): gofmt em .go e oxlint --fix em web/**/*.ts(x). Silencioso se a ferramenta/arquivo não existir.
 f=$(jq -r '.tool_response.filePath // .tool_input.file_path // empty' 2>/dev/null)
 [ -n "$f" ] && [ -f "$f" ] || exit 0
 
@@ -9,8 +9,8 @@ case "$f" in
     ;;
   */web/*.ts|*/web/*.tsx)
     web="${f%%/web/*}/web"
-    if [ -x "$web/node_modules/.bin/eslint" ]; then
-      (cd "$web" && ./node_modules/.bin/eslint --fix "$f" >/dev/null 2>&1)
+    if [ -x "$web/node_modules/.bin/oxlint" ]; then
+      (cd "$web" && ./node_modules/.bin/oxlint --fix "$f" >/dev/null 2>&1)
     fi
     ;;
 esac

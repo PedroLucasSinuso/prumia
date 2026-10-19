@@ -17,7 +17,7 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 | Banco | PostgreSQL |
 | Migrations | goose, SQL versionado em `api/migrations/`. **Proibido `AutoMigrate`.** Nunca editar migration já aplicada |
 | API | REST **spec-first**: `openapi/openapi.yaml` é a fonte. `oapi-codegen` (Gin) gera tipos/interfaces Go; `openapi-typescript` gera tipos do front |
-| Frontend | React + Vite + TypeScript, mobile-first, PWA básico (instalável, sem offline) |
+| Frontend | React 19 + Vite + TypeScript 5.9 + Tailwind 4, mobile-first, PWA básico (instalável, sem offline). Lint: oxlint. Testes: Vitest + Testing Library. Cliente tipado: openapi-fetch + openapi-typescript |
 | Auth | argon2id; sessão por cookie httpOnly SameSite; rate limit no login |
 | Boleto | extração local: texto do PDF → código de barras → Tesseract; arquivo só em memória (nunca disco/log) |
 | Testes | unit nas regras críticas; integração com Postgres real (testcontainers); front só fluxos principais |
@@ -62,7 +62,7 @@ Backend: `internal/<domínio>/` com `handler`, `service`, `repository`. Domínio
 
 Hooks do projeto (`.claude/settings.json`, scripts em `.claude/hooks/`) fazem valer isto: `git_guard.py` bloqueia commit fora de
 `tag: texto` (uma linha, até 72 caracteres), trailers de atribuição, `--no-verify` e force push; `format.sh` roda `gofmt` em `.go`
-e `eslint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear algo legítimo, corrija o hook, não o contorne.
+e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear algo legítimo, corrija o hook, não o contorne. Testes do guard: `make hooks-test` (acrescente o caso que falhou antes de corrigir).
 
 ## Armadilhas do GORM (evitar)
 - `Updates(struct)` ignora zero-values (`0`, `""`, `false`): use `map[string]any` ou `Select(...)` quando zerar for válido.
