@@ -80,8 +80,9 @@ e `eslint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear al
 - Fluxos centrais (cadastrar invoice, marcar paga) em poucos toques; mobile é o uso principal.
 
 ## Comandos
-Ainda não há código executável. Quando existirem, documente aqui: subir o ambiente (`docker compose`), rodar
-migrations (`goose`), gerar código (`oapi-codegen`, `openapi-typescript`), testes (`go test ./...`), backup/restore.
+Na raiz: `make help` lista tudo. Principais: `make test` (integração precisa de Docker), `make test-short`, `make lint`
+(gofmt, vet, OpenAPI e código gerado em dia), `make generate` (OpenAPI → Go), `make migrate`, `make run`.
+Fluxo de contrato e arquitetura: `docs/developer-guide/architecture.md`. Ainda a documentar: `docker compose`, backup/restore.
 
 ## Estado atual e próximos passos
 Feito: spec, marca, schema inicial validado (Up/Down/Up + constraints), OpenAPI (esqueleto), plano. Status por fase em `docs/product/plan.md`.
