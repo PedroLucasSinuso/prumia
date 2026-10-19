@@ -15,9 +15,12 @@ import (
 )
 
 // New sobe um container novo, devolve uma conexão GORM e o encerra ao fim do teste.
-// Se o Docker não estiver disponível, o teste é PULADO (não falha), para `go test ./...` rodar em qualquer máquina.
+// O teste é PULADO (não falha) com `-short` ou se o Docker não estiver disponível, para `go test ./...` rodar em qualquer máquina.
 func New(t *testing.T) *gorm.DB {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("teste de integração (Docker) pulado com -short")
+	}
 	testcontainers.SkipIfProviderIsNotHealthy(t)
 
 	ctx := context.Background()
