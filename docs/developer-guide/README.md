@@ -5,9 +5,9 @@ Guia de quem constrói e mantém o prumia. Leia na ordem se for novo no projeto.
 | Documento | Status | Responde |
 |---|---|---|
 | [schema.md](schema.md) | pronto | Por que o banco é assim; convenções de dados |
+| [architecture.md](architecture.md) | pronto | Camadas, pacotes por domínio, geração de código a partir do OpenAPI |
 | [frontend.md](frontend.md) | pronto | Stack do front, cliente tipado da API, marca no código |
 | getting-started.md | Fase 0 | Como subir o projeto e rodar os testes |
-| architecture.md | Fase 0 | Camadas, pacotes por domínio, geração de código a partir do OpenAPI |
 | conventions.md | Fase 0 | Go para quem vem de PHP, erros, testes, nomenclatura, regras do GORM |
 | authentication.md | Fase 1 | Sessão, convites, roles, autorização por casa |
 | series-generation.md | Fase 1 | Como parcelas e recorrências são geradas e estendidas |

@@ -1,0 +1,23 @@
+# Gera tipos e a interface do servidor Gin a partir de ../openapi/openapi.yaml.
+# Rodar: make generate (na raiz). O arquivo gerado é versionado; não edite à mão.
+package: gen
+output: internal/api/gen/api.gen.go
+generate:
+  models: true
+  gin-server: true
+output-options:
+  skip-prune: true
+  # Os campos do contrato já chegam com os tipos do domínio:
+  #   format: date  -> caldate.Date (data sem fuso)
+  #   format: int64 -> money.Cents  (só o schema Cents usa int64)
+  type-mapping:
+    string:
+      formats:
+        date:
+          type: caldate.Date
+          import: github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate
+    integer:
+      formats:
+        int64:
+          type: money.Cents
+          import: github.com/PedroLucasSinuso/prumia/api/internal/platform/money
