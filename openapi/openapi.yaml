@@ -14,6 +14,7 @@ info:
 servers:
   - url: /api
 tags:
+  - { name: system, description: "Saúde e operação" }
   - { name: auth, description: "Cadastro, login e sessão" }
   - { name: households, description: "Casas, membros e convites" }
   - { name: categories, description: "Categorias de despesa" }
@@ -26,6 +27,25 @@ security:
   - cookieAuth: []
 
 paths:
+  # ----------------------------------------------------------------- system
+  /healthz:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Verifica se a API e o banco estão respondendo
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+        '503': { description: Banco indisponível, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
   # ------------------------------------------------------------------ auth
   /auth/register:
     post:
