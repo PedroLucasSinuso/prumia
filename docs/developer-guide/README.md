@@ -9,7 +9,7 @@ Guia de quem constrói e mantém o prumia. Leia na ordem se for novo no projeto.
 | [frontend.md](frontend.md) | pronto | Stack do front, cliente tipado da API, marca no código |
 | [getting-started.md](getting-started.md) | pronto | Como subir o projeto e rodar os testes |
 | conventions.md | Fase 0 | Go para quem vem de PHP, erros, testes, nomenclatura, regras do GORM |
-| authentication.md | Fase 1 | Sessão, convites, roles, autorização por casa |
+| [authentication.md](authentication.md) | pronto (convites: em breve) | Sessão, cadastro, autorização por casa e papel, testes e Postman |
 | series-generation.md | Fase 1 | Como parcelas e recorrências são geradas e estendidas |
 | incomes-and-wallets.md | Fase 2 | Previsão, descontos, carteiras e saldos |
 | boleto-extraction.md | Fase 3 | Cascata de extração, validação e limites |

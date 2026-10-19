@@ -57,7 +57,7 @@ func TestHealthzBancoCaido(t *testing.T) {
 
 // Operações do contrato ainda sem módulo respondem 501 em problem+json (não 404).
 func TestOperacaoSemHandlerEh501(t *testing.T) {
-	w := do(t, fakeDB{}, http.MethodGet, "/api/auth/me")
+	w := do(t, fakeDB{}, http.MethodGet, "/api/households/0190f0f0-0000-7000-8000-000000000000/categories")
 	if w.Code != http.StatusNotImplemented {
 		t.Fatalf("status = %d", w.Code)
 	}
