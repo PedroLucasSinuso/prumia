@@ -21,7 +21,7 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 | Auth | argon2id; sessão por cookie httpOnly SameSite; rate limit no login |
 | Boleto | extração local: texto do PDF → código de barras → Tesseract; arquivo só em memória (nunca disco/log) |
 | Testes | unit nas regras críticas; integração com Postgres real (testcontainers); front só fluxos principais |
-| Infra | Docker Compose, 3 containers: `api`, `db`, `web` (nginx: estático + proxy `/api`). Fase 1 local + Tailscale; fase 2 VPS + certbot |
+| Infra | Docker Compose (`deploy/compose.yaml`), 3 containers: `api`, `db`, `web` (nginx: estático + proxy `/api`; config em `deploy/nginx/default.conf`). Só o `web` publica porta (127.0.0.1:8080). Fase 1 local + Tailscale; fase 2 VPS + certbot |
 
 ## Layout do repositório
 ```
@@ -82,7 +82,7 @@ e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear al
 ## Comandos
 Na raiz: `make help` lista tudo. Principais: `make test` (integração precisa de Docker), `make test-short`, `make lint`
 (gofmt, vet, OpenAPI e código gerado em dia), `make generate` (OpenAPI → Go), `make migrate`, `make run`.
-Fluxo de contrato e arquitetura: `docs/developer-guide/architecture.md`. Ainda a documentar: `docker compose`, backup/restore.
+Fluxo de contrato e arquitetura: `docs/developer-guide/architecture.md`. Subir tudo: `make up` / `make down` / `make logs` (compose em `deploy/`, app em http://localhost:8080). Guia: `docs/developer-guide/getting-started.md`. Ainda a documentar: backup/restore.
 
 ## Estado atual e próximos passos
 Feito: spec, marca, schema inicial validado (Up/Down/Up + constraints), OpenAPI (esqueleto), plano. Status por fase em `docs/product/plan.md`.

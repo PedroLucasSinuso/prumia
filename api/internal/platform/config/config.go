@@ -16,6 +16,7 @@ type Config struct {
 	HTTPAddr    string         // ex.: ":8080"
 	DatabaseURL string         // ex.: postgres://user:senha@db:5432/prumia?sslmode=disable
 	Location    *time.Location // fuso usado para "hoje" (as datas em si não têm fuso)
+	AutoMigrate bool           // aplica as migrations pendentes ao subir (útil no compose)
 }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
@@ -33,6 +34,7 @@ func load(get func(string) string) (Config, error) {
 		Env:         valueOr(get("APP_ENV"), "development"),
 		HTTPAddr:    valueOr(get("HTTP_ADDR"), ":8080"),
 		DatabaseURL: get("DATABASE_URL"),
+		AutoMigrate: get("AUTO_MIGRATE") == "true",
 	}
 
 	var problems []error

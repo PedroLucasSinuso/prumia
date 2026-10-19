@@ -22,6 +22,17 @@ func TestLoadDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadAutoMigrate(t *testing.T) {
+	cfg, _ := load(env(map[string]string{"DATABASE_URL": "postgres://x", "AUTO_MIGRATE": "true"}))
+	if !cfg.AutoMigrate {
+		t.Error("AUTO_MIGRATE=true deveria ligar")
+	}
+	cfg, _ = load(env(map[string]string{"DATABASE_URL": "postgres://x"}))
+	if cfg.AutoMigrate {
+		t.Error("padrão deve ser desligado")
+	}
+}
+
 func TestLoadAcumulaErros(t *testing.T) {
 	_, err := load(env(map[string]string{"APP_ENV": "staging", "APP_TIMEZONE": "Marte/Olimpo"}))
 	if err == nil {

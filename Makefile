@@ -73,3 +73,31 @@ web-types: ## Regenera os tipos TypeScript a partir do openapi.yaml
 .PHONY: hooks-test
 hooks-test: ## Testa os hooks do Claude Code (guard de Git)
 	python3 -I .claude/hooks/test_git_guard.py
+
+COMPOSE := docker compose --env-file .env -f deploy/compose.yaml
+
+.env:
+	@cp .env.example .env
+	@pw=$$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24); \
+	 sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$pw/" .env
+	@echo ".env criado com senha aleatória do banco"
+
+.PHONY: env
+env: .env ## Cria o .env (com senha aleatória) se ainda não existir
+
+.PHONY: up
+up: .env ## Sobe o app completo (db, api, web) e mostra o endereço
+	$(COMPOSE) up -d --build
+	@echo "prumia no ar: http://localhost:$$(grep -E '^WEB_PORT=' .env | cut -d= -f2)"
+
+.PHONY: down
+down: ## Para o app (os dados do banco são mantidos)
+	$(COMPOSE) down
+
+.PHONY: logs
+logs: ## Acompanha os logs
+	$(COMPOSE) logs -f --tail=100
+
+.PHONY: ps
+ps: ## Estado dos containers
+	$(COMPOSE) ps
