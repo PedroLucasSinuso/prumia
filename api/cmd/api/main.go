@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // embute o banco de fusos: imagens mínimas (Alpine) não têm /usr/share/zoneinfo
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
@@ -60,6 +61,13 @@ func run(args []string) error {
 
 	router := httpx.NewRouter(cfg.IsProduction(), log)
 	api.Mount(router, api.Server{DB: sqlDB})
+
+	if cfg.AutoMigrate {
+		if err := db.Migrate(ctx, sqlDB); err != nil {
+			return fmt.Errorf("migrations: %w", err)
+		}
+		log.Info("migrations aplicadas")
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
