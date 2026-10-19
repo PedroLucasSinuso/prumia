@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
 API := api
+WEB := web
 
 .PHONY: help
 help: ## Lista os comandos
@@ -18,10 +19,24 @@ fmt: ## Formata o código Go
 	cd $(API) && gofmt -w .
 
 .PHONY: lint
-lint: ## gofmt (verificação) + go vet + valida o OpenAPI
+lint: ## gofmt (verificação) + go vet + valida o OpenAPI + código gerado em dia
 	@cd $(API) && test -z "$$(gofmt -l .)" || (echo "arquivos sem gofmt:"; gofmt -l .; exit 1)
 	cd $(API) && go vet ./...
 	@! npx --yes @redocly/cli@1 lint openapi/openapi.yaml --format=stylish 2>&1 | grep -E "error\s"
+	$(MAKE) check-generated
+
+.PHONY: generate
+generate: ## Regenera o código Go e os tipos TypeScript a partir do openapi.yaml
+	cd $(API) && go tool oapi-codegen -config oapi-codegen.yaml ../openapi/openapi.yaml
+	cd $(WEB) && npm run --silent generate:api >/dev/null
+
+.PHONY: check-generated
+check-generated: ## Falha se o código gerado estiver desatualizado em relação ao openapi.yaml
+	@a=$$(mktemp); b=$$(mktemp); cp $(API)/internal/api/gen/api.gen.go $$a; cp $(WEB)/src/api/schema.d.ts $$b; \
+	$(MAKE) --no-print-directory generate >/dev/null; \
+	if diff -q $$a $(API)/internal/api/gen/api.gen.go >/dev/null && diff -q $$b $(WEB)/src/api/schema.d.ts >/dev/null; \
+	then rm -f $$a $$b; echo "código gerado em dia"; \
+	else rm -f $$a $$b; echo "código gerado estava desatualizado (já regenerado): commite o resultado"; exit 1; fi
 
 .PHONY: tidy
 tidy: ## Ajusta o go.mod
@@ -34,8 +49,6 @@ run: ## Sobe a API local (precisa de DATABASE_URL)
 .PHONY: migrate
 migrate: ## Aplica as migrations (precisa de DATABASE_URL)
 	cd $(API) && go run ./cmd/api migrate
-
-WEB := web
 
 .PHONY: web-install
 web-install: ## Instala as dependências do front

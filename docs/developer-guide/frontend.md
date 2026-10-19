@@ -31,7 +31,7 @@ O cliente `api` é tipado pelo contrato: rotas, parâmetros e respostas são che
 const { data, error, response } = await api.GET('/healthz')
 ```
 
-Mudou o `openapi.yaml`? Rode `make web-types` (regenera `schema.d.ts`). Se o contrato mudar de um jeito que quebra o uso, o
+Mudou o `openapi.yaml`? Rode `make generate` (regenera `schema.d.ts` e o código Go; `make web-types` regenera só o do front). Se o contrato mudar de um jeito que quebra o uso, o
 `npm run typecheck` aponta o lugar. O cookie de sessão é httpOnly e vai junto sozinho porque o front e a API ficam na mesma
 origem (`/api`): em desenvolvimento pelo proxy do Vite, em produção pelo nginx.
 
