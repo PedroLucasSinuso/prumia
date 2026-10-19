@@ -33,6 +33,8 @@ export interface paths {
         /**
          * Cria usuário a partir de um convite ou cria uma nova casa
          * @description Sem `inviteToken`, cria o usuário e uma casa nova (o usuário é admin). Com `inviteToken`, entra na casa do convite.
+         *     O cadastro **sem convite** só é aceito para o primeiro usuário do sistema, salvo se o servidor tiver
+         *     `OPEN_REGISTRATION=true`; depois disso responde 403 (`registration_closed`). Define o cookie de sessão.
          */
         post: operations["register"];
         delete?: never;
@@ -661,12 +663,13 @@ export interface components {
             name: string;
             /** Format: email */
             email: string;
-            households: {
-                /** Format: uuid */
-                id: string;
-                name: string;
-                role: components["schemas"]["Role"];
-            }[];
+            households: components["schemas"]["HouseholdRef"][];
+        };
+        HouseholdRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            role: components["schemas"]["Role"];
         };
         Household: {
             /** Format: uuid */
@@ -1130,6 +1133,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
         };

@@ -17,6 +17,8 @@ import (
 	_ "time/tzdata" // embute o banco de fusos: imagens mínimas (Alpine) não têm /usr/share/zoneinfo
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api"
+	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
+	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -59,8 +61,16 @@ func run(args []string) error {
 		return nil
 	}
 
+	households := household.NewService(gdb)
+	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration})
+	if err != nil {
+		return err
+	}
+	cookie := auth.CookieConfig{Name: "prumia_session", Secure: cfg.IsProduction(), MaxAge: 30 * 24 * time.Hour}
+
 	router := httpx.NewRouter(cfg.IsProduction(), log)
-	api.Mount(router, api.Server{DB: sqlDB})
+	server := api.NewServer(sqlDB, auth.NewHandler(authSvc, cookie, log), &api.Households{Svc: households, Log: log})
+	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 
 	if cfg.AutoMigrate {
 		if err := db.Migrate(ctx, sqlDB); err != nil {

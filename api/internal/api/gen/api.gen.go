@@ -385,6 +385,13 @@ type Household struct {
 	Name      string             `json:"name"`
 }
 
+// HouseholdRef defines model for HouseholdRef.
+type HouseholdRef struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+	Role Role               `json:"role"`
+}
+
 // Income defines model for Income.
 type Income struct {
 	// CompetenceMonth Primeiro dia do mês
@@ -563,29 +570,25 @@ type InvoicePatch struct {
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
-	Email    openapi_types.Email `json:"email"`
-	Password string              `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // Me defines model for Me.
 type Me struct {
-	Email      openapi_types.Email `json:"email"`
-	Households []struct {
-		Id   openapi_types.UUID `json:"id"`
-		Name string             `json:"name"`
-		Role Role               `json:"role"`
-	} `json:"households"`
-	Id   openapi_types.UUID `json:"id"`
-	Name string             `json:"name"`
+	Email      string             `json:"email"`
+	Households []HouseholdRef     `json:"households"`
+	Id         openapi_types.UUID `json:"id"`
+	Name       string             `json:"name"`
 }
 
 // Member defines model for Member.
 type Member struct {
-	Email    openapi_types.Email `json:"email"`
-	JoinedAt time.Time           `json:"joinedAt"`
-	Name     string              `json:"name"`
-	Role     Role                `json:"role"`
-	UserId   openapi_types.UUID  `json:"userId"`
+	Email    string             `json:"email"`
+	JoinedAt time.Time          `json:"joinedAt"`
+	Name     string             `json:"name"`
+	Role     Role               `json:"role"`
+	UserId   openapi_types.UUID `json:"userId"`
 }
 
 // Month Primeiro dia do mês
@@ -744,7 +747,7 @@ type RecurrencePatch struct {
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
-	Email openapi_types.Email `json:"email"`
+	Email string `json:"email"`
 
 	// HouseholdName Usado quando não há convite
 	HouseholdName *string `json:"householdName,omitempty"`
