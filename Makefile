@@ -34,3 +34,29 @@ run: ## Sobe a API local (precisa de DATABASE_URL)
 .PHONY: migrate
 migrate: ## Aplica as migrations (precisa de DATABASE_URL)
 	cd $(API) && go run ./cmd/api migrate
+
+WEB := web
+
+.PHONY: web-install
+web-install: ## Instala as dependências do front
+	cd $(WEB) && npm ci
+
+.PHONY: web-test
+web-test: ## Lint, typecheck e testes do front
+	cd $(WEB) && npm run lint && npm run typecheck && npm test
+
+.PHONY: web-build
+web-build: ## Build de produção do front
+	cd $(WEB) && npm run build
+
+.PHONY: web-dev
+web-dev: ## Sobe o front em desenvolvimento (proxy /api -> localhost:8080)
+	cd $(WEB) && npm run dev
+
+.PHONY: web-types
+web-types: ## Regenera os tipos TypeScript a partir do openapi.yaml
+	cd $(WEB) && npm run generate:api
+
+.PHONY: hooks-test
+hooks-test: ## Testa os hooks do Claude Code (guard de Git)
+	python3 -I .claude/hooks/test_git_guard.py
