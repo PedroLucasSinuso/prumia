@@ -14,7 +14,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
+	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
+	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 )
@@ -50,8 +53,17 @@ func newApp(t *testing.T, o opts) *app {
 	}
 	cookie := auth.CookieConfig{Name: "prumia_session", Secure: o.secureCookie, MaxAge: 30 * 24 * time.Hour}
 	router := httpx.NewRouter(false, log)
-	Mount(router, NewServer(sqlDB, auth.NewHandler(svc, cookie, log), &Households{Svc: hs, Log: log}),
-		auth.Middleware(svc, hs, cookie, log))
+	nowFn := o.now
+	if nowFn == nil {
+		nowFn = time.Now
+	}
+	today := func() caldate.Date { return caldate.FromTime(nowFn()) }
+	Mount(router, NewServer(sqlDB,
+		auth.NewHandler(svc, cookie, log),
+		&Households{Svc: hs, Log: log},
+		&Categories{Svc: category.NewService(gdb), Log: log},
+		&Invoices{Svc: invoice.NewService(gdb, today), Log: log},
+	), auth.Middleware(svc, hs, cookie, log))
 	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie}
 }
 

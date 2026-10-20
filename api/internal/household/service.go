@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 )
 
 // ErrNotFound: a casa não existe ou o usuário não é membro dela (não distinguimos, para não vazar a existência).
@@ -62,9 +64,9 @@ func (s *Service) CreateWithin(tx *gorm.DB, name string, creator uuid.UUID) (Hou
 	if err := tx.Create(&Member{HouseholdID: h.ID, UserID: creator, Role: RoleAdmin}).Error; err != nil {
 		return Household{}, fmt.Errorf("criando membro admin: %w", err)
 	}
-	cats := make([]Category, len(defaultCategories))
+	cats := make([]category.Category, len(defaultCategories))
 	for i, c := range defaultCategories {
-		cats[i] = Category{HouseholdID: h.ID, Name: c.name, IsEssential: c.essential, SortOrder: i}
+		cats[i] = category.Category{HouseholdID: h.ID, Name: c.name, IsEssential: c.essential, SortOrder: i}
 		if c.wallet != "" {
 			w := c.wallet
 			cats[i].DefaultWallet = &w

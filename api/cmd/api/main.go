@@ -18,7 +18,10 @@ import (
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
+	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
+	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -69,7 +72,13 @@ func run(args []string) error {
 	cookie := auth.CookieConfig{Name: "prumia_session", Secure: cfg.IsProduction(), MaxAge: 30 * 24 * time.Hour}
 
 	router := httpx.NewRouter(cfg.IsProduction(), log)
-	server := api.NewServer(sqlDB, auth.NewHandler(authSvc, cookie, log), &api.Households{Svc: households, Log: log})
+	today := func() caldate.Date { return caldate.Today(cfg.Location) }
+	server := api.NewServer(sqlDB,
+		auth.NewHandler(authSvc, cookie, log),
+		&api.Households{Svc: households, Log: log},
+		&api.Categories{Svc: category.NewService(gdb), Log: log},
+		&api.Invoices{Svc: invoice.NewService(gdb, today), Log: log},
+	)
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 
 	if cfg.AutoMigrate {
