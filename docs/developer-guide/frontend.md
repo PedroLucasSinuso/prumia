@@ -17,9 +17,12 @@ src/
 ├── api/
 │   ├── schema.d.ts   tipos gerados do openapi.yaml (não editar; versionado)
 │   └── client.ts     cliente HTTP tipado (openapi-fetch)
+├── auth/             sessão: contexto (AuthContext), hook useAuth, proteção de rotas, mensagens de erro
+├── components/       peças da marca (Field, Button, FormError, AuthLayout)
+├── pages/            telas (LoginPage, RegisterPage, HomePage)
 ├── lib/              utilitários puros (ex.: money.ts)
 ├── test/setup.ts     configuração dos testes
-├── App.tsx           shell inicial
+├── App.tsx           rotas (react-router)
 └── index.css         Tailwind + tokens da marca
 ```
 
@@ -34,6 +37,18 @@ const { data, error, response } = await api.GET('/healthz')
 Mudou o `openapi.yaml`? Rode `make generate` (regenera `schema.d.ts` e o código Go; `make web-types` regenera só o do front). Se o contrato mudar de um jeito que quebra o uso, o
 `npm run typecheck` aponta o lugar. O cookie de sessão é httpOnly e vai junto sozinho porque o front e a API ficam na mesma
 origem (`/api`): em desenvolvimento pelo proxy do Vite, em produção pelo nginx.
+
+## Sessão e rotas
+
+O `AuthProvider` pergunta `GET /auth/me` ao abrir o app: 200 = logado, 401 = anônimo (o cookie é httpOnly, o JavaScript
+nunca o vê). `useAuth()` expõe `session`, `login`, `register` e `logout`. `RequireAuth` protege as rotas (sem sessão manda
+para `/entrar`, lembrando o destino) e `RedirectIfAuthenticated` tira quem já entrou das telas de entrada.
+
+Erros da API chegam como `problem+json` com um `code` estável; `auth/errors.ts` traduz os códigos para pt-BR. O front
+**não** mostra mensagem crua do servidor em erros inesperados. Erros por campo (`fields`) aparecem no campo certo e somem
+quando a pessoa volta a editá-lo.
+
+O `tsconfig` usa `strict: true`: sem isso o TypeScript não estreita uniões como `ActionResult` (`ok: true | false`).
 
 ## Marca no código
 
