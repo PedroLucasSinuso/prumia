@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
 )
 
 // Erros de negócio. Em Go, erros são valores: quem chama compara com errors.Is e decide a resposta HTTP.
@@ -23,10 +24,8 @@ var (
 	ErrUnauthenticated    = errors.New("não autenticado")
 )
 
-// ValidationError agrupa os problemas de validação por campo (vira `fields` no problem+json).
-type ValidationError struct{ Fields map[string]string }
-
-func (e *ValidationError) Error() string { return "dados inválidos" }
+// ValidationError é o erro de validação por campo compartilhado (vira `fields` no problem+json).
+type ValidationError = validation.Error
 
 type Config struct {
 	SessionTTL       time.Duration // validade da sessão (renovada com o uso)
