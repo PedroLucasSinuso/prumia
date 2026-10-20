@@ -12,6 +12,30 @@
     {
       "key": "household_id",
       "value": ""
+    },
+    {
+      "key": "category_id",
+      "value": ""
+    },
+    {
+      "key": "mercado_id",
+      "value": ""
+    },
+    {
+      "key": "new_category_id",
+      "value": ""
+    },
+    {
+      "key": "invoice_id",
+      "value": ""
+    },
+    {
+      "key": "due_date",
+      "value": ""
+    },
+    {
+      "key": "due_month",
+      "value": ""
     }
   ],
   "item": [
@@ -463,6 +487,47 @@
             "method": "GET",
             "header": [],
             "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/summary?month=2026-10-01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-10-01"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"501 not_implemented (resumo vem na Fase 2)\", () => { pm.response.to.have.status(501); pm.expect(pm.response.json().code).to.eql(\"not_implemented\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Categorias",
+      "item": [
+        {
+          "name": "Listar categorias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
               "raw": "{{base_url}}/api/households/{{household_id}}/categories",
               "host": [
                 "{{base_url}}"
@@ -481,7 +546,223 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"501 not_implemented (vem nas próximas fases)\", () => { pm.response.to.have.status(501); pm.expect(pm.response.json().code).to.eql(\"not_implemented\"); });"
+                  "pm.test(\"200 com as 10 categorias padrão\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const c = pm.response.json();",
+                  "  pm.expect(c.length).to.be.at.least(10);",
+                  "  pm.expect(c[0].name).to.eql(\"Moradia\");",
+                  "  pm.collectionVariables.set(\"category_id\", c[0].id);",
+                  "  pm.collectionVariables.set(\"mercado_id\", c.find(x => x.name === \"Mercado\").id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar categoria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pets {{$randomInt}}\",\n  \"defaultWallet\": \"free\",\n  \"isEssential\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201\", () => { pm.response.to.have.status(201); pm.collectionVariables.set(\"new_category_id\", pm.response.json().id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar categoria repetida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"mercado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 category_exists (ignora maiúsculas)\", () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql(\"category_exists\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar categoria (limpar carteira com null)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories/{{new_category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories",
+                "{{new_category_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isEssential\": false,\n  \"defaultWallet\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; defaultWallet limpa\", () => { pm.response.to.have.status(200); const c = pm.response.json(); pm.expect(c.isEssential).to.be.false; pm.expect(c.defaultWallet).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Arquivar categoria",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories/{{new_category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories",
+                "{{new_category_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"archived\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"arquivada\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().archived).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir categoria sem uso",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories/{{new_category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories",
+                "{{new_category_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
                 ]
               }
             }
@@ -490,7 +771,521 @@
       ]
     },
     {
-      "name": "4. Encerrar",
+      "name": "5. Invoices",
+      "item": [
+        {
+          "name": "Criar invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \"Aluguel\",\n  \"amountCents\": 150000,\n  \"dueDate\": \"{{due_date}}\",\n  \"notes\": \"teste Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Valores em centavos: 150000 = R$ 1.500,00. A data de vencimento é sempre daqui a 2 dias (script)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set(\"due_date\", d);",
+                  "pm.collectionVariables.set(\"due_month\", d.slice(0, 7) + \"-01\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201, pendente, competência = mês do vencimento\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const i = pm.response.json();",
+                  "  pm.expect(i.status).to.eql(\"pending\");",
+                  "  pm.expect(i.amountCents).to.eql(150000);",
+                  "  pm.expect(i.competenceMonth).to.eql(pm.collectionVariables.get(\"due_month\"));",
+                  "  pm.collectionVariables.set(\"invoice_id\", i.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar invoice inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \" \",\n  \"amountCents\": 0,\n  \"dueDate\": \"{{due_date}}\",\n  \"competenceMonth\": \"2026-10-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 com erros por campo\", () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().fields).to.have.keys(\"description\", \"amountCents\", \"competenceMonth\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar invoices do mês",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices?month={{due_month}}&limit=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{due_month}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 e a invoice criada está na lista\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const ids = pm.response.json().items.map(i => i.id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get(\"invoice_id\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar por texto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices?q=aluGU",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "aluGU"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"busca ignora maiúsculas\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().items.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar invoice",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Aluguel (editado)\",\n  \"amountCents\": 160000,\n  \"notes\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; null limpa a observação\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const i = pm.response.json();",
+                  "  pm.expect(i.description).to.eql(\"Aluguel (editado)\");",
+                  "  pm.expect(i.notes).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pagar (poucos toques)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}/pay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wallet\": \"free\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Só a carteira é obrigatória: data = hoje, valor = o da invoice."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200, paga, na carteira livre, valor da invoice\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.invoice.status).to.eql(\"paid\");",
+                  "  pm.expect(r.invoice.paid.wallet).to.eql(\"free\");",
+                  "  pm.expect(r.invoice.paid.amountCents).to.eql(160000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pagar de novo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}/pay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wallet\": \"benefit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 already_paid\", () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql(\"already_paid\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desfazer pagamento",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}/pay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}",
+                "pay"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"volta a pendente\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql(\"pending\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir invoice",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invoice excluída some",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desfazer exclusão",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{invoice_id}}/restore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{invoice_id}}",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 e volta\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"invoice_id\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invoice com categoria de outra casa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"00000000-0000-7000-8000-000000000000\",\n  \"description\": \"X\",\n  \"amountCents\": 100,\n  \"dueDate\": \"{{due_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 categoryId inválido\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property(\"categoryId\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Encerrar",
       "item": [
         {
           "name": "Logout",

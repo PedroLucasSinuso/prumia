@@ -131,3 +131,21 @@ func (d Date) Value() (driver.Value, error) {
 	}
 	return d.t, nil
 }
+
+// GormDataType diz ao GORM que o campo é uma coluna DATE (sem isso ele não sabe mapear o struct).
+func (Date) GormDataType() string { return "date" }
+
+// UnmarshalText/MarshalText: formato texto "AAAA-MM-DD", usado por query string e path.
+func (d *Date) UnmarshalText(b []byte) error {
+	v, err := ParseISO(string(b))
+	if err != nil {
+		return err
+	}
+	*d = v
+	return nil
+}
+
+func (d Date) MarshalText() ([]byte, error) { return []byte(d.String()), nil }
+
+// Bind satisfaz a interface runtime.Binder do código gerado (parâmetros de rota e query).
+func (d *Date) Bind(src string) error { return d.UnmarshalText([]byte(src)) }

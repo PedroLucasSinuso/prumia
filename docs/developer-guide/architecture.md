@@ -20,6 +20,7 @@ api/
     │   ├── config/          variáveis de ambiente
     │   ├── db/              conexão GORM e migrations
     │   ├── dbtest/          Postgres descartável (Docker) para testes
+    │   ├── validation/      erro de validação por campo, compartilhado pelos serviços
     │   ├── httpx/           roteador base, erro problem+json
     │   ├── caldate/         data de calendário sem fuso
     │   ├── money/           dinheiro em centavos
@@ -65,8 +66,8 @@ módulo, apague os stubs correspondentes de `unimplemented.go`.
 ## Testes
 
 - Unitários nos pacotes `platform/*` e nas regras de negócio.
-- Integração com **Postgres real** via `dbtest.New(t)` (testcontainers): sobe um container por teste e o descarta.
-  Sem Docker o teste é **pulado**, não falha.
+- Integração com **Postgres real** via `dbtest.New(t)` (testcontainers): um container por pacote de testes e um **banco novo por
+  teste** (isolamento total, ~12 s para a suíte inteira da API). Sem Docker, ou com `-short`, o teste é **pulado**, não falha.
 - `make test` roda tudo; `make test-short` pula o que precisa de Docker (use `-short` nos testes pesados).
 
 ## Comandos
