@@ -43,16 +43,3 @@ type Member struct {
 }
 
 func (Member) TableName() string { return "household_members" }
-
-type Category struct {
-	dbmodel.Base
-	HouseholdID   uuid.UUID `gorm:"type:uuid"`
-	Name          string
-	DefaultWallet *string
-	IsEssential   bool
-	SortOrder     int
-	ArchivedAt    *time.Time
-	DeletedAt     gorm.DeletedAt
-}
-
-func (Category) TableName() string { return "categories" }
