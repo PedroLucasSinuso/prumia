@@ -55,17 +55,6 @@ func TestHealthzBancoCaido(t *testing.T) {
 	}
 }
 
-// Operações do contrato ainda sem módulo respondem 501 em problem+json (não 404).
-func TestOperacaoSemHandlerEh501(t *testing.T) {
-	w := do(t, fakeDB{}, http.MethodPost, "/api/households/0190f0f0-0000-7000-8000-000000000000/boletos/extract")
-	if w.Code != http.StatusNotImplemented {
-		t.Fatalf("status = %d", w.Code)
-	}
-	if p := problem(t, w); p.Code != "not_implemented" {
-		t.Errorf("code = %q", p.Code)
-	}
-}
-
 // Parâmetro de rota inválido (uuid) vira 400 em problem+json, validado pelo código gerado.
 func TestUUIDInvalidoEh400(t *testing.T) {
 	w := do(t, fakeDB{}, http.MethodGet, "/api/households/nao-e-uuid")

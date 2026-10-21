@@ -19,6 +19,7 @@ import (
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
+	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
@@ -102,6 +103,7 @@ func run(args []string) error {
 		&api.Recurrences{Svc: recurrences, Log: log},
 		&api.Incomes{Svc: incomes, Log: log},
 		&api.Summaries{Svc: summaries, Log: log, Horizons: []api.HorizonEnsurer{incomes, recurrences}},
+		api.NewBoletos(boleto.NewExtractor(), invoices, log),
 	)
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 

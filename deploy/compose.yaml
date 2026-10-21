@@ -28,6 +28,9 @@ services:
       # Cadastro sem convite: só o 1º usuário se cadastra sozinho; deixe false depois (ver docs/developer-guide/authentication.md)
       OPEN_REGISTRATION: ${OPEN_REGISTRATION:-false}
       DATABASE_URL: postgres://${POSTGRES_USER:-prumia}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prumia}?sslmode=disable
+    # /tmp em memória: as ferramentas de leitura de boleto podem criar arquivos temporários, e boleto nunca deve tocar o disco.
+    tmpfs:
+      - /tmp
     depends_on:
       db:
         condition: service_healthy
