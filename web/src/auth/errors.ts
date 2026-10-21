@@ -9,6 +9,11 @@ const messages: Record<string, string> = {
     'O cadastro livre está desativado. Peça um convite a quem administra a casa.',
   too_many_requests: 'Muitas tentativas. Aguarde um minuto e tente de novo.',
   bad_origin: 'Requisição bloqueada por segurança. Recarregue a página e tente de novo.',
+  invalid_invite: 'Este convite é inválido, expirou ou foi revogado. Peça um novo a quem administra a casa.',
+  invite_used: 'Este convite já foi usado.',
+  already_member: 'Você já faz parte desta casa.',
+  last_admin: 'A casa precisa de pelo menos uma pessoa administradora.',
+  forbidden: 'Apenas administradores da casa podem fazer isso.',
   validation_error: 'Confira os campos destacados.',
   not_implemented: 'Este recurso ainda não está disponível.',
 }
