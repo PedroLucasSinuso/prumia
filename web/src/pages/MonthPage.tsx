@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useCategories, useInvoiceActions, useInvoices } from '../api/queries'
 import type { Invoice } from '../api/types'
 import { useAuth } from '../auth/context'
-import { AppHeader } from '../components/AppHeader'
+import { AppShell } from '../components/AppShell'
 import { InvoiceRow } from '../components/InvoiceRow'
 import { InvoiceSheet } from '../components/InvoiceSheet'
 import { MonthSelector } from '../components/MonthSelector'
@@ -109,14 +109,8 @@ export default function MonthPage() {
   const empty = invoices.isSuccess && invoices.data.length === 0
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 pb-28 pt-5">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-graphite/70">casa</p>
-          <p className="text-lg font-semibold">{house.name}</p>
-        </div>
-
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 pb-28 pt-5 md:max-w-5xl md:px-10 md:pt-8">
         <MonthSelector month={month} onChange={setMonth} />
 
         <div className="grid grid-cols-2 gap-3">
@@ -154,7 +148,7 @@ export default function MonthPage() {
         <button
           aria-label="Nova conta"
           onClick={() => setEditing({ kind: 'new' })}
-          className="fixed bottom-6 right-4 z-30 h-14 w-14 rounded-md bg-teal text-3xl leading-none text-ivory shadow-lg hover:bg-teal/90 sm:right-[max(1rem,calc(50%-24rem))]"
+          className="fixed bottom-6 right-4 z-30 h-14 w-14 rounded-md bg-teal text-3xl leading-none text-ivory hover:bg-teal/90 md:right-8"
         >
           +
         </button>
@@ -173,6 +167,6 @@ export default function MonthPage() {
           onUnpay={unpayFromSheet}
         />
       )}
-    </div>
+    </AppShell>
   )
 }
