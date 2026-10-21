@@ -21,21 +21,11 @@ func notImplemented(c *gin.Context) {
 	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusNotImplemented, Code: "not_implemented"})
 }
 
-func (Unimplemented) AcceptInvite(c *gin.Context) { notImplemented(c) }
-
 func (Unimplemented) CreateIncome(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
 
 func (Unimplemented) CreateIncomeSource(c *gin.Context, householdId gen.HouseholdId) {
 	notImplemented(c)
 }
-
-func (Unimplemented) CreateInvite(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
-func (Unimplemented) CreatePasswordResetLink(c *gin.Context, householdId gen.HouseholdId, userId gen.UserId) {
-	notImplemented(c)
-}
-
-func (Unimplemented) DeleteHousehold(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
 
 func (Unimplemented) DeleteIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
 	notImplemented(c)
@@ -59,26 +49,10 @@ func (Unimplemented) ReceiveIncome(c *gin.Context, householdId gen.HouseholdId, 
 	notImplemented(c)
 }
 
-func (Unimplemented) RemoveMember(c *gin.Context, householdId gen.HouseholdId, userId gen.UserId) {
-	notImplemented(c)
-}
-
-func (Unimplemented) ResetPassword(c *gin.Context) { notImplemented(c) }
-
-func (Unimplemented) RevokeInvite(c *gin.Context, householdId gen.HouseholdId, inviteId openapi_types.UUID) {
-	notImplemented(c)
-}
-
-func (Unimplemented) UpdateHousehold(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
 func (Unimplemented) UpdateIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
 	notImplemented(c)
 }
 
 func (Unimplemented) UpdateIncomeSource(c *gin.Context, householdId gen.HouseholdId, sourceId openapi_types.UUID, params gen.UpdateIncomeSourceParams) {
-	notImplemented(c)
-}
-
-func (Unimplemented) UpdateMemberRole(c *gin.Context, householdId gen.HouseholdId, userId gen.UserId) {
 	notImplemented(c)
 }

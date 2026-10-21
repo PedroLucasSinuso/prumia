@@ -1,45 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import App from './App'
 import { api } from './api/client'
-import type { Me, Problem } from './api/types'
-import { AuthProvider } from './auth/AuthContext'
-
-const me: Me = {
-  id: 'u1',
-  name: 'Pedro',
-  email: 'pedro@exemplo.com',
-  households: [{ id: 'h1', name: 'Casa do Pedro', role: 'admin' }],
-}
-
-type Reply = { data?: unknown; error?: Problem; response?: { ok: boolean } }
-
-/** Simula a API por rota. Rotas não informadas respondem 401 (me) ou ok (healthz). */
-function mockApi(routes: { me?: Reply; login?: Reply | Error; register?: Reply; logout?: Reply } = {}) {
-  vi.spyOn(api, 'GET').mockImplementation((async (url: string) => {
-    if (url === '/healthz') return { response: { ok: true } }
-    if (url === '/auth/me') return routes.me ?? { error: { title: 'Unauthorized', status: 401 }, response: { ok: false } }
-    throw new Error('GET inesperado: ' + url)
-  }) as never)
-  vi.spyOn(api, 'POST').mockImplementation((async (url: string) => {
-    const pick = { '/auth/login': routes.login, '/auth/register': routes.register, '/auth/logout': routes.logout }[url]
-    if (pick instanceof Error) throw pick
-    return pick ?? { response: { ok: true } }
-  }) as never)
-}
-
-function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </MemoryRouter>,
-  )
-}
+import type { Problem } from './api/types'
+import { mockApi, me, ok, renderAt } from './test/utils'
 
 const problem = (status: number, code: string, fields?: Record<string, string>): Problem => ({ title: code, status, code, fields })
 
@@ -53,17 +18,17 @@ describe('proteção de rotas', () => {
   })
 
   it('com sessão, mostra a casa e o nome do usuário', async () => {
-    mockApi({ me: { data: me, response: { ok: true } } })
+    mockApi({ me: ok(me) })
     renderAt('/')
-    expect(await screen.findByRole('heading', { name: 'Casa do Pedro' })).toBeInTheDocument()
+    expect(await screen.findByText('Casa do Pedro')).toBeInTheDocument()
     expect(screen.getByText('Pedro')).toBeInTheDocument()
-    expect(await screen.findByText(/api online/)).toBeInTheDocument()
+    expect(await screen.findByText(/Nenhuma conta neste mês/)).toBeInTheDocument()
   })
 
   it('quem já está logado não vê a tela de entrar', async () => {
-    mockApi({ me: { data: me, response: { ok: true } } })
+    mockApi({ me: ok(me) })
     renderAt('/entrar')
-    expect(await screen.findByRole('heading', { name: 'Casa do Pedro' })).toBeInTheDocument()
+    expect(await screen.findByText('Casa do Pedro')).toBeInTheDocument()
   })
 })
 
@@ -71,12 +36,12 @@ describe('login', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('entra e vai para o app', async () => {
-    mockApi({ login: { data: me, response: { ok: true } } })
+    mockApi({ login: ok(me) })
     renderAt('/entrar')
     await userEvent.type(await screen.findByLabelText('E-mail'), 'pedro@exemplo.com')
     await userEvent.type(screen.getByLabelText('Senha'), 'senha-muito-segura')
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(await screen.findByRole('heading', { name: 'Casa do Pedro' })).toBeInTheDocument()
+    expect(await screen.findByText('Casa do Pedro')).toBeInTheDocument()
     expect(api.POST).toHaveBeenCalledWith('/auth/login', { body: { email: 'pedro@exemplo.com', password: 'senha-muito-segura' } })
   })
 
@@ -118,10 +83,10 @@ describe('cadastro', () => {
   }
 
   it('cria a conta e entra no app', async () => {
-    mockApi({ register: { data: me, response: { ok: true } } })
+    mockApi({ register: ok(me) })
     renderAt('/cadastro')
     await fill()
-    expect(await screen.findByRole('heading', { name: 'Casa do Pedro' })).toBeInTheDocument()
+    expect(await screen.findByText('Casa do Pedro')).toBeInTheDocument()
     expect(api.POST).toHaveBeenCalledWith('/auth/register', {
       body: { name: 'Pedro', email: 'pedro@exemplo.com', password: 'senha-muito-segura', householdName: 'Casa do Pedro' },
     })
@@ -161,7 +126,7 @@ describe('sair', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('encerra a sessão e volta para a tela de entrar', async () => {
-    mockApi({ me: { data: me, response: { ok: true } } })
+    mockApi({ me: ok(me) })
     renderAt('/')
     await userEvent.click(await screen.findByRole('button', { name: 'Sair' }))
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
