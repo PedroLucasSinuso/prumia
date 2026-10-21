@@ -58,6 +58,8 @@ const (
 type View struct {
 	Invoice
 	Status Status
+	// InstallmentsCount: total de parcelas da compra (só para parcelas); alimenta "3 de 6" na resposta.
+	InstallmentsCount *int
 }
 
 func statusOf(i Invoice, today caldate.Date) Status {

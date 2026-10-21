@@ -2,9 +2,12 @@ package invoice
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,13 +23,12 @@ var (
 	ErrNotFound     = errors.New("invoice não encontrada")
 	ErrAlreadyPaid  = errors.New("esta invoice já está paga")
 	ErrNotPaid      = errors.New("esta invoice não está paga")
-	ErrSeriesScope  = errors.New("editar ou excluir \"esta e as seguintes\" em parcelas/recorrências ainda não está disponível")
 	ErrCategoryGone = errors.New("a categoria desta invoice foi excluída")
 	ErrNotDeleted   = errors.New("a invoice não está excluída")
 )
 
-// maxAmount evita valores absurdos (e estouro de int64 em somas): R$ 10 bilhões.
-const maxAmount money.Cents = 1_000_000_000_000
+// MaxAmount (exportado: compras e recorrências usam o mesmo limite) evita valores absurdos (e estouro de int64 em somas): R$ 10 bilhões.
+const MaxAmount money.Cents = 1_000_000_000_000
 
 type Service struct {
 	db    *gorm.DB
@@ -39,10 +41,60 @@ func NewService(db *gorm.DB, today func() caldate.Date) *Service {
 
 func (s *Service) view(i Invoice) View { return View{Invoice: i, Status: statusOf(i, s.today())} }
 
+// Views calcula o status e, para parcelas, busca o total de parcelas da compra (uma consulta só para a lista
+// inteira, evitando N+1). É o que preenche `series.installmentsCount` na resposta.
+func (s *Service) Views(ctx context.Context, householdID uuid.UUID, rows []Invoice) ([]View, error) {
+	today := s.today()
+	counts := map[uuid.UUID]int{}
+	var ids []uuid.UUID
+	for _, r := range rows {
+		if r.PurchaseID != nil {
+			if _, seen := counts[*r.PurchaseID]; !seen {
+				counts[*r.PurchaseID] = 0
+				ids = append(ids, *r.PurchaseID)
+			}
+		}
+	}
+	if len(ids) > 0 {
+		var found []struct {
+			ID                uuid.UUID
+			InstallmentsCount int
+		}
+		// Table (e não Model) para não depender do pacote de compras; inclui compras excluídas de propósito:
+		// a parcela restaurada continua sabendo "n de N".
+		err := s.db.WithContext(ctx).Table("purchases").Select("id, installments_count").
+			Where("household_id = ? AND id IN ?", householdID, ids).Scan(&found).Error
+		if err != nil {
+			return nil, fmt.Errorf("lendo total de parcelas: %w", err)
+		}
+		for _, f := range found {
+			counts[f.ID] = f.InstallmentsCount
+		}
+	}
+	out := make([]View, len(rows))
+	for i, r := range rows {
+		out[i] = View{Invoice: r, Status: statusOf(r, today)}
+		if r.PurchaseID != nil {
+			if n := counts[*r.PurchaseID]; n > 0 {
+				out[i].InstallmentsCount = &n
+			}
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) viewOne(ctx context.Context, householdID uuid.UUID, i Invoice) (View, error) {
+	vs, err := s.Views(ctx, householdID, []Invoice{i})
+	if err != nil {
+		return View{}, err
+	}
+	return vs[0], nil
+}
+
 // ---------------------------------------------------------------- validações
 
-// checkRefs confere que a categoria é da casa (e não está arquivada) e que o responsável é membro ativo.
-func (s *Service) checkRefs(ctx context.Context, householdID uuid.UUID, categoryID *uuid.UUID, responsible *uuid.UUID, v *validation.Collector) error {
+// CheckRefs confere que a categoria é da casa (e não está arquivada) e que o responsável é membro ativo.
+func (s *Service) CheckRefs(ctx context.Context, householdID uuid.UUID, categoryID *uuid.UUID, responsible *uuid.UUID, v *validation.Collector) error {
 	if categoryID != nil {
 		var n int64
 		err := s.db.WithContext(ctx).Model(&category.Category{}).
@@ -68,7 +120,7 @@ func (s *Service) checkRefs(ctx context.Context, householdID uuid.UUID, category
 	return nil
 }
 
-func checkDescription(d string, v *validation.Collector) string {
+func CheckDescription(d string, v *validation.Collector) string {
 	d = strings.TrimSpace(d)
 	if n := len([]rune(d)); n < 1 || n > 120 {
 		v.Add("description", "informe uma descrição de 1 a 120 caracteres")
@@ -76,13 +128,13 @@ func checkDescription(d string, v *validation.Collector) string {
 	return d
 }
 
-func checkAmount(a money.Cents, field string, v *validation.Collector) {
-	if a <= 0 || a > maxAmount {
+func CheckAmount(a money.Cents, field string, v *validation.Collector) {
+	if a <= 0 || a > MaxAmount {
 		v.Add(field, "informe um valor maior que zero")
 	}
 }
 
-func checkNotes(n *string, v *validation.Collector) *string {
+func CheckNotes(n *string, v *validation.Collector) *string {
 	if n == nil {
 		return nil
 	}
@@ -96,7 +148,7 @@ func checkNotes(n *string, v *validation.Collector) *string {
 	return &t
 }
 
-func checkCompetence(m caldate.Date, v *validation.Collector) {
+func CheckCompetence(m caldate.Date, v *validation.Collector) {
 	if m.IsZero() || !m.IsStartOfMonth() {
 		v.Add("competenceMonth", "informe o primeiro dia do mês (AAAA-MM-01)")
 	}
@@ -116,18 +168,18 @@ type CreateInput struct {
 
 func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in CreateInput) (View, error) {
 	var v validation.Collector
-	in.Description = checkDescription(in.Description, &v)
-	checkAmount(in.AmountCents, "amountCents", &v)
+	in.Description = CheckDescription(in.Description, &v)
+	CheckAmount(in.AmountCents, "amountCents", &v)
 	if in.DueDate.IsZero() {
 		v.Add("dueDate", "informe a data de vencimento")
 	}
 	competence := in.DueDate.StartOfMonth()
 	if in.CompetenceMonth != nil {
 		competence = *in.CompetenceMonth
-		checkCompetence(competence, &v)
+		CheckCompetence(competence, &v)
 	}
-	in.Notes = checkNotes(in.Notes, &v)
-	if err := s.checkRefs(ctx, householdID, &in.CategoryID, in.ResponsibleUserID, &v); err != nil {
+	in.Notes = CheckNotes(in.Notes, &v)
+	if err := s.CheckRefs(ctx, householdID, &in.CategoryID, in.ResponsibleUserID, &v); err != nil {
 		return View{}, err
 	}
 	if err := v.Err(); err != nil {
@@ -164,7 +216,7 @@ func (s *Service) Get(ctx context.Context, householdID, id uuid.UUID) (View, err
 	if err != nil {
 		return View{}, err
 	}
-	return s.view(inv), nil
+	return s.viewOne(ctx, householdID, inv)
 }
 
 type ListFilter struct {
@@ -183,7 +235,8 @@ type Page struct {
 	NextCursor string
 }
 
-func escapeLike(q string) string {
+// EscapeLike faz % e _ valerem como texto numa busca ILIKE.
+func EscapeLike(q string) string {
 	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	return r.Replace(q)
 }
@@ -243,7 +296,7 @@ func (s *Service) List(ctx context.Context, householdID uuid.UUID, f ListFilter)
 		q = q.Where("purchase_id = ?", *f.PurchaseID)
 	}
 	if t := strings.TrimSpace(f.Q); t != "" {
-		q = q.Where(`description ILIKE ? ESCAPE '\'`, "%"+escapeLike(t)+"%")
+		q = q.Where(`description ILIKE ? ESCAPE '\'`, "%"+EscapeLike(t)+"%")
 	}
 	if f.Cursor != "" {
 		d, id, err := decodeCursor(f.Cursor)
@@ -273,10 +326,11 @@ func (s *Service) List(ctx context.Context, householdID uuid.UUID, f ListFilter)
 		page.NextCursor = encodeCursor(rows[limit-1])
 		rows = rows[:limit]
 	}
-	page.Items = make([]View, len(rows))
-	for i, r := range rows {
-		page.Items[i] = View{Invoice: r, Status: statusOf(r, today)}
+	views, err := s.Views(ctx, householdID, rows)
+	if err != nil {
+		return Page{}, err
 	}
+	page.Items = views
 	return page, nil
 }
 
@@ -295,7 +349,7 @@ type Patch struct {
 	Notes             *string
 }
 
-// Scope define o alcance em séries: só esta ou esta e as seguintes (Fase 1c).
+// Scope define o alcance em séries: só esta ou esta e as seguintes.
 type Scope string
 
 const (
@@ -303,36 +357,48 @@ const (
 	ScopeFollowing Scope = "following"
 )
 
+// trailingNumbering reconhece o sufixo " (3/6)" que a geração de parcelas acrescenta à descrição.
+var trailingNumbering = regexp.MustCompile(`\s*\(\d+/\d+\)\s*$`)
+
+// Update edita a invoice. Com scope=following numa invoice de série, aplica também às seguintes da mesma série
+// (regras em docs/developer-guide/series-generation.md): só pendentes, nunca as pagas; vencimento e competência não
+// vão em lote (cada parcela/ocorrência tem o seu).
 func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch, scope Scope) (View, error) {
 	inv, err := s.find(ctx, householdID, id, false)
 	if err != nil {
 		return View{}, err
 	}
-	if scope == ScopeFollowing && inv.InSeries() {
-		return View{}, ErrSeriesScope
-	}
+	following := scope == ScopeFollowing && inv.InSeries()
 
 	var v validation.Collector
 	updates := map[string]any{}
+	description := ""
 	if p.Description != nil {
-		updates["description"] = checkDescription(*p.Description, &v)
+		description = CheckDescription(*p.Description, &v)
+		updates["description"] = description
 	}
 	if p.AmountCents != nil {
-		checkAmount(*p.AmountCents, "amountCents", &v)
+		CheckAmount(*p.AmountCents, "amountCents", &v)
 		updates["amount_cents"] = *p.AmountCents
 	}
 	if p.DueDate != nil {
 		if p.DueDate.IsZero() {
 			v.Add("dueDate", "informe a data de vencimento")
 		}
+		if following {
+			v.Add("dueDate", "o vencimento não pode ser alterado em lote; edite cada uma (escopo \"só esta\")")
+		}
 		updates["due_date"] = *p.DueDate
 	}
 	if p.CompetenceMonth != nil {
-		checkCompetence(*p.CompetenceMonth, &v)
+		CheckCompetence(*p.CompetenceMonth, &v)
+		if following {
+			v.Add("competenceMonth", "a competência não pode ser alterada em lote; edite cada uma (escopo \"só esta\")")
+		}
 		updates["competence_month"] = *p.CompetenceMonth
 	}
 	if p.NotesSet {
-		updates["notes"] = checkNotes(p.Notes, &v)
+		updates["notes"] = CheckNotes(p.Notes, &v)
 	}
 	if p.CategoryID != nil {
 		updates["category_id"] = *p.CategoryID
@@ -344,13 +410,18 @@ func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch
 	if p.ResponsibleSet {
 		newResp = p.ResponsibleUserID
 	}
-	if err := s.checkRefs(ctx, householdID, p.CategoryID, newResp, &v); err != nil {
+	if err := s.CheckRefs(ctx, householdID, p.CategoryID, newResp, &v); err != nil {
 		return View{}, err
 	}
 	if err := v.Err(); err != nil {
 		return View{}, err
 	}
-	if len(updates) > 0 {
+
+	if following {
+		if err := s.updateFollowing(ctx, inv, updates, description); err != nil {
+			return View{}, err
+		}
+	} else if len(updates) > 0 {
 		res := s.db.WithContext(ctx).Model(&Invoice{}).Where("household_id = ? AND id = ?", householdID, id).Updates(updates)
 		if res.Error != nil {
 			return View{}, res.Error
@@ -359,16 +430,115 @@ func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch
 	return s.Get(ctx, householdID, id)
 }
 
-// Delete faz a exclusão lógica (dá para desfazer com Restore).
+// followingScope devolve a consulta "esta e as seguintes, ainda pendentes, da mesma série".
+//   - parcelas: mesma compra e installment_number >= o da escolhida;
+//   - recorrência: mesma recorrência e occurrence_month >= o da escolhida.
+//
+// Sempre filtra a casa. Excluídas ficam de fora (gorm.DeletedAt) e pagas também (paid_at IS NULL): editar/excluir em lote
+// nunca reescreve nem apaga o que já foi pago.
+func followingScope(tx *gorm.DB, inv Invoice) *gorm.DB {
+	q := tx.Model(&Invoice{}).Where("household_id = ? AND paid_at IS NULL", inv.HouseholdID)
+	if inv.PurchaseID != nil {
+		return q.Where("purchase_id = ? AND installment_number >= ?", *inv.PurchaseID, *inv.InstallmentNumber)
+	}
+	return q.Where("recurrence_id = ? AND occurrence_month >= ?", *inv.RecurrenceID, inv.OccurrenceMonth)
+}
+
+func (s *Service) updateFollowing(ctx context.Context, inv Invoice, updates map[string]any, description string) error {
+	if len(updates) == 0 {
+		return nil
+	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if inv.PurchaseID != nil && description != "" {
+			// Parcelas mantêm a numeração: "Notebook" vira "Notebook (3/6)", "Notebook (4/6)"...
+			var count int
+			err := tx.Table("purchases").Select("installments_count").
+				Where("household_id = ? AND id = ?", inv.HouseholdID, *inv.PurchaseID).Scan(&count).Error
+			if err != nil {
+				return err
+			}
+			base := trailingNumbering.ReplaceAllString(description, "")
+			updates["description"] = gorm.Expr("?::text || ' (' || installment_number::text || '/' || ?::text || ')'", base, strconv.Itoa(count))
+		}
+		if err := followingScope(tx, inv).Updates(updates).Error; err != nil {
+			return err
+		}
+		if inv.RecurrenceID == nil {
+			return nil
+		}
+		// Recorrência: o molde também muda, para as ocorrências geradas depois seguirem o novo valor.
+		tpl := map[string]any{}
+		for _, k := range []string{"category_id", "responsible_user_id", "description", "amount_cents", "notes"} {
+			if val, ok := updates[k]; ok {
+				tpl[k] = val
+			}
+		}
+		if len(tpl) == 0 {
+			return nil
+		}
+		return tx.Table("recurrences").Where("household_id = ? AND id = ?", inv.HouseholdID, *inv.RecurrenceID).Updates(tpl).Error
+	})
+}
+
+// Delete faz a exclusão lógica (dá para desfazer com Restore). Com scope=following numa série, exclui esta e as
+// seguintes pendentes (pagas ficam). Em recorrência, também encerra a série para o horizonte não recriar os meses.
 func (s *Service) Delete(ctx context.Context, householdID, id uuid.UUID, scope Scope) error {
 	inv, err := s.find(ctx, householdID, id, false)
 	if err != nil {
 		return err
 	}
-	if scope == ScopeFollowing && inv.InSeries() {
-		return ErrSeriesScope
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if scope == ScopeFollowing && inv.InSeries() {
+			if err := followingScope(tx, inv).Delete(&Invoice{}).Error; err != nil {
+				return err
+			}
+			if inv.RecurrenceID != nil {
+				if err := endRecurrenceBefore(tx, inv); err != nil {
+					return err
+				}
+			}
+		} else if err := tx.Where("household_id = ? AND id = ?", householdID, id).Delete(&Invoice{}).Error; err != nil {
+			return err
+		}
+		if inv.PurchaseID != nil {
+			return closePurchaseIfEmpty(tx, inv)
+		}
+		return nil
+	})
+}
+
+// closePurchaseIfEmpty exclui (logicamente) o cabeçalho da compra quando todas as parcelas foram excluídas.
+func closePurchaseIfEmpty(tx *gorm.DB, inv Invoice) error {
+	var n int64
+	err := tx.Model(&Invoice{}).Where("household_id = ? AND purchase_id = ?", inv.HouseholdID, *inv.PurchaseID).Count(&n).Error
+	if err != nil || n > 0 {
+		return err
 	}
-	return s.db.WithContext(ctx).Where("household_id = ? AND id = ?", householdID, id).Delete(&Invoice{}).Error
+	return tx.Table("purchases").Where("household_id = ? AND id = ? AND deleted_at IS NULL", inv.HouseholdID, *inv.PurchaseID).
+		Update("deleted_at", gorm.Expr("now()")).Error
+}
+
+// endRecurrenceBefore encerra a recorrência no mês anterior ao da invoice escolhida (end_month só diminui). Se a escolhida
+// é a primeira ocorrência (ou anterior ao início), a recorrência inteira é excluída.
+func endRecurrenceBefore(tx *gorm.DB, inv Invoice) error {
+	where := "household_id = ? AND id = ? AND deleted_at IS NULL"
+	var start caldate.Date
+	err := tx.Table("recurrences").Select("start_month").Where(where, inv.HouseholdID, *inv.RecurrenceID).Row().Scan(&start)
+	if errors.Is(err, sql.ErrNoRows) { // recorrência já excluída: nada a encerrar
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !inv.OccurrenceMonth.After(start) {
+		return tx.Table("recurrences").Where(where, inv.HouseholdID, *inv.RecurrenceID).
+			Update("deleted_at", gorm.Expr("now()")).Error
+	}
+	end := inv.OccurrenceMonth.AddMonths(-1)
+	return tx.Table("recurrences").Where(where, inv.HouseholdID, *inv.RecurrenceID).Updates(map[string]any{
+		"end_month":  gorm.Expr("CASE WHEN end_month IS NULL OR end_month > ? THEN ?::date ELSE end_month END", end, end),
+		"updated_at": gorm.Expr("now()"),
+	}).Error
 }
 
 // Restore desfaz a exclusão lógica.
@@ -388,8 +558,19 @@ func (s *Service) Restore(ctx context.Context, householdID, id uuid.UUID) (View,
 	if n == 0 {
 		return View{}, ErrCategoryGone
 	}
-	if err := s.db.WithContext(ctx).Unscoped().Model(&Invoice{}).
-		Where("household_id = ? AND id = ?", householdID, id).Update("deleted_at", nil).Error; err != nil {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Model(&Invoice{}).
+			Where("household_id = ? AND id = ?", householdID, id).Update("deleted_at", nil).Error; err != nil {
+			return err
+		}
+		if inv.PurchaseID == nil {
+			return nil
+		}
+		// Restaurar uma parcela traz de volta o cabeçalho da compra, se ele tinha sido excluído junto.
+		return tx.Table("purchases").Where("household_id = ? AND id = ?", householdID, *inv.PurchaseID).
+			Update("deleted_at", nil).Error
+	})
+	if err != nil {
 		return View{}, err
 	}
 	return s.Get(ctx, householdID, id)
@@ -424,7 +605,7 @@ func (s *Service) Pay(ctx context.Context, householdID, id, userID uuid.UUID, in
 	amount := inv.AmountCents
 	if in.AmountCents != nil {
 		amount = *in.AmountCents
-		checkAmount(amount, "amountCents", &v)
+		CheckAmount(amount, "amountCents", &v)
 	}
 	if err := v.Err(); err != nil {
 		return View{}, err

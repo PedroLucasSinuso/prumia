@@ -1,20 +1,30 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 )
 
-// Invoices implementa as operações de invoice do contrato (sem parcelas/recorrências, que vêm na Fase 1c).
+// HorizonEnsurer estende as ocorrências das recorrências (ver series.RecurrenceService.EnsureHorizon).
+// Interface mínima, definida aqui onde é usada; nil = não estende (casos sem recorrência, testes).
+type HorizonEnsurer interface {
+	EnsureHorizon(ctx context.Context, householdID uuid.UUID, requested caldate.Date) error
+}
+
+// Invoices implementa as operações de invoice do contrato.
 type Invoices struct {
-	Svc *invoice.Service
-	Log *slog.Logger
+	Svc     *invoice.Service
+	Log     *slog.Logger
+	Horizon HorizonEnsurer
 }
 
 func toGenInvoice(v invoice.View) gen.Invoice {
@@ -31,7 +41,10 @@ func toGenInvoice(v invoice.View) gen.Invoice {
 	}
 	switch {
 	case v.PurchaseID != nil:
-		out.Series = &gen.SeriesRef{Kind: gen.SeriesRefKindInstallment, PurchaseId: v.PurchaseID, InstallmentNumber: v.InstallmentNumber}
+		out.Series = &gen.SeriesRef{
+			Kind: gen.SeriesRefKindInstallment, PurchaseId: v.PurchaseID,
+			InstallmentNumber: v.InstallmentNumber, InstallmentsCount: v.InstallmentsCount,
+		}
 	case v.RecurrenceID != nil:
 		out.Series = &gen.SeriesRef{Kind: gen.SeriesRefKindRecurrence, RecurrenceId: v.RecurrenceID}
 	}
@@ -61,6 +74,16 @@ func (h *Invoices) ListInvoices(c *gin.Context, householdId gen.HouseholdId, par
 	}
 	if params.Cursor != nil {
 		f.Cursor = *params.Cursor
+	}
+	// Garante as ocorrências das contas fixas até o horizonte (e até o mês pedido, se for mais à frente).
+	if h.Horizon != nil {
+		var requested caldate.Date
+		if params.Month != nil {
+			requested = *params.Month
+		}
+		if err := h.Horizon.EnsureHorizon(c.Request.Context(), householdId, requested); err != nil {
+			h.Log.Warn("não foi possível estender as recorrências", "erro", err)
+		}
 	}
 	page, err := h.Svc.List(c.Request.Context(), householdId, f)
 	if err != nil {

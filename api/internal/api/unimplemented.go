@@ -27,10 +27,6 @@ func (Unimplemented) CreateIncomeSource(c *gin.Context, householdId gen.Househol
 	notImplemented(c)
 }
 
-func (Unimplemented) CreatePurchase(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
-func (Unimplemented) CreateRecurrence(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
 func (Unimplemented) DeleteIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
 	notImplemented(c)
 }
@@ -38,10 +34,6 @@ func (Unimplemented) DeleteIncome(c *gin.Context, householdId gen.HouseholdId, i
 func (Unimplemented) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
 
 func (Unimplemented) GetMonthlySummary(c *gin.Context, householdId gen.HouseholdId, params gen.GetMonthlySummaryParams) {
-	notImplemented(c)
-}
-
-func (Unimplemented) GetPurchase(c *gin.Context, householdId gen.HouseholdId, purchaseId openapi_types.UUID) {
 	notImplemented(c)
 }
 
@@ -53,12 +45,6 @@ func (Unimplemented) ListIncomes(c *gin.Context, householdId gen.HouseholdId, pa
 	notImplemented(c)
 }
 
-func (Unimplemented) ListPurchases(c *gin.Context, householdId gen.HouseholdId, params gen.ListPurchasesParams) {
-	notImplemented(c)
-}
-
-func (Unimplemented) ListRecurrences(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
 func (Unimplemented) ReceiveIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
 	notImplemented(c)
 }
@@ -68,9 +54,5 @@ func (Unimplemented) UpdateIncome(c *gin.Context, householdId gen.HouseholdId, i
 }
 
 func (Unimplemented) UpdateIncomeSource(c *gin.Context, householdId gen.HouseholdId, sourceId openapi_types.UUID, params gen.UpdateIncomeSourceParams) {
-	notImplemented(c)
-}
-
-func (Unimplemented) UpdateRecurrence(c *gin.Context, householdId gen.HouseholdId, recurrenceId openapi_types.UUID) {
 	notImplemented(c)
 }

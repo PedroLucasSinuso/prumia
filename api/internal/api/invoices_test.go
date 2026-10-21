@@ -484,35 +484,3 @@ func TestInvoiceIsolamentoEPapeis(t *testing.T) {
 		}
 	}
 }
-
-func TestEscopoEmSerieAindaNaoDisponivel(t *testing.T) {
-	a, c, house, catID := casa(t)
-	var anaID string
-	a.db.Raw("SELECT id::text FROM users WHERE email='ana@x.com'").Scan(&anaID)
-	var purchaseID string
-	if err := a.db.Raw(`INSERT INTO purchases (household_id, category_id, description, purchase_date, total_amount_cents, installments_count, created_by)
-		VALUES (?, ?, 'Notebook', '2026-08-05', 396000, 6, ?) RETURNING id::text`, house, catID, anaID).Scan(&purchaseID).Error; err != nil {
-		t.Fatal(err)
-	}
-	var id string
-	a.db.Raw(`INSERT INTO invoices (household_id, category_id, description, amount_cents, due_date, competence_month, purchase_id, installment_number, created_by)
-		VALUES (?, ?, 'Notebook 1/6', 66000, '2026-08-05', '2026-08-01', ?, 1, ?) RETURNING id::text`, house, catID, purchaseID, anaID).Scan(&id)
-	url := "/api/households/" + house + "/invoices/" + id
-
-	var got inv
-	r := a.do("GET", url, nil, c)
-	r.json(&got)
-	if r.Code != 200 {
-		t.Fatal(r.Body)
-	}
-	// "esta e as seguintes" ainda não existe: 501 claro; "só esta" funciona
-	if r := a.do("PATCH", url+"?scope=following", map[string]any{"description": "x"}, c); r.Code != 501 {
-		t.Errorf("following em série: %d", r.Code)
-	}
-	if r := a.do("DELETE", url+"?scope=following", nil, c); r.Code != 501 {
-		t.Errorf("following em série: %d", r.Code)
-	}
-	if r := a.do("PATCH", url+"?scope=this", map[string]any{"description": "Notebook parcela 1"}, c); r.Code != 200 {
-		t.Errorf("this em série: %d %s", r.Code, r.Body)
-	}
-}

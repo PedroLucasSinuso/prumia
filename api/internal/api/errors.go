@@ -14,6 +14,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
+	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 )
 
 // writeDomainError converte os erros dos serviços de domínio em respostas HTTP.
@@ -26,7 +27,7 @@ func writeDomainError(c *gin.Context, log *slog.Logger, err error) {
 	switch {
 	case errors.As(err, &ve):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "validation_error", Fields: ve.Fields})
-	case errors.Is(err, category.ErrNotFound), errors.Is(err, invoice.ErrNotFound), errors.Is(err, household.ErrNotFound):
+	case errors.Is(err, category.ErrNotFound), errors.Is(err, invoice.ErrNotFound), errors.Is(err, household.ErrNotFound), errors.Is(err, series.ErrNotFound):
 		httpx.NotFound(c)
 	case errors.Is(err, category.ErrNameTaken):
 		problem(http.StatusConflict, "category_exists")
@@ -40,8 +41,6 @@ func writeDomainError(c *gin.Context, log *slog.Logger, err error) {
 		problem(http.StatusConflict, "not_deleted")
 	case errors.Is(err, invoice.ErrCategoryGone):
 		problem(http.StatusConflict, "category_deleted")
-	case errors.Is(err, invoice.ErrSeriesScope):
-		problem(http.StatusNotImplemented, "not_implemented")
 	default:
 		log.Error("erro inesperado", "erro", err, "rota", c.FullPath())
 		httpx.Internal(c)
