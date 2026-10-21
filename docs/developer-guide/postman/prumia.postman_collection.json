@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "prumia API",
-    "description": "Coleção de testes manuais da API (Fases 0-1). Rode as pastas em ordem, com o Collection Runner ou uma a uma. O Postman guarda o cookie de sessão sozinho. Contrato completo: openapi/openapi.yaml.",
+    "description": "Coleção de testes manuais da API (Fases 0-1c: inclui compras parceladas e contas fixas). Rode as pastas em ordem, com o Collection Runner ou uma a uma. O Postman guarda o cookie de sessão sozinho. Contrato completo: openapi/openapi.yaml.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -35,6 +35,66 @@
     },
     {
       "key": "due_month",
+      "value": ""
+    },
+    {
+      "key": "purchase_id",
+      "value": ""
+    },
+    {
+      "key": "purchase_date",
+      "value": ""
+    },
+    {
+      "key": "first_due",
+      "value": ""
+    },
+    {
+      "key": "inst1_id",
+      "value": ""
+    },
+    {
+      "key": "inst4_id",
+      "value": ""
+    },
+    {
+      "key": "inst5_id",
+      "value": ""
+    },
+    {
+      "key": "rec_id",
+      "value": ""
+    },
+    {
+      "key": "rec_first_id",
+      "value": ""
+    },
+    {
+      "key": "rec_m6_id",
+      "value": ""
+    },
+    {
+      "key": "this_month",
+      "value": ""
+    },
+    {
+      "key": "next_month",
+      "value": ""
+    },
+    {
+      "key": "month_plus_3",
+      "value": ""
+    },
+    {
+      "key": "month_plus_6",
+      "value": ""
+    },
+    {
+      "key": "month_plus_12",
+      "value": ""
+    },
+    {
+      "key": "month_plus_24",
       "value": ""
     }
   ],
@@ -1285,7 +1345,1448 @@
       ]
     },
     {
-      "name": "6. Encerrar",
+      "name": "6. Compras parceladas",
+      "item": [
+        {
+          "name": "Criar compra parcelada (notebook 6x)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \"Notebook Postman\",\n  \"purchaseDate\": \"{{purchase_date}}\",\n  \"totalAmountCents\": 396000,\n  \"installmentsCount\": 6,\n  \"firstDueDate\": \"{{first_due}}\",\n  \"notes\": \"teste Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "6x R$ 660,00 (396000 centavos). A 1ª parcela vence há 2 meses (script): as 2 primeiras ficam atrasadas e já pagáveis; as demais, pendentes."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "const first = addMonths(today, -2);",
+                  "pm.collectionVariables.set('first_due', first);",
+                  "pm.collectionVariables.set('purchase_date', addMonths(first, -0));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('201 com as 6 parcelas geradas de uma vez', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const p = pm.response.json();",
+                  "  pm.expect(p.totalAmountCents).to.eql(396000);",
+                  "  pm.expect(p.installmentsCount).to.eql(6);",
+                  "  pm.expect(p.installments.length).to.eql(6);",
+                  "  pm.collectionVariables.set('purchase_id', p.id);",
+                  "  pm.collectionVariables.set('inst1_id', p.installments[0].id);",
+                  "  pm.collectionVariables.set('inst4_id', p.installments[3].id);",
+                  "  pm.collectionVariables.set('inst5_id', p.installments[4].id);",
+                  "});",
+                  "pm.test('valores, descrição e série de cada parcela', () => {",
+                  "  const p = pm.response.json();",
+                  "  p.installments.forEach((i, k) => {",
+                  "    pm.expect(i.amountCents).to.eql(66000);",
+                  "    pm.expect(i.description).to.eql('Notebook Postman (' + (k + 1) + '/6)');",
+                  "    pm.expect(i.series.kind).to.eql('installment');",
+                  "    pm.expect(i.series.installmentNumber).to.eql(k + 1);",
+                  "    pm.expect(i.series.installmentsCount).to.eql(6);",
+                  "    pm.expect(i.series.purchaseId).to.eql(p.id);",
+                  "    pm.expect(i.competenceMonth).to.eql(i.dueDate.slice(0, 7) + '-01');",
+                  "  });",
+                  "});",
+                  "pm.test('vencimentos mensais; 2 atrasadas e 4 pendentes', () => {",
+                  "  const first = pm.collectionVariables.get('first_due');",
+                  "  const p = pm.response.json();",
+                  "  p.installments.forEach((i, k) => pm.expect(i.dueDate).to.eql(addMonths(first, k)));",
+                  "  pm.expect(p.installments.map(i => i.status)).to.eql(['overdue', 'overdue', 'pending', 'pending', 'pending', 'pending']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compra com resto de centavos (R$ 100 em 3x)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \"Presente\",\n  \"purchaseDate\": \"{{first_due}}\",\n  \"totalAmountCents\": 10000,\n  \"installmentsCount\": 3,\n  \"firstDueDate\": \"{{first_due}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O resto de centavos vai na última parcela: 33,33 + 33,33 + 33,34."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('3333, 3333, 3334 (soma = total)', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const a = pm.response.json().installments.map(i => i.amountCents);",
+                  "  pm.expect(a).to.eql([3333, 3333, 3334]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compra inválida (1 parcela)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \"Teste\",\n  \"purchaseDate\": \"{{first_due}}\",\n  \"totalAmountCents\": 10000,\n  \"installmentsCount\": 1,\n  \"firstDueDate\": \"{{first_due}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('400 com erro no campo installmentsCount', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().fields.installmentsCount).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar compra: quando comprei o notebook?",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases?q=NOTEBOOK",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "NOTEBOOK"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('acha pela descrição, com data e total', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const p = pm.response.json().items.find(x => x.id === pm.collectionVariables.get('purchase_id'));",
+                  "  pm.expect(p).to.be.an('object');",
+                  "  pm.expect(p.purchaseDate).to.eql(pm.collectionVariables.get('purchase_date'));",
+                  "  pm.expect(p.totalAmountCents).to.eql(396000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe da compra (com as parcelas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('6 parcelas em ordem', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const p = pm.response.json();",
+                  "  pm.expect(p.installments.map(i => i.series.installmentNumber)).to.eql([1, 2, 3, 4, 5, 6]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pagar a parcela 1 (atrasada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst1_id}}/pay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst1_id}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wallet\": \"free\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('paga; as outras parcelas não mudam', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().invoice.status).to.eql('paid');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar esta e as seguintes (parcela 4 em diante)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst4_id}}?scope=following",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst4_id}}"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "following"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountCents\": 70000,\n  \"description\": \"Notebook Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Valor e descrição valem para as parcelas 4, 5 e 6. A 1 (paga) e as 2 e 3 não mudam. A descrição ganha o sufixo (n/6) de novo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}/api/households/{{household_id}}/invoices?purchaseId={{purchase_id}}'), method: 'GET' }, (err, res) => {",
+                  "  pm.test('4,5,6 = R$ 700; 1,2,3 = R$ 660; numeração preservada', () => {",
+                  "    const items = res.json().items;",
+                  "    pm.expect(items.map(i => i.amountCents)).to.eql([66000, 66000, 66000, 70000, 70000, 70000]);",
+                  "    pm.expect(items[4].description).to.eql('Notebook Postman (5/6)');",
+                  "    pm.expect(items[0].status).to.eql('paid');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Em lote não aceita vencimento",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst4_id}}?scope=following",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst4_id}}"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "following"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dueDate\": \"2030-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('400: vencimento só um a um', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().fields.dueDate).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir esta e as seguintes (parcela 5 em diante)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst5_id}}?scope=following",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst5_id}}"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "following"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compra ficou com 4 parcelas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('parcelas 1 a 4', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().installments.length).to.eql(4);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir a compra inteira (da parcela 1 em diante)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst1_id}}?scope=following",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst1_id}}"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "following"
+                }
+              ]
+            },
+            "description": "As pendentes somem; a parcela 1, que está paga, é preservada (nunca se apaga em lote o que já foi pago)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Só a parcela paga restou",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('1 parcela, paga', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const p = pm.response.json();",
+                  "  pm.expect(p.installments.length).to.eql(1);",
+                  "  pm.expect(p.installments[0].status).to.eql('paid');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir a última parcela (a paga)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst1_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst1_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compra sem parcelas some",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Contas fixas (recorrências)",
+      "item": [
+        {
+          "name": "Criar conta fixa (dia 31)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \"Internet Postman\",\n  \"amountCents\": 12990,\n  \"dayOfMonth\": 31,\n  \"startMonth\": \"{{this_month}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Gera uma invoice por mês do mês atual até 12 meses à frente. Dia 31 vira o último dia dos meses curtos."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.collectionVariables.set('this_month', thisMonth);",
+                  "pm.collectionVariables.set('next_month', addMonths(thisMonth, 1));",
+                  "pm.collectionVariables.set('month_plus_3', addMonths(thisMonth, 3));",
+                  "pm.collectionVariables.set('month_plus_6', addMonths(thisMonth, 6));",
+                  "pm.collectionVariables.set('month_plus_12', addMonths(thisMonth, 12));",
+                  "pm.collectionVariables.set('month_plus_24', addMonths(thisMonth, 24));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('201; gerada até 12 meses à frente', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.generatedThrough).to.eql(pm.collectionVariables.get('month_plus_12'));",
+                  "  pm.collectionVariables.set('rec_id', r.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ocorrência do mês atual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices?month={{this_month}}&q=Internet%20Postman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{this_month}}"
+                },
+                {
+                  "key": "q",
+                  "value": "Internet%20Postman"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('1 ocorrência, vencimento no dia 31 ou último dia do mês', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const items = pm.response.json().items;",
+                  "  pm.expect(items.length).to.eql(1);",
+                  "  const y = +thisMonth.slice(0, 4), m = +thisMonth.slice(5, 7);",
+                  "  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();",
+                  "  pm.expect(items[0].dueDate).to.eql(thisMonth.slice(0, 8) + String(Math.min(31, last)).padStart(2, '0'));",
+                  "  pm.expect(items[0].series.kind).to.eql('recurrence');",
+                  "  pm.expect(items[0].series.recurrenceId).to.eql(pm.collectionVariables.get('rec_id'));",
+                  "  pm.collectionVariables.set('rec_first_id', items[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mês 12 meses à frente já existe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices?month={{month_plus_12}}&q=Internet%20Postman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month_plus_12}}"
+                },
+                {
+                  "key": "q",
+                  "value": "Internet%20Postman"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('1 ocorrência no limite do horizonte', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().items.length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Olhar um mês além do horizonte estende sob demanda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices?month={{month_plus_24}}&q=Internet%20Postman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month_plus_24}}"
+                },
+                {
+                  "key": "q",
+                  "value": "Internet%20Postman"
+                }
+              ]
+            },
+            "description": "Listar um mês futuro gera as ocorrências que faltam até ele (limite de 5 anos à frente)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('1 ocorrência gerada na hora', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().items.length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar contas fixas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('traz a conta e o último mês gerado', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json().find(x => x.id === pm.collectionVariables.get('rec_id'));",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  pm.expect(r.generatedThrough >= pm.collectionVariables.get('month_plus_24')).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar valor e dia (vale para as futuras pendentes)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences/{{rec_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences",
+                "{{rec_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountCents\": 14990,\n  \"dayOfMonth\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Ocorrências pagas e passadas nunca mudam; as futuras pendentes ganham o novo valor e o novo dia."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().amountCents).to.eql(14990);",
+                  "});",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}/api/households/{{household_id}}/invoices?month={{month_plus_3}}&q=Internet%20Postman'), method: 'GET' }, (err, res) => {",
+                  "  pm.test('3 meses à frente: R$ 149,90 e vence dia 10', () => {",
+                  "    const i = res.json().items[0];",
+                  "    pm.expect(i.amountCents).to.eql(14990);",
+                  "    pm.expect(i.dueDate).to.eql(pm.collectionVariables.get('month_plus_3').slice(0, 8) + '10');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir a ocorrência de 6 meses à frente (só esta)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices?month={{month_plus_6}}&q=Internet%20Postman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month_plus_6}}"
+                },
+                {
+                  "key": "q",
+                  "value": "Internet%20Postman"
+                }
+              ]
+            },
+            "description": "Passo 1 de 2: descobre o id da ocorrência."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('guarda o id', () => {",
+                  "  const i = pm.response.json().items[0];",
+                  "  pm.expect(i).to.be.an('object');",
+                  "  pm.collectionVariables.set('rec_m6_id', i.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "   ... excluir",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{rec_m6_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{rec_m6_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluída não volta, mesmo estendendo o horizonte",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences"
+              ]
+            },
+            "description": "Listar contas fixas reconfere o horizonte. A ocorrência excluída continua excluída."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}/api/households/{{household_id}}/invoices?month={{month_plus_6}}&q=Internet%20Postman'), method: 'GET' }, (err, res) => {",
+                  "  pm.test('continua sem a ocorrência de 6 meses à frente', () => pm.expect(res.json().items.length).to.eql(0));",
+                  "});",
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Encerrar a conta daqui a 3 meses",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences/{{rec_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences",
+                "{{rec_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endMonth\": \"{{month_plus_3}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "As pendentes depois do mês de encerramento são excluídas. Só dá para antecipar o fim, nunca adiar ou reabrir."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('200 com endMonth', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().endMonth).to.eql(pm.collectionVariables.get('month_plus_3'));",
+                  "});",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}/api/households/{{household_id}}/invoices?month={{month_plus_12}}&q=Internet%20Postman'), method: 'GET' }, (err, res) => {",
+                  "  pm.test('depois do fim não há ocorrências', () => pm.expect(res.json().items.length).to.eql(0));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reabrir é recusado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences/{{rec_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences",
+                "{{rec_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"endMonth\": null }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('400 em endMonth', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().fields.endMonth).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir a conta fixa inteira (da 1ª ocorrência em diante)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{rec_first_id}}?scope=following",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{rec_first_id}}"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "following"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conta fixa saiu da lista",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/recurrences",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "recurrences"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function addMonths(ymd, n) {",
+                  "  const [y, m, day] = ymd.split('-').map(Number);",
+                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
+                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
+                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
+                  "}",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const thisMonth = today.slice(0, 8) + '01';",
+                  "pm.test('não aparece mais', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().some(x => x.id === pm.collectionVariables.get('rec_id'))).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Encerrar",
       "item": [
         {
           "name": "Logout",
