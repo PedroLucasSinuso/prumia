@@ -8,37 +8,58 @@ type Props = {
   onChange: (cents: number) => void
   error?: string
   id?: string
+  /** `hero`: o valor em destaque (números grandes num bloco com borda teal), usado ao cadastrar uma conta. */
+  hero?: boolean
 }
 
 /**
  * Campo de dinheiro: a pessoa digita só números e o valor vai se formando da direita para a esquerda
  * ("1", "15", "150", ... => R$ 0,01, R$ 0,15, R$ 1,50). Teclado numérico no celular. Guarda centavos (inteiro).
  */
-export function MoneyInput({ label, value, onChange, error, id }: Props) {
+export function MoneyInput({ label, value, onChange, error, id, hero }: Props) {
   const auto = useId()
   const fieldId = id ?? auto
+  const label_ = (
+    <label htmlFor={fieldId} className="text-xs font-medium uppercase tracking-wider text-graphite/80">
+      {label}
+    </label>
+  )
+  const input = (
+    <input
+      id={fieldId}
+      inputMode="numeric"
+      autoComplete="off"
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${fieldId}-erro` : undefined}
+      className={
+        hero
+          ? 'w-full border-0 bg-transparent p-0 font-mono text-[40px] font-semibold leading-tight tabular-nums text-teal outline-none'
+          : `h-11 rounded-md border bg-white/40 px-3 font-mono text-base tabular-nums text-graphite ${error ? 'border-signal' : 'border-graphite/25'}`
+      }
+      value={formatCents(value)}
+      onChange={(e) => onChange(digitsToCents(e.target.value))}
+    />
+  )
+  const err = error && (
+    <p id={`${fieldId}-erro`} className="text-xs text-signal">
+      {error}
+    </p>
+  )
+  if (hero) {
+    return (
+      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-white/35 px-3 py-2.5 focus-within:border-cobalt ${error ? 'border-signal' : 'border-teal'}`}>
+        {label_}
+        {input}
+        <p className="text-xs text-graphite/75">digite só os números: 18735 vira R$ 187,35</p>
+        {err}
+      </div>
+    )
+  }
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={fieldId} className="text-xs font-medium uppercase tracking-wider text-graphite/70">
-        {label}
-      </label>
-      <input
-        id={fieldId}
-        inputMode="numeric"
-        autoComplete="off"
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${fieldId}-erro` : undefined}
-        className={`h-11 rounded-md border bg-white/40 px-3 font-mono text-base tabular-nums text-graphite ${
-          error ? 'border-signal' : 'border-graphite/25'
-        }`}
-        value={formatCents(value)}
-        onChange={(e) => onChange(digitsToCents(e.target.value))}
-      />
-      {error && (
-        <p id={`${fieldId}-erro`} className="text-xs text-signal">
-          {error}
-        </p>
-      )}
+      {label_}
+      {input}
+      {err}
     </div>
   )
 }
