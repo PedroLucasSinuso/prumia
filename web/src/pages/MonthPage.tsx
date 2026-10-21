@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { getInvoice, useCategories, useExtractBoleto, useInvoiceActions, useInvoices } from '../api/queries'
-import type { Invoice } from '../api/types'
+import type { Invoice, SeriesScope } from '../api/types'
 import { useAuth } from '../auth/context'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -96,11 +96,14 @@ export default function MonthPage() {
     )
   }
 
-  function remove(inv: Invoice) {
-    actions.remove.mutate(inv.id, {
+  function remove(inv: Invoice, scope: SeriesScope) {
+    actions.remove.mutate({ id: inv.id, scope }, {
       onSuccess: () => {
         setEditing(null)
-        toast({ message: `${inv.description} excluída.`, actionLabel: 'Desfazer', onAction: () => actions.restore.mutate(inv.id) })
+        // Desfazer só existe para uma conta; em lote ("esta e as seguintes") o servidor não tem restauração em massa.
+        toast(scope === 'following' && inv.series
+          ? { message: 'Esta e as seguintes foram excluídas.' }
+          : { message: `${inv.description} excluída.`, actionLabel: 'Desfazer', onAction: () => actions.restore.mutate(inv.id) })
       },
       onError: () => toast({ message: 'Não foi possível excluir.' }),
     })
@@ -124,7 +127,9 @@ export default function MonthPage() {
     canWrite,
     onDone: () => setEditing(null),
     onCreate: (body: Parameters<typeof actions.create.mutateAsync>[0]) => actions.create.mutateAsync(body),
-    onUpdate: (id: string, body: Parameters<typeof actions.update.mutateAsync>[0]['body']) => actions.update.mutateAsync({ id, body }),
+    onCreatePurchase: (body: Parameters<typeof actions.createPurchase.mutateAsync>[0]) => actions.createPurchase.mutateAsync(body),
+    onCreateRecurrence: (body: Parameters<typeof actions.createRecurrence.mutateAsync>[0]) => actions.createRecurrence.mutateAsync(body),
+    onUpdate: (id: string, body: Parameters<typeof actions.update.mutateAsync>[0]['body'], scope: SeriesScope) => actions.update.mutateAsync({ id, body, scope }),
     onDelete: remove,
     onUnpay: (inv: Invoice) => actions.unpay.mutate(inv.id, { onSuccess: () => !desktop && setEditing(null) }),
     onPay: (inv: Invoice) => {

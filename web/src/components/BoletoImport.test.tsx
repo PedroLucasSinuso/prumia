@@ -70,6 +70,26 @@ describe('importar boleto', () => {
     )
   })
 
+  it('só vale para conta avulsa: parcelada ou fixa descarta o boleto e esconde o botão', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), extract: ok(extraction()) })
+    const dialog = await openNew(user)
+    await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+    await within(dialog).findByRole('region', { name: 'Conferir antes de salvar' })
+
+    await user.click(within(dialog).getByRole('button', { name: 'parcelada' }))
+    expect(within(dialog).queryByRole('region', { name: 'Conferir antes de salvar' })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Importar boleto' })).not.toBeInTheDocument()
+
+    // de volta à avulsa: o botão volta, sem o boleto anterior
+    await user.click(within(dialog).getByRole('button', { name: 'avulsa' }))
+    expect(within(dialog).getByRole('button', { name: 'Importar boleto' })).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+    await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))
+    const create = (vi.mocked(api.POST).mock.calls as unknown as Array<[string, { body: object }]>).find(([url]) => url === '/households/{householdId}/invoices')
+    expect(create?.[1].body).not.toHaveProperty('boleto')
+  })
+
   it('não troca a descrição que a pessoa já digitou', async () => {
     const user = userEvent.setup()
     mockApi({ me: ok(me), extract: ok(extraction()) })

@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Boleto, BoletoExtraction, Category, Invoice, InvoiceInput, InvoicePatch } from '../api/types'
+import type { Boleto, BoletoExtraction, Category, Invoice, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { addDays, dayMonth, fullDate, monthOf, todayISO } from '../lib/dates'
 import { formatCents } from '../lib/money'
@@ -21,8 +21,10 @@ type Props = {
   /** Fecha o painel (celular) ou limpa a seleção (computador). */
   onDone: () => void
   onCreate: (body: InvoiceInput) => Promise<unknown>
-  onUpdate: (id: string, body: InvoicePatch) => Promise<unknown>
-  onDelete: (invoice: Invoice) => void
+  onCreatePurchase: (body: PurchaseInput) => Promise<unknown>
+  onCreateRecurrence: (body: RecurrenceInput) => Promise<unknown>
+  onUpdate: (id: string, body: InvoicePatch, scope: SeriesScope) => Promise<unknown>
+  onDelete: (invoice: Invoice, scope: SeriesScope) => void
   onUnpay: (invoice: Invoice) => void
   onPay: (invoice: Invoice) => void
   /** Lê um boleto (só na criação). Sem ela, o botão "Importar boleto" não aparece. */
@@ -34,10 +36,18 @@ type Props = {
 // Nomes dos campos da API -> nome que o formulário usa para mostrar o erro.
 const fieldMap: Record<string, string> = {
   description: 'description', amountCents: 'amount', dueDate: 'dueDate', categoryId: 'categoryId',
-  competenceMonth: 'competence', notes: 'notes', 'boleto.digitableLine': 'boleto',
+  competenceMonth: 'competence', notes: 'notes', installmentsCount: 'count', totalAmountCents: 'amount',
+  installmentAmountCents: 'amount', dayOfMonth: 'dueDate', startMonth: 'dueDate', endMonth: 'endMonth', firstDueDate: 'dueDate',
+  'boleto.digitableLine': 'boleto',
 }
 
 const walletName = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
+
+type Kind = 'single' | 'installments' | 'recurring'
+const kinds: Array<[Kind, string]> = [['single', 'avulsa'], ['installments', 'parcelada'], ['recurring', 'fixa todo mês']]
+
+/** O servidor acrescenta " (n/N)" ao descrever parcelas; ao editar "esta e as seguintes" mandamos só o nome-base. */
+const stripInstallmentSuffix = (d: string) => d.replace(/\s*\(\d+\/\d+\)\s*$/, '')
 
 const chip = (on: boolean) =>
   `flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] ${
@@ -48,7 +58,7 @@ const chip = (on: boolean) =>
  * Formulário de criar/editar conta. Valor em destaque; vencimento e categoria são BOTÕES visíveis (nada de menu suspenso):
  * menos toques e menos decisões escondidas. "Mais opções" guarda competência e observação.
  */
-export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCreate, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
+export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
@@ -61,6 +71,11 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? categories[0]?.id ?? '')
   const [competence, setCompetence] = useState(invoice ? invoice.competenceMonth.slice(0, 7) : '')
   const [notes, setNotes] = useState(invoice?.notes ?? '')
+  const [kind, setKind] = useState<Kind>('single')
+  const [count, setCount] = useState('6')
+  const [amountIsTotal, setAmountIsTotal] = useState(false)
+  const [endMonth, setEndMonth] = useState('')
+  const [scope, setScope] = useState<SeriesScope>('this')
   const [error, setError] = useState<string>()
   const [fields, setFields] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -83,6 +98,12 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
     if (!description.trim() && b.beneficiaryName) { setDescription(b.beneficiaryName); clear('description') }
   }
 
+  // Boleto só vale para conta avulsa: trocar o tipo descarta a leitura (os campos já preenchidos ficam).
+  function discardBoleto() {
+    setBoleto(undefined)
+    setImportKey((k) => k + 1)
+  }
+
   async function submit(addAnother: boolean) {
     setBusy(true)
     setError(undefined)
@@ -90,11 +111,34 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
     try {
       const competenceMonth = competence ? `${competence}-01` : undefined
       if (editing) {
-        await onUpdate(invoice.id, {
-          description, amountCents: amount, dueDate, categoryId,
-          ...(competenceMonth ? { competenceMonth } : {}),
-          notes: notes.trim() === '' ? null : notes,
-        } as InvoicePatch)
+        // "Esta e as seguintes" não aceita data (cada parcela tem a sua) e usa a descrição-base.
+        const following = scope === 'following' && invoice.series != null
+        await onUpdate(
+          invoice.id,
+          {
+            description: following && invoice.series?.kind === 'installment' ? stripInstallmentSuffix(description) : description,
+            amountCents: amount, categoryId,
+            ...(following ? {} : { dueDate, ...(competenceMonth ? { competenceMonth } : {}) }),
+            notes: notes.trim() === '' ? null : notes,
+          } as InvoicePatch,
+          following ? 'following' : 'this',
+        )
+        onDone()
+      } else if (kind === 'installments') {
+        const n = Number(count)
+        await onCreatePurchase({
+          categoryId, description, purchaseDate: today, firstDueDate: dueDate, installmentsCount: n,
+          // Sem juros: informar o total deixa o servidor dividir (resto de centavos na última). Com parcela fixa, todas valem igual.
+          ...(amountIsTotal ? { totalAmountCents: amount } : { totalAmountCents: amount * n, installmentAmountCents: amount }),
+          ...(notes.trim() ? { notes } : {}),
+        })
+        onDone()
+      } else if (kind === 'recurring') {
+        await onCreateRecurrence({
+          categoryId, description, amountCents: amount, dayOfMonth: Number(dueDate.slice(8, 10)), startMonth: `${dueDate.slice(0, 7)}-01`,
+          ...(endMonth ? { endMonth: `${endMonth}-01` } : {}),
+          ...(notes.trim() ? { notes } : {}),
+        })
         onDone()
       } else {
         await onCreate({
@@ -108,8 +152,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
           setDescription('')
           setAmount(0)
           setNotes('')
-          setBoleto(undefined)
-          setImportKey((k) => k + 1)
+          discardBoleto()
           descRef.current?.focus()
         } else {
           onDone()
@@ -144,7 +187,17 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <FormError message={error} />
 
-      {!editing && canWrite && onExtractBoleto && (
+      {!editing && canWrite && (
+        <div role="group" aria-label="Tipo de conta" className="grid grid-cols-3 gap-2">
+          {kinds.map(([k, text]) => (
+            <button key={k} type="button" aria-pressed={kind === k} onClick={() => { setKind(k); setError(undefined); if (k !== 'single') discardBoleto() }} className={chip(kind === k)}>
+              {text}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!editing && canWrite && kind === 'single' && onExtractBoleto && (
         <BoletoImport
           key={importKey}
           onExtract={onExtractBoleto}
@@ -158,7 +211,30 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
         <p className="text-xs text-signal">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
       )}
 
-      <MoneyInput hero label="Valor" value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />
+      <MoneyInput hero label={kind === 'installments' ? (amountIsTotal ? 'Valor total da compra' : 'Valor de cada parcela') : 'Valor'} value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />
+
+      {!editing && kind === 'installments' && (
+        <div className="flex flex-col gap-3">
+          <Field label="Parcelas" name="count" type="number" inputMode="numeric" min={2} max={120} value={count} onChange={(e) => { setCount(e.target.value); clear('count') }} error={fields.count} />
+          <div role="group" aria-label="O valor informado é" className="grid grid-cols-2 gap-2">
+            <button type="button" aria-pressed={!amountIsTotal} onClick={() => setAmountIsTotal(false)} className={chip(!amountIsTotal)}>de cada parcela</button>
+            <button type="button" aria-pressed={amountIsTotal} onClick={() => setAmountIsTotal(true)} className={chip(amountIsTotal)}>total da compra</button>
+          </div>
+          {amount > 0 && Number(count) >= 2 && (
+            <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm" aria-live="polite">
+              {amountIsTotal
+                ? `${count}x de ${formatCents(Math.floor(amount / Number(count)))} (total ${formatCents(amount)}; sobra de centavos na última)`
+                : `${count}x de ${formatCents(amount)} = ${formatCents(amount * Number(count))}`}
+              . O app cria todas as parcelas, uma por mês.
+            </p>
+          )}
+        </div>
+      )}
+      {!editing && kind === 'recurring' && (
+        <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm">
+          {amount > 0 ? `${formatCents(amount)} ` : ''}todo dia {dueDate.slice(8, 10)}, a partir deste mês. O app cria os próximos 12 meses e continua criando sozinho.
+        </p>
+      )}
 
       <Field
         ref={descRef}
@@ -174,7 +250,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
       />
 
       <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
-        <legend className={otherDate ? 'sr-only' : 'mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80'}>Vence</legend>
+        <legend className={otherDate ? 'sr-only' : 'mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80'}>{!editing && kind === 'installments' ? '1ª parcela vence' : !editing && kind === 'recurring' ? 'Vence no dia' : 'Vence'}</legend>
         {!otherDate ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {dueChips.map((c) => (
@@ -222,6 +298,10 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
           Mais opções <span className="text-xs font-normal text-graphite/75">competência · observação</span>
         </summary>
         <div className="mt-3 flex flex-col gap-4 pb-1">
+          {!editing && kind === 'recurring' && (
+            <Field label="Termina em (opcional)" type="month" name="endMonth" value={endMonth} onChange={(e) => { setEndMonth(e.target.value); clear('endMonth') }} hint="Em branco: continua até você encerrar." error={fields.endMonth} />
+          )}
+          {(editing || kind === 'single') && (
           <Field
             label="Mês de competência"
             type="month"
@@ -232,6 +312,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
             onChange={(e) => { setCompetence(e.target.value); clear('competence') }}
             error={fields.competence}
           />
+          )}
           <Field label="Observação" name="notes" autoComplete="off" value={notes} disabled={!canWrite} onChange={(e) => { setNotes(e.target.value); clear('notes') }} error={fields.notes} />
         </div>
       </details>
@@ -242,7 +323,20 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
         </section>
       )}
 
-      {inSeries && <p className="text-xs text-graphite/75">Esta conta faz parte de uma série (parcelas ou conta fixa). Aqui você edita só ela.</p>}
+      {inSeries && canWrite && (
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80">
+            {invoice.series?.kind === 'recurrence' ? 'Esta conta é fixa. Alterar' : 'Esta conta é uma parcela. Alterar'}
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" aria-pressed={scope === 'this'} onClick={() => setScope('this')} className={chip(scope === 'this')}>só esta</button>
+            <button type="button" aria-pressed={scope === 'following'} onClick={() => setScope('following')} className={chip(scope === 'following')}>esta e as seguintes</button>
+          </div>
+          {scope === 'following' && (
+            <p className="text-xs text-graphite/75">Vale para as ainda não pagas daqui para frente. Contas pagas e anteriores não mudam, e o vencimento de cada uma é mantido.</p>
+          )}
+        </fieldset>
+      )}
 
       {paid && invoice.paid && (
         <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm">
@@ -257,10 +351,10 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
               Marcar como paga · {walletName[payWallet]}
             </Button>
           )}
-          <Button type="submit" variant={editing && !paid ? 'ghost' : 'primary'} disabled={busy || !description || amount <= 0 || !dueDate || !categoryId}>
-            {busy ? 'Salvando…' : editing ? 'Salvar alterações' : 'Adicionar conta'}
+          <Button type="submit" variant={editing && !paid ? 'ghost' : 'primary'} disabled={busy || !description || amount <= 0 || !dueDate || !categoryId || (kind === 'installments' && !editing && !(Number(count) >= 2))}>
+            {busy ? 'Salvando…' : editing ? 'Salvar alterações' : kind === 'installments' ? 'Adicionar compra parcelada' : kind === 'recurring' ? 'Adicionar conta fixa' : 'Adicionar conta'}
           </Button>
-          {!editing && (
+          {!editing && kind === 'single' && (
             <button
               type="button"
               disabled={busy || !description || amount <= 0 || !dueDate || !categoryId}
@@ -276,9 +370,16 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
             </Button>
           )}
           {editing && (
-            <button type="button" onClick={() => onDelete(invoice)} className="h-11 text-sm font-semibold text-graphite underline underline-offset-4">
-              Excluir conta
-            </button>
+            <>
+              <button type="button" onClick={() => onDelete(invoice, 'this')} className="h-11 text-sm font-semibold text-graphite underline underline-offset-4">
+                {inSeries ? 'Excluir só esta' : 'Excluir conta'}
+              </button>
+              {inSeries && (
+                <button type="button" onClick={() => onDelete(invoice, 'following')} className="h-11 text-sm font-semibold text-graphite underline underline-offset-4">
+                  Excluir esta e as seguintes
+                </button>
+              )}
+            </>
           )}
         </div>
       )}

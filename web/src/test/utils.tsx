@@ -76,6 +76,11 @@ type Routes = {
   update?: Reply
   remove?: Reply
   restore?: Reply
+  purchases?: Reply
+  recurrences?: Reply
+  createPurchase?: Reply
+  createRecurrence?: Reply
+  updateRecurrence?: Reply
   invite?: Reply
   resetLink?: Reply
   passwordReset?: Reply
@@ -96,6 +101,8 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
     if (url === '/households/{householdId}/income-sources') return r.sources ?? ok([])
+    if (url === '/households/{householdId}/purchases') return r.purchases ?? ok({ items: [] })
+    if (url === '/households/{householdId}/recurrences') return r.recurrences ?? ok([])
     if (url === '/households/{householdId}/summary') return r.summary ?? ok(emptySummary)
     if (url === '/households/{householdId}/invoices/{invoiceId}') return r.invoiceDetail ?? fail(404, 'not_found')
     throw new Error('GET inesperado: ' + url)
@@ -113,6 +120,8 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/incomes': r.createIncome,
       '/households/{householdId}/incomes/{incomeId}/receive': r.receive,
       '/households/{householdId}/income-sources': r.createSource,
+      '/households/{householdId}/purchases': r.createPurchase,
+      '/households/{householdId}/recurrences': r.createRecurrence,
       '/households/{householdId}/invites': r.invite,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
@@ -124,6 +133,7 @@ export function mockApi(r: Routes = {}) {
     return reply ?? ok()
   }) as never)
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
+    if (url === '/households/{householdId}/recurrences/{recurrenceId}') return r.updateRecurrence ?? ok()
     if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
     if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
