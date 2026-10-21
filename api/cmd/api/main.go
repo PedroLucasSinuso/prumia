@@ -2,6 +2,7 @@
 //
 //	api          sobe o servidor (padrão)
 //	api migrate  aplica as migrations pendentes e sai
+//	api horizon  estende as contas recorrentes de todas as casas até o horizonte e sai (job diário, via cron)
 package main
 
 import (
@@ -25,6 +26,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 )
 
 func main() {
@@ -64,6 +66,18 @@ func run(args []string) error {
 		return nil
 	}
 
+	today := func() caldate.Date { return caldate.Today(cfg.Location) }
+	invoices := invoice.NewService(gdb, today)
+	recurrences := series.NewRecurrenceService(gdb, invoices, today)
+
+	if len(args) > 0 && args[0] == "horizon" {
+		if err := recurrences.EnsureHorizonAll(ctx); err != nil {
+			return fmt.Errorf("horizonte das recorrências: %w", err)
+		}
+		log.Info("horizonte das recorrências em dia")
+		return nil
+	}
+
 	households := household.NewService(gdb)
 	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration})
 	if err != nil {
@@ -72,12 +86,13 @@ func run(args []string) error {
 	cookie := auth.CookieConfig{Name: "prumia_session", Secure: cfg.IsProduction(), MaxAge: 30 * 24 * time.Hour}
 
 	router := httpx.NewRouter(cfg.IsProduction(), log)
-	today := func() caldate.Date { return caldate.Today(cfg.Location) }
 	server := api.NewServer(sqlDB,
 		auth.NewHandler(authSvc, cookie, log),
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
-		&api.Invoices{Svc: invoice.NewService(gdb, today), Log: log},
+		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences},
+		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},
+		&api.Recurrences{Svc: recurrences, Log: log},
 	)
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 
