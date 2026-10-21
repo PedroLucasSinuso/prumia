@@ -7,7 +7,7 @@ O arquivo é lido na hora e **não fica guardado**. Você sempre confere os dado
 ## Passo a passo
 
 1. Toque no botão **+** (no computador, em **Nova conta**, no alto da tela).
-2. Toque em **Importar boleto**. No celular, você pode tirar uma foto, escolher da galeria ou pegar o PDF nos arquivos.
+2. Deixe o tipo em **avulsa** e toque em **Importar boleto**. No celular, você pode tirar uma foto, escolher da galeria ou pegar o PDF nos arquivos.
    Vale PDF, PNG ou JPG de até 5 MB.
 3. Espere a mensagem **lendo o boleto…** sumir.
 4. Se o PDF tiver senha, aparece o campo **Senha do PDF**. Digite a senha e toque em **Abrir PDF**. A senha serve só para abrir
@@ -39,5 +39,5 @@ Um aviso confirma a cópia. A linha é copiada só com os números, do jeito que
 - **Aparece "O arquivo passa de 5 MB".** Use o PDF do boleto ou uma foto/print menor.
 - **Aparece "Muitas tentativas".** Espere um minuto e toque em **Tentar de novo**.
 - **Importei o boleto errado.** No quadro de conferência, toque em **Importar outro boleto**.
-- **Não vejo o botão Importar boleto.** Ele só aparece ao criar uma conta, e só para quem pode lançar contas (o papel de
+- **Não vejo o botão Importar boleto.** Ele só aparece ao criar uma conta **avulsa** (não em parcelada nem fixa), e só para quem pode lançar contas (o papel de
   **visualização** não pode).

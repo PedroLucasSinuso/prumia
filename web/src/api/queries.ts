@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, InviteCreated, Member, MonthlySummary, Problem, Role, Wallet } from './types'
+import type { BoletoExtraction, Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -14,6 +14,8 @@ const keys = {
   sources: (house: string) => ['income-sources', house] as const,
   summary: (house: string) => ['summary', house] as const,
   members: (house: string) => ['members', house] as const,
+  purchases: (house: string) => ['purchases', house] as const,
+  recurrences: (house: string) => ['recurrences', house] as const,
 }
 
 export function useCategories(houseId: string) {
@@ -49,7 +51,14 @@ export function useInvoices(houseId: string, month: string) {
 /** Ações sobre invoices. Cada uma atualiza a lista do mês ao terminar (sucesso ou erro). */
 export function useInvoiceActions(houseId: string) {
   const qc = useQueryClient()
-  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: keys.allInvoices(houseId) }), qc.invalidateQueries({ queryKey: keys.summary(houseId) })])
+  // Série mexe em várias invoices de uma vez: atualiza também as listas de compras e de contas fixas.
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: keys.allInvoices(houseId) }),
+      qc.invalidateQueries({ queryKey: keys.summary(houseId) }),
+      qc.invalidateQueries({ queryKey: keys.purchases(houseId) }),
+      qc.invalidateQueries({ queryKey: keys.recurrences(houseId) }),
+    ])
   const path = (invoiceId: string) => ({ params: { path: { householdId: houseId, invoiceId } } })
 
   const create = useMutation({
@@ -58,12 +67,13 @@ export function useInvoiceActions(houseId: string) {
     onSettled: refresh,
   })
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: InvoicePatch }) =>
-      unwrap(api.PATCH('/households/{householdId}/invoices/{invoiceId}', { ...path(id), body })),
+    mutationFn: ({ id, body, scope = 'this' }: { id: string; body: InvoicePatch; scope?: SeriesScope }) =>
+      unwrap(api.PATCH('/households/{householdId}/invoices/{invoiceId}', { params: { ...path(id).params, query: { scope } }, body })),
     onSettled: refresh,
   })
   const remove = useMutation({
-    mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/invoices/{invoiceId}', path(id))),
+    mutationFn: ({ id, scope = 'this' }: { id: string; scope?: SeriesScope }) =>
+      unwrap(api.DELETE('/households/{householdId}/invoices/{invoiceId}', { params: { ...path(id).params, query: { scope } } })),
     onSettled: refresh,
   })
   const restore = useMutation({
@@ -80,7 +90,18 @@ export function useInvoiceActions(houseId: string) {
     onSettled: refresh,
   })
 
-  return { create, update, remove, restore, pay, unpay }
+  const createPurchase = useMutation({
+    mutationFn: (body: PurchaseInput) =>
+      unwrap(api.POST('/households/{householdId}/purchases', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+  const createRecurrence = useMutation({
+    mutationFn: (body: RecurrenceInput) =>
+      unwrap(api.POST('/households/{householdId}/recurrences', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+
+  return { create, update, remove, restore, pay, unpay, createPurchase, createRecurrence }
 }
 
 /** Detalhe de uma invoice (inclui o boleto). Usado para abrir uma conta que pode estar em outro mês. */
@@ -244,4 +265,40 @@ export function useHouseActions(houseId: string) {
     mutationFn: (userId: string) => unwrap(api.POST('/households/{householdId}/members/{userId}/password-reset-link', member(userId))),
   })
   return { rename, remove, setRole, removeMember, invite, resetLink }
+}
+
+/** Compras parceladas; `q` filtra pela descrição ("quando comprei o notebook?"). */
+export function usePurchases(houseId: string, q: string) {
+  return useQuery({
+    queryKey: [...keys.purchases(houseId), q] as const,
+    queryFn: async (): Promise<Purchase[]> => {
+      const data = await unwrap(
+        api.GET('/households/{householdId}/purchases', { params: { path: { householdId: houseId }, query: { q: q || undefined, limit: 100 } } }),
+      )
+      return data.items
+    },
+  })
+}
+
+/** Contas fixas (recorrências). O servidor estende a previsão ao listar. */
+export function useRecurrences(houseId: string) {
+  return useQuery({
+    queryKey: keys.recurrences(houseId),
+    queryFn: (): Promise<Recurrence[]> => unwrap(api.GET('/households/{householdId}/recurrences', { params: { path: { householdId: houseId } } })),
+  })
+}
+
+export function useRecurrenceActions(houseId: string) {
+  const qc = useQueryClient()
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RecurrencePatch }) =>
+      unwrap(api.PATCH('/households/{householdId}/recurrences/{recurrenceId}', { params: { path: { householdId: houseId, recurrenceId: id } }, body })),
+    onSettled: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: keys.recurrences(houseId) }),
+        qc.invalidateQueries({ queryKey: keys.allInvoices(houseId) }),
+        qc.invalidateQueries({ queryKey: keys.summary(houseId) }),
+      ]),
+  })
+  return { update }
 }
