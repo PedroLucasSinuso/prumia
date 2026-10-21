@@ -11,8 +11,10 @@ export type ActionResult = { ok: true } | { ok: false; problem?: Problem; networ
 export type AuthValue = {
   session: Session
   login: (email: string, password: string) => Promise<ActionResult>
-  register: (input: { name: string; email: string; password: string; householdName: string }) => Promise<ActionResult>
+  register: (input: { name: string; email: string; password: string; householdName?: string; inviteToken?: string }) => Promise<ActionResult>
   logout: () => Promise<void>
+  /** Relê /auth/me (ex.: depois de entrar numa casa ou renomeá-la). */
+  refresh: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)

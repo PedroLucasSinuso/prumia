@@ -55,6 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ session, login, register, logout }), [session, login, register, logout])
+  const refresh = useCallback(async () => {
+    try {
+      const { data } = await api.GET('/auth/me')
+      if (data) setSession({ status: 'authenticated', me: data })
+    } catch {
+      // sem rede: mantém o que já está na tela
+    }
+  }, [])
+
+  const value = useMemo(() => ({ session, login, register, logout, refresh }), [session, login, register, logout, refresh])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
