@@ -56,6 +56,13 @@ O `tsconfig` usa `strict: true`: sem isso o TypeScript não estreita uniões com
 excluir, restaurar, pagar, desfazer). Toda ação invalida `['invoices', casa]`, então a lista do mês se refaz sozinha. `unwrap`
 converte a resposta do cliente tipado em promessa que rejeita com `ApiError` (que carrega o `problem` ou `network`).
 
+- **Identidade da tela do mês** (ver `docs/brand/design-direction.md`): `Timeline` (a linha de prumo: cada conta é um nó que também
+  é o botão de pagar; um losango marca "hoje" e o que está acima e não foi pago é atraso), `MonthRuler` (31 barras: altura = valor
+  do dia, cor = estado, o prumo marca hoje; tem texto alternativo com o dia mais pesado), `PaidGauge` (medidor segmentado) e
+  `InvoiceForm` (valor em destaque; vencimento e categoria como **botões**, "Mais opções" para competência e observação).
+- **Celular x computador** (`useIsDesktop`, breakpoint `md` = 768 px): no celular o formulário sobe num painel (`InvoiceSheet`) e há
+  um botão "+" flutuante; no computador o detalhe fica num **painel ao lado da lista** (sem janela por cima) e "Nova conta" fica no
+  cabeçalho. Os blocos que só existem num dos modos são renderizados condicionalmente (não duplicados no DOM).
 - **`pages/MonthPage`**: a visão do mês. O mês escolhido fica na URL (`?mes=2026-10`); sem parâmetro, vale o mês atual.
   Agrupa por `status` (derivado no servidor): atrasadas, a vencer, pagas. Totais: *a pagar* soma atrasadas e a vencer; *pago* soma
   o **valor efetivamente pago** (pode diferir do valor da conta).
