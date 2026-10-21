@@ -344,7 +344,10 @@ export interface paths {
         delete: operations["deleteInvoice"];
         options?: never;
         head?: never;
-        /** Edita invoice. Em série, `scope` define o alcance. */
+        /**
+         * Edita invoice. Em série, `scope` define o alcance.
+         * @description Com `scope=following` em parcelas, `description` é tratada como base e cada parcela recebe o sufixo ` (n/N)`.
+         */
         patch: operations["updateInvoice"];
         trace?: never;
     };
@@ -401,7 +404,10 @@ export interface paths {
         /** Compras parceladas ("quando comprei o notebook?") */
         get: operations["listPurchases"];
         put?: never;
-        /** Cria compra parcelada e gera todas as parcelas (passadas e futuras) */
+        /**
+         * Cria compra parcelada e gera todas as parcelas (passadas e futuras)
+         * @description Numa transação: cabeçalho + N invoices ("Notebook (1/6)"...), vencimento mensal a partir de `firstDueDate` (trava no último dia do mês), competência = mês do vencimento.
+         */
         post: operations["createPurchase"];
         delete?: never;
         options?: never;
@@ -438,10 +444,16 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Contas recorrentes */
+        /**
+         * Contas recorrentes
+         * @description Antes de responder, estende o horizonte das ocorrências (12 meses à frente).
+         */
         get: operations["listRecurrences"];
         put?: never;
-        /** Cria recorrência e gera invoices até o horizonte */
+        /**
+         * Cria recorrência e gera invoices até o horizonte
+         * @description Uma invoice por mês de `startMonth` até 12 meses depois do maior entre hoje e o início (respeitando `endMonth`); vencimento = `dayOfMonth`, travado no último dia de mês curto.
+         */
         post: operations["createRecurrence"];
         delete?: never;
         options?: never;
@@ -465,7 +477,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Edita ou encerra (end_month) a recorrência */
+        /**
+         * Edita ou encerra (end_month) a recorrência
+         * @description Aplica às ocorrências futuras e pendentes (não pagas, vencimento de hoje em diante); pagas e passadas nunca mudam.
+         *     `endMonth` só pode ser antecipado (não adiado nem limpo); as pendentes futuras depois do fim são excluídas.
+         */
         patch: operations["updateRecurrence"];
         trace?: never;
     };
@@ -855,7 +871,10 @@ export interface components {
              * @description Vencimento da 1ª parcela (as demais seguem mensalmente)
              */
             firstDueDate: string;
-            /** @description Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela. */
+            /**
+             * @description Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela. Se informado, TODAS as parcelas valem
+             *     exatamente isso (sem resto) e `totalAmountCents` fica como informado (a soma das parcelas pode diferir, ex.: juros).
+             */
             installmentAmountCents?: components["schemas"]["Cents"];
             notes?: string | null;
         };
@@ -1069,7 +1088,13 @@ export interface components {
         InvoiceId: string;
         Limit: number;
         Cursor: string;
-        /** @description `this` = só esta; `following` = esta e as seguintes (parcelas/recorrência). */
+        /**
+         * @description `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+         *     recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+         *     escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+         *     No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+         *     cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
+         */
         SeriesScope: "this" | "following";
     };
     requestBodies: never;
@@ -1698,7 +1723,13 @@ export interface operations {
     deleteInvoice: {
         parameters: {
             query?: {
-                /** @description `this` = só esta; `following` = esta e as seguintes (parcelas/recorrência). */
+                /**
+                 * @description `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+                 *     recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+                 *     escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+                 *     No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+                 *     cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
+                 */
                 scope?: components["parameters"]["SeriesScope"];
             };
             header?: never;
@@ -1722,7 +1753,13 @@ export interface operations {
     updateInvoice: {
         parameters: {
             query?: {
-                /** @description `this` = só esta; `following` = esta e as seguintes (parcelas/recorrência). */
+                /**
+                 * @description `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+                 *     recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+                 *     escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+                 *     No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+                 *     cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
+                 */
                 scope?: components["parameters"]["SeriesScope"];
             };
             header?: never;
@@ -1747,6 +1784,7 @@ export interface operations {
                     "application/json": components["schemas"]["Invoice"];
                 };
             };
+            400: components["responses"]["BadRequest"];
         };
     };
     restoreInvoice: {
@@ -1864,7 +1902,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Criada */
+            /** @description Criada (com as parcelas) */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1873,6 +1911,7 @@ export interface operations {
                     "application/json": components["schemas"]["Purchase"];
                 };
             };
+            400: components["responses"]["BadRequest"];
         };
     };
     getPurchase: {
@@ -1896,6 +1935,7 @@ export interface operations {
                     "application/json": components["schemas"]["Purchase"];
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     listRecurrences: {
@@ -1971,6 +2011,8 @@ export interface operations {
                     "application/json": components["schemas"]["Recurrence"];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
         };
     };
     listIncomes: {
