@@ -1,0 +1,158 @@
+import { useEffect, useState } from 'react'
+
+import { useRecurrenceActions, usePurchases, useRecurrences } from '../api/queries'
+import type { Invoice, Purchase, Recurrence } from '../api/types'
+import { useAuth } from '../auth/context'
+import { AppShell } from '../components/AppShell'
+import { RecurrenceForm } from '../components/RecurrenceForm'
+import { Sheet } from '../components/Sheet'
+import { useToast } from '../components/toastContext'
+import { dayMonth, fullDate, monthLabel } from '../lib/dates'
+import { formatCents } from '../lib/money'
+
+const label = 'text-xs font-medium uppercase tracking-wider text-graphite/80'
+
+/** Valor da parcela: o das invoices geradas, ou total/parcelas quando a lista não traz as parcelas. */
+function installmentValue(p: Purchase): number {
+  const first = p.installments?.[0]
+  return first ? first.amountCents : Math.floor(p.totalAmountCents / p.installmentsCount)
+}
+
+function PurchaseItem({ purchase }: { purchase: Purchase }) {
+  const parcels: Invoice[] = purchase.installments ?? []
+  const paid = parcels.filter((i) => i.status === 'paid').length
+  return (
+    <li className="border-t border-graphite/10 first:border-t-0">
+      <details>
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block truncate text-[15px] font-medium">{purchase.description}</span>
+            <span className="block truncate text-xs text-graphite/80">
+              comprada em {fullDate(purchase.purchaseDate)}
+              {parcels.length > 0 ? ` · ${paid} de ${purchase.installmentsCount} pagas` : ''}
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="block font-mono text-[15px] font-semibold tabular-nums">{purchase.installmentsCount}x {formatCents(installmentValue(purchase))}</span>
+            <span className="block text-[11px] text-graphite/75">total {formatCents(purchase.totalAmountCents)}</span>
+          </span>
+        </summary>
+        {parcels.length > 0 && (
+          <ul className="mb-2 ml-1 border-l border-teal/40 pl-3">
+            {parcels.map((i) => (
+              <li key={i.id} className="flex justify-between gap-3 py-1 text-[13px]">
+                <span>
+                  <span className="font-mono text-xs">{i.status === 'paid' ? '[ ▪ ]' : '[ ▫ ]'}</span> {i.series?.installmentNumber}/{purchase.installmentsCount} · vence {dayMonth(i.dueDate)}
+                </span>
+                <span className="font-mono tabular-nums">{formatCents(i.amountCents)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </li>
+  )
+}
+
+/**
+ * Parcelas e contas fixas. As compras parceladas respondem "quando comprei o notebook?" (busca por nome) e mostram
+ * cada parcela; as contas fixas (aluguel, internet) listam o molde mensal e deixam ajustar valor, dia e fim.
+ */
+export default function SeriesPage() {
+  const { session } = useAuth()
+  const toast = useToast()
+  const house = session.status === 'authenticated' ? session.me.households[0] : undefined
+  const houseId = house?.id ?? ''
+
+  const [text, setText] = useState('')
+  const [q, setQ] = useState('')
+  // Espera a pessoa parar de digitar antes de consultar (uma busca por tecla seria desperdício).
+  useEffect(() => {
+    const t = setTimeout(() => setQ(text.trim()), 300)
+    return () => clearTimeout(t)
+  }, [text])
+
+  const purchases = usePurchases(houseId, q)
+  const recurrences = useRecurrences(houseId)
+  const actions = useRecurrenceActions(houseId)
+  const [editing, setEditing] = useState<Recurrence>()
+
+  if (!house) return null
+  const canWrite = house.role !== 'viewer'
+
+  return (
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
+        <header>
+          <h1 className="font-display text-[32px] font-bold leading-none text-teal font-stretch-condensed">Parcelas e contas fixas</h1>
+          <p className="mt-1 text-sm text-graphite/80">Para lançar, use <strong>+</strong> na tela do mês e escolha parcelada ou fixa.</p>
+        </header>
+
+        <div className="grid gap-6 md:grid-cols-2 md:items-start">
+          <section aria-label="Compras parceladas" className="rounded-md border border-graphite/20 p-4">
+            <h2 className={label}>compras parceladas</h2>
+            <div className="mt-2">
+              <label htmlFor="busca-compra" className="sr-only">Buscar compra</label>
+              <input
+                id="busca-compra"
+                type="search"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Quando comprei… (ex.: notebook)"
+                className="h-11 w-full rounded-md border border-graphite/25 bg-white/40 px-3 text-base"
+              />
+            </div>
+            {purchases.isPending && <p role="status" className="mt-2 text-sm text-graphite/70">carregando…</p>}
+            {purchases.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as compras.</p>}
+            {purchases.isSuccess && purchases.data.length === 0 && (
+              <p className="mt-2 text-sm text-graphite/75">{q ? `Nenhuma compra com “${q}”.` : 'Nenhuma compra parcelada ainda.'}</p>
+            )}
+            <ul className="mt-2 flex flex-col">
+              {(purchases.data ?? []).map((p) => (
+                <PurchaseItem key={p.id} purchase={p} />
+              ))}
+            </ul>
+          </section>
+
+          <section aria-label="Contas fixas" className="rounded-md border border-graphite/20 p-4">
+            <h2 className={label}>contas fixas</h2>
+            {recurrences.isPending && <p role="status" className="mt-2 text-sm text-graphite/70">carregando…</p>}
+            {recurrences.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as contas fixas.</p>}
+            {recurrences.isSuccess && recurrences.data.length === 0 && <p className="mt-2 text-sm text-graphite/75">Nenhuma conta fixa ainda.</p>}
+            <ul className="mt-2 flex flex-col">
+              {(recurrences.data ?? []).map((r) => (
+                <li key={r.id} className="border-t border-graphite/10 first:border-t-0">
+                  <button aria-label={`Editar ${r.description}`} onClick={() => setEditing(r)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
+                    <span className="min-w-0">
+                      <span className="block truncate text-[15px] font-medium">{r.description}</span>
+                      <span className="block truncate text-xs text-graphite/80">
+                        todo dia {r.dayOfMonth} · desde {monthLabel(r.startMonth)}
+                        {r.endMonth ? ` · até ${monthLabel(r.endMonth)}` : ' · sem fim'}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono text-[15px] font-semibold tabular-nums">{formatCents(r.amountCents)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </main>
+
+      {editing && (
+        <Sheet title={editing.description} onClose={() => setEditing(undefined)}>
+          <RecurrenceForm
+            key={editing.id}
+            recurrence={editing}
+            canWrite={canWrite}
+            onSave={(body) => actions.update.mutateAsync({ id: editing.id, body })}
+            onDone={() => {
+              setEditing(undefined)
+              toast({ message: 'Conta fixa atualizada.' })
+            }}
+          />
+        </Sheet>
+      )}
+    </AppShell>
+  )
+}

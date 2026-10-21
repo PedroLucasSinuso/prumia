@@ -6,6 +6,7 @@ import IncomesPage from './pages/IncomesPage'
 import MonthPage from './pages/MonthPage'
 import LoginPage from './pages/LoginPage'
 import InvitePage from './pages/InvitePage'
+import SeriesPage from './pages/SeriesPage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import SummaryPage from './pages/SummaryPage'
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<MonthPage />} />
         <Route path="/receitas" element={<IncomesPage />} />
         <Route path="/resumo" element={<SummaryPage />} />
+        <Route path="/parcelas" element={<SeriesPage />} />
         <Route path="/casa" element={<HousePage />} />
       </Route>
       <Route path="*" element={<RequireAuth />} />
