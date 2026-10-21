@@ -364,6 +364,17 @@ type CategoryPatch struct {
 	SortOrder     *int    `json:"sortOrder,omitempty"`
 }
 
+// CategoryTotal defines model for CategoryTotal.
+type CategoryTotal struct {
+	CategoryId openapi_types.UUID `json:"categoryId"`
+
+	// PaidCents Parte já paga (valor efetivamente pago)
+	PaidCents Cents `json:"paidCents"`
+
+	// TotalCents Pago (valor efetivamente pago) + pendente (valor da invoice) da competência
+	TotalCents Cents `json:"totalCents"`
+}
+
 // Cents Valor em centavos (BRL)
 type Cents = money.Cents
 
@@ -429,10 +440,15 @@ type IncomeInput struct {
 	ExpectedDate    caldate.Date `json:"expectedDate"`
 
 	// GrossAmountCents Valor em centavos (BRL)
-	GrossAmountCents Cents              `json:"grossAmountCents"`
-	Kind             IncomeInputKind    `json:"kind"`
-	Notes            *string            `json:"notes,omitempty"`
-	UserId           openapi_types.UUID `json:"userId"`
+	GrossAmountCents Cents           `json:"grossAmountCents"`
+	Kind             IncomeInputKind `json:"kind"`
+	Notes            *string         `json:"notes,omitempty"`
+
+	// UserId Deve ser membro ativo da casa
+	UserId openapi_types.UUID `json:"userId"`
+
+	// Wallet Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400.
+	Wallet *Wallet `json:"wallet,omitempty"`
 }
 
 // IncomeInputKind defines model for IncomeInput.Kind.
@@ -455,15 +471,20 @@ type IncomeSource struct {
 	Deductions []Deduction `json:"deductions"`
 	EndMonth   *Month      `json:"endMonth,omitempty"`
 
+	// GeneratedThrough Último mês com lançamento previsto gerado
+	GeneratedThrough *Month `json:"generatedThrough,omitempty"`
+
 	// GrossAmountCents Valor em centavos (BRL)
 	GrossAmountCents Cents              `json:"grossAmountCents"`
 	Id               openapi_types.UUID `json:"id"`
 	Kind             IncomeSourceKind   `json:"kind"`
 	Name             string             `json:"name"`
+	Notes            *string            `json:"notes,omitempty"`
 
 	// StartMonth Primeiro dia do mês
 	StartMonth Month              `json:"startMonth"`
 	UserId     openapi_types.UUID `json:"userId"`
+	Wallet     Wallet             `json:"wallet"`
 }
 
 // IncomeSourceKind defines model for IncomeSource.Kind.
@@ -479,10 +500,16 @@ type IncomeSourceInput struct {
 	GrossAmountCents Cents                 `json:"grossAmountCents"`
 	Kind             IncomeSourceInputKind `json:"kind"`
 	Name             string                `json:"name"`
+	Notes            *string               `json:"notes,omitempty"`
 
 	// StartMonth Primeiro dia do mês
-	StartMonth Month              `json:"startMonth"`
-	UserId     openapi_types.UUID `json:"userId"`
+	StartMonth Month `json:"startMonth"`
+
+	// UserId Deve ser membro ativo da casa
+	UserId openapi_types.UUID `json:"userId"`
+
+	// Wallet Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400.
+	Wallet *Wallet `json:"wallet,omitempty"`
 }
 
 // IncomeSourceInputKind defines model for IncomeSourceInput.Kind.
@@ -497,6 +524,7 @@ type IncomeSourcePatch struct {
 	// GrossAmountCents Valor em centavos (BRL)
 	GrossAmountCents *Cents  `json:"grossAmountCents,omitempty"`
 	Name             *string `json:"name,omitempty"`
+	Notes            *string `json:"notes,omitempty"`
 }
 
 // InviteCreated defines model for InviteCreated.
@@ -596,15 +624,8 @@ type Month = caldate.Date
 
 // MonthlySummary defines model for MonthlySummary.
 type MonthlySummary struct {
-	ByCategory []struct {
-		CategoryId openapi_types.UUID `json:"categoryId"`
-
-		// PaidCents Valor em centavos (BRL)
-		PaidCents *Cents `json:"paidCents,omitempty"`
-
-		// TotalCents Valor em centavos (BRL)
-		TotalCents Cents `json:"totalCents"`
-	} `json:"byCategory"`
+	// ByCategory Ordenado por total (maior primeiro). Inclui categorias arquivadas que tenham invoices no mês.
+	ByCategory []CategoryTotal `json:"byCategory"`
 
 	// Month Primeiro dia do mês
 	Month Month `json:"month"`
@@ -780,13 +801,13 @@ type WalletBalance struct {
 	// BalanceCents Recebido - pago (estimativa, não é saldo bancário)
 	BalanceCents Cents `json:"balanceCents"`
 
-	// ExpectedIncomeCents Valor em centavos (BRL)
+	// ExpectedIncomeCents Líquido de todas as receitas da competência na carteira (previstas + recebidas)
 	ExpectedIncomeCents Cents `json:"expectedIncomeCents"`
 
-	// PaidCents Valor em centavos (BRL)
+	// PaidCents Valor efetivamente pago das invoices da competência pagas com esta carteira
 	PaidCents Cents `json:"paidCents"`
 
-	// ReceivedIncomeCents Valor em centavos (BRL)
+	// ReceivedIncomeCents Líquido das receitas já recebidas
 	ReceivedIncomeCents Cents `json:"receivedIncomeCents"`
 }
 
@@ -858,6 +879,7 @@ type ListCategoriesParams struct {
 
 // UpdateIncomeSourceParams defines parameters for UpdateIncomeSource.
 type UpdateIncomeSourceParams struct {
+	// ApplyFrom Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam.
 	ApplyFrom *caldate.Date `form:"applyFrom,omitempty" json:"applyFrom,omitempty"`
 }
 
@@ -1078,7 +1100,10 @@ type ServerInterface interface {
 	// UpdateIncome Ajusta o lançamento do mês (bruto, descontos, data)
 	// (PATCH /households/{householdId}/incomes/{incomeId})
 	UpdateIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
-	// ReceiveIncome Marca como recebida
+	// UnreceiveIncome Desfaz o recebimento (volta a previsto). Se não estava recebida, 409 `not_received`.
+	// (DELETE /households/{householdId}/incomes/{incomeId}/receive)
+	UnreceiveIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
+	// ReceiveIncome Marca como recebida (só esta competência). Receber de novo responde 409 `already_received`.
 	// (POST /households/{householdId}/incomes/{incomeId}/receive)
 	ReceiveIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
 	// CreateInvite Gera convite por link (admin). O token só é devolvido nesta resposta.
@@ -1700,6 +1725,40 @@ func (siw *ServerInterfaceWrapper) UpdateIncome(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateIncome(c, householdId, incomeId)
+}
+
+// UnreceiveIncome operation middleware
+func (siw *ServerInterfaceWrapper) UnreceiveIncome(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "incomeId" -------------
+	var incomeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "incomeId", c.Param("incomeId"), &incomeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter incomeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UnreceiveIncome(c, householdId, incomeId)
 }
 
 // ReceiveIncome operation middleware
@@ -2575,6 +2634,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/incomes", wrapper.CreateIncome)
 	router.DELETE(options.BaseURL+"/households/:householdId/incomes/:incomeId", wrapper.DeleteIncome)
 	router.PATCH(options.BaseURL+"/households/:householdId/incomes/:incomeId", wrapper.UpdateIncome)
+	router.DELETE(options.BaseURL+"/households/:householdId/incomes/:incomeId/receive", wrapper.UnreceiveIncome)
 	router.POST(options.BaseURL+"/households/:householdId/incomes/:incomeId/receive", wrapper.ReceiveIncome)
 	router.GET(options.BaseURL+"/households/:householdId/income-sources", wrapper.ListIncomeSources)
 	router.POST(options.BaseURL+"/households/:householdId/income-sources", wrapper.CreateIncomeSource)

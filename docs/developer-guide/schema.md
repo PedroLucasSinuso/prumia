@@ -84,7 +84,8 @@ documento). Nunca o arquivo. Duplicidade de linha digitável é verificada no se
 
 Não existe tabela de carteira: são dois valores (`free`, `benefit`) por casa.
 Saldo = receitas recebidas na carteira − invoices pagas com aquela carteira. Saldo de benefício insuficiente
-**só avisa**, não bloqueia (é estimativa, não controle bancário).
+**só avisa**, não bloqueia (é estimativa, não controle bancário). Definições exatas (o que conta como "do mês", valor pago efetivo,
+sem saldo transportado) em [incomes-and-wallets.md](incomes-and-wallets.md).
 
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 
