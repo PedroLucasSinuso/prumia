@@ -81,6 +81,9 @@ type Routes = {
   passwordReset?: Reply
   setRole?: Reply
   removeMember?: Reply
+  /** Leitura de boleto: resposta fixa ou calculada pelo corpo (ex.: pedir senha só se ela não veio). */
+  extract?: Reply | ((body: { file: File; password?: string }) => Reply)
+  invoiceDetail?: Reply
 }
 
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
@@ -94,9 +97,14 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
     if (url === '/households/{householdId}/income-sources') return r.sources ?? ok([])
     if (url === '/households/{householdId}/summary') return r.summary ?? ok(emptySummary)
+    if (url === '/households/{householdId}/invoices/{invoiceId}') return r.invoiceDetail ?? fail(404, 'not_found')
     throw new Error('GET inesperado: ' + url)
   }) as never)
-  vi.spyOn(api, 'POST').mockImplementation((async (url: string) => {
+  vi.spyOn(api, 'POST').mockImplementation((async (url: string, init?: { body?: unknown }) => {
+    if (url === '/households/{householdId}/boletos/extract') {
+      const body = init?.body as { file: File; password?: string }
+      return (typeof r.extract === 'function' ? r.extract(body) : r.extract) ?? fail(422, 'boleto_unreadable')
+    }
     const pick: Record<string, Reply | Error | undefined> = {
       '/auth/login': r.login, '/auth/register': r.register, '/auth/logout': r.logout,
       '/households/{householdId}/invoices': r.create,
