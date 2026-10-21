@@ -20,6 +20,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 )
 
 // app é a API completa (serviços reais, Postgres real) montada para testes de ponta a ponta.
@@ -30,6 +31,7 @@ type app struct {
 	auth   *auth.Service
 	hs     *household.Service
 	cookie auth.CookieConfig
+	rec    *series.RecurrenceService
 }
 
 type opts struct {
@@ -58,13 +60,17 @@ func newApp(t *testing.T, o opts) *app {
 		nowFn = time.Now
 	}
 	today := func() caldate.Date { return caldate.FromTime(nowFn()) }
+	invSvc := invoice.NewService(gdb, today)
+	recSvc := series.NewRecurrenceService(gdb, invSvc, today)
 	Mount(router, NewServer(sqlDB,
 		auth.NewHandler(svc, cookie, log),
 		&Households{Svc: hs, Log: log},
 		&Categories{Svc: category.NewService(gdb), Log: log},
-		&Invoices{Svc: invoice.NewService(gdb, today), Log: log},
+		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc},
+		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},
+		&Recurrences{Svc: recSvc, Log: log},
 	), auth.Middleware(svc, hs, cookie, log))
-	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie}
+	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc}
 }
 
 type resp struct {

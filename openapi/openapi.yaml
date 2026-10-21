@@ -363,6 +363,7 @@ paths:
       tags: [invoices]
       operationId: updateInvoice
       summary: Edita invoice. Em série, `scope` define o alcance.
+      description: "Com `scope=following` em parcelas, `description` é tratada como base e cada parcela recebe o sufixo ` (n/N)`."
       parameters:
         - { $ref: '#/components/parameters/SeriesScope' }
       requestBody:
@@ -370,6 +371,7 @@ paths:
         content: { application/json: { schema: { $ref: '#/components/schemas/InvoicePatch' } } }
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
     delete:
       tags: [invoices]
       operationId: deleteInvoice
@@ -424,11 +426,13 @@ paths:
       tags: [invoices]
       operationId: createPurchase
       summary: Cria compra parcelada e gera todas as parcelas (passadas e futuras)
+      description: "Numa transação: cabeçalho + N invoices (\"Notebook (1/6)\"...), vencimento mensal a partir de `firstDueDate` (trava no último dia do mês), competência = mês do vencimento."
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseInput' } } }
       responses:
-        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Purchase' } } } }
+        '201': { description: "Criada (com as parcelas)", content: { application/json: { schema: { $ref: '#/components/schemas/Purchase' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /households/{householdId}/purchases/{purchaseId}:
     parameters:
       - { $ref: '#/components/parameters/HouseholdId' }
@@ -439,18 +443,21 @@ paths:
       summary: Compra com todas as parcelas
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Purchase' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
   /households/{householdId}/recurrences:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
     get:
       tags: [invoices]
       operationId: listRecurrences
       summary: Contas recorrentes
+      description: Antes de responder, estende o horizonte das ocorrências (12 meses à frente).
       responses:
         '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Recurrence' } } } } }
     post:
       tags: [invoices]
       operationId: createRecurrence
       summary: Cria recorrência e gera invoices até o horizonte
+      description: "Uma invoice por mês de `startMonth` até 12 meses depois do maior entre hoje e o início (respeitando `endMonth`); vencimento = `dayOfMonth`, travado no último dia de mês curto."
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/RecurrenceInput' } } }
@@ -464,11 +471,16 @@ paths:
       tags: [invoices]
       operationId: updateRecurrence
       summary: Edita ou encerra (end_month) a recorrência
+      description: |
+        Aplica às ocorrências futuras e pendentes (não pagas, vencimento de hoje em diante); pagas e passadas nunca mudam.
+        `endMonth` só pode ser antecipado (não adiado nem limpo); as pendentes futuras depois do fim são excluídas.
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/RecurrencePatch' } } }
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Recurrence' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   # ---------------------------------------------------------------- incomes
   /households/{householdId}/incomes:
@@ -612,7 +624,12 @@ components:
     SeriesScope:
       name: scope
       in: query
-      description: "`this` = só esta; `following` = esta e as seguintes (parcelas/recorrência)."
+      description: |
+        `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+        recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+        escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+        No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+        cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
       schema: { type: string, enum: [this, following], default: this }
 
   responses:
@@ -869,7 +886,9 @@ components:
         firstDueDate: { type: string, format: date, description: "Vencimento da 1ª parcela (as demais seguem mensalmente)" }
         installmentAmountCents:
           allOf: [ { $ref: '#/components/schemas/Cents' } ]
-          description: Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela.
+          description: |
+            Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela. Se informado, TODAS as parcelas valem
+            exatamente isso (sem resto) e `totalAmountCents` fica como informado (a soma das parcelas pode diferir, ex.: juros).
         notes: { type: string, nullable: true }
     PurchasePage:
       type: object

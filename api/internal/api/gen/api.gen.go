@@ -682,7 +682,8 @@ type PurchaseInput struct {
 	// FirstDueDate Vencimento da 1ª parcela (as demais seguem mensalmente)
 	FirstDueDate caldate.Date `json:"firstDueDate"`
 
-	// InstallmentAmountCents Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela.
+	// InstallmentAmountCents Opcional. Padrão = total / parcelas, com o resto de centavos na última parcela. Se informado, TODAS as parcelas valem
+	// exatamente isso (sem resto) e `totalAmountCents` fica como informado (a soma das parcelas pode diferir, ex.: juros).
 	InstallmentAmountCents *Cents              `json:"installmentAmountCents,omitempty"`
 	InstallmentsCount      int                 `json:"installmentsCount"`
 	Notes                  *string             `json:"notes,omitempty"`
@@ -897,7 +898,11 @@ type ListInvoicesParamsStatus string
 
 // DeleteInvoiceParams defines parameters for DeleteInvoice.
 type DeleteInvoiceParams struct {
-	// Scope `this` = só esta; `following` = esta e as seguintes (parcelas/recorrência).
+	// Scope `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+	// recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+	// escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+	// No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+	// cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
 	Scope *DeleteInvoiceParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
@@ -906,7 +911,11 @@ type DeleteInvoiceParamsScope string
 
 // UpdateInvoiceParams defines parameters for UpdateInvoice.
 type UpdateInvoiceParams struct {
-	// Scope `this` = só esta; `following` = esta e as seguintes (parcelas/recorrência).
+	// Scope `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+	// recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+	// escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+	// No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+	// cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
 	Scope *UpdateInvoiceParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
 }
 

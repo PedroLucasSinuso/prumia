@@ -33,7 +33,7 @@ scripts/        backup/restore e utilitários
 docs/           product/ (spec, plan; LOCAL, fora do git), developer-guide/, user-guides/, brand/
 ```
 Documentação: cada fase atualiza `developer-guide/` e `user-guides/` (ver `docs/README.md`).
-Backend: `internal/<domínio>/` com `handler`, `service`, `repository`. Domínios: `household`, `auth`, `invoice`, `income`,
+Backend: `internal/<domínio>/` com `handler`, `service`, `repository`. Domínios: `household`, `auth`, `invoice`, `series` (parcelas e recorrências), `income`,
 `category`, `boleto`, `summary`. Dependências sempre apontam handler → service → repository.
 
 ## Regras inegociáveis
