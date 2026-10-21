@@ -27,14 +27,16 @@ nesse meio tempo dá 409 `category_deleted`.
 (409 `category_in_use`). Arquivada some da lista padrão (`?includeArchived=true` mostra) e não aceita invoices novas.
 Membros (não só admins) gerenciam categorias.
 
-**Séries.** Parcelas e recorrências chegam na Fase 1c. Por ora, editar/excluir com `scope=following` em uma invoice de série
-responde 501; `scope=this` funciona.
+**Séries.** Parcelas e contas fixas são invoices comuns ligadas a uma compra (`purchases`) ou recorrência (`recurrences`); a resposta traz
+`series` (`installmentNumber` + `installmentsCount`, ou `recurrenceId`). `scope=this` (padrão) mexe só na própria; `scope=following` edita/exclui
+esta e as seguintes **ainda não pagas** da mesma série, sem aceitar `dueDate`/`competenceMonth` em lote. Geração, horizonte e regras
+completas: [series-generation.md](series-generation.md).
 
 ## Listagem
 
 `GET .../invoices` aceita `month` (competência, dia 1), `status` (`pending|overdue|paid`), `categoryId`, `responsibleUserId`,
 `purchaseId`, `q` (busca na descrição, sem diferenciar maiúsculas; `%` e `_` valem como texto) e paginação. Ordem: vencimento, depois id.
-A paginação é por **cursor** (keyset sobre `(due_date, id)`): estável mesmo se itens mudam entre páginas, sem pular nem repetir.
+Ao listar, o horizonte das contas fixas é estendido antes (inclusive até o mês pedido em `month`, se futuro). A paginação é por **cursor** (keyset sobre `(due_date, id)`): estável mesmo se itens mudam entre páginas, sem pular nem repetir.
 Passe o `nextCursor` recebido em `cursor`; `limit` padrão 50, máximo 200.
 
 ## PATCH: "ausente" x "null"
@@ -53,15 +55,15 @@ presentes. O serviço recebe flags `...Set` junto do valor.
 | `already_paid` / `not_paid` | 409 | pagar o que já está pago / desfazer o que não está |
 | `not_deleted` | 409 | restaurar o que não está excluído |
 | `category_deleted` | 409 | restaurar invoice cuja categoria foi excluída |
-| `not_implemented` | 501 | `scope=following` em série (até a Fase 1c) |
 
 O mapeamento de erro de serviço para HTTP fica **num lugar só**: `internal/api/errors.go`.
 
 ## Onde está
 
 - `internal/category`, `internal/invoice`: modelo e serviço (regras e consultas, todas filtradas por `household_id`).
-- `internal/api/categories.go`, `invoices.go`: handlers (tradução HTTP ↔ serviço).
-- Testes: `internal/api/invoices_test.go` (fluxo ponta a ponta com Postgres real) e a coleção Postman (pastas 4 e 5).
+- `internal/series`: compras parceladas e recorrências (geração, horizonte, edição). Ver [series-generation.md](series-generation.md).
+- `internal/api/categories.go`, `invoices.go`, `series.go`: handlers (tradução HTTP ↔ serviço).
+- Testes: `internal/api/invoices_test.go` e `series_test.go` (fluxo ponta a ponta com Postgres real) e a coleção Postman (pastas 4 a 7).
 
 ## Para estender
 
