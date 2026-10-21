@@ -10,7 +10,7 @@ Como criar sua conta, entrar e sair do prumia. Use na primeira vez que abrir o a
 4. Em **Nome da casa**, escreva como quer chamar a sua casa. Por exemplo: "Casa do Pedro e da Ana". Se deixar em branco, usamos "Minha casa".
 5. Toque em **Criar conta**. Você já entra no app, dentro da sua casa.
 
-A pessoa que cria a casa é a **administradora** dela. Mais tarde você poderá convidar quem mora com você.
+A pessoa que cria a casa é a **administradora** dela. Para convidar quem mora com você, veja [Convidar pessoas](convidar-pessoas.md).
 
 ## Entrar
 
@@ -29,4 +29,4 @@ Toque em **Sair**, no canto superior direito. Faça isso em aparelhos que não s
 - **"Muitas tentativas."** Aguarde um minuto e tente de novo.
 - **"O cadastro livre está desativado."** O app já tem uma casa. Para entrar nela, peça um convite a quem administra.
 - **"Já existe uma conta com este e-mail."** Use **Entrar** em vez de **Criar conta**.
-- **Esqueci a senha.** Peça a quem administra a casa para gerar um link de redefinição (em breve no app).
+- **Esqueci a senha.** Peça a quem administra a casa para gerar um link de redefinição (veja [Convidar pessoas](convidar-pessoas.md)).
