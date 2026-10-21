@@ -16,11 +16,13 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
+	"github.com/PedroLucasSinuso/prumia/api/internal/income"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
+	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
 )
 
 // app é a API completa (serviços reais, Postgres real) montada para testes de ponta a ponta.
@@ -32,6 +34,7 @@ type app struct {
 	hs     *household.Service
 	cookie auth.CookieConfig
 	rec    *series.RecurrenceService
+	inc    *income.Service
 }
 
 type opts struct {
@@ -62,15 +65,19 @@ func newApp(t *testing.T, o opts) *app {
 	today := func() caldate.Date { return caldate.FromTime(nowFn()) }
 	invSvc := invoice.NewService(gdb, today)
 	recSvc := series.NewRecurrenceService(gdb, invSvc, today)
+	incSvc := income.NewService(gdb, today)
+	sumSvc := summary.NewService(gdb)
 	Mount(router, NewServer(sqlDB,
 		auth.NewHandler(svc, cookie, log),
 		&Households{Svc: hs, Log: log},
 		&Categories{Svc: category.NewService(gdb), Log: log},
-		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc},
+		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},
 		&Recurrences{Svc: recSvc, Log: log},
+		&Incomes{Svc: incSvc, Log: log},
+		&Summaries{Svc: sumSvc, Log: log, Horizons: []HorizonEnsurer{incSvc, recSvc}},
 	), auth.Middleware(svc, hs, cookie, log))
-	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc}
+	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
 }
 
 type resp struct {
