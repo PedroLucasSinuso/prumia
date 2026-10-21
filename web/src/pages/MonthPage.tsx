@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-
 import { useCategories, useInvoiceActions, useInvoices } from '../api/queries'
 import type { Invoice } from '../api/types'
 import { useAuth } from '../auth/context'
@@ -13,9 +11,10 @@ import { MonthSelector } from '../components/MonthSelector'
 import { PaidGauge } from '../components/PaidGauge'
 import { Timeline } from '../components/Timeline'
 import { useToast } from '../components/toastContext'
-import { currentMonth, monthFromParam, monthToParam, todayISO } from '../lib/dates'
+import { currentMonth, todayISO } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { useIsDesktop } from '../lib/useIsDesktop'
+import { useMonthParam } from '../lib/useMonthParam'
 
 type Editing = { kind: 'new' } | { kind: 'edit'; id: string } | null
 type Filter = 'all' | 'open' | 'paid'
@@ -30,13 +29,12 @@ const label = 'text-xs font-medium uppercase tracking-wider'
  */
 export default function MonthPage() {
   const { session } = useAuth()
-  const [params, setParams] = useSearchParams()
   const [editing, setEditing] = useState<Editing>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const toast = useToast()
   const desktop = useIsDesktop()
 
-  const month = monthFromParam(params.get('mes')) ?? currentMonth()
+  const [month, setMonth] = useMonthParam()
   const today = todayISO()
   const isCurrent = month === currentMonth()
   const house = session.status === 'authenticated' ? session.me.households[0] : undefined
@@ -73,8 +71,6 @@ export default function MonthPage() {
   const editingInvoice = editing?.kind === 'edit' ? list.find((i) => i.id === editing.id) : undefined
   const formCategories = (categories.data ?? []).filter((c) => !c.archived || c.id === editingInvoice?.categoryId)
 
-  const setMonth = (m: string) => setParams(m === currentMonth() ? {} : { mes: monthToParam(m) }, { replace: true })
-
   // Um toque: paga com a carteira sugerida pela categoria (Mercado -> benefício); sem sugestão, a livre.
   function togglePaid(inv: Invoice) {
     if (inv.status === 'paid') {
@@ -85,9 +81,12 @@ export default function MonthPage() {
     actions.pay.mutate(
       { id: inv.id, wallet },
       {
-        onSuccess: () =>
+        onSuccess: (result) =>
           toast({
-            message: `${inv.description} paga na ${walletLabel[wallet]}.`,
+            // O servidor avisa (sem bloquear) quando o saldo de benefício do mês fica negativo.
+            message: result?.warnings?.includes('benefit_balance_insufficient')
+              ? `${inv.description} paga na ${walletLabel[wallet]}. Atenção: o saldo de benefício deste mês ficou negativo.`
+              : `${inv.description} paga na ${walletLabel[wallet]}.`,
             actionLabel: 'Desfazer',
             onAction: () => actions.unpay.mutate(inv.id),
           }),
@@ -128,7 +127,7 @@ export default function MonthPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-28 pt-2 md:max-w-none md:gap-6 md:px-10 md:pb-10 md:pt-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-36 pt-2 md:max-w-none md:gap-6 md:px-10 md:pb-10 md:pt-8">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <MonthSelector month={month} onChange={setMonth} />
           {desktop && canWrite && (
@@ -271,7 +270,7 @@ export default function MonthPage() {
         <button
           aria-label="Nova conta"
           onClick={() => setEditing({ kind: 'new' })}
-          className="fixed bottom-6 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-teal text-3xl leading-none text-ivory shadow-[0_2px_0_var(--color-graphite)] hover:bg-teal/90"
+          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-teal text-3xl leading-none text-ivory shadow-[0_2px_0_var(--color-graphite)] hover:bg-teal/90"
         >
           +
         </button>

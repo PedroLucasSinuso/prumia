@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 
 import App from '../App'
 import { api } from '../api/client'
-import type { Category, Invoice, Me, Problem } from '../api/types'
+import type { Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { ToastProvider } from '../components/Toast'
 
@@ -27,7 +27,43 @@ export const categories: Category[] = [
   { id: 'c2', name: 'Mercado', defaultWallet: 'benefit', isEssential: true, sortOrder: 1, archived: false },
 ]
 
+export const members: Member[] = [
+  { userId: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+  { userId: 'u2', name: 'Ana', email: 'ana@exemplo.com', role: 'member', joinedAt: '2026-01-02T00:00:00Z' },
+]
+
+export const emptySummary: MonthlySummary = {
+  month: '2026-10-01',
+  wallets: {
+    free: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0 },
+    benefit: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0 },
+  },
+  totalPaidCents: 0, totalPendingCents: 0, byCategory: [],
+}
+
+export function income(over: Partial<Income> & Pick<Income, 'id' | 'description'>): Income {
+  return {
+    userId: 'u1', kind: 'salary', wallet: 'free', competenceMonth: '2026-10-01', expectedDate: '2026-10-05',
+    grossAmountCents: 500000, deductions: [], netAmountCents: 500000, received: false, ...over,
+  }
+}
+
+export function source(over: Partial<IncomeSource> & Pick<IncomeSource, 'id' | 'name'>): IncomeSource {
+  return { userId: 'u1', kind: 'salary', wallet: 'free', grossAmountCents: 500000, dayOfMonth: 5, startMonth: '2026-01-01', deductions: [], ...over }
+}
+
 type Routes = {
+  members?: Reply
+  incomes?: Reply
+  sources?: Reply
+  summary?: Reply
+  createIncome?: Reply
+  updateIncome?: Reply
+  removeIncome?: Reply
+  receive?: Reply
+  unreceive?: Reply
+  createSource?: Reply
+  updateSource?: Reply
   me?: Reply
   invoices?: Reply
   categories?: Reply
@@ -49,6 +85,10 @@ export function mockApi(r: Routes = {}) {
     if (url === '/auth/me') return r.me ?? unauth
     if (url === '/households/{householdId}/categories') return r.categories ?? ok(categories)
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
+    if (url === '/households/{householdId}/members') return r.members ?? ok(members)
+    if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
+    if (url === '/households/{householdId}/income-sources') return r.sources ?? ok([])
+    if (url === '/households/{householdId}/summary') return r.summary ?? ok(emptySummary)
     throw new Error('GET inesperado: ' + url)
   }) as never)
   vi.spyOn(api, 'POST').mockImplementation((async (url: string) => {
@@ -57,14 +97,25 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/invoices': r.create,
       '/households/{householdId}/invoices/{invoiceId}/pay': r.pay,
       '/households/{householdId}/invoices/{invoiceId}/restore': r.restore,
+      '/households/{householdId}/incomes': r.createIncome,
+      '/households/{householdId}/incomes/{incomeId}/receive': r.receive,
+      '/households/{householdId}/income-sources': r.createSource,
     }
     const reply = pick[url]
     if (reply instanceof Error) throw reply
+    // o pagamento devolve { invoice, warnings }, como a API de verdade
+    if (!reply && url.endsWith('/pay')) return ok({ invoice: {}, warnings: [] })
     return reply ?? ok()
   }) as never)
-  vi.spyOn(api, 'PATCH').mockImplementation((async () => r.update ?? ok()) as never)
+  vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
+    if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
+    if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
+    return r.update ?? ok()
+  }) as never)
   vi.spyOn(api, 'DELETE').mockImplementation((async (url: string) => {
     if (url.endsWith('/pay')) return r.unpay ?? ok()
+    if (url.endsWith('/receive')) return r.unreceive ?? ok()
+    if (url === '/households/{householdId}/incomes/{incomeId}') return r.removeIncome ?? { response: { ok: true } }
     return r.remove ?? { response: { ok: true } }
   }) as never)
 }

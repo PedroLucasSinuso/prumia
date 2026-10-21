@@ -1,62 +1,40 @@
 # Resumo do mês
 
-Como ler o resumo do mês: quanto entrou, quanto saiu, o que ainda falta pagar e para onde o dinheiro foi. Use no começo ou no fim
-do mês para saber como você está.
+Como ler o resumo para responder: **sobrou ou faltou dinheiro neste mês, e para onde ele foi?** Use no fim do mês, ou sempre que
+quiser conferir como as coisas estão.
 
-> As telas deste guia chegam junto com o app visual. Os nomes dos botões abaixo são o desenho previsto e podem mudar; o
-> comportamento já está pronto e testado.
+## Abrir
 
-## Abrir o resumo
+Toque em **resumo** (no menu). Use ‹ e › para trocar de mês; o mês que você estava vendo acompanha ao trocar de tela.
 
-1. Toque em **Resumo**.
-2. Escolha o mês. Dá para olhar meses passados e futuros.
+## As carteiras: sobra ou falta
 
-O resumo é da **casa inteira**: soma as contas e receitas de todos os membros.
+Há um bloco para cada carteira: **livre** (salário e outras receitas) e **benefício** (VR).
 
-## O que aparece
+- O destaque é o **saldo**, com a palavra **sobra** ou, se você gastou mais do que recebeu, **falta** (com o marcador `[ ✖ ]`).
+- A barra mostra quanto **do que entrou** já foi **gasto**.
+- Abaixo: **previsto para entrar**, **já recebido** e **já pago**.
 
-### Saldo por carteira
+O saldo é **recebido − pago** no mês. Receitas só **previstas** ainda não entram. É uma estimativa, não o saldo do banco. Veja
+[carteiras.md](carteiras.md).
 
-Duas linhas, **Livre** e **Benefício**, cada uma com:
+## Contas do mês
 
-- **Previsto**: tudo o que deve entrar no mês naquela carteira (já descontados os descontos do salário), recebido ou não;
-- **Recebido**: só o que você já marcou como recebido;
-- **Pago**: o que você já pagou usando aquela carteira;
-- **Saldo**: recebido menos pago. Pode ficar negativo.
+Mostra o total **já pago** e o que **ainda falta pagar** (inclui as atrasadas), com uma barra que divide os dois.
 
-Mais sobre como o saldo é feito em [carteiras.md](carteiras.md).
+## Para onde vai o dinheiro
 
-### Contas do mês
+Cada categoria aparece com o total do mês e uma barra: a parte **escura** é o que já foi pago e a **azul** é o que ainda falta pagar.
+As categorias vêm ordenadas da maior para a menor. Uma categoria que você arquivou continua aparecendo se tiver contas no mês.
 
-- **Total pago**: soma do que você realmente pagou nas contas do mês.
-- **Total pendente**: o que ainda falta pagar, **incluindo as contas atrasadas**.
+## Tudo por competência
 
-### Por categoria
-
-Uma lista com cada categoria (Moradia, Mercado...), da que **mais pesa** para a que menos pesa. Para cada uma você vê o total do mês e
-quanto desse total já foi pago.
-
-## Como o mês é definido
-
-Tudo é contado pelo **mês de competência**, não pelo dia do pagamento ou do vencimento:
-
-- uma conta de setembro paga em outubro aparece em **setembro**;
-- uma compra parcelada aparece em cada parcela, no mês dela;
-- uma receita aparece no mês a que se refere, mesmo que caia no mês seguinte.
-
-Se uma conta deve contar em outro mês, edite a **Competência** dela.
-
-## Passo a passo: conferir o mês
-
-1. Abra o **Resumo** do mês.
-2. Veja o **Saldo** da carteira livre. Se estiver baixo, confira o **Total pendente**.
-3. Veja o **Saldo** de benefício antes de pagar o mercado com o VR.
-4. Olhe a lista **Por categoria** para achar o que mais pesou.
+O resumo agrupa pelo **mês de competência** das contas e das receitas, não pela data em que o dinheiro se mexeu. A conta de luz de
+setembro paga em outubro entra em **setembro**.
 
 ## E se...
 
-- **O saldo parece baixo demais.** Verifique se o salário e o VR foram marcados como **recebidos**. Receita só prevista não entra no saldo.
-- **Uma conta paga não aparece onde eu esperava.** Confira a **Competência** dela: o resumo usa o mês de competência.
-- **Excluí uma conta ou receita.** Itens excluídos saem do resumo. Se foi engano, use **Desfazer**.
-- **O mês está vazio.** Tudo aparece zerado; não é erro.
-- **Pessoas com acesso só de leitura (`viewer`)** conseguem ver o resumo normalmente, só não lançam nada.
+- **Aparece "Ainda não há receitas neste mês".** Cadastre o salário em **receitas**; o app prevê os próximos meses (veja
+  [salario-e-previsao.md](salario-e-previsao.md)).
+- **O saldo não bate com o meu banco.** É esperado: o resumo usa só o que foi marcado como recebido e como pago, sem saldo anterior.
+- **Falta um pagamento.** Confira se a conta foi marcada como **paga** em **mês**.
