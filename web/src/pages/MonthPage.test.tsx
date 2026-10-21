@@ -148,6 +148,18 @@ describe('pagar', () => {
     expect(await screen.findByText(/paga na carteira de benefício/)).toBeInTheDocument()
   })
 
+  it('avisa, sem bloquear, quando o saldo de benefício do mês fica negativo', async () => {
+    mockApi({
+      me: ok(me),
+      invoices: ok({ items: [invoice({ id: 'i9', description: 'Mercado', categoryId: 'c2' })] }),
+      pay: ok({ invoice: {}, warnings: ['benefit_balance_insufficient'] }),
+    })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Pagar Mercado' }))
+    expect(await screen.findByText(/Atenção: o saldo de benefício deste mês ficou negativo/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument() // o pagamento foi feito e pode ser desfeito
+  })
+
   it('"Desfazer" no aviso desfaz o pagamento', async () => {
     withInvoices()
     renderAt(mes)
