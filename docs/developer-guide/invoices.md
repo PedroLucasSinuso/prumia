@@ -15,7 +15,9 @@ mês do vencimento. O resumo mensal e a tela do mês usam a **competência**: um
 **Pagamento.** `POST .../pay` exige só a `wallet` (`free` ou `benefit`); `paidAt` padrão = hoje e `amountCents` padrão = valor da
 invoice (informe se houve juros ou desconto: o valor pago pode diferir). O `UPDATE` é **condicional** (`paid_at IS NULL`):
 dois toques seguidos, ou duas pessoas ao mesmo tempo, pagam uma vez só e o segundo recebe 409 `already_paid`.
-`DELETE .../pay` desfaz (os quatro campos de pagamento voltam a `NULL`).
+`DELETE .../pay` desfaz (os quatro campos de pagamento voltam a `NULL`). Pagando com `benefit`, a resposta pode trazer
+`warnings: ["benefit_balance_insufficient"]` (saldo estimado do benefício negativo; não bloqueia): regra em
+[incomes-and-wallets.md](incomes-and-wallets.md#7-aviso-de-saldo-de-benefício-ao-pagar).
 
 **Exclusão lógica.** `DELETE` marca `deleted_at`; `POST .../restore` desfaz. Restaurar uma invoice cuja categoria foi excluída
 nesse meio tempo dá 409 `category_deleted`.

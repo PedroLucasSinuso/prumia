@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -21,38 +20,4 @@ func notImplemented(c *gin.Context) {
 	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusNotImplemented, Code: "not_implemented"})
 }
 
-func (Unimplemented) CreateIncome(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
-func (Unimplemented) CreateIncomeSource(c *gin.Context, householdId gen.HouseholdId) {
-	notImplemented(c)
-}
-
-func (Unimplemented) DeleteIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
-	notImplemented(c)
-}
-
 func (Unimplemented) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }
-
-func (Unimplemented) GetMonthlySummary(c *gin.Context, householdId gen.HouseholdId, params gen.GetMonthlySummaryParams) {
-	notImplemented(c)
-}
-
-func (Unimplemented) ListIncomeSources(c *gin.Context, householdId gen.HouseholdId) {
-	notImplemented(c)
-}
-
-func (Unimplemented) ListIncomes(c *gin.Context, householdId gen.HouseholdId, params gen.ListIncomesParams) {
-	notImplemented(c)
-}
-
-func (Unimplemented) ReceiveIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
-	notImplemented(c)
-}
-
-func (Unimplemented) UpdateIncome(c *gin.Context, householdId gen.HouseholdId, incomeId openapi_types.UUID) {
-	notImplemented(c)
-}
-
-func (Unimplemented) UpdateIncomeSource(c *gin.Context, householdId gen.HouseholdId, sourceId openapi_types.UUID, params gen.UpdateIncomeSourceParams) {
-	notImplemented(c)
-}
