@@ -489,6 +489,9 @@ paths:
       tags: [incomes]
       operationId: listIncomes
       summary: Lançamentos do mês (previstos e recebidos)
+      description: |
+        `month` é obrigatório (dia 1). Estende a previsão das fontes até esse mês, se ele estiver além do horizonte
+        (até 60 meses à frente). Todos os membros da casa veem as receitas de todos.
       parameters:
         - { name: month, in: query, required: true, schema: { type: string, format: date } }
       responses:
@@ -528,7 +531,7 @@ paths:
     post:
       tags: [incomes]
       operationId: receiveIncome
-      summary: Marca como recebida
+      summary: Marca como recebida (só esta competência). Receber de novo responde 409 `already_received`.
       requestBody:
         content:
           application/json:
@@ -537,6 +540,14 @@ paths:
               properties: { receivedAt: { type: string, format: date, description: "Padrão hoje" } }
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [incomes]
+      operationId: unreceiveIncome
+      summary: Desfaz o recebimento (volta a previsto). Se não estava recebida, 409 `not_received`.
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
   /households/{householdId}/income-sources:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
     get:
@@ -563,7 +574,7 @@ paths:
       operationId: updateIncomeSource
       summary: Edita a fonte. `applyFrom` reaplica o template aos meses previstos a partir dali.
       parameters:
-        - { name: applyFrom, in: query, schema: { type: string, format: date } }
+        - { name: applyFrom, in: query, description: "Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam.", schema: { type: string, format: date } }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSourcePatch' } } }
@@ -577,6 +588,7 @@ paths:
       tags: [summary]
       operationId: getMonthlySummary
       summary: Resumo do mês por competência, com saldos por carteira
+      description: Estende a previsão (receitas e contas fixas) até o mês pedido, como as listagens. Todos os membros leem.
       parameters:
         - { name: month, in: query, required: true, schema: { type: string, format: date } }
       responses:
@@ -963,8 +975,9 @@ components:
       type: object
       required: [userId, kind, description, competenceMonth, expectedDate, grossAmountCents]
       properties:
-        userId: { type: string, format: uuid }
+        userId: { type: string, format: uuid, description: "Deve ser membro ativo da casa" }
         kind: { type: string, enum: [salary, benefit, other] }
+        wallet: { allOf: [ { $ref: '#/components/schemas/Wallet' } ], description: "Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400." }
         description: { type: string }
         competenceMonth: { $ref: '#/components/schemas/Month' }
         expectedDate: { type: string, format: date }
@@ -981,33 +994,39 @@ components:
         notes: { type: string, nullable: true }
     IncomeSource:
       type: object
-      required: [id, userId, kind, name, grossAmountCents, dayOfMonth, startMonth, deductions]
+      required: [id, userId, kind, wallet, name, grossAmountCents, dayOfMonth, startMonth, deductions]
       properties:
         id: { type: string, format: uuid }
         userId: { type: string, format: uuid }
         kind: { type: string, enum: [salary, benefit, other] }
+        wallet: { $ref: '#/components/schemas/Wallet' }
         name: { type: string }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
         dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
         startMonth: { $ref: '#/components/schemas/Month' }
         endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        generatedThrough: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Último mês com lançamento previsto gerado" }
+        notes: { type: string, nullable: true }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
     IncomeSourceInput:
       type: object
       required: [userId, kind, name, grossAmountCents, dayOfMonth, startMonth]
       properties:
-        userId: { type: string, format: uuid }
+        userId: { type: string, format: uuid, description: "Deve ser membro ativo da casa" }
         kind: { type: string, enum: [salary, benefit, other] }
+        wallet: { allOf: [ { $ref: '#/components/schemas/Wallet' } ], description: "Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400." }
         name: { type: string }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
         dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
         startMonth: { $ref: '#/components/schemas/Month' }
         endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
+        notes: { type: string, nullable: true }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
     IncomeSourcePatch:
       type: object
       properties:
         name: { type: string }
+        notes: { type: string, nullable: true }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
         dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
         endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
@@ -1017,9 +1036,9 @@ components:
       type: object
       required: [expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents]
       properties:
-        expectedIncomeCents: { $ref: '#/components/schemas/Cents' }
-        receivedIncomeCents: { $ref: '#/components/schemas/Cents' }
-        paidCents: { $ref: '#/components/schemas/Cents' }
+        expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (previstas + recebidas)" }
+        receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas já recebidas" }
+        paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Valor efetivamente pago das invoices da competência pagas com esta carteira" }
         balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Recebido - pago (estimativa, não é saldo bancário)" }
     MonthlySummary:
       type: object
@@ -1036,10 +1055,12 @@ components:
         totalPendingCents: { $ref: '#/components/schemas/Cents' }
         byCategory:
           type: array
-          items:
-            type: object
-            required: [categoryId, totalCents]
-            properties:
-              categoryId: { type: string, format: uuid }
-              totalCents: { $ref: '#/components/schemas/Cents' }
-              paidCents: { $ref: '#/components/schemas/Cents' }
+          description: Ordenado por total (maior primeiro). Inclui categorias arquivadas que tenham invoices no mês.
+          items: { $ref: '#/components/schemas/CategoryTotal' }
+    CategoryTotal:
+      type: object
+      required: [categoryId, totalCents, paidCents]
+      properties:
+        categoryId: { type: string, format: uuid }
+        totalCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Pago (valor efetivamente pago) + pendente (valor da invoice) da competência" }
+        paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Parte já paga (valor efetivamente pago)" }

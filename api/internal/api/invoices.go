@@ -12,6 +12,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 )
 
 // HorizonEnsurer estende as ocorrências das recorrências (ver series.RecurrenceService.EnsureHorizon).
@@ -20,11 +21,18 @@ type HorizonEnsurer interface {
 	EnsureHorizon(ctx context.Context, householdID uuid.UUID, requested caldate.Date) error
 }
 
+// BenefitBalancer calcula o saldo estimado da carteira de benefício de uma competência (ver summary.Service).
+// nil = sem aviso de saldo (testes que não montam receitas).
+type BenefitBalancer interface {
+	BenefitBalance(ctx context.Context, householdID uuid.UUID, month caldate.Date) (money.Cents, error)
+}
+
 // Invoices implementa as operações de invoice do contrato.
 type Invoices struct {
 	Svc     *invoice.Service
 	Log     *slog.Logger
 	Horizon HorizonEnsurer
+	Balance BenefitBalancer
 }
 
 func toGenInvoice(v invoice.View) gen.Invoice {
@@ -190,8 +198,30 @@ func (h *Invoices) PayInvoice(c *gin.Context, householdId gen.HouseholdId, invoi
 		writeDomainError(c, h.Log, err)
 		return
 	}
-	// warnings (ex.: saldo de benefício insuficiente) entram na Fase 2, junto com as receitas.
-	c.JSON(http.StatusOK, gen.PayResult{Invoice: toGenInvoice(v), Warnings: &[]string{}})
+	warnings := h.payWarnings(c.Request.Context(), householdId, v)
+	c.JSON(http.StatusOK, gen.PayResult{Invoice: toGenInvoice(v), Warnings: &warnings})
+}
+
+// WarnBenefitBalanceInsufficient é o código estável do aviso devolvido ao pagar com a carteira de benefício.
+const WarnBenefitBalanceInsufficient = "benefit_balance_insufficient"
+
+// payWarnings avisa (sem bloquear) quando o pagamento com a carteira de benefício deixa o saldo estimado da competência
+// da invoice negativo. O saldo já inclui este pagamento (ele foi gravado antes). Se o cálculo falhar, só registra no log:
+// o pagamento está feito e não pode virar erro para o usuário.
+func (h *Invoices) payWarnings(ctx context.Context, householdID uuid.UUID, v invoice.View) []string {
+	warnings := []string{}
+	if h.Balance == nil || v.PaidWallet == nil || *v.PaidWallet != string(gen.WalletBenefit) {
+		return warnings
+	}
+	bal, err := h.Balance.BenefitBalance(ctx, householdID, v.CompetenceMonth)
+	if err != nil {
+		h.Log.Warn("não foi possível calcular o saldo de benefício", "erro", err)
+		return warnings
+	}
+	if bal < 0 {
+		warnings = append(warnings, WarnBenefitBalanceInsufficient)
+	}
+	return warnings
 }
 
 // UnpayInvoice: DELETE /households/{householdId}/invoices/{invoiceId}/pay
