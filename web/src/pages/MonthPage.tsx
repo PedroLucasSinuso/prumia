@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useCategories, useInvoiceActions, useInvoices } from '../api/queries'
+import { getInvoice, useCategories, useExtractBoleto, useInvoiceActions, useInvoices } from '../api/queries'
 import type { Invoice, SeriesScope } from '../api/types'
 import { useAuth } from '../auth/context'
 import { AppShell } from '../components/AppShell'
@@ -43,6 +43,7 @@ export default function MonthPage() {
   const categories = useCategories(houseId)
   const invoices = useInvoices(houseId, month)
   const actions = useInvoiceActions(houseId)
+  const extractBoleto = useExtractBoleto(houseId)
 
   const categoryById = useMemo(() => new Map((categories.data ?? []).map((c) => [c.id, c])), [categories.data])
   const list = useMemo(() => invoices.data ?? [], [invoices.data])
@@ -108,6 +109,17 @@ export default function MonthPage() {
     })
   }
 
+  // Abre a conta que já tem o boleto importado: ela pode ser de outro mês, então pergunta o detalhe e vai até o mês dela.
+  async function openInvoice(id: string) {
+    try {
+      const inv = await getInvoice(houseId, id)
+      setMonth(inv.competenceMonth)
+      setEditing({ kind: 'edit', id })
+    } catch {
+      toast({ message: 'Não foi possível abrir a conta.' })
+    }
+  }
+
   const formProps = {
     month,
     categories: formCategories,
@@ -124,6 +136,9 @@ export default function MonthPage() {
       togglePaid(inv)
       if (!desktop) setEditing(null)
     },
+    // reset() limpa as variáveis da mutação (arquivo e senha) assim que a resposta chega.
+    onExtractBoleto: (file: File, password?: string) => extractBoleto.mutateAsync({ file, password }).finally(() => extractBoleto.reset()),
+    onOpenInvoice: (id: string) => void openInvoice(id),
   }
   const formReady = categories.isSuccess && (editing?.kind === 'new' || editingInvoice !== undefined)
   const empty = invoices.isSuccess && list.length === 0
@@ -281,7 +296,7 @@ export default function MonthPage() {
         </button>
       )}
 
-      {!desktop && editing && formReady && <InvoiceSheet {...formProps} />}
+      {!desktop && editing && formReady && <InvoiceSheet key={editingInvoice ? editingInvoice.id : 'nova'} {...formProps} />}
     </AppShell>
   )
 }
