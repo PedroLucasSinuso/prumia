@@ -76,6 +76,11 @@ type Routes = {
   update?: Reply
   remove?: Reply
   restore?: Reply
+  invite?: Reply
+  resetLink?: Reply
+  passwordReset?: Reply
+  setRole?: Reply
+  removeMember?: Reply
 }
 
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
@@ -100,6 +105,9 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/incomes': r.createIncome,
       '/households/{householdId}/incomes/{incomeId}/receive': r.receive,
       '/households/{householdId}/income-sources': r.createSource,
+      '/households/{householdId}/invites': r.invite,
+      '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
+      '/auth/password-reset': r.passwordReset,
     }
     const reply = pick[url]
     if (reply instanceof Error) throw reply
@@ -108,11 +116,13 @@ export function mockApi(r: Routes = {}) {
     return reply ?? ok()
   }) as never)
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
+    if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
     if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
     return r.update ?? ok()
   }) as never)
   vi.spyOn(api, 'DELETE').mockImplementation((async (url: string) => {
+    if (url === '/households/{householdId}/members/{userId}') return r.removeMember ?? { response: { ok: true } }
     if (url.endsWith('/pay')) return r.unpay ?? ok()
     if (url.endsWith('/receive')) return r.unreceive ?? ok()
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.removeIncome ?? { response: { ok: true } }
