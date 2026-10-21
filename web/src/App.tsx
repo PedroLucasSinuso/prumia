@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 
 import { RedirectIfAuthenticated, RequireAuth } from './auth/RequireAuth'
-import HomePage from './pages/HomePage'
+import MonthPage from './pages/MonthPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 
@@ -13,7 +13,7 @@ export default function App() {
         <Route path="/cadastro" element={<RegisterPage />} />
       </Route>
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<MonthPage />} />
       </Route>
       <Route path="*" element={<RequireAuth />} />
     </Routes>
