@@ -305,7 +305,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       expect(api.PATCH).toHaveBeenCalledWith(
         '/households/{householdId}/invoices/{invoiceId}',
         expect.objectContaining({
-          params: { path: { householdId: 'h1', invoiceId: 'i2' } },
+          params: { path: { householdId: 'h1', invoiceId: 'i2' }, query: { scope: 'this' } },
           body: expect.objectContaining({ description: 'Luz (nov)', amountCents: 20000, notes: null }),
         }),
       ),
