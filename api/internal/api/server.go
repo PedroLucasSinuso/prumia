@@ -37,11 +37,13 @@ type Server struct {
 	*Invoices
 	*Purchases
 	*Recurrences
+	*Incomes
+	*Summaries
 	DB Pinger
 }
 
-func NewServer(db Pinger, a *auth.Handler, h *Households, c *Categories, i *Invoices, p *Purchases, r *Recurrences) Server {
-	return Server{Handler: a, Households: h, Categories: c, Invoices: i, Purchases: p, Recurrences: r, DB: db}
+func NewServer(db Pinger, a *auth.Handler, h *Households, c *Categories, i *Invoices, p *Purchases, r *Recurrences, in *Incomes, sm *Summaries) Server {
+	return Server{Handler: a, Households: h, Categories: c, Invoices: i, Purchases: p, Recurrences: r, Incomes: in, Summaries: sm, DB: db}
 }
 
 // Garantia em tempo de compilação: se Server deixar de satisfazer a interface, o build falha.
