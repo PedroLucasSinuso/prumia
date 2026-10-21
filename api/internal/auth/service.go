@@ -20,7 +20,6 @@ var (
 	ErrInvalidCredentials = errors.New("e-mail ou senha inválidos")
 	ErrEmailTaken         = errors.New("e-mail já cadastrado")
 	ErrRegistrationClosed = errors.New("cadastro livre desativado: peça um convite a um administrador")
-	ErrInviteUnsupported  = errors.New("convites ainda não estão disponíveis")
 	ErrUnauthenticated    = errors.New("não autenticado")
 )
 
@@ -30,6 +29,7 @@ type ValidationError = validation.Error
 type Config struct {
 	SessionTTL       time.Duration // validade da sessão (renovada com o uso)
 	OpenRegistration bool          // permite cadastro sem convite mesmo já havendo usuários
+	ResetTTL         time.Duration // validade do link de redefinição de senha (padrão 1h)
 	Now              func() time.Time
 }
 
@@ -43,6 +43,9 @@ type Service struct {
 func NewService(db *gorm.DB, households *household.Service, cfg Config) (*Service, error) {
 	if cfg.SessionTTL == 0 {
 		cfg.SessionTTL = 30 * 24 * time.Hour
+	}
+	if cfg.ResetTTL == 0 {
+		cfg.ResetTTL = defaultResetTTL
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
@@ -91,7 +94,8 @@ func validateRegister(in RegisterInput) (RegisterInput, error) {
 	if in.HouseholdName == "" {
 		in.HouseholdName = "Minha casa"
 	}
-	if _, err := household.NormalizeName(in.HouseholdName); err != nil {
+	// Com convite o nome da casa é ignorado (o usuário entra na casa do convite), então não o validamos.
+	if _, err := household.NormalizeName(in.HouseholdName); err != nil && in.InviteToken == "" {
 		fields["householdName"] = err.Error()
 	}
 	if len(fields) > 0 {
@@ -102,13 +106,12 @@ func validateRegister(in RegisterInput) (RegisterInput, error) {
 
 // Register cria o usuário. Sem convite, cria também uma casa nova (o usuário é admin). Tudo numa transação.
 // O cadastro sem convite só é aceito para o PRIMEIRO usuário do sistema, salvo OpenRegistration.
+// Com convite, NÃO cria casa: o usuário entra na casa do convite (com o papel dele) e o convite é consumido na
+// mesma transação; se qualquer passo falhar (e-mail repetido, convite inválido), nada é gravado.
 func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (User, string, error) {
 	in, err := validateRegister(in)
 	if err != nil {
 		return User{}, "", err
-	}
-	if in.InviteToken != "" {
-		return User{}, "", ErrInviteUnsupported
 	}
 	hash, err := HashPassword(in.Password) // caro: feito fora da transação para não segurar a conexão
 	if err != nil {
@@ -118,16 +121,18 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (Us
 	var user User
 	var token string
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Trava de aplicação (liberada ao fim da transação): impede dois "primeiros usuários" simultâneos.
-		if err := tx.Exec("SELECT pg_advisory_xact_lock(7101)").Error; err != nil {
-			return err
-		}
-		var users int64
-		if err := tx.Model(&User{}).Count(&users).Error; err != nil {
-			return err
-		}
-		if users > 0 && !s.cfg.OpenRegistration {
-			return ErrRegistrationClosed
+		if in.InviteToken == "" {
+			// Trava de aplicação (liberada ao fim da transação): impede dois "primeiros usuários" simultâneos.
+			if err := tx.Exec("SELECT pg_advisory_xact_lock(7101)").Error; err != nil {
+				return err
+			}
+			var users int64
+			if err := tx.Model(&User{}).Count(&users).Error; err != nil {
+				return err
+			}
+			if users > 0 && !s.cfg.OpenRegistration {
+				return ErrRegistrationClosed
+			}
 		}
 
 		user = User{Email: in.Email, Name: in.Name, PasswordHash: hash}
@@ -137,7 +142,11 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (Us
 			}
 			return fmt.Errorf("criando usuário: %w", err)
 		}
-		if _, err := s.households.CreateWithin(tx, in.HouseholdName, user.ID); err != nil {
+		if in.InviteToken != "" {
+			if _, err := s.households.AcceptWithin(tx, in.InviteToken, user.ID); err != nil {
+				return err
+			}
+		} else if _, err := s.households.CreateWithin(tx, in.HouseholdName, user.ID); err != nil {
 			return err
 		}
 		token, err = s.createSession(tx, user.ID, meta)
