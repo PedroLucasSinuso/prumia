@@ -78,7 +78,7 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 
 ## Receitas, resumo e navegação
 
-- **Navegação** (`AppShell`): mês, receitas e resumo, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
+- **Navegação** (`AppShell`): mês, receitas, resumo e casa, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
   (`?mes=`, `useMonthParam`) acompanha ao trocar de tela.
 - **`pages/SummaryPage`**: "sobra ou falta?" por carteira (`WalletCard`: saldo, previsto, recebido, pago), pago x a pagar e total por
   categoria (barra pago + a pagar). Só lê `GET /summary`; o cálculo é do servidor (recebido − pago, por competência).
@@ -86,6 +86,12 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   um toque recebe, com Desfazer), números do mês, e o bloco de **fontes** (o molde mensal do salário/VR).
   `IncomeForm` ajusta o mês (líquido ao vivo); `SourceForm` cria/edita a fonte, com **reaplicar aos meses previstos** (`applyFrom`) e o aviso
   de que ajustes manuais são sobrescritos. `DeductionsEditor` edita os descontos itemizados (INSS, IRRF, plano, coparticipação, outro).
+- **`pages/HousePage`** (`/casa`): pessoas na linha de prumo (`MembersList`: papel, link de nova senha, remover/sair com confirmação
+  em dois toques), convite (`LinkBox` mostra o link **uma vez**, o servidor não guarda o token), renomear e excluir a casa. O que é só de
+  admin some para os demais (o servidor confere de novo). Sair da casa ou excluí-la encerra a sessão (ainda não há tela com várias casas).
+- **Links públicos** `/convite?token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha?token=`
+  (`ResetPasswordPage`). Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
+  e abre um convite é avisado, nunca consome o convite sem querer. `acceptInvite` (conta existente entrando em 2ª casa) fica para o seletor de casa.
 - **Líquido**: o front só mostra `bruto − descontos` enquanto a pessoa digita (`lib/income.ts`); a fonte da verdade é `netAmountCents` do servidor.
 - **Aviso de VR**: ao pagar na carteira de benefício, `warnings: ["benefit_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
 - Pagar, receber ou criar invalida as listas **e** o resumo (`['summary', casa]`), então os saldos se atualizam sozinhos.

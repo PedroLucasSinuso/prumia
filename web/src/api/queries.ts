@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { unwrap } from './errors'
-import type { Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Member, MonthlySummary, Wallet } from './types'
+import type { Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -168,4 +168,35 @@ export function useSourceActions(houseId: string) {
     onSettled: refresh,
   })
   return { create, update }
+}
+
+/** Ações da casa: renomear, excluir, papéis, remover/sair, convites e link de redefinição de senha (as de admin o servidor confere). */
+export function useHouseActions(houseId: string) {
+  const qc = useQueryClient()
+  const refreshMembers = () => qc.invalidateQueries({ queryKey: keys.members(houseId) })
+  const member = (userId: string) => ({ params: { path: { householdId: houseId, userId } } })
+
+  const rename = useMutation({
+    mutationFn: (name: string) => unwrap(api.PATCH('/households/{householdId}', { params: { path: { householdId: houseId } }, body: { name } })),
+  })
+  const remove = useMutation({
+    mutationFn: () => unwrap(api.DELETE('/households/{householdId}', { params: { path: { householdId: houseId } } })),
+  })
+  const setRole = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: Role }) =>
+      unwrap(api.PATCH('/households/{householdId}/members/{userId}', { ...member(userId), body: { role } })),
+    onSettled: refreshMembers,
+  })
+  const removeMember = useMutation({
+    mutationFn: (userId: string) => unwrap(api.DELETE('/households/{householdId}/members/{userId}', member(userId))),
+    onSettled: refreshMembers,
+  })
+  const invite = useMutation({
+    mutationFn: ({ role, expiresInHours }: { role: Role; expiresInHours: number }): Promise<InviteCreated> =>
+      unwrap(api.POST('/households/{householdId}/invites', { params: { path: { householdId: houseId } }, body: { role, expiresInHours } })),
+  })
+  const resetLink = useMutation({
+    mutationFn: (userId: string) => unwrap(api.POST('/households/{householdId}/members/{userId}/password-reset-link', member(userId))),
+  })
+  return { rename, remove, setRole, removeMember, invite, resetLink }
 }
