@@ -18,6 +18,21 @@ const messages: Record<string, string> = {
   not_implemented: 'Este recurso ainda não está disponível.',
 }
 
+// Leitura de boleto (POST /boletos/extract): códigos do servidor -> texto. `boleto_not_found` = nada válido no arquivo.
+const boletoMessages: Record<string, string> = {
+  file_too_large: 'O arquivo passa de 5 MB. Envie um PDF menor ou uma foto do boleto.',
+  unsupported_file: 'Este arquivo não é PDF, PNG ou JPG. Escolha o PDF, uma foto ou um print do boleto.',
+  boleto_not_found: 'Não consegui ler este boleto. Tente o PDF original ou uma foto mais nítida, ou preencha à mão.',
+  password_required: 'Este PDF tem senha. Digite a senha para abrir.',
+  wrong_password: 'Senha incorreta. Confira e tente de novo.',
+  too_many_requests: messages.too_many_requests,
+}
+
+/** Mensagem de falha ao ler um boleto. Código desconhecido vira "não consegui ler" (nunca o texto cru do servidor). */
+export function boletoErrorMessage(problem: Problem | undefined): string {
+  return (problem?.code && boletoMessages[problem.code]) || boletoMessages.boleto_not_found
+}
+
 export const networkErrorMessage = 'Não foi possível falar com o servidor. Verifique sua conexão.'
 const genericMessage = 'Algo deu errado. Tente de novo em instantes.'
 
