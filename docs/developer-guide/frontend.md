@@ -18,7 +18,7 @@ src/
 │   ├── schema.d.ts   tipos gerados do openapi.yaml (não editar; versionado)
 │   └── client.ts     cliente HTTP tipado (openapi-fetch)
 ├── auth/             sessão: contexto (AuthContext), hook useAuth, proteção de rotas, mensagens de erro
-├── components/       peças da marca (Field, Button, FormError, AuthLayout)
+├── components/       peças da marca (Logo, AppShell, UserMenu, Field, Button, FormError, AuthLayout, Sheet, Toast...)
 ├── pages/            telas (LoginPage, RegisterPage, HomePage)
 ├── lib/              utilitários puros (ex.: money.ts)
 ├── test/setup.ts     configuração dos testes
