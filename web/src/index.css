@@ -16,8 +16,10 @@
   --radius-sm: 4px;
   --radius-md: 6px;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  /* Títulos: Archivo (condensada via font-stretch). Interface: IBM Plex Sans. Valores e marcadores: IBM Plex Mono. */
+  --font-display: 'Archivo Variable', 'Arial Narrow', ui-sans-serif, sans-serif;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 @layer base {

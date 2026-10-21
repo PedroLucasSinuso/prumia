@@ -3,7 +3,8 @@
 App financeiro doméstico privado (pt-BR, BRL). Tagline da marca: *"Clareza para construir o futuro."*
 Leia antes de qualquer tarefa: [docs/product/spec.md](docs/product/spec.md) (o quê), [docs/product/plan.md](docs/product/plan.md) (fases e status),
 [docs/developer-guide/](docs/developer-guide/README.md) (como é construído; schema em `schema.md`),
-[docs/brand/manual-identidade-prumia.md](docs/brand/manual-identidade-prumia.md) (UI; fonte única de cores/tipografia).
+[docs/brand/manual-identidade-prumia.md](docs/brand/manual-identidade-prumia.md) (UI; fonte única de cores/tipografia) e
+[docs/brand/design-direction.md](docs/brand/design-direction.md) (conceito do prumo, leis de UX aplicadas, estados e responsividade).
 
 ## Sobre o dono
 Dev PHP/Laravel. Go é novo para ele e o projeto é "vibecodado": **comente idiomas de Go quando relevante** (ponteiros,
@@ -77,6 +78,7 @@ e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear al
 - **Estilo só com classes do Tailwind 4**: sem CSS escrito à mão para componentes e sem cores fora do `@theme` (`src/index.css`).
   Cores e raios da marca já viram classes (`bg-teal`, `text-signal`, `rounded-md`).
 - Sem gradientes, neon, glassmorphism, `rounded-full`; raio 4–6px; grade 8/16px; borda `1px rgba(49,54,56,.15)`.
+- Fontes: Archivo (títulos, `font-display` + `font-stretch-condensed`), IBM Plex Sans (interface) e IBM Plex Mono (valores: `font-mono`).
 - Números com `tabular-nums`/mono. Marca sempre minúscula: `prumia`. Textos da UI em pt-BR.
 - Status com marcadores `[ ▪ ]` / `[ ▫ ]` / `[ ✖ ]`. Invoices pagas **continuam na lista, riscadas**.
 - Fluxos centrais (cadastrar invoice, marcar paga) em poucos toques; mobile é o uso principal.
