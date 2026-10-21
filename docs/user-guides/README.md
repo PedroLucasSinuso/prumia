@@ -6,7 +6,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 |---|---|---|
 | [primeiros-passos.md](primeiros-passos.md) | pronto | Criar a conta e a casa, entrar e sair |
 | [convidar-pessoas.md](convidar-pessoas.md) | pronto (telas: em breve) | Convidar quem mora com você, mudar papéis, sair da casa e redefinir senhas |
-| cadastrar-e-pagar-contas.md | Fase 1 | Lançar uma conta e marcar como paga em poucos toques |
+| [cadastrar-e-pagar-contas.md](cadastrar-e-pagar-contas.md) | pronto | Lançar uma conta e marcar como paga em poucos toques |
 | parcelas-e-contas-fixas.md | Fase 1 | Registrar compra parcelada e contas que se repetem |
 | salario-e-previsao.md | Fase 2 | Lançar salário, descontos e acompanhar a previsão |
 | carteiras.md | Fase 2 | Entender saldo livre e saldo de benefício (VR) |
