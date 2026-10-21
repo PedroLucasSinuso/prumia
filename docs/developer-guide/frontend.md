@@ -50,6 +50,25 @@ quando a pessoa volta a editá-lo.
 
 O `tsconfig` usa `strict: true`: sem isso o TypeScript não estreita uniões como `ActionResult` (`ok: true | false`).
 
+## Dados do servidor e telas do mês
+
+`api/queries.ts` usa **TanStack Query**: `useCategories`, `useInvoices(casa, mês)` e `useInvoiceActions(casa)` (criar, editar,
+excluir, restaurar, pagar, desfazer). Toda ação invalida `['invoices', casa]`, então a lista do mês se refaz sozinha. `unwrap`
+converte a resposta do cliente tipado em promessa que rejeita com `ApiError` (que carrega o `problem` ou `network`).
+
+- **`pages/MonthPage`**: a visão do mês. O mês escolhido fica na URL (`?mes=2026-10`); sem parâmetro, vale o mês atual.
+  Agrupa por `status` (derivado no servidor): atrasadas, a vencer, pagas. Totais: *a pagar* soma atrasadas e a vencer; *pago* soma
+  o **valor efetivamente pago** (pode diferir do valor da conta).
+- **Pagar com um toque**: `togglePaid` usa a carteira sugerida pela categoria (`defaultWallet`) ou a livre, mostra um aviso com
+  **Desfazer** (`ToastProvider`/`useToast`) e não pergunta nada.
+- **`InvoiceSheet`**: painel de criar/editar (`Sheet` acessível: `role="dialog"`, Esc e toque fora fecham). Erros por campo da API
+  são mapeados para o campo certo (`amountCents` -> Valor). No PATCH, observação vazia vai como `null` para limpar.
+- **`MoneyInput`**: o valor se forma da direita para a esquerda (digitar `9990` mostra `R$ 99,90`) e guarda **centavos inteiros**.
+- **`lib/dates.ts`**: datas como string `AAAA-MM-DD`, sem `Date` do JavaScript (evita o dia "andar" por fuso).
+- Usuário `viewer`: sem botão **+** e sem pagar (o servidor também bloqueia; aqui é só para a tela não prometer o que não pode).
+
+Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `renderAt`).
+
 ## Marca no código
 
 Os tokens estão em `src/index.css` (`@theme`) e viram classes do Tailwind:
