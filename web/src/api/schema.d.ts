@@ -494,7 +494,11 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Lançamentos do mês (previstos e recebidos) */
+        /**
+         * Lançamentos do mês (previstos e recebidos)
+         * @description `month` é obrigatório (dia 1). Estende a previsão das fontes até esse mês, se ele estiver além do horizonte
+         *     (até 60 meses à frente). Todos os membros da casa veem as receitas de todos.
+         */
         get: operations["listIncomes"];
         put?: never;
         /** Lança receita avulsa */
@@ -538,9 +542,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Marca como recebida */
+        /** Marca como recebida (só esta competência). Receber de novo responde 409 `already_received`. */
         post: operations["receiveIncome"];
-        delete?: never;
+        /** Desfaz o recebimento (volta a previsto). Se não estava recebida, 409 `not_received`. */
+        delete: operations["unreceiveIncome"];
         options?: never;
         head?: never;
         patch?: never;
@@ -595,7 +600,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Resumo do mês por competência, com saldos por carteira */
+        /**
+         * Resumo do mês por competência, com saldos por carteira
+         * @description Estende a previsão (receitas e contas fixas) até o mês pedido, como as listagens. Todos os membros leem.
+         */
         get: operations["getMonthlySummary"];
         put?: never;
         post?: never;
@@ -950,10 +958,15 @@ export interface components {
             notes?: string | null;
         };
         IncomeInput: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Deve ser membro ativo da casa
+             */
             userId: string;
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
+            /** @description Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400. */
+            wallet?: components["schemas"]["Wallet"];
             description: string;
             competenceMonth: components["schemas"]["Month"];
             /** Format: date */
@@ -977,35 +990,49 @@ export interface components {
             userId: string;
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
+            wallet: components["schemas"]["Wallet"];
             name: string;
             grossAmountCents: components["schemas"]["Cents"];
             dayOfMonth: number;
             startMonth: components["schemas"]["Month"];
             endMonth?: (string & components["schemas"]["Month"]) | null;
+            /** @description Último mês com lançamento previsto gerado */
+            generatedThrough?: components["schemas"]["Month"];
+            notes?: string | null;
             deductions: components["schemas"]["Deduction"][];
         };
         IncomeSourceInput: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Deve ser membro ativo da casa
+             */
             userId: string;
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
+            /** @description Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400. */
+            wallet?: components["schemas"]["Wallet"];
             name: string;
             grossAmountCents: components["schemas"]["Cents"];
             dayOfMonth: number;
             startMonth: components["schemas"]["Month"];
             endMonth?: (string & components["schemas"]["Month"]) | null;
+            notes?: string | null;
             deductions?: components["schemas"]["Deduction"][];
         };
         IncomeSourcePatch: {
             name?: string;
+            notes?: string | null;
             grossAmountCents?: components["schemas"]["Cents"];
             dayOfMonth?: number;
             endMonth?: (string & components["schemas"]["Month"]) | null;
             deductions?: components["schemas"]["Deduction"][];
         };
         WalletBalance: {
+            /** @description Líquido de todas as receitas da competência na carteira (previstas + recebidas) */
             expectedIncomeCents: components["schemas"]["Cents"];
+            /** @description Líquido das receitas já recebidas */
             receivedIncomeCents: components["schemas"]["Cents"];
+            /** @description Valor efetivamente pago das invoices da competência pagas com esta carteira */
             paidCents: components["schemas"]["Cents"];
             /** @description Recebido - pago (estimativa, não é saldo bancário) */
             balanceCents: components["schemas"]["Cents"];
@@ -1018,12 +1045,16 @@ export interface components {
             };
             totalPaidCents: components["schemas"]["Cents"];
             totalPendingCents: components["schemas"]["Cents"];
-            byCategory: {
-                /** Format: uuid */
-                categoryId: string;
-                totalCents: components["schemas"]["Cents"];
-                paidCents?: components["schemas"]["Cents"];
-            }[];
+            /** @description Ordenado por total (maior primeiro). Inclui categorias arquivadas que tenham invoices no mês. */
+            byCategory: components["schemas"]["CategoryTotal"][];
+        };
+        CategoryTotal: {
+            /** Format: uuid */
+            categoryId: string;
+            /** @description Pago (valor efetivamente pago) + pendente (valor da invoice) da competência */
+            totalCents: components["schemas"]["Cents"];
+            /** @description Parte já paga (valor efetivamente pago) */
+            paidCents: components["schemas"]["Cents"];
         };
     };
     responses: {
@@ -2152,6 +2183,31 @@ export interface operations {
                     "application/json": components["schemas"]["Income"];
                 };
             };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    unreceiveIncome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                incomeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Income"];
+                };
+            };
+            409: components["responses"]["Conflict"];
         };
     };
     listIncomeSources: {
@@ -2205,6 +2261,7 @@ export interface operations {
     updateIncomeSource: {
         parameters: {
             query?: {
+                /** @description Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam. */
                 applyFrom?: string;
             };
             header?: never;
