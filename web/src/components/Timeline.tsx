@@ -1,6 +1,7 @@
 import type { Invoice } from '../api/types'
 import { dayMonth, daysBetween, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
+import { seriesTag } from '../lib/series'
 
 type Props = {
   invoices: Invoice[]
@@ -77,6 +78,7 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
   const paid = invoice.status === 'paid'
   const overdue = invoice.status === 'overdue'
   const node = paid ? 'border-teal bg-teal' : overdue ? 'border-signal bg-signal' : 'border-graphite'
+  const tag = seriesTag(invoice)
   const lateDays = overdue && today ? daysBetween(invoice.dueDate, today) : 0
   const meta = paid && invoice.paid
     ? `paga na carteira ${walletLabel[invoice.paid.wallet]}`
@@ -104,6 +106,7 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
         <span className="min-w-0">
           <span className={`block truncate text-[15px] font-medium ${paid ? 'text-graphite/60 line-through' : ''}`}>{invoice.description}</span>
           <span className="block truncate text-xs text-graphite/80">
+            {tag && <span className="mr-1 rounded-xs border border-graphite/40 px-1 font-mono text-[10px] text-graphite/80">{tag}</span>}
             {category} · {meta}
           </span>
         </span>
