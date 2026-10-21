@@ -11,7 +11,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 | [salario-e-previsao.md](salario-e-previsao.md) | pronto | Lançar salário, descontos e acompanhar a previsão |
 | [carteiras.md](carteiras.md) | pronto | Entender saldo livre e saldo de benefício (VR) |
 | [resumo-do-mes.md](resumo-do-mes.md) | pronto | Ler o resumo e o saldo do mês |
-| importar-boleto.md | Fase 3 | Cadastrar conta a partir de PDF ou print |
+| [importar-boleto.md](importar-boleto.md) | pronto (leitura no servidor: em breve) | Cadastrar conta a partir de PDF, foto ou print |
 | instalar-no-celular.md | Fase 4 | Instalar o app (PWA) e acessar pelo Tailscale |
 
 Os guias são criados junto com a funcionalidade (ver o plano de construção, mantido localmente em `docs/product/plan.md`).

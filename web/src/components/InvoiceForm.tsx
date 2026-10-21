@@ -1,10 +1,12 @@
 import { useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Category, Invoice, InvoiceInput, InvoicePatch } from '../api/types'
+import type { Boleto, BoletoExtraction, Category, Invoice, InvoiceInput, InvoicePatch } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { addDays, dayMonth, fullDate, monthOf, todayISO } from '../lib/dates'
 import { formatCents } from '../lib/money'
+import { BoletoBox } from './BoletoBox'
+import { BoletoImport } from './BoletoImport'
 import { Button } from './Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
@@ -23,6 +25,10 @@ type Props = {
   onDelete: (invoice: Invoice) => void
   onUnpay: (invoice: Invoice) => void
   onPay: (invoice: Invoice) => void
+  /** Lê um boleto (só na criação). Sem ela, o botão "Importar boleto" não aparece. */
+  onExtractBoleto?: (file: File, password?: string) => Promise<BoletoExtraction>
+  /** Abre outra conta (aviso de boleto duplicado). */
+  onOpenInvoice?: (id: string) => void
 }
 
 // Nomes dos campos da API -> nome que o formulário usa para mostrar o erro.
@@ -42,7 +48,7 @@ const chip = (on: boolean) =>
  * Formulário de criar/editar conta. Valor em destaque; vencimento e categoria são BOTÕES visíveis (nada de menu suspenso):
  * menos toques e menos decisões escondidas. "Mais opções" guarda competência e observação.
  */
-export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCreate, onUpdate, onDelete, onUnpay, onPay }: Props) {
+export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCreate, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
@@ -58,11 +64,25 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   const [error, setError] = useState<string>()
   const [fields, setFields] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  // Boleto lido e revisado: vai junto ao criar. `importKey` reinicia a importação ("Adicionar e lançar outra").
+  const [boleto, setBoleto] = useState<Boleto>()
+  const [importKey, setImportKey] = useState(0)
   const descRef = useRef<HTMLInputElement>(null)
 
   const clear = (f: string) => {
     setFields(({ [f]: _removed, ...rest }) => rest)
     setError(undefined)
+  }
+
+  // Pré-preenche com o que o boleto diz; a descrição só se ainda estiver vazia. A pessoa sempre revisa antes de salvar.
+  function applyBoleto({ boleto: b }: BoletoExtraction) {
+    setBoleto({
+      digitableLine: b.digitableLine, barcode: b.barcode, beneficiaryName: b.beneficiaryName,
+      documentAmountCents: b.documentAmountCents, documentDueDate: b.documentDueDate,
+    })
+    if (b.documentAmountCents) { setAmount(b.documentAmountCents); clear('amount') }
+    if (b.documentDueDate) { setDueDate(b.documentDueDate); setOtherDate(true); clear('dueDate') }
+    if (!description.trim() && b.beneficiaryName) { setDescription(b.beneficiaryName); clear('description') }
   }
 
   async function submit(addAnother: boolean) {
@@ -83,12 +103,15 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
           description, amountCents: amount, dueDate, categoryId,
           ...(competenceMonth ? { competenceMonth } : {}),
           ...(notes.trim() ? { notes } : {}),
+          ...(boleto ? { boleto } : {}),
         })
         if (addAnother) {
           // mantém categoria e vencimento (lançar várias contas parecidas) e volta ao começo
           setDescription('')
           setAmount(0)
           setNotes('')
+          setBoleto(undefined)
+          setImportKey((k) => k + 1)
           descRef.current?.focus()
         } else {
           onDone()
@@ -122,6 +145,17 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <FormError message={error} />
+
+      {!editing && canWrite && onExtractBoleto && (
+        <BoletoImport
+          key={importKey}
+          onExtract={onExtractBoleto}
+          onExtracted={applyBoleto}
+          onDiscard={() => setBoleto(undefined)}
+          onManual={() => descRef.current?.focus()}
+          onOpenInvoice={onOpenInvoice}
+        />
+      )}
 
       <MoneyInput hero label="Valor" value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />
 
@@ -200,6 +234,12 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
           <Field label="Observação" name="notes" autoComplete="off" value={notes} disabled={!canWrite} onChange={(e) => { setNotes(e.target.value); clear('notes') }} error={fields.notes} />
         </div>
       </details>
+
+      {editing && invoice.boleto && (
+        <section aria-label="Boleto" className="rounded-md border border-graphite/15 px-3 py-3">
+          <BoletoBox boleto={invoice.boleto} />
+        </section>
+      )}
 
       {inSeries && <p className="text-xs text-graphite/75">Esta conta faz parte de uma série (parcelas ou conta fixa). Aqui você edita só ela.</p>}
 

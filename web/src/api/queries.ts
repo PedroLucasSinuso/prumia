@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
-import { unwrap } from './errors'
-import type { Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import { ApiError, unwrap } from './errors'
+import type { BoletoExtraction, Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, InviteCreated, Member, MonthlySummary, Problem, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -81,6 +81,51 @@ export function useInvoiceActions(houseId: string) {
   })
 
   return { create, update, remove, restore, pay, unpay }
+}
+
+/** Detalhe de uma invoice (inclui o boleto). Usado para abrir uma conta que pode estar em outro mês. */
+export function getInvoice(houseId: string, invoiceId: string): Promise<Invoice> {
+  return unwrap(api.GET('/households/{householdId}/invoices/{invoiceId}', { params: { path: { householdId: houseId, invoiceId } } }))
+}
+
+// Status HTTP -> código estável, para quando a resposta não traz `code` (ex.: 413 devolvido pelo nginx, em HTML).
+const extractStatusCode: Record<number, string> = { 413: 'file_too_large', 422: 'boleto_unreadable', 429: 'too_many_requests' }
+
+/**
+ * Lê um boleto (PDF/PNG/JPG). Nada é salvo no servidor; a pessoa revisa antes de criar a conta.
+ * Envia multipart/form-data: o `bodySerializer` monta o FormData e o openapi-fetch deixa o navegador pôr o boundary.
+ * Falha vira ApiError com `problem.code` sempre preenchido (`password_required`, `file_too_large`...).
+ *
+ * A senha do PDF só passa pela requisição: `gcTime: 0` tira a mutação (e suas variáveis) do cache assim que ninguém a observa,
+ * e quem chama dá `reset()` ao terminar.
+ */
+export function useExtractBoleto(houseId: string) {
+  return useMutation({
+    gcTime: 0,
+    mutationFn: async ({ file, password }: { file: File; password?: string }): Promise<BoletoExtraction> => {
+      let result
+      try {
+        result = await api.POST('/households/{householdId}/boletos/extract', {
+          params: { path: { householdId: houseId } },
+          // O tipo gerado diz `string` para campos binários; em runtime é o File.
+          body: { file: file as unknown as string, ...(password ? { password } : {}) },
+          bodySerializer: (body) => {
+            const form = new FormData()
+            form.append('file', body.file as unknown as Blob)
+            if (body.password) form.append('password', body.password)
+            return form
+          },
+        })
+      } catch {
+        throw new ApiError(undefined, true)
+      }
+      if (result.data) return result.data
+      const problem = typeof result.error === 'object' && result.error !== null ? (result.error as Problem) : undefined
+      const status = problem?.status ?? result.response?.status ?? 0
+      const code = problem?.code ?? extractStatusCode[status] ?? 'boleto_unreadable'
+      throw new ApiError({ title: code, ...problem, status, code })
+    },
+  })
 }
 
 export function useMembers(houseId: string) {
