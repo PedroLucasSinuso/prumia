@@ -52,8 +52,8 @@ Cabeçalho que responde *"quando comprei o notebook e quanto custou?"*: `purchas
 `installments_count`. As parcelas são linhas de `invoices`. Sem agrupamento por fatura de cartão (decisão do usuário).
 
 ### recurrences (conta fixa)
-Gera uma invoice por mês até um horizonte. `generated_through` = último mês materializado; um job/rotina estende
-o horizonte. `day_of_month = 31` vira o último dia de meses curtos.
+Gera uma invoice por mês até um horizonte. `generated_through` = último mês materializado; `EnsureHorizon` (sob demanda, mais o comando `api horizon`) estende
+o horizonte. Ver [series-generation.md](series-generation.md). `day_of_month = 31` vira o último dia de meses curtos.
 
 ### invoices
 - `due_date` (vencimento) e `competence_month` (a que mês o gasto pertence; o resumo mensal usa **este**).
