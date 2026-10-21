@@ -21,7 +21,8 @@ describe('proteção de rotas', () => {
     mockApi({ me: ok(me) })
     renderAt('/')
     expect(await screen.findByText('Casa do Pedro')).toBeInTheDocument()
-    expect(screen.getByText('Pedro')).toBeInTheDocument()
+    // o nome aparece na barra lateral (computador) e no menu da conta (celular); o CSS decide qual se vê
+    expect(screen.getAllByText('Pedro').length).toBeGreaterThan(0)
     expect(await screen.findByText(/Nenhuma conta neste mês/)).toBeInTheDocument()
   })
 
