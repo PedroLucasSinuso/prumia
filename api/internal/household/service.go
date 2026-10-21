@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -36,9 +37,22 @@ var defaultCategories = []struct {
 	{"Outros", "", false},
 }
 
-type Service struct{ db *gorm.DB }
+// Erros de negócio de convites e membros (mapeados para HTTP em um único lugar, no pacote api/auth).
+var (
+	ErrForbidden      = errors.New("apenas administradores da casa")
+	ErrLastAdmin      = errors.New("a casa precisa de ao menos um administrador ativo")
+	ErrInviteInvalid  = errors.New("convite inválido, expirado, usado ou revogado")
+	ErrInviteNotFound = errors.New("convite não encontrado")
+	ErrInviteUsed     = errors.New("convite já foi usado")
+	ErrAlreadyMember  = errors.New("você já faz parte desta casa")
+)
 
-func NewService(db *gorm.DB) *Service { return &Service{db: db} }
+type Service struct {
+	db  *gorm.DB
+	Now func() time.Time // relógio injetável (testes)
+}
+
+func NewService(db *gorm.DB) *Service { return &Service{db: db, Now: time.Now} }
 
 // NormalizeName valida e limpa o nome.
 func NormalizeName(name string) (string, error) {

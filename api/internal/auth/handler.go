@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
+	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/ratelimit"
 )
@@ -20,7 +21,7 @@ type Handler struct {
 	log    *slog.Logger
 
 	// Limites contra força bruta: por IP e por e-mail (o do e-mail impede varrer uma conta de vários IPs).
-	loginIP, loginEmail, registerIP *ratelimit.Limiter
+	loginIP, loginEmail, registerIP, resetIP *ratelimit.Limiter
 }
 
 func NewHandler(svc *Service, cookie CookieConfig, log *slog.Logger) *Handler {
@@ -29,6 +30,7 @@ func NewHandler(svc *Service, cookie CookieConfig, log *slog.Logger) *Handler {
 		loginIP:    ratelimit.New(6*time.Second, 10), // 10 tentativas seguidas, depois 10/min
 		loginEmail: ratelimit.New(12*time.Second, 5), // 5 seguidas, depois 5/min
 		registerIP: ratelimit.New(12*time.Second, 5),
+		resetIP:    ratelimit.New(12*time.Second, 5),
 	}
 }
 
@@ -51,8 +53,16 @@ func (h *Handler) writeError(c *gin.Context, err error) {
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusConflict, Code: "email_taken", Detail: err.Error()})
 	case errors.Is(err, ErrRegistrationClosed):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusForbidden, Code: "registration_closed", Detail: err.Error()})
-	case errors.Is(err, ErrInviteUnsupported):
-		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusNotImplemented, Code: "not_implemented", Detail: err.Error()})
+	case errors.Is(err, household.ErrInviteInvalid):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "invalid_invite", Detail: err.Error()})
+	case errors.Is(err, ErrInvalidResetToken):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "invalid_reset_token", Detail: err.Error()})
+	case errors.Is(err, ErrResetNotAllowed):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusForbidden, Code: "reset_not_allowed", Detail: err.Error()})
+	case errors.Is(err, household.ErrForbidden):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: err.Error()})
+	case errors.Is(err, household.ErrNotFound):
+		httpx.NotFound(c)
 	default:
 		h.log.Error("erro inesperado", "erro", err, "rota", c.FullPath())
 		httpx.Internal(c)
@@ -136,4 +146,36 @@ func (h *Handler) respondMe(c *gin.Context, status int, user User) {
 		return
 	}
 	c.JSON(status, me)
+}
+
+// CreatePasswordResetLink: POST /households/{householdId}/members/{userId}/password-reset-link.
+// Só admin; e só se o solicitante administra TODAS as casas ativas do alvo (regra no serviço).
+func (h *Handler) CreatePasswordResetLink(c *gin.Context, householdId gen.HouseholdId, userId gen.UserId) {
+	if !RequireAdmin(c) {
+		return
+	}
+	tok, expires, err := h.svc.CreateResetLink(c.Request.Context(), householdId, CurrentUser(c).ID, userId)
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"token": tok, "expiresAt": expires})
+}
+
+// ResetPassword: POST /auth/password-reset (pública). Troca a senha e encerra todas as sessões do usuário.
+func (h *Handler) ResetPassword(c *gin.Context) {
+	if !h.resetIP.Allow(c.ClientIP()) {
+		tooMany(c)
+		return
+	}
+	var body gen.ResetPasswordJSONRequestBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "bad_request", Detail: "corpo JSON inválido"})
+		return
+	}
+	if err := h.svc.ResetPassword(c.Request.Context(), body.Token, body.NewPassword); err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
