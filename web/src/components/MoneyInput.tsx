@@ -8,6 +8,8 @@ type Props = {
   onChange: (cents: number) => void
   error?: string
   id?: string
+  /** Rótulo só para leitores de tela (campos em linha, como o valor de um desconto). */
+  hideLabel?: boolean
   /** `hero`: o valor em destaque (números grandes num bloco com borda teal), usado ao cadastrar uma conta. */
   hero?: boolean
 }
@@ -16,11 +18,11 @@ type Props = {
  * Campo de dinheiro: a pessoa digita só números e o valor vai se formando da direita para a esquerda
  * ("1", "15", "150", ... => R$ 0,01, R$ 0,15, R$ 1,50). Teclado numérico no celular. Guarda centavos (inteiro).
  */
-export function MoneyInput({ label, value, onChange, error, id, hero }: Props) {
+export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel }: Props) {
   const auto = useId()
   const fieldId = id ?? auto
   const label_ = (
-    <label htmlFor={fieldId} className="text-xs font-medium uppercase tracking-wider text-graphite/80">
+    <label htmlFor={fieldId} className={hideLabel ? 'sr-only' : 'text-xs font-medium uppercase tracking-wider text-graphite/80'}>
       {label}
     </label>
   )

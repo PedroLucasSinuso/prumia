@@ -76,6 +76,20 @@ converte a resposta do cliente tipado em promessa que rejeita com `ApiError` (qu
 
 Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `renderAt`).
 
+## Receitas, resumo e navegação
+
+- **Navegação** (`AppShell`): mês, receitas e resumo, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
+  (`?mes=`, `useMonthParam`) acompanha ao trocar de tela.
+- **`pages/SummaryPage`**: "sobra ou falta?" por carteira (`WalletCard`: saldo, previsto, recebido, pago), pago x a pagar e total por
+  categoria (barra pago + a pagar). Só lê `GET /summary`; o cálculo é do servidor (recebido − pago, por competência).
+- **`pages/IncomesPage`**: receitas do mês numa linha de prumo de entradas (`IncomeList`: nó cobalto, oco = previsto, cheio = recebido;
+  um toque recebe, com Desfazer), números do mês, e o bloco de **fontes** (o molde mensal do salário/VR).
+  `IncomeForm` ajusta o mês (líquido ao vivo); `SourceForm` cria/edita a fonte, com **reaplicar aos meses previstos** (`applyFrom`) e o aviso
+  de que ajustes manuais são sobrescritos. `DeductionsEditor` edita os descontos itemizados (INSS, IRRF, plano, coparticipação, outro).
+- **Líquido**: o front só mostra `bruto − descontos` enquanto a pessoa digita (`lib/income.ts`); a fonte da verdade é `netAmountCents` do servidor.
+- **Aviso de VR**: ao pagar na carteira de benefício, `warnings: ["benefit_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
+- Pagar, receber ou criar invalida as listas **e** o resumo (`['summary', casa]`), então os saldos se atualizam sozinhos.
+
 ## Marca no código
 
 Os tokens estão em `src/index.css` (`@theme`) e viram classes do Tailwind:
