@@ -36,6 +36,38 @@
     {
       "key": "due_month",
       "value": ""
+    },
+    {
+      "key": "ana_email",
+      "value": ""
+    },
+    {
+      "key": "ana_id",
+      "value": ""
+    },
+    {
+      "key": "pedro_id",
+      "value": ""
+    },
+    {
+      "key": "invite_token",
+      "value": ""
+    },
+    {
+      "key": "invite_id",
+      "value": ""
+    },
+    {
+      "key": "revoked_invite_id",
+      "value": ""
+    },
+    {
+      "key": "revoked_invite_token",
+      "value": ""
+    },
+    {
+      "key": "reset_token",
+      "value": ""
     }
   ],
   "item": [
@@ -1285,7 +1317,1402 @@
       ]
     },
     {
-      "name": "6. Encerrar",
+      "name": "6. Convites, papéis e redefinição de senha",
+      "item": [
+        {
+          "name": "Gerar e-mail da Ana (variável)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/healthz",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "healthz"
+              ]
+            },
+            "description": "Só prepara um e-mail único para a Ana a cada execução. Rode logado como Pedro (admin)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"ana_email\", \"ana.\" + Date.now() + \"@exemplo.com\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convite com validade inválida (169h)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"member\",\n  \"expiresInHours\": 169\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 validation_error\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"validation_error\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar convite (member, 24h)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"member\",\n  \"expiresInHours\": 24\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; o token só aparece nesta resposta\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.role).to.eql(\"member\");",
+                  "  const horas = (new Date(b.expiresAt) - Date.now()) / 36e5;",
+                  "  pm.expect(horas).to.be.within(23, 25);",
+                  "  pm.collectionVariables.set(\"invite_token\", b.token);",
+                  "  pm.collectionVariables.set(\"invite_id\", b.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar e revogar um convite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"viewer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 (validade padrão 48h)\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const b = pm.response.json();",
+                  "  pm.expect((new Date(b.expiresAt) - Date.now()) / 36e5).to.be.within(47, 49);",
+                  "  pm.collectionVariables.set(\"revoked_invite_id\", b.id);",
+                  "  pm.collectionVariables.set(\"revoked_invite_token\", b.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revogar o convite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invites/{{revoked_invite_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invites",
+                "{{revoked_invite_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout do Pedro",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastro da Ana com o convite revogado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana\",\n  \"email\": \"{{ana_email}}\",\n  \"password\": \"senha-muito-segura\",\n  \"inviteToken\": \"{{revoked_invite_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Convite revogado não vale. Nenhum usuário é criado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 invalid_invite\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"invalid_invite\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastro da Ana com o convite válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana\",\n  \"email\": \"{{ana_email}}\",\n  \"password\": \"senha-muito-segura\",\n  \"inviteToken\": \"{{invite_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O cadastro livre está fechado; o convite é a porta de entrada. O cookie agora é o da Ana."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201: entra na casa do Pedro como member, sem casa nova\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const me = pm.response.json();",
+                  "  pm.expect(me.households).to.have.length(1);",
+                  "  pm.expect(me.households[0].id).to.eql(pm.collectionVariables.get(\"household_id\"));",
+                  "  pm.expect(me.households[0].role).to.eql(\"member\");",
+                  "  pm.collectionVariables.set(\"ana_id\", me.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reusar o mesmo convite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invites/accept",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invites",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{invite_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Uso único: o token já foi consumido pelo cadastro da Ana."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 invalid_invite\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"invalid_invite\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana (member) não gera convite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 forbidden\", () => { pm.response.to.have.status(403); pm.expect(pm.response.json().code).to.eql(\"forbidden\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana (member) não renomeia a casa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invadida\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 forbidden\", () => { pm.response.to.have.status(403); pm.expect(pm.response.json().code).to.eql(\"forbidden\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana (member) não muda papéis",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{ana_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{ana_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Escalada de privilégio: member não pode se promover."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 forbidden\", () => { pm.response.to.have.status(403); pm.expect(pm.response.json().code).to.eql(\"forbidden\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login do Pedro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pedro@exemplo.com\",\n  \"password\": \"senha-muito-segura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => { pm.response.to.have.status(200); pm.collectionVariables.set(\"pedro_id\", pm.response.json().id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Membros: Pedro admin e Ana member",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"a Ana aparece como member\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const ana = pm.response.json().find(m => m.userId === pm.collectionVariables.get(\"ana_id\"));",
+                  "  pm.expect(ana.role).to.eql(\"member\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedro rebaixa a Ana para viewer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{ana_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{ana_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"viewer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 viewer\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().role).to.eql(\"viewer\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Papel inválido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{ana_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{ana_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"chefe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 validation_error\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"validation_error\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Último admin não se rebaixa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{pedro_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{pedro_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A casa precisa de pelo menos um admin ativo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 last_admin\", () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql(\"last_admin\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Último admin não sai",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{pedro_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{pedro_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 last_admin\", () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql(\"last_admin\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gerar link de redefinição para a Ana",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{ana_id}}/password-reset-link",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{ana_id}}",
+                "password-reset-link"
+              ]
+            },
+            "description": "Permitido porque a Ana só participa de casas que o Pedro administra (a dele)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; token só nesta resposta, validade ~1h\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect((new Date(b.expiresAt) - Date.now()) / 6e4).to.be.within(58, 61);",
+                  "  pm.collectionVariables.set(\"reset_token\", b.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Link de redefinição para quem não é da casa",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/00000000-0000-7000-8000-000000000000/password-reset-link",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "00000000-0000-7000-8000-000000000000",
+                "password-reset-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Redefinir com senha curta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/password-reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"newPassword\": \"curta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Rota pública. A senha curta não gasta o token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 validation_error\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"validation_error\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Redefinir com token inventado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/password-reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"inventado\",\n  \"newPassword\": \"nova-senha-da-ana-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 invalid_reset_token\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"invalid_reset_token\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Redefinir a senha da Ana",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/password-reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"newPassword\": \"nova-senha-da-ana-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reusar o link de redefinição",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/password-reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"newPassword\": \"outra-senha-da-ana-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 invalid_reset_token\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"invalid_reset_token\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana: senha antiga não vale mais",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ana_email}}\",\n  \"password\": \"senha-muito-segura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 invalid_credentials\", () => { pm.response.to.have.status(401); pm.expect(pm.response.json().code).to.eql(\"invalid_credentials\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana entra com a senha nova",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ana_email}}\",\n  \"password\": \"nova-senha-da-ana-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana (viewer) não escreve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Proibida\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 read_only\", () => { pm.response.to.have.status(403); pm.expect(pm.response.json().code).to.eql(\"read_only\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana (viewer) sai da casa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members/{{ana_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members",
+                "{{ana_id}}"
+              ]
+            },
+            "description": "Qualquer membro pode sair, inclusive viewer. A linha não é apagada: ganha left_at."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana perde o acesso à casa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login do Pedro (de novo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pedro@exemplo.com\",\n  \"password\": \"senha-muito-segura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ana não aparece mais nos membros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/members",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "members"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"só o Pedro\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().some(m => m.userId === pm.collectionVariables.get(\"ana_id\"))).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renomear a casa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Casa do Pedro (renomeada)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 e novo nome\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().name).to.eql(\"Casa do Pedro (renomeada)\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renomear com nome vazio",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 validation_error\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql(\"validation_error\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Voltar o nome da casa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Casa do Pedro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Encerrar",
       "item": [
         {
           "name": "Logout",

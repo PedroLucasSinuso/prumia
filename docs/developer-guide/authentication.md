@@ -21,7 +21,60 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
 - **Só o primeiro usuário do sistema** pode se cadastrar sem convite. Depois disso, 403 `registration_closed`.
   (Uma trava de aplicação no Postgres impede dois "primeiros usuários" simultâneos.)
 - `OPEN_REGISTRATION=true` no `.env` libera cadastro sem convite para qualquer um. Mantenha `false`.
-- Convites (`inviteToken`) ainda respondem 501; chegam no próximo PR da Fase 1.
+- Com `inviteToken` o cadastro **não cria casa**: o usuário entra na casa do convite, com o papel do convite (ver [Convites](#convites)). Nesse caso o cadastro funciona mesmo com o cadastro livre fechado.
+
+## Convites
+
+O admin gera um convite por link/código; não há e-mail (spec, seção 3).
+
+- `POST /households/{id}/invites` (admin): corpo `{role, expiresInHours}`. Validade padrão **48 h**, de 1 a **168 h**
+  (7 dias); fora disso, 400 `validation_error`. Devolve o **token uma única vez**; no banco fica só o SHA-256
+  (`household_invites.token_hash`). Quem perder o token gera outro.
+- `DELETE /households/{id}/invites/{inviteId}` (admin): revoga (`revoked_at`). Revogar duas vezes é sucesso;
+  convite já usado dá 409 `invite_used`; convite de outra casa dá 404 (o filtro por `household_id` vale também aqui).
+- `POST /invites/accept` (logado): o usuário entra na casa do convite. A casa vem **do convite**, nunca do corpo.
+- `POST /auth/register` com `inviteToken`: cria o usuário e o coloca na casa do convite, **sem criar casa nova**
+  (o `householdName` é ignorado), tudo numa transação: e-mail repetido ou convite inválido não deixam nada gravado.
+- **Uso único e atômico.** Um único `UPDATE ... WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+  AND casa não excluída ... RETURNING` marca `used_at/used_by`. Com duas requisições simultâneas o Postgres serializa o
+  UPDATE e só uma enxerga a linha pendente (teste com 8 aceites em paralelo: 1 sucesso, 7 `400`).
+- **Erro estável**: token inexistente, expirado, usado, revogado ou de casa excluída respondem todos
+  `400 invalid_invite`, sem dizer o motivo (não ajuda quem tenta adivinhar).
+- Quem já é membro ativo recebe `409 already_member`, e o convite **não é consumido** (a transação é desfeita).
+  O papel atual não muda (aceitar um convite `viewer` não rebaixa um admin).
+- Convites pendentes de quem deixa de ser admin (saiu, foi removido ou rebaixado) são revogados na hora.
+
+## Membros e papéis
+
+- `PATCH /households/{id}/members/{userId}` (admin) muda o papel. `DELETE` remove (admin) ou é a **saída** do
+  próprio usuário (qualquer papel, inclusive `viewer`). Remover outra pessoa exige admin.
+- **Sempre há pelo menos 1 admin ativo**: rebaixar, remover ou sair sendo o último admin dá `409 last_admin`. As linhas
+  dos membros ativos são travadas (`SELECT ... FOR UPDATE`) durante a checagem, então dois admins se rebaixando ao
+  mesmo tempo não zeram os admins (um dos dois toma 409).
+- Sair **nunca apaga a linha**: define `left_at`. Quem saiu perde o acesso na hora (404, como não-membro) e some
+  da listagem, mas invoices antigas que o citam continuam válidas.
+- **Reentrada** (decisão): a chave primária é `(household_id, user_id)`, então quem saiu e aceita um novo convite
+  **reativa a mesma linha**: `left_at` volta a ser nulo, o papel passa a ser o do novo convite e `joined_at` é renovado.
+- Última pessoa da casa que queira sair: exclua a casa (`DELETE /households/{id}`, admin, exclusão lógica com `deleted_at`).
+  `PATCH /households/{id}` (admin) renomeia (1 a 80 caracteres).
+- As regras de papel estão **no serviço** (`household.Service`), não só no handler: cada operação confere o papel de
+  quem pede na própria transação. Os handlers admin ainda chamam `auth.RequireAdmin(c)` logo no início.
+
+## Redefinição de senha (sem e-mail)
+
+Um admin gera um link e o entrega por fora (WhatsApp, pessoalmente). Fase 2 troca isso por e-mail.
+
+- `POST /households/{id}/members/{userId}/password-reset-link` (admin): devolve `{token, expiresAt}`; validade **1 h**
+  (`Config.ResetTTL`), token só em hash em `password_reset_tokens`. Gerar um novo link apaga os pendentes do mesmo usuário.
+- **Regra de segurança**: só é permitido se o solicitante é **admin ativo de TODAS as casas ativas do alvo**. Sem isso,
+  um admin poderia tomar a conta de quem também participa de casas que ele não administra e ler os dados delas. Violação:
+  `403 reset_not_allowed`. O alvo precisa ser membro ativo da casa da URL (senão 404).
+- `POST /auth/password-reset` (pública, limitada a 5 seguidas + 5/min por IP): `{token, newPassword}`. A senha é
+  validada **antes** de gastar o token (10 a 128 caracteres). Token inexistente, expirado ou usado: `400 invalid_reset_token`.
+- Ao concluir, **todas as sessões do usuário são apagadas** (quem tinha a senha antiga ou uma sessão roubada é
+  desconectado) e os demais links pendentes dele caem. Uso único pelo mesmo `UPDATE` condicional dos convites.
+- No uso, a regra do escopo é **conferida de novo**: se o alvo entrou numa casa que o solicitante não administra
+  depois de o link ser gerado, o link vira inválido (transação desfeita, senha intacta).
 
 ## Onde ficam as regras de acesso
 
@@ -42,9 +95,12 @@ do corpo da requisição: ele vem da rota autorizada. O banco reforça o isolame
 ## Como testar
 
 - `make test`: testes de ponta a ponta contra Postgres real (`internal/api/*_test.go`): cadastro, sessão (com relógio
-  controlado), isolamento entre casas, `viewer`, CSRF, rate limit, cookie `Secure`.
-- **Postman**: importe `docs/developer-guide/postman/prumia.postman_collection.json` (14 requisições com asserções).
-  Variável `base_url` = `http://localhost:8080`. Rode as pastas em ordem; o Postman guarda o cookie sozinho. Em linha de
+  controlado), isolamento entre casas, `viewer`, CSRF, rate limit, cookie `Secure`. `convites_test.go` cobre convites
+  (hash no banco, uso único e corrida, expiração, revogação), papéis, último admin, saída/reentrada, casa e redefinição
+  de senha (escopo multi-casa, sessões encerradas).
+- **Postman**: importe `docs/developer-guide/postman/prumia.postman_collection.json` (66 requisições com asserções).
+  Variável `base_url` = `http://localhost:8080`. Rode as pastas em ordem; o Postman guarda o cookie sozinho (a pasta 6 alterna entre Pedro e Ana trocando de login).
+  Contra um banco já usado, o limite de tentativas de login (5 seguidas por e-mail) pode dar 429 em execuções seguidas: espere um minuto. Em linha de
   comando: `npx newman run docs/developer-guide/postman/prumia.postman_collection.json`.
 
 ## Armadilhas já encontradas
