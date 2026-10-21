@@ -103,7 +103,7 @@ export function mockApi(r: Routes = {}) {
   vi.spyOn(api, 'POST').mockImplementation((async (url: string, init?: { body?: unknown }) => {
     if (url === '/households/{householdId}/boletos/extract') {
       const body = init?.body as { file: File; password?: string }
-      return (typeof r.extract === 'function' ? r.extract(body) : r.extract) ?? fail(422, 'boleto_unreadable')
+      return (typeof r.extract === 'function' ? r.extract(body) : r.extract) ?? fail(422, 'boleto_not_found')
     }
     const pick: Record<string, Reply | Error | undefined> = {
       '/auth/login': r.login, '/auth/register': r.register, '/auth/logout': r.logout,

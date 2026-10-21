@@ -33,6 +33,9 @@ Um aviso confirma a cópia. A linha é copiada só com os números, do jeito que
   funcionar melhor que uma foto) ou em **Preencher manualmente** para digitar você mesmo.
 - **Aparece "Senha incorreta".** Confira a senha (muitos bancos usam parte do CPF) e toque em **Abrir PDF** de novo. Para desistir,
   toque em **Cancelar**.
+- **Aparece "Este arquivo não é PDF, PNG ou JPG".** Escolha o PDF do boleto, uma foto ou um print.
+- **Ao salvar, aparece "A linha digitável deste boleto é inválida".** Toque em **Importar outro boleto** para ler de novo, ou apague o boleto
+  preenchendo manualmente: feche a tela e lance a conta sem importar.
 - **Aparece "O arquivo passa de 5 MB".** Use o PDF do boleto ou uma foto/print menor.
 - **Aparece "Muitas tentativas".** Espere um minuto e toque em **Tentar de novo**.
 - **Importei o boleto errado.** No quadro de conferência, toque em **Importar outro boleto**.

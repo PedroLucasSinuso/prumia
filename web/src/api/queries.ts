@@ -89,7 +89,7 @@ export function getInvoice(houseId: string, invoiceId: string): Promise<Invoice>
 }
 
 // Status HTTP -> código estável, para quando a resposta não traz `code` (ex.: 413 devolvido pelo nginx, em HTML).
-const extractStatusCode: Record<number, string> = { 413: 'file_too_large', 422: 'boleto_unreadable', 429: 'too_many_requests' }
+const extractStatusCode: Record<number, string> = { 413: 'file_too_large', 422: 'boleto_not_found', 429: 'too_many_requests' }
 
 /**
  * Lê um boleto (PDF/PNG/JPG). Nada é salvo no servidor; a pessoa revisa antes de criar a conta.
@@ -122,7 +122,7 @@ export function useExtractBoleto(houseId: string) {
       if (result.data) return result.data
       const problem = typeof result.error === 'object' && result.error !== null ? (result.error as Problem) : undefined
       const status = problem?.status ?? result.response?.status ?? 0
-      const code = problem?.code ?? extractStatusCode[status] ?? 'boleto_unreadable'
+      const code = problem?.code ?? extractStatusCode[status] ?? 'boleto_not_found'
       throw new ApiError({ title: code, ...problem, status, code })
     },
   })
