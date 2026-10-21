@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api/client'
 import { fail, invoice, mockApi, ok, me, renderAt, viewerMe } from '../test/utils'
@@ -13,52 +13,99 @@ const feira = invoice({
 })
 const mes = '/?mes=2026-10'
 
-const withInvoices = () => mockApi({ me: ok(me), invoices: ok({ items: [aluguel, luz, feira] }) })
+const withInvoices = () => mockApi({ me: ok(me), invoices: ok({ items: [aluguel, feira, luz] }) })
+
+// "Hoje" fixo (20/10/2026): decide se o mês exibido é o atual (separador "hoje") e quantos dias de atraso aparecem.
+// Só o Date é falsificado; os timers continuam reais (o Testing Library depende deles).
+beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 9, 20, 12))
+})
+afterEach(() => {
+  vi.useRealTimers()
+  // @ts-expect-error: remove o matchMedia simulado pelos testes de computador
+  delete window.matchMedia
+})
+
+function mockDesktop() {
+  window.matchMedia = ((query: string) => ({
+    matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {},
+  })) as never
+}
 
 describe('visão do mês', () => {
-  beforeEach(() => vi.restoreAllMocks())
-
-  it('agrupa em atrasadas, a vencer e pagas, com os totais do mês', async () => {
+  it('mostra o que falta pagar, o medidor e o total', async () => {
     withInvoices()
     renderAt(mes)
     expect(await screen.findByRole('heading', { name: 'outubro de 2026' })).toBeInTheDocument()
-    expect(await screen.findByRole('region', { name: 'Atrasadas' })).toHaveTextContent('Atrasadas · 1')
-    expect(screen.getByRole('region', { name: 'A vencer' })).toHaveTextContent('A vencer · 1')
-    expect(screen.getByRole('region', { name: 'Pagas' })).toHaveTextContent('Pagas · 1')
-    // a pagar = atrasada + a vencer (R$ 1.500 + R$ 200); pago usa o valor efetivamente pago (R$ 300, não R$ 320)
-    expect(screen.getByText('R$ 1.700,00')).toBeInTheDocument()
-    expect(screen.getByText('R$ 300,00', { selector: 'p' })).toBeInTheDocument()
+    // a pagar = atrasada + a vencer (R$ 1.500 + R$ 200)
+    expect(await screen.findByText('R$ 1.700,00')).toBeInTheDocument()
+    // medidor: pago por valor = 32.000 de 202.000 = 16%
+    expect(screen.getByRole('img', { name: /16% do valor do mês já foi pago/ })).toBeInTheDocument()
+    // pago usa o valor efetivamente pago (R$ 300, e não os R$ 320 da conta)
+    expect(screen.getByText('R$ 300,00')).toBeInTheDocument()
   })
 
-  it('conta paga continua na lista, riscada', async () => {
+  it('lista as contas por data, com o separador "hoje" entre as vencidas e as futuras', async () => {
     withInvoices()
     renderAt(mes)
-    const pagas = await screen.findByRole('region', { name: 'Pagas' })
-    expect(within(pagas).getByText('Feira')).toHaveClass('line-through')
-    expect(within(pagas).getByText(/benefício/)).toBeInTheDocument()
+    const hoje = await screen.findByText(/HOJE · 20\/10/)
+    const antes = screen.getByRole('button', { name: 'Detalhes de Aluguel' })
+    const depois = screen.getByRole('button', { name: 'Detalhes de Luz' })
+    expect(antes.compareDocumentPosition(hoje) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(hoje.compareDocumentPosition(depois) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('consulta o mês pedido na URL', async () => {
+  it('diz há quantos dias a conta está atrasada', async () => {
+    withInvoices()
+    renderAt(mes)
+    expect(await screen.findByText(/atrasada 15 dias/)).toBeInTheDocument()
+  })
+
+  it('conta paga continua na lista, riscada, com a carteira usada', async () => {
+    withInvoices()
+    renderAt(mes)
+    expect(await screen.findByText('Feira')).toHaveClass('line-through')
+    expect(screen.getByText(/paga na carteira benefício/)).toBeInTheDocument()
+  })
+
+  it('o filtro mostra só o que falta pagar, ou só as pagas', async () => {
+    withInvoices()
+    renderAt(mes)
+    await screen.findByText('Feira')
+    await userEvent.click(screen.getByRole('button', { name: /A pagar/ }))
+    expect(screen.queryByText('Feira')).not.toBeInTheDocument()
+    expect(screen.getByText('Aluguel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /A pagar/ })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: /Pagas/ }))
+    expect(screen.getByText('Feira')).toBeInTheDocument()
+    expect(screen.queryByText('Aluguel')).not.toBeInTheDocument()
+  })
+
+  it('em outro mês não há separador "hoje"', async () => {
+    mockApi({ me: ok(me), invoices: ok({ items: [invoice({ id: 'x', description: 'Seguro', dueDate: '2026-11-10' })] }) })
+    renderAt('/?mes=2026-11')
+    await screen.findByText('Seguro')
+    expect(screen.queryByText(/HOJE/)).not.toBeInTheDocument()
+  })
+
+  it('a régua resume o dia mais pesado para leitores de tela', async () => {
+    withInvoices()
+    renderAt(mes)
+    expect(await screen.findByRole('img', { name: /Régua do mês\. O dia mais pesado é 05, com R\$ 1\.500,00/ })).toBeInTheDocument()
+  })
+
+  it('consulta o mês pedido na URL e navega para o próximo', async () => {
     withInvoices()
     renderAt('/?mes=2027-03')
     expect(await screen.findByRole('heading', { name: 'março de 2027' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Próximo mês' }))
+    expect(await screen.findByRole('heading', { name: 'abril de 2027' })).toBeInTheDocument()
     await waitFor(() =>
       expect(api.GET).toHaveBeenCalledWith(
         '/households/{householdId}/invoices',
-        expect.objectContaining({ params: expect.objectContaining({ query: expect.objectContaining({ month: '2027-03-01' }) }) }),
-      ),
-    )
-  })
-
-  it('navega para o próximo mês', async () => {
-    withInvoices()
-    renderAt(mes)
-    await userEvent.click(await screen.findByRole('button', { name: 'Próximo mês' }))
-    expect(await screen.findByRole('heading', { name: 'novembro de 2026' })).toBeInTheDocument()
-    await waitFor(() =>
-      expect(api.GET).toHaveBeenCalledWith(
-        '/households/{householdId}/invoices',
-        expect.objectContaining({ params: expect.objectContaining({ query: expect.objectContaining({ month: '2026-11-01' }) }) }),
+        expect.objectContaining({ params: expect.objectContaining({ query: expect.objectContaining({ month: '2027-04-01' }) }) }),
       ),
     )
   })
@@ -78,8 +125,6 @@ describe('visão do mês', () => {
 })
 
 describe('pagar', () => {
-  beforeEach(() => vi.restoreAllMocks())
-
   it('um toque paga com a carteira livre quando a categoria não sugere nenhuma', async () => {
     withInvoices()
     renderAt(mes)
@@ -98,10 +143,7 @@ describe('pagar', () => {
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Pagar Compras da semana' }))
     await waitFor(() =>
-      expect(api.POST).toHaveBeenCalledWith(
-        '/households/{householdId}/invoices/{invoiceId}/pay',
-        expect.objectContaining({ body: { wallet: 'benefit' } }),
-      ),
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.objectContaining({ body: { wallet: 'benefit' } })),
     )
     expect(await screen.findByText(/paga na carteira de benefício/)).toBeInTheDocument()
   })
@@ -119,7 +161,7 @@ describe('pagar', () => {
     )
   })
 
-  it('tocar no marcador de uma conta paga desfaz o pagamento', async () => {
+  it('tocar no nó de uma conta paga desfaz o pagamento', async () => {
     withInvoices()
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Desfazer pagamento de Feira' }))
@@ -134,33 +176,84 @@ describe('pagar', () => {
   })
 })
 
-describe('nova conta e edição', () => {
-  beforeEach(() => vi.restoreAllMocks())
+describe('nova conta e edição (celular: painel que sobe)', () => {
+  const abrir = async () => userEvent.click(await screen.findByRole('button', { name: 'Nova conta' }))
 
   it('cria uma conta com poucos campos', async () => {
     mockApi({ me: ok(me), create: ok(invoice({ id: 'novo', description: 'Internet' })) })
     renderAt('/?mes=2026-05') // mês passado: o vencimento padrão é o dia 1 (no mês atual seria hoje)
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova conta' }))
-    await userEvent.type(screen.getByLabelText('Descrição'), 'Internet')
+    await abrir()
+    await userEvent.type(screen.getByLabelText('O que é'), 'Internet')
     await userEvent.type(screen.getByLabelText('Valor'), '9990')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
         '/households/{householdId}/invoices',
-        expect.objectContaining({
-          body: { description: 'Internet', amountCents: 9990, dueDate: '2026-05-01', categoryId: 'c1' },
-        }),
+        expect.objectContaining({ body: { description: 'Internet', amountCents: 9990, dueDate: '2026-05-01', categoryId: 'c1' } }),
       ),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  it('no mês atual o vencimento é escolhido por botões (hoje é o padrão)', async () => {
+    mockApi({ me: ok(me), create: ok(invoice({ id: 'novo', description: 'Luz' })) })
+    renderAt(mes)
+    await abrir()
+    expect(screen.getByRole('button', { name: /hoje · 20\/10/ })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: /amanhã · 21\/10/ }))
+    expect(screen.getByRole('button', { name: /amanhã · 21\/10/ })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.type(screen.getByLabelText('O que é'), 'Luz')
+    await userEvent.type(screen.getByLabelText('Valor'), '100')
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.objectContaining({ body: expect.objectContaining({ dueDate: '2026-10-21' }) })),
+    )
+  })
+
+  it('"outra data" mostra o campo de data', async () => {
+    mockApi({ me: ok(me) })
+    renderAt(mes)
+    await abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'outra data' }))
+    expect(screen.getByLabelText('Data de vencimento')).toHaveValue('2026-10-20')
+  })
+
+  it('a categoria é escolhida por botões, e Mercado mostra a marca de benefício', async () => {
+    mockApi({ me: ok(me), create: ok(invoice({ id: 'n', description: 'Feira' })) })
+    renderAt(mes)
+    await abrir()
+    expect(screen.getByRole('button', { name: 'Moradia' })).toHaveAttribute('aria-pressed', 'true')
+    const mercado = screen.getByRole('button', { name: /Mercado/ })
+    expect(within(mercado).getByText('VR')).toBeInTheDocument()
+    await userEvent.click(mercado)
+    expect(mercado).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.type(screen.getByLabelText('O que é'), 'Feira')
+    await userEvent.type(screen.getByLabelText('Valor'), '5000')
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.objectContaining({ body: expect.objectContaining({ categoryId: 'c2' }) })),
+    )
+  })
+
+  it('"Adicionar e lançar outra" salva e mantém o painel aberto, vazio e com o foco na descrição', async () => {
+    mockApi({ me: ok(me), create: ok(invoice({ id: 'n', description: 'Água' })) })
+    renderAt(mes)
+    await abrir()
+    await userEvent.type(screen.getByLabelText('O que é'), 'Água')
+    await userEvent.type(screen.getByLabelText('Valor'), '4500')
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar e lançar outra' }))
+    await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))
+    await waitFor(() => expect(screen.getByLabelText('O que é')).toHaveValue(''))
+    expect(screen.getByLabelText('O que é')).toHaveFocus()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('o botão só habilita com descrição e valor', async () => {
     mockApi({ me: ok(me) })
     renderAt(mes)
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova conta' }))
+    await abrir()
     expect(screen.getByRole('button', { name: 'Adicionar conta' })).toBeDisabled()
-    await userEvent.type(screen.getByLabelText('Descrição'), 'X')
+    await userEvent.type(screen.getByLabelText('O que é'), 'X')
     expect(screen.getByRole('button', { name: 'Adicionar conta' })).toBeDisabled()
     await userEvent.type(screen.getByLabelText('Valor'), '1')
     expect(screen.getByRole('button', { name: 'Adicionar conta' })).toBeEnabled()
@@ -169,8 +262,8 @@ describe('nova conta e edição', () => {
   it('mostra o erro de validação no campo e mantém o painel aberto', async () => {
     mockApi({ me: ok(me), create: fail(400, 'validation_error', { amountCents: 'informe um valor maior que zero' }) })
     renderAt(mes)
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova conta' }))
-    await userEvent.type(screen.getByLabelText('Descrição'), 'Algo')
+    await abrir()
+    await userEvent.type(screen.getByLabelText('O que é'), 'Algo')
     await userEvent.type(screen.getByLabelText('Valor'), '5')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
     expect(await screen.findByText('informe um valor maior que zero')).toBeInTheDocument()
@@ -181,20 +274,20 @@ describe('nova conta e edição', () => {
   it('o campo de valor vai se formando em reais', async () => {
     mockApi({ me: ok(me) })
     renderAt(mes)
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova conta' }))
+    await abrir()
     const valor = screen.getByLabelText('Valor')
     await userEvent.type(valor, '150000')
     expect(valor).toHaveValue('R$ 1.500,00')
   })
 
-  it('edita uma conta: carrega os dados e envia só o que a tela controla', async () => {
+  it('edita uma conta: carrega os dados e envia o que a tela controla', async () => {
     withInvoices()
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Luz' }))
-    expect(screen.getByLabelText('Descrição')).toHaveValue('Luz')
+    expect(screen.getByLabelText('O que é')).toHaveValue('Luz')
     expect(screen.getByLabelText('Valor')).toHaveValue('R$ 200,00')
-    await userEvent.clear(screen.getByLabelText('Descrição'))
-    await userEvent.type(screen.getByLabelText('Descrição'), 'Luz (nov)')
+    await userEvent.clear(screen.getByLabelText('O que é'))
+    await userEvent.type(screen.getByLabelText('O que é'), 'Luz (nov)')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith(
@@ -205,6 +298,17 @@ describe('nova conta e edição', () => {
         }),
       ),
     )
+  })
+
+  it('"Marcar como paga" nos detalhes paga com a carteira da categoria e fecha o painel', async () => {
+    withInvoices()
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Luz' }))
+    await userEvent.click(screen.getByRole('button', { name: /Marcar como paga · carteira livre/ }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.objectContaining({ body: { wallet: 'free' } })),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('exclui com aviso e permite desfazer', async () => {
@@ -225,15 +329,45 @@ describe('nova conta e edição', () => {
   it('Esc fecha o painel', async () => {
     mockApi({ me: ok(me) })
     renderAt(mes)
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova conta' }))
+    await abrir()
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
 
-describe('papel viewer', () => {
-  beforeEach(() => vi.restoreAllMocks())
+describe('computador: detalhe ao lado da lista', () => {
+  it('abrir uma conta mostra o detalhe no painel lateral, sem janela por cima', async () => {
+    mockDesktop()
+    withInvoices()
+    renderAt(mes)
+    expect(await screen.findByText(/Toque numa conta para ver os detalhes/)).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Luz' }))
+    const painel = await screen.findByRole('region', { name: 'Detalhes da conta' })
+    expect(within(painel).getByLabelText('O que é')).toHaveValue('Luz')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 
+  it('"Nova conta" fica no cabeçalho (sem botão flutuante) e abre o formulário ao lado', async () => {
+    mockDesktop()
+    mockApi({ me: ok(me) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: /Nova conta/ }))
+    const painel = await screen.findByRole('region', { name: 'Detalhes da conta' })
+    expect(within(painel).getByRole('heading', { name: 'Nova conta' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('mostra o total por categoria e os três números do mês', async () => {
+    mockDesktop()
+    withInvoices()
+    renderAt(mes)
+    const bloco = await screen.findByRole('region', { name: 'Por categoria' })
+    expect(within(bloco).getByText('Moradia')).toBeInTheDocument()
+    expect(screen.getByText(/1 conta atrasada/)).toBeInTheDocument()
+  })
+})
+
+describe('papel viewer', () => {
   it('só lê: sem botão de nova conta e sem pagar', async () => {
     mockApi({ me: ok(viewerMe), invoices: ok({ items: [luz] }) })
     renderAt(mes)
