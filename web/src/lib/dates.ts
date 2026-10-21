@@ -49,3 +49,29 @@ export function monthFromParam(param: string | null): string | undefined {
 export function monthToParam(month: string): string {
   return month.slice(0, 7)
 }
+
+const weekdays = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+/** Dia da semana abreviado de uma data de calendário: "2026-10-20" -> "ter". */
+export function weekdayShort(iso: string): string {
+  const d = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
+  return weekdays[d.getDay()] ?? ''
+}
+
+const dayNumber = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) / 86_400_000
+
+/** Quantos dias de `a` até `b` (positivo se `b` é depois). Aritmética em UTC: não sofre com horário de verão. */
+export function daysBetween(a: string, b: string): number {
+  return Math.round(dayNumber(b) - dayNumber(a))
+}
+
+/** Soma dias a uma data: ("2026-10-31", 1) -> "2026-11-01". */
+export function addDays(iso: string, n: number): string {
+  const d = new Date((dayNumber(iso) + n) * 86_400_000)
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+}
+
+/** "2026-10-20" -> "20/10/2026". */
+export function fullDate(iso: string): string {
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+}

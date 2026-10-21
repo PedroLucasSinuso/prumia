@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes } from 'react'
+import { forwardRef, useId, type InputHTMLAttributes } from 'react'
 
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string
@@ -7,7 +7,7 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
 }
 
 /** Campo de formulário da marca: rótulo em caixa alta pequena, borda fina, erro em coral. Acessível (label, aria). */
-export function Field({ label, error, hint, id, ...input }: FieldProps) {
+export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ label, error, hint, id, ...input }, ref) {
   const auto = useId()
   const fieldId = id ?? auto
   const describedBy = [error ? `${fieldId}-erro` : null, hint ? `${fieldId}-dica` : null].filter(Boolean).join(' ')
@@ -17,6 +17,7 @@ export function Field({ label, error, hint, id, ...input }: FieldProps) {
         {label}
       </label>
       <input
+        ref={ref}
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
@@ -37,4 +38,4 @@ export function Field({ label, error, hint, id, ...input }: FieldProps) {
       )}
     </div>
   )
-}
+})
