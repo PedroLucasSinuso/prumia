@@ -34,7 +34,7 @@ type Props = {
 // Nomes dos campos da API -> nome que o formulário usa para mostrar o erro.
 const fieldMap: Record<string, string> = {
   description: 'description', amountCents: 'amount', dueDate: 'dueDate', categoryId: 'categoryId',
-  competenceMonth: 'competence', notes: 'notes',
+  competenceMonth: 'competence', notes: 'notes', 'boleto.digitableLine': 'boleto',
 }
 
 const walletName = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
@@ -75,11 +75,9 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   }
 
   // Pré-preenche com o que o boleto diz; a descrição só se ainda estiver vazia. A pessoa sempre revisa antes de salvar.
+  // Ao salvar vão só a linha e o beneficiário: o servidor recalcula valor e vencimento do documento a partir da linha.
   function applyBoleto({ boleto: b }: BoletoExtraction) {
-    setBoleto({
-      digitableLine: b.digitableLine, barcode: b.barcode, beneficiaryName: b.beneficiaryName,
-      documentAmountCents: b.documentAmountCents, documentDueDate: b.documentDueDate,
-    })
+    setBoleto({ digitableLine: b.digitableLine, beneficiaryName: b.beneficiaryName })
     if (b.documentAmountCents) { setAmount(b.documentAmountCents); clear('amount') }
     if (b.documentDueDate) { setDueDate(b.documentDueDate); setOtherDate(true); clear('dueDate') }
     if (!description.trim() && b.beneficiaryName) { setDescription(b.beneficiaryName); clear('description') }
@@ -151,10 +149,13 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
           key={importKey}
           onExtract={onExtractBoleto}
           onExtracted={applyBoleto}
-          onDiscard={() => setBoleto(undefined)}
+          onDiscard={() => { setBoleto(undefined); clear('boleto') }}
           onManual={() => descRef.current?.focus()}
           onOpenInvoice={onOpenInvoice}
         />
+      )}
+      {fields.boleto && (
+        <p className="text-xs text-signal">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
       )}
 
       <MoneyInput hero label="Valor" value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />

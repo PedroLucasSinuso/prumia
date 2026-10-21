@@ -16,28 +16,21 @@ const messages: Record<string, string> = {
   forbidden: 'Apenas administradores da casa podem fazer isso.',
   validation_error: 'Confira os campos destacados.',
   not_implemented: 'Este recurso ainda não está disponível.',
-  // boleto (POST /boletos/extract). Códigos sem texto próprio caem em "não consegui ler" (ver boletoErrorMessage).
+}
+
+// Leitura de boleto (POST /boletos/extract): códigos do servidor -> texto. `boleto_not_found` = nada válido no arquivo.
+const boletoMessages: Record<string, string> = {
   file_too_large: 'O arquivo passa de 5 MB. Envie um PDF menor ou uma foto do boleto.',
-  boleto_unreadable: 'Não consegui ler este boleto. Tente o PDF original ou uma foto mais nítida, ou preencha à mão.',
+  unsupported_file: 'Este arquivo não é PDF, PNG ou JPG. Escolha o PDF, uma foto ou um print do boleto.',
+  boleto_not_found: 'Não consegui ler este boleto. Tente o PDF original ou uma foto mais nítida, ou preencha à mão.',
   password_required: 'Este PDF tem senha. Digite a senha para abrir.',
-  invalid_password: 'Senha incorreta. Confira e tente de novo.',
+  wrong_password: 'Senha incorreta. Confira e tente de novo.',
+  too_many_requests: messages.too_many_requests,
 }
 
-// Sinônimos que o servidor pode usar para os mesmos casos do boleto.
-const boletoAliases: Record<string, string> = {
-  payload_too_large: 'file_too_large', wrong_password: 'invalid_password', bad_password: 'invalid_password',
-}
-
-/** Mensagem de falha ao ler um boleto. Qualquer código desconhecido vira "não consegui ler" (nunca o texto cru do servidor). */
+/** Mensagem de falha ao ler um boleto. Código desconhecido vira "não consegui ler" (nunca o texto cru do servidor). */
 export function boletoErrorMessage(problem: Problem | undefined): string {
-  const code = problem?.code ? (boletoAliases[problem.code] ?? problem.code) : 'boleto_unreadable'
-  if (code === 'too_many_requests') return messages.too_many_requests
-  return messages[code] && code !== 'validation_error' ? messages[code] : messages.boleto_unreadable
-}
-
-/** Normaliza o código de erro do boleto (aceita sinônimos). */
-export function boletoErrorCode(problem: Problem | undefined): string | undefined {
-  return problem?.code ? (boletoAliases[problem.code] ?? problem.code) : undefined
+  return (problem?.code && boletoMessages[problem.code]) || boletoMessages.boleto_not_found
 }
 
 export const networkErrorMessage = 'Não foi possível falar com o servidor. Verifique sua conexão.'

@@ -103,13 +103,16 @@ Na criação de conta, o `InvoiceForm` mostra **Importar boleto** (`BoletoImport
 para `POST /boletos/extract` via `useExtractBoleto` (`api/queries.ts`). O corpo é `multipart/form-data`: o `bodySerializer` do
 openapi-fetch monta o `FormData` e o navegador põe o boundary. Arquivo acima de 5 MB é barrado antes de enviar. Toda falha vira
 `ApiError` com `problem.code` preenchido, mesmo quando a resposta não traz `code` (413 do nginx em HTML vira `file_too_large`, 422 vira
-`boleto_unreadable`, 429 `too_many_requests`); `boletoErrorMessage` (`auth/errors.ts`) traduz. Estados: escolher → "lendo o boleto…" →
-(`password_required`: campo **Senha do PDF**; pedir de novo depois de enviar uma senha = senha incorreta) → **Conferir antes de salvar**.
+`boleto_not_found`, 429 `too_many_requests`); `boletoErrorMessage` (`auth/errors.ts`) traduz `file_too_large`, `unsupported_file`,
+`boleto_not_found`, `password_required`, `wrong_password` e `too_many_requests` (desconhecido = "não consegui ler"). Estados: escolher →
+"lendo o boleto…" → (`password_required`/`wrong_password`: campo **Senha do PDF**) → **Conferir antes de salvar**.
 A senha **não** vai para estado do React: é lida do campo (ref) no envio e o campo é limpo; a mutação usa `gcTime: 0` e `reset()` para
 não deixar arquivo/senha no cache do TanStack Query. O arquivo fica num ref só enquanto pode ser reenviado (senha, rede, 429).
 O sucesso **pré-preenche** valor (`documentAmountCents`), vencimento (`documentDueDate`) e descrição (`beneficiaryName`, só se vazia), e o
 quadro de revisão mostra a linha digitável, o beneficiário, o método de leitura (OCR pede conferência) e, se `duplicateOfInvoiceId` vier,
-o aviso com **Abrir a conta** (busca o detalhe, vai ao mês dela e abre) e **Fechar aviso**. Ao salvar, `boleto` vai no `InvoiceInput`.
+o aviso com **Abrir a conta** (busca o detalhe, vai ao mês dela e abre) e **Fechar aviso**. Ao salvar, `boleto` vai no `InvoiceInput` só com
+`digitableLine` e `beneficiaryName` (o servidor recalcula valor/vencimento do documento pela linha); linha recusada volta 400 com
+`fields["boleto.digitableLine"]`, mostrado junto ao quadro do boleto.
 `BoletoBox` (linha digitável agrupada por `lib/boleto.ts` só na exibição + **Copiar linha digitável**, que copia só dígitos) também aparece
 no detalhe de uma conta que já tem `boleto`. Testes: `components/BoletoImport.test.tsx` (rota `extract` do `mockApi` aceita função do corpo).
 

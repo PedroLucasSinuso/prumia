@@ -63,7 +63,7 @@ describe('importar boleto', () => {
         expect.objectContaining({
           body: expect.objectContaining({
             description: 'Companhia de Luz', amountCents: 18990, dueDate: '2026-10-28',
-            boleto: expect.objectContaining({ digitableLine: line, beneficiaryName: 'Companhia de Luz', documentAmountCents: 18990, documentDueDate: '2026-10-28' }),
+            boleto: { digitableLine: line, beneficiaryName: 'Companhia de Luz' },
           }),
         }),
       ),
@@ -84,7 +84,7 @@ describe('importar boleto', () => {
     const user = userEvent.setup()
     mockApi({
       me: ok(me),
-      extract: (body) => (body.password === '12345' ? ok(extraction({ method: 'ocr' })) : fail(422, 'password_required')),
+      extract: (body) => (body.password === '12345' ? ok(extraction({ method: 'ocr' })) : fail(422, body.password ? 'wrong_password' : 'password_required')),
     })
     const dialog = await openNew(user)
     await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
@@ -92,7 +92,6 @@ describe('importar boleto', () => {
     const senha = await within(dialog).findByLabelText('Senha do PDF')
     await user.type(senha, '999')
     await user.click(within(dialog).getByRole('button', { name: 'Abrir PDF' }))
-    // pediu de novo depois de mandarmos uma senha: estava errada
     expect(await within(dialog).findByText('Senha incorreta. Confira e tente de novo.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Senha do PDF')).toHaveValue('')
 
@@ -116,6 +115,24 @@ describe('importar boleto', () => {
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     expect(within(dialog).getByLabelText('O que é')).toHaveFocus()
     expect(within(dialog).getByRole('button', { name: 'Importar boleto' })).toBeInTheDocument()
+  })
+
+  it('arquivo que não é PDF/PNG/JPG tem texto próprio', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), extract: fail(422, 'unsupported_file') })
+    const dialog = await openNew(user)
+    await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('não é PDF, PNG ou JPG')
+  })
+
+  it('linha digitável recusada ao salvar aparece junto ao boleto', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), extract: ok(extraction()), create: fail(400, 'validation_error', { 'boleto.digitableLine': 'invalid' }) })
+    const dialog = await openNew(user)
+    await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+    await within(dialog).findByRole('region', { name: 'Conferir antes de salvar' })
+    await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+    expect(await within(dialog).findByText(/linha digitável deste boleto é inválida/)).toBeInTheDocument()
   })
 
   it('arquivo grande demais nem é enviado', async () => {

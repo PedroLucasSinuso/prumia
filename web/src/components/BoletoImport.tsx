@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 
 import { ApiError } from '../api/errors'
 import type { BoletoExtraction } from '../api/types'
-import { boletoErrorCode, boletoErrorMessage, networkErrorMessage } from '../auth/errors'
+import { boletoErrorMessage, networkErrorMessage } from '../auth/errors'
 import { MAX_BOLETO_BYTES } from '../lib/boleto'
 import { BoletoBox } from './BoletoBox'
 import { Button } from './Button'
@@ -57,10 +57,9 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
       onExtracted(extraction)
     } catch (err) {
       const api = err instanceof ApiError ? err : undefined
-      const code = boletoErrorCode(api?.problem)
-      if (code === 'password_required' || code === 'invalid_password') {
-        // Pediu senha de novo depois de enviarmos uma: a senha estava errada.
-        setStep({ kind: 'password', wrong: password !== undefined || code === 'invalid_password' })
+      const code = api?.problem?.code
+      if (code === 'password_required' || code === 'wrong_password') {
+        setStep({ kind: 'password', wrong: code === 'wrong_password' })
         return
       }
       // Rede ou excesso de tentativas: o mesmo arquivo pode dar certo depois. Nos demais casos, escolher outro.
