@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatCents } from './money'
+import { digitsToCents, formatCents } from './money'
 
 describe('formatCents', () => {
   it.each([
@@ -12,5 +12,19 @@ describe('formatCents', () => {
     [-1000, '-R$ 10,00'],
   ])('%i centavos => %s', (cents, esperado) => {
     expect(formatCents(cents)).toBe(esperado)
+  })
+})
+
+describe('digitsToCents', () => {
+  it.each([
+    ['', 0],
+    ['abc', 0],
+    ['1', 1],
+    ['15', 15],
+    ['R$ 1.500,00', 150000],
+    ['R$ 15.000,001', 15000001],
+    ['9999999999999999', 999999999999],
+  ])('%j => %i', (text, cents) => {
+    expect(digitsToCents(text)).toBe(cents)
   })
 })
