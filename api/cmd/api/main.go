@@ -2,7 +2,7 @@
 //
 //	api          sobe o servidor (padrão)
 //	api migrate  aplica as migrations pendentes e sai
-//	api horizon  estende as contas recorrentes de todas as casas até o horizonte e sai (job diário, via cron)
+//	api horizon  estende as contas recorrentes e as fontes de receita de todas as casas até o horizonte e sai (job diário, via cron)
 package main
 
 import (
@@ -21,12 +21,14 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
+	"github.com/PedroLucasSinuso/prumia/api/internal/income"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
+	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
 )
 
 func main() {
@@ -69,15 +71,20 @@ func run(args []string) error {
 	today := func() caldate.Date { return caldate.Today(cfg.Location) }
 	invoices := invoice.NewService(gdb, today)
 	recurrences := series.NewRecurrenceService(gdb, invoices, today)
+	incomes := income.NewService(gdb, today)
 
 	if len(args) > 0 && args[0] == "horizon" {
 		if err := recurrences.EnsureHorizonAll(ctx); err != nil {
 			return fmt.Errorf("horizonte das recorrências: %w", err)
 		}
-		log.Info("horizonte das recorrências em dia")
+		if err := incomes.EnsureHorizonAll(ctx); err != nil {
+			return fmt.Errorf("horizonte das fontes de receita: %w", err)
+		}
+		log.Info("horizonte das recorrências e das fontes de receita em dia")
 		return nil
 	}
 
+	summaries := summary.NewService(gdb)
 	households := household.NewService(gdb)
 	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration})
 	if err != nil {
@@ -90,9 +97,11 @@ func run(args []string) error {
 		auth.NewHandler(authSvc, cookie, log),
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
-		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences},
+		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},
 		&api.Recurrences{Svc: recurrences, Log: log},
+		&api.Incomes{Svc: incomes, Log: log},
+		&api.Summaries{Svc: summaries, Log: log, Horizons: []api.HorizonEnsurer{incomes, recurrences}},
 	)
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 
