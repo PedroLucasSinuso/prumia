@@ -5918,6 +5918,183 @@
       ]
     },
     {
+      "name": "9b. Boleto (leitura de PDF/print)",
+      "description": "Precisa de um boleto REAL no seu computador: em cada requisição, clique em 'file' e escolha o arquivo (PDF, PNG ou JPG, até 5 MB). Nada é gravado; o servidor só devolve o que leu.",
+      "item": [
+        {
+          "name": "Ler boleto (escolha o arquivo em 'file')",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/boletos/extract",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "boletos",
+                "extract"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 com linha digitável válida', () => { pm.response.to.have.status(200); const j = pm.response.json(); pm.expect(j.boleto.digitableLine).to.match(/^[0-9]{47,48}$/); pm.expect(['pdf_text','barcode_image','ocr']).to.include(j.method); });",
+                  "pm.test('mostra o método e o valor lidos', () => { const j = pm.response.json(); console.log('método:', j.method, 'valor (centavos):', j.boleto.documentAmountCents, 'vencimento:', j.boleto.documentDueDate, 'duplicado de:', j.duplicateOfInvoiceId); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PDF com senha: sem senha responde password_required",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/boletos/extract",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "boletos",
+                "extract"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 password_required (use um PDF protegido)', () => { pm.response.to.have.status(422); pm.expect(pm.response.json().code).to.eql('password_required'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PDF com senha: reenviando com a senha",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "text",
+                  "description": "Preencha com a senha do PDF"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/boletos/extract",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "boletos",
+                "extract"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 com a senha certa', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Arquivo que não é boleto (envie um PNG/PDF qualquer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/boletos/extract",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "boletos",
+                "extract"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 boleto_not_found', () => { pm.response.to.have.status(422); pm.expect(pm.response.json().code).to.eql('boleto_not_found'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "10. Encerrar",
       "item": [
         {

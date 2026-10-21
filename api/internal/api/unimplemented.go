@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 )
 
@@ -19,5 +18,3 @@ type Unimplemented struct{}
 func notImplemented(c *gin.Context) {
 	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusNotImplemented, Code: "not_implemented"})
 }
-
-func (Unimplemented) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) { notImplemented(c) }

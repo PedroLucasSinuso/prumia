@@ -47,6 +47,18 @@ func toGenInvoice(v invoice.View) gen.Invoice {
 			PaidAt: v.PaidAt, Wallet: gen.Wallet(*v.PaidWallet), AmountCents: *v.PaidAmountCents, PaidByUserId: v.PaidByUserID,
 		}
 	}
+	if v.Boleto != nil {
+		b := &gen.Boleto{DigitableLine: v.Boleto.DigitableLine, Barcode: v.Boleto.Barcode, BeneficiaryName: v.Boleto.BeneficiaryName}
+		if v.Boleto.DocumentAmountCents != nil {
+			c := *v.Boleto.DocumentAmountCents
+			b.DocumentAmountCents = &c
+		}
+		if !v.Boleto.DocumentDueDate.IsZero() {
+			d := v.Boleto.DocumentDueDate
+			b.DocumentDueDate = &d
+		}
+		out.Boleto = b
+	}
 	switch {
 	case v.PurchaseID != nil:
 		out.Series = &gen.SeriesRef{
@@ -118,6 +130,7 @@ func (h *Invoices) CreateInvoice(c *gin.Context, householdId gen.HouseholdId) {
 	v, err := h.Svc.Create(c.Request.Context(), householdId, auth.CurrentUser(c).ID, invoice.CreateInput{
 		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, Description: body.Description,
 		AmountCents: body.AmountCents, DueDate: body.DueDate, CompetenceMonth: body.CompetenceMonth, Notes: body.Notes,
+		Boleto: boletoInput(body.Boleto),
 	})
 	if err != nil {
 		writeDomainError(c, h.Log, err)
@@ -232,4 +245,11 @@ func (h *Invoices) UnpayInvoice(c *gin.Context, householdId gen.HouseholdId, inv
 		return
 	}
 	c.JSON(http.StatusOK, toGenInvoice(v))
+}
+
+func boletoInput(b *gen.Boleto) *invoice.BoletoInput {
+	if b == nil {
+		return nil
+	}
+	return &invoice.BoletoInput{DigitableLine: b.DigitableLine, BeneficiaryName: b.BeneficiaryName}
 }

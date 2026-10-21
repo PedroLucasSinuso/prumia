@@ -16,7 +16,7 @@ Guia de quem constrói e mantém o prumia. Leia na ordem se for novo no projeto.
 | [authentication.md](authentication.md) | pronto | Sessão, cadastro, convites, papéis, redefinição de senha, autorização por casa, testes e Postman |
 | series-generation.md | Fase 1 | Como parcelas e recorrências são geradas e estendidas |
 | [incomes-and-wallets.md](incomes-and-wallets.md) | pronto | Receitas, descontos, previsão, carteiras, saldos, resumo mensal e aviso de benefício |
-| boleto-extraction.md | Fase 3 | Cascata de extração, validação e limites |
+| [boleto-extraction.md](boleto-extraction.md) | pronto | Cascata de extração, validação e limites |
 | deployment.md | Fase 4 | Compose, nginx, Tailscale, VPS |
 | backup-restore.md | Fase 4 | Backup diário e restore testado |
 | security.md | Fase 4 | Modelo de ameaças e checklist |
