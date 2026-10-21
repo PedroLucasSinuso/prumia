@@ -2,6 +2,8 @@
 package invoice
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -60,7 +62,24 @@ type View struct {
 	Status Status
 	// InstallmentsCount: total de parcelas da compra (só para parcelas); alimenta "3 de 6" na resposta.
 	InstallmentsCount *int
+	// Boleto: dados do boleto associado (nunca o arquivo), se houver.
+	Boleto *Boleto
 }
+
+// Boleto espelha `invoice_boletos` (1:1 com a invoice). A linha digitável é única por casa só no serviço (invoices excluídas não contam).
+type Boleto struct {
+	InvoiceID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	HouseholdID         uuid.UUID `gorm:"type:uuid"`
+	DigitableLine       string
+	Barcode             *string
+	BeneficiaryName     *string
+	DocumentAmountCents *money.Cents
+	DocumentDueDate     caldate.Date
+	CreatedAt           time.Time `gorm:"autoCreateTime"`
+	UpdatedAt           time.Time `gorm:"autoUpdateTime"`
+}
+
+func (Boleto) TableName() string { return "invoice_boletos" }
 
 func statusOf(i Invoice, today caldate.Date) Status {
 	switch {

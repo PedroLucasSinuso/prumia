@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
@@ -71,14 +72,42 @@ func (s *Service) Views(ctx context.Context, householdID uuid.UUID, rows []Invoi
 			counts[f.ID] = f.InstallmentsCount
 		}
 	}
+	boletos, err := s.boletosOf(ctx, householdID, rows)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]View, len(rows))
 	for i, r := range rows {
 		out[i] = View{Invoice: r, Status: statusOf(r, today)}
+		if b, ok := boletos[r.ID]; ok {
+			b := b
+			out[i].Boleto = &b
+		}
 		if r.PurchaseID != nil {
 			if n := counts[*r.PurchaseID]; n > 0 {
 				out[i].InstallmentsCount = &n
 			}
 		}
+	}
+	return out, nil
+}
+
+// boletosOf busca os boletos de todas as invoices da lista numa consulta só (sem N+1).
+func (s *Service) boletosOf(ctx context.Context, householdID uuid.UUID, rows []Invoice) (map[uuid.UUID]Boleto, error) {
+	ids := make([]uuid.UUID, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	out := map[uuid.UUID]Boleto{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var found []Boleto
+	if err := s.db.WithContext(ctx).Where("household_id = ? AND invoice_id IN ?", householdID, ids).Find(&found).Error; err != nil {
+		return nil, fmt.Errorf("lendo boletos: %w", err)
+	}
+	for _, b := range found {
+		out[b.InvoiceID] = b
 	}
 	return out, nil
 }
@@ -164,6 +193,14 @@ type CreateInput struct {
 	DueDate           caldate.Date
 	CompetenceMonth   *caldate.Date // nil = mês do vencimento
 	Notes             *string
+	// Boleto opcional: a linha digitável é validada pelos dígitos verificadores; valor e vencimento do boleto vêm dela.
+	Boleto *BoletoInput
+}
+
+// BoletoInput é o que o cliente envia sobre o boleto. Só a linha é confiável (validada); o resto é descritivo.
+type BoletoInput struct {
+	DigitableLine   string
+	BeneficiaryName *string
 }
 
 func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in CreateInput) (View, error) {
@@ -190,10 +227,70 @@ func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in 
 		Description: in.Description, AmountCents: in.AmountCents, DueDate: in.DueDate, CompetenceMonth: competence,
 		Notes: in.Notes, CreatedBy: userID,
 	}
-	if err := s.db.WithContext(ctx).Create(&inv).Error; err != nil {
-		return View{}, fmt.Errorf("criando invoice: %w", err)
+	var bol *Boleto
+	if in.Boleto != nil {
+		parsed, err := boleto.Parse(in.Boleto.DigitableLine, s.today().Time())
+		if err != nil {
+			v.Add("boleto.digitableLine", "linha digitável inválida: confira os números")
+			return View{}, v.Err()
+		}
+		bol = boletoRow(parsed, in.Boleto.BeneficiaryName)
 	}
-	return s.view(inv), nil
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&inv).Error; err != nil {
+			return fmt.Errorf("criando invoice: %w", err)
+		}
+		if bol != nil {
+			bol.InvoiceID, bol.HouseholdID = inv.ID, householdID
+			if err := tx.Create(bol).Error; err != nil {
+				return fmt.Errorf("gravando boleto: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return View{}, err
+	}
+	out := s.view(inv)
+	out.Boleto = bol
+	return out, nil
+}
+
+// boletoRow converte o boleto lido (valor e vencimento calculados da linha, não do que o cliente disse) na linha do banco.
+func boletoRow(p boleto.Boleto, beneficiary *string) *Boleto {
+	row := &Boleto{DigitableLine: p.DigitableLine, Barcode: &p.Barcode}
+	if p.AmountCents > 0 {
+		c := money.Cents(p.AmountCents)
+		row.DocumentAmountCents = &c
+	}
+	if !p.DueDate.IsZero() {
+		row.DocumentDueDate = caldate.FromTime(p.DueDate)
+	}
+	if beneficiary != nil {
+		if name := strings.TrimSpace(*beneficiary); name != "" {
+			if len(name) > 120 {
+				name = name[:120]
+			}
+			row.BeneficiaryName = &name
+		}
+	}
+	return row
+}
+
+// FindDuplicate devolve a invoice (não excluída) da casa que já tem esta linha digitável, se houver.
+func (s *Service) FindDuplicate(ctx context.Context, householdID uuid.UUID, line string) (*uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := s.db.WithContext(ctx).Table("invoice_boletos AS b").
+		Joins("JOIN invoices i ON i.household_id = b.household_id AND i.id = b.invoice_id AND i.deleted_at IS NULL").
+		Where("b.household_id = ? AND b.digitable_line = ?", householdID, line).
+		Order("b.created_at").Limit(1).Pluck("b.invoice_id", &ids).Error
+	if err != nil {
+		return nil, fmt.Errorf("procurando boleto duplicado: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return &ids[0], nil
 }
 
 // ---------------------------------------------------------------- ler

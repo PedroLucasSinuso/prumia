@@ -9,6 +9,8 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
 
 # --- runtime -------------------------------------------------------------------
 FROM alpine:3.22
+# Leitura de boleto, tudo local (nada sai do servidor): pdftotext (poppler), Ghostscript (PDF -> imagem) e Tesseract (OCR em português).
+RUN apk add --no-cache poppler-utils ghostscript tesseract-ocr tesseract-ocr-data-por
 # Usuário sem privilégios: o processo não precisa (nem deve) rodar como root.
 RUN adduser -D -u 10001 app
 USER app

@@ -76,6 +76,7 @@ func newApp(t *testing.T, o opts) *app {
 		&Recurrences{Svc: recSvc, Log: log},
 		&Incomes{Svc: incSvc, Log: log},
 		&Summaries{Svc: sumSvc, Log: log, Horizons: []HorizonEnsurer{incSvc, recSvc}},
+		NewBoletos(testExtractor(), invSvc, log),
 	), auth.Middleware(svc, hs, cookie, log))
 	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
 }
