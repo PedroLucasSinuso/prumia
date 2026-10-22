@@ -17,6 +17,8 @@ type Boleto struct {
 	DueDate     time.Time // dia de calendário em UTC; zero = desconhecido
 	// Beneficiary só vem quando o texto do documento permite achá-lo.
 	Beneficiary string
+	// Competence é o dia 1 do mês de referência lido do texto (ex.: "Mês: OUT/2026"); zero = desconhecido.
+	Competence time.Time
 }
 
 var (

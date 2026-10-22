@@ -881,6 +881,7 @@ components:
         beneficiaryName: { type: string, nullable: true }
         documentAmountCents: { type: integer, allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
         documentDueDate: { type: string, format: date, nullable: true }
+        documentCompetenceMonth: { type: string, format: date, nullable: true, description: "Mês de referência lido do texto (dia 1), quando o documento informa" }
     BoletoExtraction:
       type: object
       required: [boleto, method]

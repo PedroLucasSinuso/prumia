@@ -335,11 +335,14 @@ func (e RestoreInvoiceParamsScope) Valid() bool {
 
 // Boleto defines model for Boleto.
 type Boleto struct {
-	Barcode             *string       `json:"barcode,omitempty"`
-	BeneficiaryName     *string       `json:"beneficiaryName,omitempty"`
-	DigitableLine       string        `json:"digitableLine"`
-	DocumentAmountCents *Cents        `json:"documentAmountCents,omitempty"`
-	DocumentDueDate     *caldate.Date `json:"documentDueDate,omitempty"`
+	Barcode             *string `json:"barcode,omitempty"`
+	BeneficiaryName     *string `json:"beneficiaryName,omitempty"`
+	DigitableLine       string  `json:"digitableLine"`
+	DocumentAmountCents *Cents  `json:"documentAmountCents,omitempty"`
+
+	// DocumentCompetenceMonth Mês de referência lido do texto (dia 1), quando o documento informa
+	DocumentCompetenceMonth *caldate.Date `json:"documentCompetenceMonth,omitempty"`
+	DocumentDueDate         *caldate.Date `json:"documentDueDate,omitempty"`
 }
 
 // BoletoExtraction defines model for BoletoExtraction.

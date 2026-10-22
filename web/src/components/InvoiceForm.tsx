@@ -82,6 +82,8 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   // Boleto lido e revisado: vai junto ao criar. `importKey` reinicia a importação ("Adicionar e lançar outra").
   const [boleto, setBoleto] = useState<Boleto>()
   const [importKey, setImportKey] = useState(0)
+  // Competência lida do boleto: abre a seção "mais opções" para a pessoa ver e conferir o que foi preenchido.
+  const [competenceImported, setCompetenceImported] = useState(false)
   const descRef = useRef<HTMLInputElement>(null)
 
   const clear = (f: string) => {
@@ -95,6 +97,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
     setBoleto({ digitableLine: b.digitableLine, beneficiaryName: b.beneficiaryName })
     if (b.documentAmountCents) { setAmount(b.documentAmountCents); clear('amount') }
     if (b.documentDueDate) { setDueDate(b.documentDueDate); setOtherDate(true); clear('dueDate') }
+    if (b.documentCompetenceMonth) { setCompetence(b.documentCompetenceMonth.slice(0, 7)); setCompetenceImported(true); clear('competence') }
     if (!description.trim() && b.beneficiaryName) { setDescription(b.beneficiaryName); clear('description') }
   }
 
@@ -293,7 +296,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
         {fields.categoryId && <p className="text-xs text-signal">{fields.categoryId}</p>}
       </fieldset>
 
-      <details className="rounded-md border border-graphite/15 px-3 py-2" open={Boolean(fields.competence || fields.notes)}>
+      <details className="rounded-md border border-graphite/15 px-3 py-2" open={Boolean(fields.competence || fields.notes || competenceImported)}>
         <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold">
           Mais opções <span className="text-xs font-normal text-graphite/75">competência · observação</span>
         </summary>
