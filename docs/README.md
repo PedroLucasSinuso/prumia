@@ -5,6 +5,7 @@
 | `product/` (**local, não versionado**) | quem decide o produto | `spec.md` (o que o app faz) e `plan.md` (fases e status) |
 | [developer-guide/](developer-guide/README.md) | quem constrói e mantém | arquitetura, modelo de dados, convenções, como rodar, deploy, backup |
 | [user-guides/](user-guides/README.md) | quem usa o app (você e a noiva, futuros membros) | passo a passo em pt-BR, por tarefa |
+| [roadmap.md](roadmap.md) | quem decide o que vem a seguir | o que falta, próximos passos e planos futuros |
 | [brand/](brand/) | design e front-end | [manual de identidade](brand/manual-identidade-prumia.md) e assets |
 
 Fora desta pasta: [CLAUDE.md](../CLAUDE.md) (contexto para o Claude Code) e [openapi/openapi.yaml](../openapi/openapi.yaml) (contrato da API, fonte de verdade).
