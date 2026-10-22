@@ -15,7 +15,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 | [categorias-e-ajustes.md](categorias-e-ajustes.md) | pronto | Criar, editar, reordenar e arquivar categorias da casa |
 | [fazer-backup.md](fazer-backup.md) | pronto | Fazer backup, conferir, restaurar e quando fazer |
 | [acessar-pelo-celular.md](acessar-pelo-celular.md) | pronto | Acessar o prumia pelo celular com o Tailscale (HTTPS) |
-| instalar-no-celular.md | Fase 4 | Instalar o app (PWA) na tela inicial |
+| [instalar-no-celular.md](instalar-no-celular.md) | pronto (teste em celular: pendente) | Instalar o app (PWA) no Android e no iPhone |
 
 Os guias são criados junto com a funcionalidade (ver o plano de construção, mantido localmente em `docs/product/plan.md`).
 
