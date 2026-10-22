@@ -26,6 +26,7 @@ const boletoMessages: Record<string, string> = {
   password_required: 'Este PDF tem senha. Digite a senha para abrir.',
   wrong_password: 'Senha incorreta. Confira e tente de novo.',
   too_many_requests: messages.too_many_requests,
+  busy: 'O servidor está lendo outros boletos agora. Tente de novo em alguns segundos.',
 }
 
 /** Mensagem de falha ao ler um boleto. Código desconhecido vira "não consegui ler" (nunca o texto cru do servidor). */

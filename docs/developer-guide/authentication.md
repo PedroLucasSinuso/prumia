@@ -10,7 +10,9 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
   validade de 30 dias **deslizante**: o uso renova, gravando no máximo 1 vez por hora). O banco guarda **só o SHA-256**
   do token; um vazamento do banco não entrega sessões.
 - **Login**: e-mail desconhecido e senha errada dão a **mesma resposta e levam o mesmo tempo** (verificamos contra um hash
-  descartável), para não revelar quais e-mails existem. Limite de tentativas: 10/min por IP e 5/min por e-mail (429).
+  descartável), para não revelar quais e-mails existem. Limite de tentativas: 10/min por IP e 5/min por e-mail normalizado
+  (429). O IP vem só do `X-Real-IP` que o nginx sobrescreve (ver [security.md](security.md#ip-real-e-limite-de-tentativas)).
+  Entrar de novo no mesmo navegador encerra a sessão anterior dele.
 - **CSRF**: cookie `SameSite=Lax` + checagem de `Origin` em toda escrita (POST/PUT/PATCH/DELETE): se o navegador informar
   uma origem diferente do `Host`, 403 `bad_origin`. Clientes sem `Origin` (Postman, curl) passam.
 

@@ -104,13 +104,19 @@ func (r resp) sessionCookie() *http.Cookie {
 // do faz uma requisição. cookie e headers são opcionais.
 func (a *app) do(method, path string, body any, cookie *http.Cookie, headers ...string) resp {
 	a.t.Helper()
+	return a.doFrom("203.0.113.7:1234", method, path, body, cookie, headers...)
+}
+
+// doFrom é o do com o endereço da conexão escolhido (ex.: simular o nginx na rede do Docker).
+func (a *app) doFrom(remote, method, path string, body any, cookie *http.Cookie, headers ...string) resp {
+	a.t.Helper()
 	var rd io.Reader
 	if body != nil {
 		b, _ := json.Marshal(body)
 		rd = bytes.NewReader(b)
 	}
 	req := httptest.NewRequest(method, path, rd)
-	req.RemoteAddr = "203.0.113.7:1234"
+	req.RemoteAddr = remote
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

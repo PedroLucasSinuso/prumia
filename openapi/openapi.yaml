@@ -11,6 +11,7 @@ info:
     - Autenticação: cookie de sessão httpOnly (`prumia_session`).
     - Casa: rotas de negócio ficam sob `/households/{householdId}`; o acesso é validado pela role do usuário.
     - Erros: `application/problem+json` (ver `Problem`).
+    - Limite de corpo: requisições JSON acima de 64 KB respondem 413 (`code=body_too_large`); o upload de boleto tem limite próprio.
 servers:
   - url: /api
 tags:
@@ -332,7 +333,7 @@ paths:
         - { name: categoryId, in: query, schema: { type: string, format: uuid } }
         - { name: responsibleUserId, in: query, schema: { type: string, format: uuid } }
         - { name: purchaseId, in: query, schema: { type: string, format: uuid } }
-        - { name: q, in: query, description: "Busca por descrição", schema: { type: string } }
+        - { name: q, in: query, description: "Busca por descrição", schema: { type: string, maxLength: 120 } }
         - { $ref: '#/components/parameters/Limit' }
         - { $ref: '#/components/parameters/Cursor' }
       responses:
@@ -417,7 +418,7 @@ paths:
       operationId: listPurchases
       summary: Compras parceladas ("quando comprei o notebook?")
       parameters:
-        - { name: q, in: query, schema: { type: string } }
+        - { name: q, in: query, description: "Busca por descrição", schema: { type: string, maxLength: 120 } }
         - { $ref: '#/components/parameters/Limit' }
         - { $ref: '#/components/parameters/Cursor' }
       responses:
@@ -619,6 +620,7 @@ paths:
         '413': { description: "Arquivo maior que 5 MB", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
         '422': { description: "Não foi possível extrair ou senha necessária", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { description: "Servidor ocupado com outras leituras (`code=busy`); tente de novo", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
 
 components:
   securitySchemes:
