@@ -62,8 +62,8 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
         setStep({ kind: 'password', wrong: code === 'wrong_password' })
         return
       }
-      // Rede ou excesso de tentativas: o mesmo arquivo pode dar certo depois. Nos demais casos, escolher outro.
-      if (!api?.network && code !== 'too_many_requests') file.current = null
+      // Rede, excesso de tentativas ou servidor ocupado: o mesmo arquivo pode dar certo depois. Nos demais casos, escolher outro.
+      if (!api?.network && code !== 'too_many_requests' && code !== 'busy') file.current = null
       setStep({ kind: 'error', message: api?.network ? networkErrorMessage : boletoErrorMessage(api?.problem) })
     }
   }

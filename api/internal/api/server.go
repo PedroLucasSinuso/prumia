@@ -50,11 +50,31 @@ func NewServer(db Pinger, a *auth.Handler, h *Households, c *Categories, i *Invo
 // Garantia em tempo de compilação: se Server deixar de satisfazer a interface, o build falha.
 var _ gen.ServerInterface = Server{}
 
+// maxJSONBody limita o corpo das requisições JSON. O maior corpo legítimo (receita com 20 descontos, compra com
+// observação) não passa de poucos KB; o nginx aceita até 6 MB só por causa do upload de boleto.
+const maxJSONBody = 64 << 10
+
+// boletoRoute tem limite próprio (5 MB, conferido em readUpload).
+const boletoRoute = "/api/households/:householdId/boletos/extract"
+
+// limitBody recusa corpo grande demais antes de qualquer outra coisa (inclusive antes do argon2 do login):
+// 413 se o Content-Length já denuncia; sem Content-Length, o MaxBytesReader corta a leitura no limite.
+func limitBody(c *gin.Context) {
+	if c.FullPath() == boletoRoute || c.Request.Body == nil {
+		return
+	}
+	if c.Request.ContentLength > maxJSONBody {
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusRequestEntityTooLarge, Code: "body_too_large"})
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxJSONBody)
+}
+
 // Mount registra todas as rotas do contrato sob /api.
 func Mount(r gin.IRouter, s gen.ServerInterface, middlewares ...gen.MiddlewareFunc) {
 	gen.RegisterHandlersWithOptions(r, s, gen.GinServerOptions{
 		BaseURL:     "/api",
-		Middlewares: middlewares,
+		Middlewares: append([]gen.MiddlewareFunc{limitBody}, middlewares...),
 		// Erros de parâmetro (ex.: uuid inválido na URL) saem no mesmo formato problem+json do resto.
 		ErrorHandler: func(c *gin.Context, err error, status int) {
 			httpx.WriteProblem(c, httpx.Problem{Status: status, Code: "bad_request", Detail: err.Error()})

@@ -251,6 +251,25 @@ func TestBoletoSoMembroEscreve(t *testing.T) {
 	}
 }
 
+// No máximo maxConcurrentExtractions leituras ao mesmo tempo no servidor; a próxima espera e, se o tempo acabar, desiste.
+func TestBoletoLeiturasSimultaneasLimitadas(t *testing.T) {
+	h := NewBoletos(testExtractor(), nil, nil)
+	for i := 0; i < maxConcurrentExtractions; i++ {
+		if !h.acquire(context.Background()) {
+			t.Fatal("deveria haver lugar livre")
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if h.acquire(ctx) {
+		t.Fatal("passou do limite de leituras simultâneas")
+	}
+	h.release()
+	if !h.acquire(context.Background()) {
+		t.Fatal("o lugar liberado deveria ser reaproveitado")
+	}
+}
+
 func TestBoletoLimiteDeRequisicoes(t *testing.T) {
 	a, c, house, _ := casa(t)
 	var last int

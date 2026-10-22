@@ -951,6 +951,7 @@ type UpdateMemberRoleJSONBody struct {
 
 // ListPurchasesParams defines parameters for ListPurchases.
 type ListPurchasesParams struct {
+	// Q Busca por descrição
 	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 	Limit  *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
