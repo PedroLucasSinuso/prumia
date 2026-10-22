@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { BoletoExtraction, Payee, PayeeInput, PayeePatch, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
   categories: (house: string) => ['categories', house] as const,
+  payees: (house: string) => ['payees', house] as const,
   invoices: (house: string, month: string) => ['invoices', house, month] as const,
   allInvoices: (house: string) => ['invoices', house] as const,
   incomes: (house: string, month: string) => ['incomes', house, month] as const,
@@ -55,6 +56,31 @@ export function useCategoryActions(houseId: string) {
     onSettled: refresh,
   })
   return { create, update, reorder }
+}
+
+/** Favorecidos da casa, inclusive arquivados (contas antigas continuam mostrando o nome). Quem oferece para escolher filtra `archived`. */
+export function usePayees(houseId: string) {
+  return useQuery({
+    queryKey: keys.payees(houseId),
+    queryFn: (): Promise<Payee[]> =>
+      unwrap(api.GET('/households/{householdId}/payees', { params: { path: { householdId: houseId }, query: { includeArchived: true } } })),
+  })
+}
+
+/** Criar e editar (inclui arquivar/restaurar via `archived`) favorecidos. */
+export function usePayeeActions(houseId: string) {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: keys.payees(houseId) })
+  const create = useMutation({
+    mutationFn: (body: PayeeInput) => unwrap(api.POST('/households/{householdId}/payees', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: PayeePatch }) =>
+      unwrap(api.PATCH('/households/{householdId}/payees/{payeeId}', { params: { path: { householdId: houseId, payeeId: id } }, body })),
+    onSettled: refresh,
+  })
+  return { create, update }
 }
 
 /** Todas as invoices de um mês de competência (segue o cursor se passar de uma página). */

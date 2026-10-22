@@ -1,0 +1,130 @@
+import { useState, type FormEvent } from 'react'
+
+import { ApiError } from '../api/errors'
+import type { Category, Payee, PayeeInput, PayeePatch } from '../api/types'
+import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
+import { cnpjDigits, formatCnpj } from '../lib/cnpj'
+import { Button } from './Button'
+import { Field } from './Field'
+import { FormError } from './FormError'
+
+type Props = {
+  /** Sem favorecido = criar um novo. */
+  payee?: Payee
+  /** Categorias ativas, para a categoria sugerida. */
+  categories: Category[]
+  canWrite: boolean
+  onCreate: (body: PayeeInput) => Promise<unknown>
+  onUpdate: (id: string, body: PayeePatch) => Promise<unknown>
+  /** Chamado depois de salvar, arquivar ou restaurar com sucesso. */
+  onDone: (message: string) => void
+}
+
+const label = 'text-xs font-medium uppercase tracking-wider text-graphite/70'
+const select = 'h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base text-graphite'
+
+/**
+ * Favorecido: o nome que a casa escolhe ("Gás") para quem recebe o pagamento, com CNPJ opcional (serve para
+ * reconhecer o favorecido num boleto) e uma categoria sugerida. Quem só lê (viewer) vê os dados, sem botões de escrita.
+ */
+export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onDone }: Props) {
+  const [name, setName] = useState(payee?.name ?? '')
+  const [cnpj, setCnpj] = useState(payee?.cnpj ? formatCnpj(payee.cnpj) : '')
+  const [legalName, setLegalName] = useState(payee?.legalName ?? '')
+  const [categoryId, setCategoryId] = useState(payee?.defaultCategoryId ?? '')
+  const [error, setError] = useState<string>()
+  const [fields, setFields] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
+
+  const clear = (f: string) => setFields(({ [f]: _removed, ...rest }) => rest)
+
+  async function run(call: () => Promise<unknown>, message: string) {
+    setBusy(true)
+    setError(undefined)
+    setFields({})
+    try {
+      await call()
+      onDone(message)
+    } catch (e) {
+      if (!(e instanceof ApiError) || e.network) {
+        setError(networkErrorMessage)
+      } else if (e.problem?.code === 'payee_exists') {
+        setFields({ name: problemMessage(e.problem) })
+      } else if (e.problem?.code === 'payee_cnpj_exists') {
+        setFields({ cnpj: problemMessage(e.problem) })
+      } else {
+        setFields(problemFields(e.problem))
+        setError(problemMessage(e.problem))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    const clean = name.trim()
+    if (!clean) {
+      setFields({ name: 'Dê um nome ao favorecido.' })
+      return
+    }
+    const digits = cnpjDigits(cnpj)
+    if (digits && digits.length !== 14) {
+      setFields({ cnpj: 'O CNPJ tem 14 dígitos.' })
+      return
+    }
+    const body = { name: clean, cnpj: digits || null, legalName: legalName.trim() || null, defaultCategoryId: categoryId || null }
+    if (payee) void run(() => onUpdate(payee.id, body), `${clean} salvo.`)
+    else void run(() => onCreate(body), `${clean} criado.`)
+  }
+
+  const archived = payee?.archived ?? false
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <FormError message={error} />
+      <Field label="Nome" value={name} maxLength={60} disabled={!canWrite} hint="O nome que vocês usam: Gás, Internet, Luz." error={fields.name}
+        onChange={(e) => { setName(e.target.value); clear('name') }} />
+      <Field label="CNPJ (opcional)" inputMode="numeric" autoComplete="off" value={cnpj} disabled={!canWrite} placeholder="00.000.000/0000-00"
+        hint="Com o CNPJ, o prumia reconhece este favorecido nos boletos." error={fields.cnpj}
+        onChange={(e) => { setCnpj(formatCnpj(e.target.value)); clear('cnpj') }} />
+      <Field label="Razão social (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="CEG RIO S/A" error={fields.legalName}
+        onChange={(e) => { setLegalName(e.target.value); clear('legalName') }} />
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="payee-category" className={label}>categoria sugerida (opcional)</label>
+        <select id="payee-category" className={select} value={categoryId} disabled={!canWrite} onChange={(e) => { setCategoryId(e.target.value); clear('defaultCategoryId') }}>
+          <option value="">nenhuma</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {fields.defaultCategoryId && <p className="text-xs text-signal">{fields.defaultCategoryId}</p>}
+      </div>
+
+      {canWrite && (
+        <Button type="submit" disabled={busy}>
+          {busy ? 'Salvando…' : payee ? 'Salvar favorecido' : 'Criar favorecido'}
+        </Button>
+      )}
+
+      {payee && canWrite && (
+        <div className="flex flex-col gap-2 border-t border-graphite/15 pt-4">
+          {archived ? (
+            <>
+              <p className="text-sm text-graphite/80">Arquivado: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
+              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: false }), `${payee.name} restaurado.`)}>
+                Restaurar favorecido
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-graphite/80">Arquivar tira o favorecido da lista ao lançar contas novas. As contas antigas continuam com ele.</p>
+              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: true }), `${payee.name} arquivado.`)}>
+                Arquivar favorecido
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </form>
+  )
+}

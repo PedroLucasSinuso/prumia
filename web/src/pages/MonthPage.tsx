@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { getInvoice, useCategories, useExtractBoleto, useInvoiceActions, useInvoices } from '../api/queries'
+import { getInvoice, useCategories, useExtractBoleto, useInvoiceActions, useInvoices, usePayees } from '../api/queries'
 import type { Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
@@ -40,6 +40,7 @@ export default function MonthPage() {
   const houseId = house?.id ?? ''
 
   const categories = useCategories(houseId)
+  const payees = usePayees(houseId)
   const invoices = useInvoices(houseId, month)
   const actions = useInvoiceActions(houseId)
   const extractBoleto = useExtractBoleto(houseId)
@@ -129,6 +130,7 @@ export default function MonthPage() {
   const formProps = {
     month,
     categories: formCategories,
+    payees: payees.data,
     invoice: editingInvoice,
     canWrite,
     onDone: () => setEditing(null),

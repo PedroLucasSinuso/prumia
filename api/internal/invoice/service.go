@@ -152,6 +152,23 @@ func (s *Service) CheckRefs(ctx context.Context, householdID uuid.UUID, category
 	return nil
 }
 
+// checkPayee exige favorecido da própria casa e não arquivado (nil = sem favorecido, vale).
+func (s *Service) checkPayee(ctx context.Context, householdID uuid.UUID, id *uuid.UUID, v *validation.Collector) error {
+	if id == nil {
+		return nil
+	}
+	var n int64
+	err := s.db.WithContext(ctx).Table("payees").
+		Where("household_id = ? AND id = ? AND archived_at IS NULL AND deleted_at IS NULL", householdID, *id).Count(&n).Error
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		v.Add("payeeId", "favorecido inválido ou arquivado")
+	}
+	return nil
+}
+
 func CheckDescription(d string, v *validation.Collector) string {
 	d = strings.TrimSpace(d)
 	if n := len([]rune(d)); n < 1 || n > 120 {
@@ -191,6 +208,7 @@ func CheckCompetence(m caldate.Date, v *validation.Collector) {
 type CreateInput struct {
 	CategoryID        uuid.UUID
 	ResponsibleUserID *uuid.UUID
+	PayeeID           *uuid.UUID
 	Description       string
 	AmountCents       money.Cents
 	DueDate           caldate.Date
@@ -222,11 +240,14 @@ func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in 
 	if err := s.CheckRefs(ctx, householdID, &in.CategoryID, in.ResponsibleUserID, &v); err != nil {
 		return View{}, err
 	}
+	if err := s.checkPayee(ctx, householdID, in.PayeeID, &v); err != nil {
+		return View{}, err
+	}
 	if err := v.Err(); err != nil {
 		return View{}, err
 	}
 	inv := Invoice{
-		HouseholdID: householdID, CategoryID: in.CategoryID, ResponsibleUserID: in.ResponsibleUserID,
+		HouseholdID: householdID, CategoryID: in.CategoryID, ResponsibleUserID: in.ResponsibleUserID, PayeeID: in.PayeeID,
 		Description: in.Description, AmountCents: in.AmountCents, DueDate: in.DueDate, CompetenceMonth: competence,
 		Notes: in.Notes, CreatedBy: userID,
 	}
@@ -453,6 +474,8 @@ type Patch struct {
 	CategoryID        *uuid.UUID
 	ResponsibleSet    bool
 	ResponsibleUserID *uuid.UUID
+	PayeeSet          bool
+	PayeeID           *uuid.UUID
 	Description       *string
 	AmountCents       *money.Cents
 	DueDate           *caldate.Date
@@ -517,6 +540,12 @@ func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch
 	}
 	if p.ResponsibleSet {
 		updates["responsible_user_id"] = p.ResponsibleUserID
+	}
+	if p.PayeeSet {
+		updates["payee_id"] = p.PayeeID
+		if err := s.checkPayee(ctx, householdID, p.PayeeID, &v); err != nil {
+			return View{}, err
+		}
 	}
 	var newResp *uuid.UUID
 	if p.ResponsibleSet {

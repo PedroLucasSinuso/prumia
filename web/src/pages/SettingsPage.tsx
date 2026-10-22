@@ -6,6 +6,7 @@ import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { CategoryForm } from '../components/CategoryForm'
+import { PayeesSection } from '../components/PayeesSection'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/toastContext'
 import { useIsDesktop } from '../lib/useIsDesktop'
@@ -20,7 +21,7 @@ const meta = (c: Category) => [c.defaultWallet ? walletText[c.defaultWallet] : '
 
 /**
  * Ajustes da casa: o lugar onde cada família molda o app ao seu jeito. Organizada em seções para crescer;
- * por enquanto, categorias (criar, editar, reordenar, arquivar/restaurar). Computador: lista + detalhe ao lado; celular: Sheet.
+ * categorias (criar, editar, reordenar, arquivar/restaurar) e favorecidos. Computador: lista + detalhe ao lado; celular: Sheet.
  */
 export default function SettingsPage() {
   const { house } = useActiveHouse()
@@ -153,6 +154,8 @@ function SettingsView() {
             </aside>
           )}
         </div>
+
+        <PayeesSection houseId={houseId} categories={all} canWrite={canWrite} />
 
         <p className={`${label} text-graphite/60`}>em breve: mais ajustes para a casa</p>
       </main>
