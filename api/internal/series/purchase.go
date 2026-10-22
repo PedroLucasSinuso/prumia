@@ -146,7 +146,7 @@ type PurchaseFilter struct {
 }
 
 type PurchasePage struct {
-	Items      []Purchase
+	Items      []Detail
 	NextCursor string
 }
 
@@ -169,7 +169,7 @@ func decodeCursor(c string) (caldate.Date, uuid.UUID, error) {
 }
 
 // List devolve as compras da casa, da mais recente para a mais antiga (data da compra, depois id), com cursor (keyset).
-// Não traz as parcelas (use Get): lista leve, sem N+1.
+// Cada compra vem com as parcelas não excluídas, em ordem: UMA consulta a mais para a página inteira (sem N+1).
 func (s *PurchaseService) List(ctx context.Context, householdID uuid.UUID, f PurchaseFilter) (PurchasePage, error) {
 	var v validation.Collector
 	q := s.db.WithContext(ctx).Where("household_id = ?", householdID)
@@ -203,6 +203,25 @@ func (s *PurchaseService) List(ctx context.Context, householdID uuid.UUID, f Pur
 		page.NextCursor = encodeCursor(rows[limit-1])
 		rows = rows[:limit]
 	}
-	page.Items = rows
+	page.Items = make([]Detail, len(rows))
+	if len(rows) == 0 {
+		return page, nil
+	}
+	ids := make([]uuid.UUID, len(rows))
+	pos := make(map[uuid.UUID]int, len(rows))
+	for i, p := range rows {
+		ids[i], pos[p.ID] = p.ID, i
+		page.Items[i] = Detail{Purchase: p, Installments: []invoice.Invoice{}}
+	}
+	var inst []invoice.Invoice
+	err := s.db.WithContext(ctx).Where("household_id = ? AND purchase_id IN ?", householdID, ids).
+		Order("purchase_id, installment_number").Find(&inst).Error
+	if err != nil {
+		return PurchasePage{}, fmt.Errorf("lendo parcelas: %w", err)
+	}
+	for _, i := range inst {
+		d := &page.Items[pos[*i.PurchaseID]]
+		d.Installments = append(d.Installments, i)
+	}
 	return page, nil
 }

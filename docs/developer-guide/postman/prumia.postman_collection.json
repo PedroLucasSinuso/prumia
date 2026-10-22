@@ -2006,6 +2006,78 @@
           ]
         },
         {
+          "name": "Desfazer o lote (restore com scope=following)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/invoices/{{inst5_id}}/restore?scope=following",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "invoices",
+                "{{inst5_id}}",
+                "restore"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "following"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200: restaura a 5 e as seguintes excluídas no mesmo lote', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compra voltou a 6 parcelas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('parcelas 1 a 6', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().installments.map(i => i.series.installmentNumber)).to.eql([1, 2, 3, 4, 5, 6]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Excluir a compra inteira (da parcela 1 em diante)",
           "request": {
             "method": "DELETE",

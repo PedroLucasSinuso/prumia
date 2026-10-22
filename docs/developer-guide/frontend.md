@@ -104,8 +104,10 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   (valor da parcela vira `installmentAmountCents` com total = parcela × N; "total da compra" deixa o servidor dividir). Fixa chama
   `POST /recurrences` com o dia do vencimento e o mês corrente. Ao editar uma invoice de série, "esta e as seguintes" manda
   `?scope=following` sem `dueDate`/`competenceMonth` (o servidor responde 400 com eles) e tira o sufixo ` (n/N)` da descrição.
-  `pages/SeriesPage` (`/parcelas`) lista compras (busca `q` com espera de 300 ms) e contas fixas (`RecurrenceForm`). A lista de compras
-  da API pode vir sem as parcelas; a tela só expande quando elas vêm. Excluir "esta e as seguintes" não tem Desfazer (restore é por invoice).
+  `pages/SeriesPage` (`/parcelas`) lista compras (busca `q` com espera de 300 ms) e contas fixas (`RecurrenceForm`). A listagem de
+  compras já traz as parcelas (não excluídas, em ordem), então "n de N pagas" e a lista expansível aparecem sempre, sem consulta por compra.
+  Excluir "esta e as seguintes" mostra o toast com **Desfazer**, que chama `restore` com `scope=following` (`actions.restore.mutate({ id, scope })`);
+  se o servidor recusar (409), o toast avisa para restaurar uma a uma.
 - **Líquido**: o front só mostra `bruto − descontos` enquanto a pessoa digita (`lib/income.ts`); a fonte da verdade é `netAmountCents` do servidor.
 - **Aviso de VR**: ao pagar na carteira de benefício, `warnings: ["benefit_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
 - Pagar, receber ou criar invalida as listas **e** o resumo (`['summary', casa]`), então os saldos se atualizam sozinhos.

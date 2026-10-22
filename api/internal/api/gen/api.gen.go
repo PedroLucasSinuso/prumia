@@ -315,6 +315,24 @@ func (e UpdateInvoiceParamsScope) Valid() bool {
 	}
 }
 
+// Defines values for RestoreInvoiceParamsScope.
+const (
+	RestoreInvoiceParamsScopeFollowing RestoreInvoiceParamsScope = "following"
+	RestoreInvoiceParamsScopeThis      RestoreInvoiceParamsScope = "this"
+)
+
+// Valid indicates whether the value is a known member of the RestoreInvoiceParamsScope enum.
+func (e RestoreInvoiceParamsScope) Valid() bool {
+	switch e {
+	case RestoreInvoiceParamsScopeFollowing:
+		return true
+	case RestoreInvoiceParamsScopeThis:
+		return true
+	default:
+		return false
+	}
+}
+
 // Boleto defines model for Boleto.
 type Boleto struct {
 	Barcode             *string       `json:"barcode,omitempty"`
@@ -682,10 +700,12 @@ type Problem struct {
 
 // Purchase defines model for Purchase.
 type Purchase struct {
-	CategoryId        openapi_types.UUID  `json:"categoryId"`
-	Description       string              `json:"description"`
-	Id                openapi_types.UUID  `json:"id"`
-	Installments      *[]Invoice          `json:"installments,omitempty"`
+	CategoryId  openapi_types.UUID `json:"categoryId"`
+	Description string             `json:"description"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// Installments Parcelas não excluídas, por número. Sempre presente (também na listagem).
+	Installments      []Invoice           `json:"installments"`
 	InstallmentsCount int                 `json:"installmentsCount"`
 	Notes             *string             `json:"notes,omitempty"`
 	PurchaseDate      caldate.Date        `json:"purchaseDate"`
@@ -944,6 +964,19 @@ type UpdateInvoiceParams struct {
 // UpdateInvoiceParamsScope defines parameters for UpdateInvoice.
 type UpdateInvoiceParamsScope string
 
+// RestoreInvoiceParams defines parameters for RestoreInvoice.
+type RestoreInvoiceParams struct {
+	// Scope `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+	// recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+	// escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+	// No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+	// cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
+	Scope *RestoreInvoiceParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// RestoreInvoiceParamsScope defines parameters for RestoreInvoice.
+type RestoreInvoiceParamsScope string
+
 // UpdateMemberRoleJSONBody defines parameters for UpdateMemberRole.
 type UpdateMemberRoleJSONBody struct {
 	Role Role `json:"role"`
@@ -1134,9 +1167,9 @@ type ServerInterface interface {
 	// PayInvoice Marca como paga (afeta só esta invoice). Pode devolver aviso de saldo de benefício insuficiente.
 	// (POST /households/{householdId}/invoices/{invoiceId}/pay)
 	PayInvoice(c *gin.Context, householdId HouseholdId, invoiceId InvoiceId)
-	// RestoreInvoice Desfaz a exclusão
+	// RestoreInvoice Desfaz a exclusão. Em série, `scope=following` desfaz o lote "esta e as seguintes".
 	// (POST /households/{householdId}/invoices/{invoiceId}/restore)
-	RestoreInvoice(c *gin.Context, householdId HouseholdId, invoiceId InvoiceId)
+	RestoreInvoice(c *gin.Context, householdId HouseholdId, invoiceId InvoiceId, params RestoreInvoiceParams)
 	// ListMembers Membros ativos
 	// (GET /households/{householdId}/members)
 	ListMembers(c *gin.Context, householdId HouseholdId)
@@ -2188,6 +2221,17 @@ func (siw *ServerInterfaceWrapper) RestoreInvoice(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RestoreInvoiceParams
+
+	// ------------- Optional query parameter "scope" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "scope", c.Request.URL.Query(), &params.Scope, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter scope: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2195,7 +2239,7 @@ func (siw *ServerInterfaceWrapper) RestoreInvoice(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.RestoreInvoice(c, householdId, invoiceId)
+	siw.Handler.RestoreInvoice(c, householdId, invoiceId, params)
 }
 
 // ListMembers operation middleware

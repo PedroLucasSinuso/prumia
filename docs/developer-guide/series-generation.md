@@ -57,7 +57,7 @@ O índice único `(recurrence_id, occurrence_month)` **inclui linhas com `delete
 ocorrência é só marcar `deleted_at`; a linha continua ocupando aquele mês, e o gerador insere com `ON CONFLICT DO NOTHING`, então
 ignora o mês. Vale igual para parcelas (índice `(purchase_id, installment_number)`). Testado em `series_test.go`
 (`TestRecorrenciaNaoRecriaExcluidas`: o marcador `generated_through` é "rebobinado" à força e a ocorrência excluída continua fora).
-Para trazer de volta, use `POST /invoices/{id}/restore` (uma por vez).
+Para trazer de volta, use `POST /invoices/{id}/restore` (uma, ou o lote inteiro com `scope=following`; ver seção 3).
 
 ### Editando (`PATCH /recurrences/{id}`)
 
@@ -98,7 +98,30 @@ Não há `DELETE /purchases` nem `DELETE /recurrences`: usa-se `DELETE /invoices
   Parcelas **pagas** permanecem (histórico do que foi pago); para removê-las, exclua cada uma com `scope=this`.
 - **Recorrência**: as pendentes seguintes são excluídas e a série é **encerrada no mês anterior** ao da escolhida (`end_month`, que só diminui),
   para o horizonte não recriar os meses. Se a escolhida é a primeira ocorrência, a recorrência inteira é excluída e sai de `GET /recurrences`.
-- Exclusões **não ressuscitam** sozinhas (ver acima). `restore` é invoice a invoice e não reabre uma recorrência encerrada.
+- Exclusões **não ressuscitam** sozinhas (ver acima). Para voltar atrás, há o Desfazer em lote (abaixo).
+
+### Desfazer o lote (`POST /invoices/{id}/restore?scope=following`)
+
+`scope=this` (padrão) restaura só a invoice. `scope=following` desfaz o **lote** "esta e as seguintes" a que ela pertence, numa transação:
+
+- **Como o lote é identificado: pelo `deleted_at`.** O `DELETE ?scope=following` grava o **mesmo instante** (gerado uma vez no Go,
+  truncado em microssegundos, a precisão do `timestamptz`) em todas as invoices do lote, no cabeçalho da compra (se fechou) e na
+  recorrência (se foi excluída). O restore volta as da mesma série com número/mês `>=` o da escolhida **e** `deleted_at` igual ao dela.
+  Exclusões avulsas anteriores (ex.: "só esta" na parcela 2 antes de excluir da 4 em diante) têm outro instante e **continuam excluídas**.
+  Não precisou de coluna de lote nas invoices.
+- **Compra**: restaurar qualquer parcela reabre o cabeçalho (`purchases.deleted_at = NULL`), como no restore simples.
+- **Recorrência**: o fim anterior se perde ao encerrar (podia ser `NULL` ou um mês posterior), então o corte é registrado em
+  `recurrence_cuts` (migration `00002`): `batch_deleted_at`, `previous_end_month` e `cut_end_month` (`NULL` = o lote excluiu a
+  recorrência inteira). O Desfazer devolve `end_month = previous_end_month` (ou reativa a recorrência) **só se ela ainda está como o
+  lote a deixou**; senão responde 409 `series_changed` e nada muda. Ex.: lote a partir de maio (fim abr) e depois a partir de março
+  (fim fev): desfazer o de maio primeiro dá 409; desfazer março e depois maio volta tudo. Depois de reativada, o horizonte volta a
+  gerar normalmente (as excluídas avulsas continuam ocupando o mês).
+- Valida que as categorias das invoices restauradas ainda existem (409 `category_deleted`). Restaurar de novo dá 409 `not_deleted`.
+- Lotes excluídos antes desta versão: as invoices voltam (o GORM já gravava um `deleted_at` único por lote), mas o fim da recorrência
+  não é devolvido (não havia registro em `recurrence_cuts`).
+
+Testes de ponta a ponta: `api/internal/api/series_lote_test.go` (parcelas com exclusão avulsa anterior e paga no meio, compra que
+fecha e reabre, recorrência sem fim, com fim próprio, excluída inteira, lotes empilhados e isolamento entre casas).
 
 ## 4. Resposta: `series`
 

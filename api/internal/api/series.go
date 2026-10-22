@@ -28,16 +28,35 @@ func toGenPurchase(p series.Purchase) gen.Purchase {
 }
 
 func (h *Purchases) toGenDetail(c *gin.Context, householdID openapi_types.UUID, d series.Detail) (gen.Purchase, error) {
-	views, err := h.Invoices.Views(c.Request.Context(), householdID, d.Installments)
+	out, err := h.toGenDetails(c, householdID, []series.Detail{d})
 	if err != nil {
 		return gen.Purchase{}, err
 	}
-	out := toGenPurchase(d.Purchase)
-	items := make([]gen.Invoice, len(views))
-	for i, v := range views {
-		items[i] = toGenInvoice(v)
+	return out[0], nil
+}
+
+// toGenDetails monta várias compras com as parcelas calculando os status de TODAS as parcelas numa chamada só
+// (Views faz consultas por lista, não por item): a listagem continua sem N+1.
+func (h *Purchases) toGenDetails(c *gin.Context, householdID openapi_types.UUID, ds []series.Detail) ([]gen.Purchase, error) {
+	var all []invoice.Invoice
+	for _, d := range ds {
+		all = append(all, d.Installments...)
 	}
-	out.Installments = &items
+	views, err := h.Invoices.Views(c.Request.Context(), householdID, all)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.Purchase, len(ds))
+	k := 0
+	for i, d := range ds {
+		out[i] = toGenPurchase(d.Purchase)
+		items := make([]gen.Invoice, len(d.Installments))
+		for j := range d.Installments {
+			items[j] = toGenInvoice(views[k])
+			k++
+		}
+		out[i].Installments = items
+	}
 	return out, nil
 }
 
@@ -58,10 +77,12 @@ func (h *Purchases) ListPurchases(c *gin.Context, householdId gen.HouseholdId, p
 		writeDomainError(c, h.Log, err)
 		return
 	}
-	out := gen.PurchasePage{Items: make([]gen.Purchase, len(page.Items))}
-	for i, p := range page.Items {
-		out.Items[i] = toGenPurchase(p)
+	items, err := h.toGenDetails(c, householdId, page.Items)
+	if err != nil {
+		writeDomainError(c, h.Log, err)
+		return
 	}
+	out := gen.PurchasePage{Items: items}
 	if page.NextCursor != "" {
 		out.NextCursor = &page.NextCursor
 	}

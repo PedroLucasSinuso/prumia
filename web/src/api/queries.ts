@@ -108,7 +108,9 @@ export function useInvoiceActions(houseId: string) {
     onSettled: refresh,
   })
   const restore = useMutation({
-    mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/invoices/{invoiceId}/restore', path(id))),
+    // scope=following desfaz o lote "esta e as seguintes" (só o que foi excluído junto com esta).
+    mutationFn: ({ id, scope = 'this' }: { id: string; scope?: SeriesScope }) =>
+      unwrap(api.POST('/households/{householdId}/invoices/{invoiceId}/restore', { params: { ...path(id).params, query: { scope } } })),
     onSettled: refresh,
   })
   const pay = useMutation({
