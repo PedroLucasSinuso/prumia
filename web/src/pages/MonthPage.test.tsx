@@ -333,7 +333,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
         '/households/{householdId}/invoices/{invoiceId}/restore',
-        expect.objectContaining({ params: { path: { householdId: 'h1', invoiceId: 'i2' } } }),
+        expect.objectContaining({ params: { path: { householdId: 'h1', invoiceId: 'i2' }, query: { scope: 'this' } } }),
       ),
     )
   })

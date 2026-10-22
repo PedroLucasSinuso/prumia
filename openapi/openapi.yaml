@@ -396,9 +396,18 @@ paths:
     post:
       tags: [invoices]
       operationId: restoreInvoice
-      summary: Desfaz a exclusão
+      summary: Desfaz a exclusão. Em série, `scope=following` desfaz o lote "esta e as seguintes".
+      description: |
+        `this` (padrão) restaura só esta invoice. `following` restaura, numa transação, esta e as da MESMA série com número/mês
+        maior ou igual que foram excluídas JUNTO com ela (mesmo lote: mesmo `deleted_at`); exclusões avulsas anteriores
+        continuam excluídas. Também desfaz o efeito do lote no cabeçalho: reabre a compra fechada e devolve o fim (ou reativa)
+        a recorrência encerrada pelo lote. 409 se a recorrência mudou depois do lote (ex.: foi encerrada antes).
+      parameters:
+        - { $ref: '#/components/parameters/SeriesScope' }
       responses:
-        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '200': { description: "OK (a invoice escolhida)", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /households/{householdId}/invoices/{invoiceId}/pay:
     parameters:
       - { $ref: '#/components/parameters/HouseholdId' }
@@ -882,7 +891,7 @@ components:
 
     Purchase:
       type: object
-      required: [id, description, purchaseDate, totalAmountCents, installmentsCount, categoryId]
+      required: [id, description, purchaseDate, totalAmountCents, installmentsCount, categoryId, installments]
       properties:
         id: { type: string, format: uuid }
         categoryId: { type: string, format: uuid }
@@ -894,6 +903,7 @@ components:
         notes: { type: string, nullable: true }
         installments:
           type: array
+          description: "Parcelas não excluídas, por número. Sempre presente (também na listagem)."
           items: { $ref: '#/components/schemas/Invoice' }
     PurchaseInput:
       type: object

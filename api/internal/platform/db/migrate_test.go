@@ -3,12 +3,14 @@ package db_test
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"testing"
 
 	"gorm.io/gorm"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
+	"github.com/PedroLucasSinuso/prumia/api/migrations"
 )
 
 // TestMigrationUpDownUp garante que a migration inicial aplica, reverte e reaplica sem erro,
@@ -24,8 +26,12 @@ func TestMigrationUpDownUp(t *testing.T) {
 	if err := db.Migrate(ctx, sqlDB); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	if err := db.Rollback(ctx, sqlDB); err != nil {
-		t.Fatalf("down: %v", err)
+	// Rollback desfaz UMA migration: desce todas, da mais nova para a mais antiga.
+	files, _ := fs.Glob(migrations.FS, "*.sql")
+	for range files {
+		if err := db.Rollback(ctx, sqlDB); err != nil {
+			t.Fatalf("down: %v", err)
+		}
 	}
 	var tables int
 	gdb.Raw(`SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='invoices'`).Scan(&tables)

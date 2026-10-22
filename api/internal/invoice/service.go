@@ -2,16 +2,17 @@ package invoice
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
@@ -26,6 +27,8 @@ var (
 	ErrNotPaid      = errors.New("esta invoice não está paga")
 	ErrCategoryGone = errors.New("a categoria desta invoice foi excluída")
 	ErrNotDeleted   = errors.New("a invoice não está excluída")
+	// ErrSeriesChanged: o Desfazer em lote não se aplica porque a recorrência mudou depois da exclusão.
+	ErrSeriesChanged = errors.New("a conta fixa mudou depois desta exclusão; restaure uma a uma")
 )
 
 // MaxAmount (exportado: compras e recorrências usam o mesmo limite) evita valores absurdos (e estouro de int64 em somas): R$ 10 bilhões.
@@ -591,18 +594,24 @@ func (s *Service) updateFollowing(ctx context.Context, inv Invoice, updates map[
 
 // Delete faz a exclusão lógica (dá para desfazer com Restore). Com scope=following numa série, exclui esta e as
 // seguintes pendentes (pagas ficam). Em recorrência, também encerra a série para o horizonte não recriar os meses.
+//
+// O lote inteiro recebe o MESMO deleted_at (um instante só, gravado também no cabeçalho e em recurrence_cuts): é
+// assim que Restore(scope=following) sabe o que foi excluído junto e não ressuscita exclusões avulsas anteriores.
 func (s *Service) Delete(ctx context.Context, householdID, id uuid.UUID, scope Scope) error {
 	inv, err := s.find(ctx, householdID, id, false)
 	if err != nil {
 		return err
 	}
+	// Microssegundos: a precisão do timestamptz. Assim o valor em Go é idêntico ao que fica no banco.
+	at := time.Now().UTC().Truncate(time.Microsecond)
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if scope == ScopeFollowing && inv.InSeries() {
-			if err := followingScope(tx, inv).Delete(&Invoice{}).Error; err != nil {
+			// Update (e não Delete) para gravar o nosso instante; o escopo já ignora as excluídas (gorm.DeletedAt).
+			if err := followingScope(tx, inv).Update("deleted_at", at).Error; err != nil {
 				return err
 			}
 			if inv.RecurrenceID != nil {
-				if err := endRecurrenceBefore(tx, inv); err != nil {
+				if err := endRecurrenceBefore(tx, inv, at); err != nil {
 					return err
 				}
 			}
@@ -610,48 +619,76 @@ func (s *Service) Delete(ctx context.Context, householdID, id uuid.UUID, scope S
 			return err
 		}
 		if inv.PurchaseID != nil {
-			return closePurchaseIfEmpty(tx, inv)
+			return closePurchaseIfEmpty(tx, inv, at)
 		}
 		return nil
 	})
 }
 
 // closePurchaseIfEmpty exclui (logicamente) o cabeçalho da compra quando todas as parcelas foram excluídas.
-func closePurchaseIfEmpty(tx *gorm.DB, inv Invoice) error {
+func closePurchaseIfEmpty(tx *gorm.DB, inv Invoice, at time.Time) error {
 	var n int64
 	err := tx.Model(&Invoice{}).Where("household_id = ? AND purchase_id = ?", inv.HouseholdID, *inv.PurchaseID).Count(&n).Error
 	if err != nil || n > 0 {
 		return err
 	}
 	return tx.Table("purchases").Where("household_id = ? AND id = ? AND deleted_at IS NULL", inv.HouseholdID, *inv.PurchaseID).
-		Update("deleted_at", gorm.Expr("now()")).Error
+		Update("deleted_at", at).Error
 }
 
+// recurrenceCut espelha `recurrence_cuts`: o que o lote mudou na recorrência, para o Desfazer voltar exatamente atrás.
+type recurrenceCut struct {
+	HouseholdID      uuid.UUID `gorm:"type:uuid"`
+	RecurrenceID     uuid.UUID `gorm:"type:uuid"`
+	BatchDeletedAt   time.Time
+	PreviousEndMonth caldate.Date // zero = NULL (sem fim)
+	CutEndMonth      caldate.Date // zero = NULL (o corte excluiu a recorrência)
+}
+
+func (recurrenceCut) TableName() string { return "recurrence_cuts" }
+
 // endRecurrenceBefore encerra a recorrência no mês anterior ao da invoice escolhida (end_month só diminui). Se a escolhida
-// é a primeira ocorrência (ou anterior ao início), a recorrência inteira é excluída.
-func endRecurrenceBefore(tx *gorm.DB, inv Invoice) error {
+// é a primeira ocorrência (ou anterior ao início), a recorrência inteira é excluída. Registra o corte em recurrence_cuts
+// (com o fim anterior) para Restore(scope=following) desfazer.
+func endRecurrenceBefore(tx *gorm.DB, inv Invoice, at time.Time) error {
 	where := "household_id = ? AND id = ? AND deleted_at IS NULL"
-	var start caldate.Date
-	err := tx.Table("recurrences").Select("start_month").Where(where, inv.HouseholdID, *inv.RecurrenceID).Row().Scan(&start)
-	if errors.Is(err, sql.ErrNoRows) { // recorrência já excluída: nada a encerrar
+	var cur struct {
+		StartMonth caldate.Date
+		EndMonth   caldate.Date
+	}
+	// FOR UPDATE: o fim lido aqui é o que guardamos como "anterior"; ninguém o muda até o commit.
+	res := tx.Table("recurrences").Select("start_month, end_month").Where(where, inv.HouseholdID, *inv.RecurrenceID).
+		Clauses(clause.Locking{Strength: "UPDATE"}).Scan(&cur)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 { // recorrência já excluída: nada a encerrar
 		return nil
 	}
+	cut := recurrenceCut{HouseholdID: inv.HouseholdID, RecurrenceID: *inv.RecurrenceID, BatchDeletedAt: at, PreviousEndMonth: cur.EndMonth}
+	if !inv.OccurrenceMonth.After(cur.StartMonth) {
+		if err := tx.Table("recurrences").Where(where, inv.HouseholdID, *inv.RecurrenceID).Update("deleted_at", at).Error; err != nil {
+			return err
+		}
+		return tx.Create(&cut).Error
+	}
+	end := inv.OccurrenceMonth.AddMonths(-1)
+	if !cur.EndMonth.IsZero() && !cur.EndMonth.After(end) {
+		return nil // já termina antes: o fim não muda, não há o que desfazer
+	}
+	cut.CutEndMonth = end
+	err := tx.Table("recurrences").Where(where, inv.HouseholdID, *inv.RecurrenceID).
+		Updates(map[string]any{"end_month": end, "updated_at": gorm.Expr("now()")}).Error
 	if err != nil {
 		return err
 	}
-	if !inv.OccurrenceMonth.After(start) {
-		return tx.Table("recurrences").Where(where, inv.HouseholdID, *inv.RecurrenceID).
-			Update("deleted_at", gorm.Expr("now()")).Error
-	}
-	end := inv.OccurrenceMonth.AddMonths(-1)
-	return tx.Table("recurrences").Where(where, inv.HouseholdID, *inv.RecurrenceID).Updates(map[string]any{
-		"end_month":  gorm.Expr("CASE WHEN end_month IS NULL OR end_month > ? THEN ?::date ELSE end_month END", end, end),
-		"updated_at": gorm.Expr("now()"),
-	}).Error
+	return tx.Create(&cut).Error
 }
 
-// Restore desfaz a exclusão lógica.
-func (s *Service) Restore(ctx context.Context, householdID, id uuid.UUID) (View, error) {
+// Restore desfaz a exclusão lógica. Com scope=following numa série, desfaz o LOTE "esta e as seguintes" a que a
+// invoice pertence: restaura as da mesma série com número/mês maior ou igual e o MESMO deleted_at (exclusões avulsas
+// anteriores têm outro instante e continuam excluídas), reabre a compra e devolve o fim (ou reativa) a recorrência.
+func (s *Service) Restore(ctx context.Context, householdID, id uuid.UUID, scope Scope) (View, error) {
 	inv, err := s.find(ctx, householdID, id, true)
 	if err != nil {
 		return View{}, err
@@ -659,18 +696,43 @@ func (s *Service) Restore(ctx context.Context, householdID, id uuid.UUID) (View,
 	if !inv.DeletedAt.Valid {
 		return View{}, ErrNotDeleted
 	}
-	var n int64
-	if err := s.db.WithContext(ctx).Model(&category.Category{}).
-		Where("household_id = ? AND id = ?", householdID, inv.CategoryID).Count(&n).Error; err != nil {
+	following := scope == ScopeFollowing && inv.InSeries()
+	targets := s.db.WithContext(ctx).Unscoped().Model(&Invoice{}).Where("household_id = ?", householdID)
+	if following {
+		batch := inv.DeletedAt.Time
+		if inv.PurchaseID != nil {
+			targets = targets.Where("purchase_id = ? AND installment_number >= ?", *inv.PurchaseID, *inv.InstallmentNumber)
+		} else {
+			targets = targets.Where("recurrence_id = ? AND occurrence_month >= ?", *inv.RecurrenceID, inv.OccurrenceMonth)
+		}
+		targets = targets.Where("deleted_at = ?", batch)
+	} else {
+		targets = targets.Where("id = ?", id)
+	}
+	var ids, cats []uuid.UUID
+	if err := targets.Session(&gorm.Session{}).Pluck("id", &ids).Error; err != nil {
 		return View{}, err
 	}
-	if n == 0 {
+	if err := targets.Session(&gorm.Session{}).Distinct("category_id").Pluck("category_id", &cats).Error; err != nil {
+		return View{}, err
+	}
+	var n int64
+	if err := s.db.WithContext(ctx).Model(&category.Category{}).
+		Where("household_id = ? AND id IN ?", householdID, cats).Count(&n).Error; err != nil {
+		return View{}, err
+	}
+	if int(n) != len(cats) {
 		return View{}, ErrCategoryGone
 	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Model(&Invoice{}).
-			Where("household_id = ? AND id = ?", householdID, id).Update("deleted_at", nil).Error; err != nil {
+			Where("household_id = ? AND id IN ? AND deleted_at IS NOT NULL", householdID, ids).Update("deleted_at", nil).Error; err != nil {
 			return err
+		}
+		if following && inv.RecurrenceID != nil {
+			if err := undoRecurrenceCut(tx, inv); err != nil {
+				return err
+			}
 		}
 		if inv.PurchaseID == nil {
 			return nil
@@ -683,6 +745,37 @@ func (s *Service) Restore(ctx context.Context, householdID, id uuid.UUID) (View,
 		return View{}, err
 	}
 	return s.Get(ctx, householdID, id)
+}
+
+// undoRecurrenceCut desfaz o que endRecurrenceBefore fez no lote da invoice: reativa a recorrência ou devolve o fim
+// anterior. Só se a recorrência estiver exatamente como o lote a deixou; se mudou depois (ex.: outro corte mais cedo
+// ainda não desfeito), devolve ErrSeriesChanged em vez de adivinhar.
+func undoRecurrenceCut(tx *gorm.DB, inv Invoice) error {
+	var cut recurrenceCut
+	res := tx.Where("household_id = ? AND recurrence_id = ? AND batch_deleted_at = ?", inv.HouseholdID, *inv.RecurrenceID, inv.DeletedAt.Time).
+		Limit(1).Find(&cut)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil // o lote não mexeu na recorrência (ou é anterior a este registro)
+	}
+	rec := tx.Table("recurrences").Where("household_id = ? AND id = ?", inv.HouseholdID, *inv.RecurrenceID)
+	var upd *gorm.DB
+	if cut.CutEndMonth.IsZero() {
+		upd = rec.Where("deleted_at = ?", cut.BatchDeletedAt).Update("deleted_at", nil)
+	} else {
+		upd = rec.Where("deleted_at IS NULL AND end_month = ?", cut.CutEndMonth).
+			Updates(map[string]any{"end_month": cut.PreviousEndMonth, "updated_at": gorm.Expr("now()")})
+	}
+	if upd.Error != nil {
+		return upd.Error
+	}
+	if upd.RowsAffected == 0 {
+		return ErrSeriesChanged
+	}
+	return tx.Where("household_id = ? AND recurrence_id = ? AND batch_deleted_at = ?", inv.HouseholdID, *inv.RecurrenceID, cut.BatchDeletedAt).
+		Delete(&recurrenceCut{}).Error
 }
 
 // ---------------------------------------------------------------- pagar

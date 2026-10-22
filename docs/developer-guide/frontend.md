@@ -78,7 +78,7 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 
 ## Receitas, resumo e navegação
 
-- **Navegação** (`AppShell`): mês, receitas, resumo e casa, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
+- **Navegação** (`AppShell`): mês, receitas, resumo, parcelas, casa e ajustes, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
   (`?mes=`, `useMonthParam`) acompanha ao trocar de tela.
 - **`pages/SummaryPage`**: "sobra ou falta?" por carteira (`WalletCard`: saldo, previsto, recebido, pago), pago x a pagar e total por
   categoria (barra pago + a pagar). Só lê `GET /summary`; o cálculo é do servidor (recebido − pago, por competência).
@@ -91,6 +91,14 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   admin some para os demais (o servidor confere de novo). **Criar outra casa** (`useCreateHousehold`; `household_limit` vira aviso).
   Sair da casa ou excluí-la troca para outra casa; só encerra a sessão se era a **última**. A tela usa `key={casa}`: trocar de casa
   a remonta, sem formulário ou aviso vazando de uma casa para outra.
+- **`pages/SettingsPage`** (`/configuracoes`, item **ajustes**): onde cada casa molda o app; organizada em seções (hoje só **Categorias**).
+  `useCategories` lê `?includeArchived=true` em todas as telas: conta antiga de categoria arquivada continua mostrando o nome no mês e no
+  resumo; quem oferece categorias para escolher filtra `archived` (o `InvoiceForm` recebe só as ativas e a da conta aberta). Ativas na ordem de `sortOrder`; arquivadas num `<details>` recolhido. `CategoryForm` cria/edita nome, carteira padrão
+  (livre/benefício/nenhuma: "nenhuma" vai como `null` no PATCH) e essencial, e arquiva/restaura (`archived`). **Reordenar** (botões ↑/↓,
+  sem arrastar): não há endpoint em lote, então `useCategoryActions().reorder` grava `sortOrder = posição` só nas que mudaram, um PATCH
+  por vez. Não há botão de excluir: categoria em uso é arquivada (o `DELETE` existe na API para as sem uso, mas a tela não o oferece).
+  `category_exists` aparece no campo Nome. Viewer vê os dados com campos desabilitados e sem botões de escrita. Computador: lista + painel
+  ao lado; celular: `Sheet`. Testes: `pages/SettingsPage.test.tsx` (rotas `createCategory`/`updateCategory` no `mockApi`).
 - **Links públicos** `/convite?token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha?token=`
   (`ResetPasswordPage`). Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
   e abre um convite vê **Entrar na casa** (`useAcceptInvite` → `POST /invites/accept`, relê `/auth/me` e ativa a casa nova); nada é
@@ -105,8 +113,10 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   (valor da parcela vira `installmentAmountCents` com total = parcela × N; "total da compra" deixa o servidor dividir). Fixa chama
   `POST /recurrences` com o dia do vencimento e o mês corrente. Ao editar uma invoice de série, "esta e as seguintes" manda
   `?scope=following` sem `dueDate`/`competenceMonth` (o servidor responde 400 com eles) e tira o sufixo ` (n/N)` da descrição.
-  `pages/SeriesPage` (`/parcelas`) lista compras (busca `q` com espera de 300 ms) e contas fixas (`RecurrenceForm`). A lista de compras
-  da API pode vir sem as parcelas; a tela só expande quando elas vêm. Excluir "esta e as seguintes" não tem Desfazer (restore é por invoice).
+  `pages/SeriesPage` (`/parcelas`) lista compras (busca `q` com espera de 300 ms) e contas fixas (`RecurrenceForm`). A listagem de
+  compras já traz as parcelas (não excluídas, em ordem), então "n de N pagas" e a lista expansível aparecem sempre, sem consulta por compra.
+  Excluir "esta e as seguintes" mostra o toast com **Desfazer**, que chama `restore` com `scope=following` (`actions.restore.mutate({ id, scope })`);
+  se o servidor recusar (409), o toast avisa para restaurar uma a uma.
 - **Líquido**: o front só mostra `bruto − descontos` enquanto a pessoa digita (`lib/income.ts`); a fonte da verdade é `netAmountCents` do servidor.
 - **Aviso de VR**: ao pagar na carteira de benefício, `warnings: ["benefit_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
 - Pagar, receber ou criar invalida as listas **e** o resumo (`['summary', casa]`), então os saldos se atualizam sozinhos.
@@ -147,7 +157,39 @@ Regras (manual de identidade): sem gradientes nem `rounded-full`; raio de 4–6p
 `border-graphite/15`; números com `tabular-nums` (já global) e `font-mono` nos saldos; textos em pt-BR; marca sempre
 minúscula. Status com os marcadores `[ ▪ ]`, `[ ▫ ]`, `[ ✖ ]`.
 
-O `public/favicon.svg` é um **placeholder**; falta o símbolo oficial.
+O `public/favicon.svg` é um **placeholder**; falta o símbolo oficial (os ícones do PWA também; ver a seção PWA).
+
+## PWA (instalar no celular)
+
+**O que é:** o mínimo para o navegador oferecer "Instalar app"/"Adicionar à tela inicial": abre em tela cheia
+(`display: standalone`), com ícone e barra na cor da marca. **O que não é:** modo offline. O prumia mostra dados
+financeiros que vêm da API; abrir com dados guardados no aparelho mostraria contas velhas como se fossem atuais. Por isso
+nada do app nem de `/api/` é cacheado pelo service worker.
+
+| Arquivo | Papel |
+|---|---|
+| `public/manifest.webmanifest` | nome, `start_url`/`scope` `/`, `standalone`, `theme_color` teal, `background_color` ivory, ícones |
+| `public/icons/*.png` | `icon-192`, `icon-512` (`any`), `maskable-512` (símbolo dentro do círculo seguro de 80%), `apple-touch-icon` (180) |
+| `index.html` | `<link rel="manifest">`, `theme-color`, `apple-touch-icon` e metas do iOS (`apple-mobile-web-app-*`) |
+| `public/sw.js` | service worker: navegação vai **sempre à rede**; sem rede, mostra uma página "Sem conexão". Não intercepta `/api/` nem JS/CSS/imagens |
+| `src/lib/pwa.ts` | `registerServiceWorker()`, chamado no `main.tsx`: só em **produção**, só em **contexto seguro** (HTTPS ou `localhost`) |
+
+- **Atualização:** o nginx serve `sw.js` com `Cache-Control: no-cache` e o registro usa `updateViaCache: 'none'`, então
+  o navegador confere a versão a cada abertura. Como o SW não guarda o app, a versão nova assume na hora (`skipWaiting`) sem
+  recarregar a tela; o JS novo vale no próximo carregamento. Mudou `sw.js`? Suba `CACHE_VERSION` (o `activate` apaga os caches antigos).
+- **HTTPS é obrigatório** para instalar (exceto `localhost`). Pelo IP da rede local ou `http://` via Tailscale o app funciona,
+  mas não instala; ver `docs/user-guides/acessar-pelo-celular.md` (HTTPS pelo Tailscale).
+- **nginx:** `location = /sw.js` (sem cache imutável) e `location = /manifest.webmanifest` (`application/manifest+json`).
+- **Testes:** `src/lib/pwa.test.ts` (quando registra) e `src/pwa.test.ts` (manifesto válido, ícones existem com o tamanho
+  declarado, e o `sw.js` rodado com `self`/`caches`/`fetch` falsos: ignora `/api/`, network-first, página offline, limpeza).
+- **Conferir no navegador:** `npm run build && npx vite preview --port <porta alta>`, abrir em `http://localhost:<porta>` e ver
+  DevTools → Application → Manifest / Service workers (a seção "Installability" deve vir sem erros).
+
+**Ícones provisórios.** Os PNGs são gerados de uma aproximação vetorial do símbolo (a mesma do `favicon.svg` e do `Logo.tsx`,
+na variação `inverse`: fundo teal, símbolo ivory). Quando houver o SVG oficial da marca: atualize os polígonos em
+`scripts/pwa-icons.py` (ou troque o desenho por uma renderização do SVG oficial), rode `python3 scripts/pwa-icons.py`
+(precisa do Pillow) e confira os PNGs abrindo-os. Os testes validam que os tamanhos batem com o manifesto. Ao trocar o ícone,
+quem já instalou pode precisar remover e instalar de novo para ver o novo.
 
 ## Dinheiro e datas
 

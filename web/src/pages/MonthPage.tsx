@@ -99,10 +99,17 @@ export default function MonthPage() {
     actions.remove.mutate({ id: inv.id, scope }, {
       onSuccess: () => {
         setEditing(null)
-        // Desfazer só existe para uma conta; em lote ("esta e as seguintes") o servidor não tem restauração em massa.
-        toast(scope === 'following' && inv.series
-          ? { message: 'Esta e as seguintes foram excluídas.' }
-          : { message: `${inv.description} excluída.`, actionLabel: 'Desfazer', onAction: () => actions.restore.mutate(inv.id) })
+        // Em lote, o Desfazer restaura o lote inteiro (mesmo escopo); exclusões avulsas anteriores continuam excluídas.
+        const batch = scope === 'following' && inv.series
+        toast({
+          message: batch ? 'Esta e as seguintes foram excluídas.' : `${inv.description} excluída.`,
+          actionLabel: 'Desfazer',
+          onAction: () =>
+            actions.restore.mutate(
+              { id: inv.id, scope: batch ? 'following' : 'this' },
+              { onError: () => toast({ message: 'Não foi possível desfazer. Restaure uma a uma.' }) },
+            ),
+        })
       },
       onError: () => toast({ message: 'Não foi possível excluir.' }),
     })
