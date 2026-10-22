@@ -85,23 +85,26 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 
 ### Containers e cabeçalhos
 - API roda como usuário sem privilégio (uid 10001), sem capacidades do kernel (`cap_drop: ALL`) e com `no-new-privileges`;
-  `/tmp` em memória. Banco e API sem porta publicada; só o nginx, em `127.0.0.1` por padrão.
+  `/tmp` em memória. nginx também sem root (`nginx-unprivileged`, uid 101, porta 8080 interna), `read_only`, `cap_drop: ALL`,
+  `no-new-privileges`. Banco e API sem porta publicada; só o nginx, em `127.0.0.1` por padrão (o banco só com `make db-expose`,
+  também em `127.0.0.1`).
 - Servidor HTTP da API com `ReadHeaderTimeout` 5 s, `ReadTimeout` 30 s, `WriteTimeout` 90 s, `IdleTimeout` 120 s, cabeçalhos até 64 KB.
 - nginx: `server_tokens off`; timeouts de cabeçalho/corpo; corpo até 1 MB (6 MB em `/api`); `proxy_read_timeout` 75 s (OCR).
   Cabeçalhos: CSP (`default-src 'self'`, sem inline, `object-src 'none'`, `base-uri`, `form-action`, `frame-ancestors 'none'`),
   `X-Frame-Options DENY`, `nosniff`, `Referrer-Policy no-referrer`, `Permissions-Policy` e `Cache-Control: no-store` nas respostas da API.
-- **HSTS** está pronto e comentado no `default.conf`: ative só quando o HTTPS for definitivo (VPS com certbot ou `tailscale serve`).
+- **HSTS** ativo de forma condicional: só sai quando a requisição chega com `X-Forwarded-Proto: https` (o `tailscale serve`
+  manda); acesso http local não recebe. Detalhes em [deployment.md](deployment.md#hsts-condicional).
 
 ## Checklist de produção
 
 1. `make env` (senha do Postgres aleatória); conferir que o `.env` não está no git.
 2. `OPEN_REGISTRATION=false` (o 1º usuário se cadastra; os demais por convite).
-3. HTTPS: `tailscale serve --bg 8080` (fase 1) ou certbot (fase 2). Com HTTPS: `APP_ENV=production` (cookie `Secure`, Gin em
-   modo release, sem log verboso de SQL) e descomentar o HSTS. **Sem HTTPS** (acesso por `http://100.x.y.z:8080` dentro do
+3. HTTPS: `make tailscale-up` (fase 1, [deployment.md](deployment.md)) ou certbot (fase 2). Com HTTPS: `APP_ENV=production`
+   (cookie `Secure`, Gin em modo release, sem log verboso de SQL); o HSTS já sai sozinho atrás de HTTPS. **Sem HTTPS** (acesso por `http://100.x.y.z:8080` dentro do
    tailnet, já cifrado pelo WireGuard): mantenha `APP_ENV=development`, senão o navegador não envia o cookie `Secure` e o login não fica.
 4. `WEB_BIND`: `127.0.0.1` com `tailscale serve`; ou o IP do Tailscale da máquina. Nunca `0.0.0.0` numa rede que não é sua.
 5. Reconstruir as imagens (`make up` faz o build): pega o Go 1.27.x mais novo (correção do `crypto/x509`, ver abaixo) e o
-   `nginx:alpine`/`alpine` atualizados.
+   `nginx-unprivileged:alpine`/`alpine` atualizados.
 6. Testar o login errado 11 vezes seguidas: a 11ª tem de dar 429.
 7. `docker compose logs web | grep token` não pode trazer nada depois de abrir um link de convite.
 
