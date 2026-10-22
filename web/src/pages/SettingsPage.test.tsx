@@ -125,3 +125,70 @@ describe('ajustes · categorias', () => {
     expect(screen.queryByText(/Sem categoria/)).not.toBeInTheDocument()
   })
 })
+
+describe('ajustes · favorecidos', () => {
+  const gas = { id: 'p1', name: 'Gás', cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', defaultCategoryId: 'c1', archived: false }
+
+  it('lista com CNPJ formatado e a categoria sugerida', async () => {
+    mockApi({ me: ok(me), categories: ok(cats), payees: ok([gas, { id: 'p2', name: 'Antigo', archived: true }]) })
+    renderAt('/configuracoes')
+    await screen.findByRole('button', { name: 'Abrir favorecido Gás' })
+    const list = screen.getByRole('list', { name: 'Favorecidos ativos' })
+    expect(within(list).getByText('11.222.333/0001-81 · Moradia')).toBeInTheDocument()
+    expect(screen.getByText('arquivados (1)')).toBeInTheDocument()
+  })
+
+  it('cria um favorecido: o CNPJ é mascarado ao digitar e vai só com dígitos', async () => {
+    mockApi({ me: ok(me), categories: ok(cats), createPayee: ok({ ...gas, id: 'p3' }) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
+    expect(within(dialog).getByLabelText('CNPJ (opcional)')).toHaveValue('11.222.333/0001-81')
+    await userEvent.selectOptions(within(dialog).getByLabelText(/categoria sugerida/), 'c1')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        '/households/{householdId}/payees',
+        expect.objectContaining({ body: { name: 'Gás', cnpj: '11222333000181', legalName: null, defaultCategoryId: 'c1' } }),
+      ),
+    )
+    expect(await screen.findByText('Gás criado.')).toBeInTheDocument()
+  })
+
+  it('CNPJ incompleto é recusado antes de enviar e CNPJ repetido mostra o aviso do servidor', async () => {
+    mockApi({ me: ok(me), categories: ok(cats), createPayee: fail(409, 'payee_cnpj_exists') })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '0169')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
+    expect(await within(dialog).findByText('O CNPJ tem 14 dígitos.')).toBeInTheDocument()
+    expect(api.POST).not.toHaveBeenCalled()
+
+    await userEvent.clear(within(dialog).getByLabelText('CNPJ (opcional)'))
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
+    await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1))
+    expect(await within(dialog).findAllByText(/CNPJ/)).not.toHaveLength(0)
+  })
+
+  it('arquiva e limpa o CNPJ (null) ao editar', async () => {
+    mockApi({ me: ok(me), categories: ok(cats), payees: ok([gas]) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: 'Abrir favorecido Gás' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Gás' })
+    await userEvent.clear(within(dialog).getByLabelText('CNPJ (opcional)'))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar favorecido' }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', cnpj: null, legalName: 'GASCO DISTRIBUIDORA S/A', defaultCategoryId: 'c1' }))
+  })
+
+  it('viewer vê a lista sem botão de criar', async () => {
+    mockApi({ me: ok(viewerMe), categories: ok(cats), payees: ok([gas]) })
+    renderAt('/configuracoes')
+    await screen.findByRole('button', { name: 'Abrir favorecido Gás' })
+    expect(screen.queryByRole('button', { name: /Novo favorecido/ })).not.toBeInTheDocument()
+  })
+})

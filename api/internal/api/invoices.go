@@ -37,7 +37,7 @@ type Invoices struct {
 
 func toGenInvoice(v invoice.View) gen.Invoice {
 	out := gen.Invoice{
-		Id: v.ID, CategoryId: v.CategoryID, ResponsibleUserId: v.ResponsibleUserID,
+		Id: v.ID, CategoryId: v.CategoryID, ResponsibleUserId: v.ResponsibleUserID, PayeeId: v.PayeeID,
 		Description: v.Description, AmountCents: v.AmountCents,
 		DueDate: v.DueDate, CompetenceMonth: v.CompetenceMonth,
 		Status: gen.InvoiceStatus(v.Status), Notes: v.Notes,
@@ -128,7 +128,7 @@ func (h *Invoices) CreateInvoice(c *gin.Context, householdId gen.HouseholdId) {
 		return
 	}
 	v, err := h.Svc.Create(c.Request.Context(), householdId, auth.CurrentUser(c).ID, invoice.CreateInput{
-		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, Description: body.Description,
+		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, PayeeID: body.PayeeId, Description: body.Description,
 		AmountCents: body.AmountCents, DueDate: body.DueDate, CompetenceMonth: body.CompetenceMonth, Notes: body.Notes,
 		Boleto: boletoInput(body.Boleto),
 	})
@@ -163,6 +163,7 @@ func (h *Invoices) UpdateInvoice(c *gin.Context, householdId gen.HouseholdId, in
 	}
 	v, err := h.Svc.Update(c.Request.Context(), householdId, invoiceId, invoice.Patch{
 		CategoryID: body.CategoryId, ResponsibleSet: present["responsibleUserId"], ResponsibleUserID: body.ResponsibleUserId,
+		PayeeSet: present["payeeId"], PayeeID: body.PayeeId,
 		Description: body.Description, AmountCents: body.AmountCents, DueDate: body.DueDate, CompetenceMonth: body.CompetenceMonth,
 		NotesSet: present["notes"], Notes: body.Notes,
 	}, scopeOf(scope))

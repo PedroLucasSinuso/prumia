@@ -207,6 +207,30 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  it('escolher o favorecido preenche o nome e a categoria sugerida e vai junto ao salvar', async () => {
+    const payees = [
+      { id: 'p1', name: 'Gás', defaultCategoryId: 'c2', archived: false },
+      { id: 'p2', name: 'Antigo', archived: true },
+    ]
+    mockApi({ me: ok(me), payees: ok(payees), create: ok(invoice({ id: 'novo', description: 'Gás' })) })
+    renderAt('/?mes=2026-05')
+    await abrir()
+    await userEvent.click(screen.getByText('Mais opções'))
+    const select = screen.getByLabelText('Favorecido (opcional)')
+    expect(within(select).queryByRole('option', { name: 'Antigo' })).not.toBeInTheDocument()
+    await userEvent.selectOptions(select, 'p1')
+    expect(screen.getByLabelText('O que é')).toHaveValue('Gás')
+    expect(screen.getByRole('button', { name: /Mercado/ })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.type(screen.getByLabelText('Valor'), '12345')
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        '/households/{householdId}/invoices',
+        expect.objectContaining({ body: { description: 'Gás', amountCents: 12345, dueDate: '2026-05-01', categoryId: 'c2', payeeId: 'p1' } }),
+      ),
+    )
+  })
+
   it('no mês atual o vencimento é escolhido por botões (hoje é o padrão)', async () => {
     mockApi({ me: ok(me), create: ok(invoice({ id: 'novo', description: 'Luz' })) })
     renderAt(mes)

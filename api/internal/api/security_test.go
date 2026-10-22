@@ -66,11 +66,17 @@ func novoMundo(t *testing.T) *mundo {
 		t.Fatalf("categoria: %d %s", r.Code, r.Body)
 	}
 	r.json(&c)
+	var pe struct{ Id string }
+	r = a.do("POST", "/api/households/"+m.houseA+"/payees", map[string]any{"name": "Só da Ana", "cnpj": "45.678.901/0001-75"}, m.ana)
+	if r.Code != 201 {
+		t.Fatalf("favorecido: %d %s", r.Code, r.Body)
+	}
+	r.json(&pe)
 	// a invoice paga também (exercita "desfazer pagamento")
 	a.pay(m.ana, m.houseA, p.Installments[0].ID, "free", nil)
 
 	m.ids = map[string]string{
-		"categoryId": c.Id, "invoiceId": invA.ID, "purchaseId": p.ID, "recurrenceId": rec.ID,
+		"categoryId": c.Id, "payeeId": pe.Id, "invoiceId": invA.ID, "purchaseId": p.ID, "recurrenceId": rec.ID,
 		"incomeId": inc.ID, "sourceId": src.ID, "inviteId": invite.Id, "userId": m.anaID,
 	}
 	for _, rt := range a.router.Routes() {
@@ -111,7 +117,7 @@ var corpoGenerico = map[string]any{
 // Se qualquer requisição alheia alterar qualquer coisa, a impressão muda.
 func (m *mundo) impressaoDigital(t *testing.T) string {
 	t.Helper()
-	tables := []string{"households", "household_members", "household_invites", "categories", "invoices", "purchases",
+	tables := []string{"households", "household_members", "household_invites", "categories", "payees", "invoices", "purchases",
 		"recurrences", "invoice_boletos", "income_sources", "income_source_deductions", "incomes", "income_deductions"}
 	var parts []string
 	for _, tb := range tables {
