@@ -332,6 +332,18 @@ type Page struct {
 	NextCursor string
 }
 
+// MaxSearchLen: a busca procura na descrição (até 120 caracteres); texto maior que isso não acha nada e só custa CPU.
+const MaxSearchLen = 120
+
+// CheckSearch apara a busca `q` e recusa texto longo demais.
+func CheckSearch(q string, v *validation.Collector) string {
+	q = strings.TrimSpace(q)
+	if len([]rune(q)) > MaxSearchLen {
+		v.Add("q", fmt.Sprintf("a busca pode ter até %d caracteres", MaxSearchLen))
+	}
+	return q
+}
+
 // EscapeLike faz % e _ valerem como texto numa busca ILIKE.
 func EscapeLike(q string) string {
 	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
@@ -392,7 +404,7 @@ func (s *Service) List(ctx context.Context, householdID uuid.UUID, f ListFilter)
 	if f.PurchaseID != nil {
 		q = q.Where("purchase_id = ?", *f.PurchaseID)
 	}
-	if t := strings.TrimSpace(f.Q); t != "" {
+	if t := CheckSearch(f.Q, &v); t != "" {
 		q = q.Where(`description ILIKE ? ESCAPE '\'`, "%"+EscapeLike(t)+"%")
 	}
 	if f.Cursor != "" {

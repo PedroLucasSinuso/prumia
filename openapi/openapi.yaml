@@ -333,7 +333,7 @@ paths:
         - { name: categoryId, in: query, schema: { type: string, format: uuid } }
         - { name: responsibleUserId, in: query, schema: { type: string, format: uuid } }
         - { name: purchaseId, in: query, schema: { type: string, format: uuid } }
-        - { name: q, in: query, description: "Busca por descrição", schema: { type: string } }
+        - { name: q, in: query, description: "Busca por descrição", schema: { type: string, maxLength: 120 } }
         - { $ref: '#/components/parameters/Limit' }
         - { $ref: '#/components/parameters/Cursor' }
       responses:
@@ -418,7 +418,7 @@ paths:
       operationId: listPurchases
       summary: Compras parceladas ("quando comprei o notebook?")
       parameters:
-        - { name: q, in: query, schema: { type: string } }
+        - { name: q, in: query, description: "Busca por descrição", schema: { type: string, maxLength: 120 } }
         - { $ref: '#/components/parameters/Limit' }
         - { $ref: '#/components/parameters/Cursor' }
       responses:

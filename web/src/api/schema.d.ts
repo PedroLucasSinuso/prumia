@@ -1903,6 +1903,7 @@ export interface operations {
     listPurchases: {
         parameters: {
             query?: {
+                /** @description Busca por descrição */
                 q?: string;
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];

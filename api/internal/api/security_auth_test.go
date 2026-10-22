@@ -68,6 +68,22 @@ func TestLoginEncerraASessaoAnteriorDoNavegador(t *testing.T) {
 	}
 }
 
+// Busca `q` tem tamanho máximo (e % / _ continuam sendo texto, não curinga).
+func TestBuscaTemLimiteETrataCuringas(t *testing.T) {
+	a, c, house, catID := casa(t)
+	a.newInvoice(c, house, catID, map[string]any{"description": "Conta 100% paga"})
+	a.newInvoice(c, house, catID, map[string]any{"description": "Conta 1000 paga"})
+	long := strings.Repeat("a", 121)
+	for _, p := range []string{"/invoices?q=" + long, "/purchases?q=" + long} {
+		assertField(t, a.do("GET", "/api/households/"+house+p, nil, c), 400, "q")
+	}
+	var page struct{ Items []inv }
+	a.do("GET", "/api/households/"+house+"/invoices?q=100%25", nil, c).json(&page)
+	if len(page.Items) != 1 {
+		t.Errorf("%% deveria ser literal: %+v", page.Items)
+	}
+}
+
 // Corpo JSON gigante é recusado antes de ser processado (o nginx deixa passar até 6 MB por causa do boleto).
 func TestCorpoJSONGrandeEhRecusado(t *testing.T) {
 	a := newApp(t, opts{})
