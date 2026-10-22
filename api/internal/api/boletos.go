@@ -39,11 +39,30 @@ type Boletos struct {
 	Log       *slog.Logger
 	// Limite por usuário: a leitura (PDF/OCR) é a operação mais cara do servidor.
 	limiter *ratelimit.Limiter
+	// slots limita quantas leituras rodam AO MESMO TEMPO no servidor inteiro (cada uma pode subir Ghostscript e
+	// Tesseract, que comem CPU e memória). Canal com buffer = semáforo: ocupar um lugar é enviar, liberar é receber.
+	slots chan struct{}
 }
 
+// maxConcurrentExtractions: leituras simultâneas. As demais esperam a vez (até o tempo da requisição acabar).
+const maxConcurrentExtractions = 2
+
 func NewBoletos(ex *boleto.Extractor, dup DuplicateFinder, log *slog.Logger) *Boletos {
-	return &Boletos{Extractor: ex, Dup: dup, Log: log, limiter: ratelimit.New(6*time.Second, 10)}
+	return &Boletos{Extractor: ex, Dup: dup, Log: log, limiter: ratelimit.New(6*time.Second, 10),
+		slots: make(chan struct{}, maxConcurrentExtractions)}
 }
+
+// acquire espera um lugar livre; false se o contexto acabar antes. Quem recebe true deve chamar release (com defer).
+func (h *Boletos) acquire(ctx context.Context) bool {
+	select {
+	case h.slots <- struct{}{}:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func (h *Boletos) release() { <-h.slots }
 
 // readUpload lê o multipart parte a parte, direto para a memória. (ParseMultipartForm gravaria o excedente em arquivo
 // temporário no disco, o que o desenho do boleto proíbe.) Devolve o arquivo e a senha opcional.
@@ -119,6 +138,12 @@ func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), extractTimeout)
 	defer cancel()
+	if !h.acquire(ctx) {
+		c.Header("Retry-After", "30")
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusServiceUnavailable, Code: "busy", Detail: "muitas leituras de boleto agora; tente de novo"})
+		return
+	}
+	defer h.release()
 	res, err := h.Extractor.Extract(ctx, file, password)
 	if err != nil {
 		h.writeError(c, err)

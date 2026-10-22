@@ -2360,6 +2360,15 @@ export interface operations {
                 };
             };
             429: components["responses"]["TooManyRequests"];
+            /** @description Servidor ocupado com outras leituras (`code=busy`); tente de novo */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
 }
