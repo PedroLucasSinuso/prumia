@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './auth/AuthContext'
 import { ToastProvider } from './components/Toast'
+import { registerServiceWorker } from './lib/pwa'
 import '@fontsource-variable/archivo/wdth.css'
 import '@fontsource/ibm-plex-mono/latin-400.css'
 import '@fontsource/ibm-plex-mono/latin-500.css'
@@ -32,3 +33,6 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 )
+
+// PWA: só para o app ser instalável (sem modo offline). Não registra em dev nem fora de HTTPS/localhost.
+registerServiceWorker()
