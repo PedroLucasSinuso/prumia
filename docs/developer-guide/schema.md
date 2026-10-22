@@ -1,6 +1,6 @@
 # Modelo de dados — prumia
 
-Fonte de verdade: [api/migrations/00001_init.sql](../../api/migrations/00001_init.sql). Este documento explica **o porquê**
+Fonte de verdade: [api/migrations/](../../api/migrations/) (`00001_init.sql` e as seguintes). Este documento explica **o porquê**
 das decisões; se os dois divergirem, a migration vence e este arquivo deve ser corrigido.
 
 Regra de ouro: o schema é a decisão mais cara de reverter. Qualquer mudança vira uma **nova migration** (nunca editar
@@ -54,6 +54,11 @@ Cabeçalho que responde *"quando comprei o notebook e quanto custou?"*: `purchas
 ### recurrences (conta fixa)
 Gera uma invoice por mês até um horizonte. `generated_through` = último mês materializado; `EnsureHorizon` (sob demanda, mais o comando `api horizon`) estende
 o horizonte. Ver [series-generation.md](series-generation.md). `day_of_month = 31` vira o último dia de meses curtos.
+
+### recurrence_cuts (migration 00002)
+Registro de cada encerramento feito por "excluir esta e as seguintes": `batch_deleted_at` (= `deleted_at` das ocorrências do lote),
+`previous_end_month` (fim antes do corte; `NULL` = sem fim) e `cut_end_month` (`NULL` = o corte excluiu a recorrência). Serve só para o
+Desfazer em lote devolver o fim anterior. PK `(recurrence_id, batch_deleted_at)`, FK composta com a casa.
 
 ### invoices
 - `due_date` (vencimento) e `competence_month` (a que mês o gasto pertence; o resumo mensal usa **este**).

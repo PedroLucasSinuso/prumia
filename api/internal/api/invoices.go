@@ -188,8 +188,13 @@ func (h *Invoices) DeleteInvoice(c *gin.Context, householdId gen.HouseholdId, in
 }
 
 // RestoreInvoice: POST /households/{householdId}/invoices/{invoiceId}/restore
-func (h *Invoices) RestoreInvoice(c *gin.Context, householdId gen.HouseholdId, invoiceId gen.InvoiceId) {
-	v, err := h.Svc.Restore(c.Request.Context(), householdId, invoiceId)
+func (h *Invoices) RestoreInvoice(c *gin.Context, householdId gen.HouseholdId, invoiceId gen.InvoiceId, params gen.RestoreInvoiceParams) {
+	var scope *string
+	if params.Scope != nil {
+		s := string(*params.Scope)
+		scope = &s
+	}
+	v, err := h.Svc.Restore(c.Request.Context(), householdId, invoiceId, scopeOf(scope))
 	if err != nil {
 		writeDomainError(c, h.Log, err)
 		return
