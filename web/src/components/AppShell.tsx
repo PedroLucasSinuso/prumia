@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { NavLink, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../auth/context'
+import { HouseSwitcher } from './HouseSwitcher'
 import { Logo } from './Logo'
 import { UserMenu } from './UserMenu'
 
@@ -25,8 +26,6 @@ const destinations = [
   { to: '/configuracoes', label: 'ajustes', icon: icons.ajustes },
 ]
 
-const roleLabel = { admin: 'admin', member: 'membro', viewer: 'leitura' } as const
-
 /**
  * Moldura do app logado. Computador (md+): barra lateral teal com símbolo, destinos e conta.
  * Celular: faixa no topo com símbolo, casa e conta, e navegação inferior com os destinos.
@@ -37,7 +36,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [params] = useSearchParams()
   if (session.status !== 'authenticated') return null
   const { me } = session
-  const house = me.households[0]
   const mes = params.get('mes')
   const search = mes ? `?mes=${mes}` : ''
 
@@ -70,11 +68,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-ivory/20 px-2 pt-4">
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold">{me.name}</p>
-            <p className="truncate text-xs text-ivory/75">{house ? `${roleLabel[house.role]} · ${house.name}` : 'sem casa'}</p>
-          </div>
+        <div className="mt-auto border-t border-ivory/20 px-1 pt-4">
+          <HouseSwitcher tone="inverse" />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2 px-2">
+          <p className="min-w-0 truncate text-sm font-semibold">{me.name}</p>
           <button onClick={() => void logout()} className="h-11 shrink-0 rounded-sm px-2 text-sm font-semibold underline underline-offset-4">
             sair
           </button>
@@ -84,12 +82,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
         {/* Faixa superior (celular) */}
         <header className="flex items-center justify-between px-4 pt-3 md:hidden">
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <Logo size={30} />
-            <div className="leading-tight">
-              <p className="text-[11px] uppercase tracking-wider text-graphite/70">casa</p>
-              <p className="text-base font-semibold">{house?.name ?? 'Sem casa'}</p>
-            </div>
+            <HouseSwitcher />
           </div>
           <UserMenu />
         </header>

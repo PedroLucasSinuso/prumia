@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { useCategories, useSummary } from '../api/queries'
-import { useAuth } from '../auth/context'
+import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { MonthSelector } from '../components/MonthSelector'
 import { WalletCard } from '../components/WalletCard'
@@ -15,9 +15,8 @@ const label = 'text-xs font-medium uppercase tracking-wider text-graphite/80'
  * e para onde o dinheiro vai (total por categoria). Tudo por competência. O saldo é recebido − pago: uma estimativa.
  */
 export default function SummaryPage() {
-  const { session } = useAuth()
   const [month, setMonth] = useMonthParam()
-  const house = session.status === 'authenticated' ? session.me.households[0] : undefined
+  const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
   const summary = useSummary(houseId, month)
   const categories = useCategories(houseId)

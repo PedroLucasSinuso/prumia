@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { getInvoice, useCategories, useExtractBoleto, useInvoiceActions, useInvoices } from '../api/queries'
 import type { Invoice, SeriesScope } from '../api/types'
-import { useAuth } from '../auth/context'
+import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { InvoiceForm } from '../components/InvoiceForm'
@@ -28,7 +28,6 @@ const label = 'text-xs font-medium uppercase tracking-wider'
  * Computador: blocos de números, régua em largura total e, ao lado da lista, o detalhe da conta (sem janela por cima).
  */
 export default function MonthPage() {
-  const { session } = useAuth()
   const [editing, setEditing] = useState<Editing>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const toast = useToast()
@@ -37,7 +36,7 @@ export default function MonthPage() {
   const [month, setMonth] = useMonthParam()
   const today = todayISO()
   const isCurrent = month === currentMonth()
-  const house = session.status === 'authenticated' ? session.me.households[0] : undefined
+  const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
 
   const categories = useCategories(houseId)

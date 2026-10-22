@@ -26,8 +26,12 @@ var (
 // ValidationError é o erro de validação por campo compartilhado (vira `fields` no problem+json).
 type ValidationError = validation.Error
 
+// DefaultSessionMaxAge é a validade absoluta padrão da sessão (SESSION_MAX_AGE_DAYS=90).
+const DefaultSessionMaxAge = 90 * 24 * time.Hour
+
 type Config struct {
 	SessionTTL       time.Duration // validade da sessão (renovada com o uso)
+	SessionMaxAge    time.Duration // validade ABSOLUTA: a sessão morre este tempo após o login, mesmo em uso (padrão 90 dias)
 	OpenRegistration bool          // permite cadastro sem convite mesmo já havendo usuários
 	ResetTTL         time.Duration // validade do link de redefinição de senha (padrão 1h)
 	Now              func() time.Time
@@ -43,6 +47,9 @@ type Service struct {
 func NewService(db *gorm.DB, households *household.Service, cfg Config) (*Service, error) {
 	if cfg.SessionTTL == 0 {
 		cfg.SessionTTL = 30 * 24 * time.Hour
+	}
+	if cfg.SessionMaxAge == 0 {
+		cfg.SessionMaxAge = DefaultSessionMaxAge
 	}
 	if cfg.ResetTTL == 0 {
 		cfg.ResetTTL = defaultResetTTL
@@ -188,13 +195,23 @@ func (s *Service) createSession(tx *gorm.DB, userID uuid.UUID, meta Meta) (strin
 	now := s.cfg.Now()
 	sess := Session{
 		TokenHash: hash, UserID: userID, CreatedAt: now, LastSeenAt: now,
-		ExpiresAt: now.Add(s.cfg.SessionTTL),
+		ExpiresAt: s.expiry(now, now),
 		UserAgent: truncPtr(meta.UserAgent, 300), IP: truncPtr(meta.IP, 64),
 	}
 	if err := tx.Create(&sess).Error; err != nil {
 		return "", fmt.Errorf("criando sessão: %w", err)
 	}
 	return token, nil
+}
+
+// expiry calcula o novo expires_at: SessionTTL a partir de agora (renovação deslizante), mas nunca além
+// da validade absoluta contada da criação da sessão.
+func (s *Service) expiry(createdAt, now time.Time) time.Time {
+	exp := now.Add(s.cfg.SessionTTL)
+	if limit := createdAt.Add(s.cfg.SessionMaxAge); exp.After(limit) {
+		return limit
+	}
+	return exp
 }
 
 func truncPtr(s string, n int) *string {
@@ -222,6 +239,12 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, error) 
 	if err != nil {
 		return User{}, err
 	}
+	// Validade absoluta: mesmo usada todo dia, a sessão morre SessionMaxAge depois do login.
+	// (expires_at já nasce limitado por expiry; esta checagem cobre sessões gravadas antes da regra.)
+	if !now.Before(sess.CreatedAt.Add(s.cfg.SessionMaxAge)) {
+		s.db.WithContext(ctx).Where("token_hash = ?", sess.TokenHash).Delete(&Session{})
+		return User{}, ErrUnauthenticated
+	}
 	var user User
 	if err := s.db.WithContext(ctx).First(&user, "id = ?", sess.UserID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) { // usuário excluído
@@ -231,7 +254,7 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, error) 
 	}
 	if now.Sub(sess.LastSeenAt) > time.Hour {
 		s.db.WithContext(ctx).Model(&Session{}).Where("token_hash = ?", sess.TokenHash).
-			Updates(map[string]any{"last_seen_at": now, "expires_at": now.Add(s.cfg.SessionTTL)})
+			Updates(map[string]any{"last_seen_at": now, "expires_at": s.expiry(sess.CreatedAt, now)})
 	}
 	return user, nil
 }

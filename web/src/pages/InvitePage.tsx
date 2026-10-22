@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import { ApiError } from '../api/errors'
+import { useAcceptInvite } from '../api/queries'
 import { useAuth } from '../auth/context'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { AuthLayout } from '../components/AuthLayout'
@@ -9,13 +11,16 @@ import { Field } from '../components/Field'
 import { FormError } from '../components/FormError'
 
 /**
- * Destino do link de convite (/convite?token=…). Pública: quem recebe o link ainda não tem conta.
- * Cadastrar com o token coloca a pessoa direto na casa de quem convidou (sem criar uma casa nova).
+ * Destino do link de convite (/convite?token=…). Pública: quem recebe o link pode ainda não ter conta.
+ * - Sem conta: cadastrar com o token coloca a pessoa direto na casa de quem convidou (sem criar uma casa nova).
+ * - Com conta e logada: "Entrar na casa" aceita o convite (POST /invites/accept) e já ativa a casa nova.
+ * - Com conta e deslogada: "entrar e aceitar" leva ao login e volta para cá com o mesmo token.
  */
 export default function InvitePage() {
-  const { session, register, logout } = useAuth()
+  const { session, register, refresh, selectHouse } = useAuth()
   const navigate = useNavigate()
   const token = useSearchParams()[0].get('token') ?? ''
+  const accept = useAcceptInvite()
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -44,6 +49,18 @@ export default function InvitePage() {
     setFields(problemFields(result.problem))
   }
 
+  function onAccept() {
+    setError(undefined)
+    accept.mutate(token, {
+      onSuccess: async (house) => {
+        await refresh()
+        selectHouse(house.id)
+        navigate('/', { replace: true })
+      },
+      onError: (e) => setError(e instanceof ApiError && e.network ? networkErrorMessage : problemMessage(e instanceof ApiError ? e.problem : undefined)),
+    })
+  }
+
   if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-graphite/70">carregando…</p>
 
   if (!token) {
@@ -59,12 +76,15 @@ export default function InvitePage() {
     return (
       <AuthLayout title="Convite">
         <p className="text-sm text-graphite/85">
-          Você já está logado como <strong>{session.me.name}</strong>. Para usar este convite, saia e crie a conta de quem foi convidado.
+          Você está logado como <strong>{session.me.name}</strong>. Aceite para entrar na casa de quem convidou; as suas outras casas
+          continuam com você, e você troca de casa pelo topo da tela.
         </p>
+        <FormError message={error} />
         <div className="flex flex-wrap items-center gap-4">
-          <Button onClick={() => void logout()}>Sair e usar o convite</Button>
+          <Button onClick={onAccept} disabled={accept.isPending}>{accept.isPending ? 'Entrando…' : 'Entrar na casa'}</Button>
           <Link to="/" className="text-sm font-semibold text-cobalt underline underline-offset-2">Voltar ao app</Link>
         </div>
+        <p className="text-sm text-graphite/75">O convite é para outra pessoa? Saia da sua conta antes de abrir o link.</p>
       </AuthLayout>
     )
   }
@@ -87,7 +107,13 @@ export default function InvitePage() {
       </form>
       <p className="text-sm text-graphite/80">
         Já tem conta?{' '}
-        <Link to="/entrar" className="font-semibold text-cobalt underline underline-offset-2">Entrar</Link>
+        <Link
+          to="/entrar"
+          state={{ from: `/convite?token=${encodeURIComponent(token)}` }}
+          className="font-semibold text-cobalt underline underline-offset-2"
+        >
+          Entrar e aceitar o convite
+        </Link>
       </p>
     </AuthLayout>
   )

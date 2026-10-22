@@ -45,14 +45,22 @@ var (
 	ErrInviteNotFound = errors.New("convite não encontrado")
 	ErrInviteUsed     = errors.New("convite já foi usado")
 	ErrAlreadyMember  = errors.New("você já faz parte desta casa")
+	ErrLimitReached   = errors.New("você atingiu o limite de casas criadas por você")
 )
 
+// DefaultMaxPerUser é o limite padrão de casas ativas criadas por um mesmo usuário (MAX_HOUSEHOLDS_PER_USER).
+// Evita que uma conta crie casas sem fim (cada casa leva 10 categorias e linhas de membro).
+const DefaultMaxPerUser = 5
+
 type Service struct {
-	db  *gorm.DB
-	Now func() time.Time // relógio injetável (testes)
+	db         *gorm.DB
+	Now        func() time.Time // relógio injetável (testes)
+	MaxPerUser int              // limite de casas ativas criadas por usuário; 0 = DefaultMaxPerUser
 }
 
-func NewService(db *gorm.DB) *Service { return &Service{db: db, Now: time.Now} }
+func NewService(db *gorm.DB) *Service {
+	return &Service{db: db, Now: time.Now, MaxPerUser: DefaultMaxPerUser}
+}
 
 // NormalizeName valida e limpa o nome.
 func NormalizeName(name string) (string, error) {
@@ -92,10 +100,27 @@ func (s *Service) CreateWithin(tx *gorm.DB, name string, creator uuid.UUID) (Hou
 	return h, nil
 }
 
-// Create cria uma casa nova para um usuário já existente.
+// Create cria uma casa nova para um usuário já existente, respeitando o limite de casas ativas criadas por ele.
 func (s *Service) Create(ctx context.Context, name string, creator uuid.UUID) (Household, error) {
 	var h Household
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Trava de aplicação por usuário (liberada no fim da transação): duas criações simultâneas do mesmo
+		// usuário são serializadas, então a contagem abaixo não deixa passar a 6ª casa numa corrida.
+		// hashtext devolve int4; a forma de dois argumentos (classe, chave) não colide com a trava 7101 do cadastro.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(7102, hashtext(?))", creator.String()).Error; err != nil {
+			return err
+		}
+		var n int64
+		if err := tx.Model(&Household{}).Where("created_by = ? AND deleted_at IS NULL", creator).Count(&n).Error; err != nil {
+			return err
+		}
+		limit := s.MaxPerUser
+		if limit <= 0 {
+			limit = DefaultMaxPerUser
+		}
+		if n >= int64(limit) {
+			return ErrLimitReached
+		}
 		var err error
 		h, err = s.CreateWithin(tx, name, creator)
 		return err

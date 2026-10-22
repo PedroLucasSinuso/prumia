@@ -13,8 +13,12 @@ export type AuthValue = {
   login: (email: string, password: string) => Promise<ActionResult>
   register: (input: { name: string; email: string; password: string; householdName?: string; inviteToken?: string }) => Promise<ActionResult>
   logout: () => Promise<void>
-  /** Relê /auth/me (ex.: depois de entrar numa casa ou renomeá-la). */
-  refresh: () => Promise<void>
+  /** Relê /auth/me (ex.: depois de entrar numa casa ou renomeá-la). Devolve o Me novo (ou undefined sem rede). */
+  refresh: () => Promise<Me | undefined>
+  /** Id da casa escolhida (pode não existir mais: use useActiveHouse, que cai na 1ª casa). */
+  activeHouseId?: string
+  /** Troca a casa ativa: guarda a escolha (por usuário) e limpa o cache de dados da casa anterior. */
+  selectHouse: (houseId: string) => void
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)

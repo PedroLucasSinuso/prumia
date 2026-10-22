@@ -3,6 +3,7 @@ package config
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func env(m map[string]string) func(string) string {
@@ -42,5 +43,23 @@ func TestLoadAcumulaErros(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("erro deveria citar %s: %v", want, err)
 		}
+	}
+}
+
+func TestLoadLimitesDeCasaESessao(t *testing.T) {
+	cfg, err := load(env(map[string]string{"DATABASE_URL": "postgres://x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MaxHouseholdsPerUser != 5 || cfg.SessionMaxAge != 90*24*time.Hour {
+		t.Errorf("padrões: %d casas, %s", cfg.MaxHouseholdsPerUser, cfg.SessionMaxAge)
+	}
+	cfg, err = load(env(map[string]string{"DATABASE_URL": "postgres://x", "MAX_HOUSEHOLDS_PER_USER": "2", "SESSION_MAX_AGE_DAYS": "7"}))
+	if err != nil || cfg.MaxHouseholdsPerUser != 2 || cfg.SessionMaxAge != 7*24*time.Hour {
+		t.Errorf("valores lidos: %+v %v", cfg, err)
+	}
+	_, err = load(env(map[string]string{"DATABASE_URL": "postgres://x", "MAX_HOUSEHOLDS_PER_USER": "0", "SESSION_MAX_AGE_DAYS": "abc"}))
+	if err == nil || !strings.Contains(err.Error(), "MAX_HOUSEHOLDS_PER_USER") || !strings.Contains(err.Error(), "SESSION_MAX_AGE_DAYS") {
+		t.Errorf("deveria recusar valores inválidos: %v", err)
 	}
 }

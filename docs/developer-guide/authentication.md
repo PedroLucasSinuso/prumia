@@ -8,7 +8,8 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
   do hash, então podem ser aumentados no futuro sem invalidar senhas antigas. Tamanho: 10 a 128 caracteres.
 - **Sessão**: token aleatório de 256 bits no cookie `prumia_session` (`HttpOnly`, `SameSite=Lax`, `Secure` em produção,
   validade de 30 dias **deslizante**: o uso renova, gravando no máximo 1 vez por hora). O banco guarda **só o SHA-256**
-  do token; um vazamento do banco não entrega sessões.
+  do token; um vazamento do banco não entrega sessões. Além disso há uma **validade absoluta** (ver
+  [Validade absoluta da sessão](#validade-absoluta-da-sessão)).
 - **Login**: e-mail desconhecido e senha errada dão a **mesma resposta e levam o mesmo tempo** (verificamos contra um hash
   descartável), para não revelar quais e-mails existem. Limite de tentativas: 10/min por IP e 5/min por e-mail normalizado
   (429). O IP vem só do `X-Real-IP` que o nginx sobrescreve (ver [security.md](security.md#ip-real-e-limite-de-tentativas)).
@@ -24,6 +25,32 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
   (Uma trava de aplicação no Postgres impede dois "primeiros usuários" simultâneos.)
 - `OPEN_REGISTRATION=true` no `.env` libera cadastro sem convite para qualquer um. Mantenha `false`.
 - Com `inviteToken` o cadastro **não cria casa**: o usuário entra na casa do convite, com o papel do convite (ver [Convites](#convites)). Nesse caso o cadastro funciona mesmo com o cadastro livre fechado.
+
+## Validade absoluta da sessão
+
+Decisão de segurança: a renovação por uso, sozinha, deixaria um cookie roubado vivo para sempre se o ladrão o usasse
+de tempos em tempos. Por isso a sessão **morre `SESSION_MAX_AGE_DAYS` dias depois do login** (padrão **90**), mesmo em uso.
+
+- Ao renovar, `expires_at` vira `min(agora + 30 dias, created_at + máximo)`: a renovação nunca passa do teto.
+- `Authenticate` também confere `created_at + máximo` (cobre sessões gravadas antes da regra); vencida, a linha é apagada.
+- Sessão vencida ou desconhecida responde **401 `unauthenticated`** e o middleware **apaga o cookie** (`Max-Age=-1`)
+  quando a requisição trouxe um. Sem cookie, o 401 não manda `Set-Cookie`.
+- Configuração: `auth.Config.SessionMaxAge`, lida de `SESSION_MAX_AGE_DAYS` (inteiro > 0; inválido impede a API de subir).
+- Teste: `limites_test.go` (relógio injetável: uso a cada 20 dias, cai exatamente aos 90; sessão antiga com `expires_at` longo).
+
+## Limite de casas por usuário
+
+Decisão de segurança: cada casa custa linhas (membro, 10 categorias); sem limite, uma conta poderia criar casas sem fim.
+
+- `POST /households` aceita no máximo **`MAX_HOUSEHOLDS_PER_USER` casas ativas criadas pelo usuário** (padrão **5**).
+  Passou: **409 `household_limit`**.
+- Contam só casas com `created_by` = o usuário e `deleted_at` nulo: excluir uma casa libera a vaga; casas em que a pessoa só
+  entrou por convite não contam para ela. A casa criada no cadastro conta.
+- Corrida: uma trava de aplicação por usuário (`pg_advisory_xact_lock(7102, hashtext(user_id))`) serializa a contagem e a
+  criação; 6 criações simultâneas com limite 2 dão 1 criada e 5 conflitos (teste em `limites_test.go`).
+- Configuração: `household.Service.MaxPerUser`, lida de `MAX_HOUSEHOLDS_PER_USER` (inteiro > 0).
+
+As duas variáveis são lidas pela API; o `deploy/compose.yaml` as repassa do `.env` (comentadas no `.env.example`, com os padrões).
 
 ## Convites
 

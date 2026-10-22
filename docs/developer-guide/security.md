@@ -41,7 +41,9 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 
 ### Sessão, cookie e CSRF
 - Token de 256 bits; no banco só o SHA-256. Cookie `prumia_session`: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` com
-  `APP_ENV=production`. Validade de 30 dias deslizante.
+  `APP_ENV=production`. Validade de 30 dias deslizante, com **teto absoluto de 90 dias** desde o login
+  (`SESSION_MAX_AGE_DAYS`); vencida, o 401 apaga o cookie. Ver [authentication.md](authentication.md#validade-absoluta-da-sessão).
+- Cada usuário cria no máximo **5 casas ativas** (`MAX_HOUSEHOLDS_PER_USER`; 409 `household_limit`).
 - **Login novo encerra a sessão anterior do mesmo navegador** (se havia cookie). Logout apaga a sessão no banco.
   Redefinição de senha apaga todas as sessões do usuário. Não há troca de senha logado (só por link de admin).
 - CSRF: em POST/PUT/PATCH/DELETE, se o navegador manda `Origin`, o `host[:porta]` dele tem de ser igual ao `Host` que o

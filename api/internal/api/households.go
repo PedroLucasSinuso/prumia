@@ -34,6 +34,8 @@ func (h *Households) writeError(c *gin.Context, err error) {
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: err.Error()})
 	case errors.Is(err, household.ErrLastAdmin):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusConflict, Code: "last_admin", Detail: err.Error()})
+	case errors.Is(err, household.ErrLimitReached):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusConflict, Code: "household_limit", Detail: err.Error()})
 	case errors.Is(err, household.ErrAlreadyMember):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusConflict, Code: "already_member", Detail: err.Error()})
 	case errors.Is(err, household.ErrInviteUsed):
