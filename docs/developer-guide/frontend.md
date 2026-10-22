@@ -78,7 +78,7 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 
 ## Receitas, resumo e navegação
 
-- **Navegação** (`AppShell`): mês, receitas, resumo e casa, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
+- **Navegação** (`AppShell`): mês, receitas, resumo, parcelas, casa e ajustes, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
   (`?mes=`, `useMonthParam`) acompanha ao trocar de tela.
 - **`pages/SummaryPage`**: "sobra ou falta?" por carteira (`WalletCard`: saldo, previsto, recebido, pago), pago x a pagar e total por
   categoria (barra pago + a pagar). Só lê `GET /summary`; o cálculo é do servidor (recebido − pago, por competência).
@@ -89,6 +89,14 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 - **`pages/HousePage`** (`/casa`): pessoas na linha de prumo (`MembersList`: papel, link de nova senha, remover/sair com confirmação
   em dois toques), convite (`LinkBox` mostra o link **uma vez**, o servidor não guarda o token), renomear e excluir a casa. O que é só de
   admin some para os demais (o servidor confere de novo). Sair da casa ou excluí-la encerra a sessão (ainda não há tela com várias casas).
+- **`pages/SettingsPage`** (`/configuracoes`, item **ajustes**): onde cada casa molda o app; organizada em seções (hoje só **Categorias**).
+  `useAllCategories` lê `?includeArchived=true` (chave `['categories', casa, 'all']`, mesma raiz da `useCategories`, então invalidar uma refaz
+  as duas). Ativas na ordem de `sortOrder`; arquivadas num `<details>` recolhido. `CategoryForm` cria/edita nome, carteira padrão
+  (livre/benefício/nenhuma: "nenhuma" vai como `null` no PATCH) e essencial, e arquiva/restaura (`archived`). **Reordenar** (botões ↑/↓,
+  sem arrastar): não há endpoint em lote, então `useCategoryActions().reorder` grava `sortOrder = posição` só nas que mudaram, um PATCH
+  por vez. Não há botão de excluir: categoria em uso é arquivada (o `DELETE` existe na API para as sem uso, mas a tela não o oferece).
+  `category_exists` aparece no campo Nome. Viewer vê os dados com campos desabilitados e sem botões de escrita. Computador: lista + painel
+  ao lado; celular: `Sheet`. Testes: `pages/SettingsPage.test.tsx` (rotas `createCategory`/`updateCategory` no `mockApi`).
 - **Links públicos** `/convite?token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha?token=`
   (`ResetPasswordPage`). Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
   e abre um convite é avisado, nunca consome o convite sem querer. `acceptInvite` (conta existente entrando em 2ª casa) fica para o seletor de casa.

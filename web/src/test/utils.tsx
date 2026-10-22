@@ -67,6 +67,8 @@ type Routes = {
   me?: Reply
   invoices?: Reply
   categories?: Reply
+  createCategory?: Reply
+  updateCategory?: Reply
   login?: Reply | Error
   register?: Reply
   logout?: Reply
@@ -123,6 +125,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/purchases': r.createPurchase,
       '/households/{householdId}/recurrences': r.createRecurrence,
       '/households/{householdId}/invites': r.invite,
+      '/households/{householdId}/categories': r.createCategory,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
     }
@@ -135,6 +138,7 @@ export function mockApi(r: Routes = {}) {
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
     if (url === '/households/{householdId}/recurrences/{recurrenceId}') return r.updateRecurrence ?? ok()
     if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
+    if (url === '/households/{householdId}/categories/{categoryId}') return r.updateCategory ?? ok({})
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
     if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
     return r.update ?? ok()
