@@ -5,6 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"time"
 
 	"github.com/pressly/goose/v3"
@@ -18,12 +21,8 @@ import (
 // Open conecta e confirma que o banco responde. Note que NÃO há AutoMigrate: o schema só muda
 // por migrations versionadas (ver Migrate). É regra do projeto.
 func Open(ctx context.Context, url string, verbose bool) (*gorm.DB, error) {
-	level := logger.Warn
-	if verbose {
-		level = logger.Info // mostra o SQL gerado: ótimo para achar N+1 em desenvolvimento
-	}
 	gdb, err := gorm.Open(postgres.Open(url), &gorm.Config{
-		Logger:         logger.Default.LogMode(level),
+		Logger:         NewLogger(os.Stdout, verbose),
 		NowFunc:        func() time.Time { return time.Now().UTC() },
 		TranslateError: true, // traduz erros do driver para gorm.ErrDuplicatedKey etc.
 	})
@@ -41,6 +40,32 @@ func Open(ctx context.Context, url string, verbose bool) (*gorm.DB, error) {
 		return nil, fmt.Errorf("banco não respondeu: %w", err)
 	}
 	return gdb, nil
+}
+
+// Armadilha do GORM: `Scan` (usado com `Raw`) loga por um "gravador" à parte, que ignora ParameterizedQueries e
+// interpola os valores. Esta variável do pacote existe para ser trocada; aqui, sem valores, igual ao resto.
+// (init roda uma vez, quando o pacote é carregado: como um bootstrap estático.)
+func init() {
+	logger.RecorderParamsFilter = func(_ context.Context, sql string, _ ...any) (string, []any) { return sql, nil }
+}
+
+// NewLogger é o log de SQL do GORM. verbose (desenvolvimento) mostra toda consulta, ótimo para achar N+1; sem ele,
+// só erros e consultas lentas (> 200 ms).
+//
+// ParameterizedQueries: o SQL vai para o log com `$1, $2` e SEM os valores. O padrão do GORM é interpolar os valores,
+// o que despejava no log e-mails, hashes de senha e de token, linhas digitáveis e valores de contas.
+// IgnoreRecordNotFoundError: "não encontrado" é fluxo normal (login com e-mail errado, 404), não erro.
+func NewLogger(w io.Writer, verbose bool) logger.Interface {
+	level := logger.Warn
+	if verbose {
+		level = logger.Info
+	}
+	return logger.New(log.New(w, "\r\n", log.LstdFlags), logger.Config{
+		SlowThreshold:             200 * time.Millisecond,
+		LogLevel:                  level,
+		IgnoreRecordNotFoundError: true,
+		ParameterizedQueries:      true,
+	})
 }
 
 // Migrate aplica todas as migrations pendentes (goose up).
