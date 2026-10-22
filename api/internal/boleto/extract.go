@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"image"
 	"regexp"
 	"strings"
 	"time"
@@ -115,7 +116,26 @@ func (e *Extractor) fromPDF(ctx context.Context, pdf []byte, password string, re
 	return Result{}, ErrNotFound
 }
 
+// maxImagePixels limita o tamanho da imagem ANTES de decodificar: o cabeçalho de um PNG/JPEG de poucos KB pode
+// declarar 60000x60000 pixels, e decodificar isso pede GBs de memória (derruba a API para todos). 40 MP cobre foto
+// de celular (12 a 48 MP) e a página de PDF a 200 dpi (~4 MP).
+const maxImagePixels = 40_000_000
+
+var errImageTooLarge = errors.New("imagem grande demais")
+
+// checkImageSize lê só o cabeçalho. Se nem o cabeçalho for legível, deixa seguir: a decodificação vai falhar sozinha.
+func checkImageSize(img []byte) error {
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(img))
+	if err == nil && int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
+		return errImageTooLarge
+	}
+	return nil
+}
+
 func (e *Extractor) fromImage(ctx context.Context, img []byte, ref time.Time) (Result, error) {
+	if checkImageSize(img) != nil {
+		return Result{}, ErrNotFound
+	}
 	if e.Barcode != nil {
 		if code, err := e.Barcode(img); err == nil {
 			if b, err := ParseBarcode(code, ref); err == nil {

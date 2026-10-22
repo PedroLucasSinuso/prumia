@@ -173,7 +173,7 @@ func decodeCursor(c string) (caldate.Date, uuid.UUID, error) {
 func (s *PurchaseService) List(ctx context.Context, householdID uuid.UUID, f PurchaseFilter) (PurchasePage, error) {
 	var v validation.Collector
 	q := s.db.WithContext(ctx).Where("household_id = ?", householdID)
-	if t := strings.TrimSpace(f.Q); t != "" {
+	if t := invoice.CheckSearch(f.Q, &v); t != "" {
 		q = q.Where(`description ILIKE ? ESCAPE '\'`, "%"+invoice.EscapeLike(t)+"%")
 	}
 	if f.Cursor != "" {
