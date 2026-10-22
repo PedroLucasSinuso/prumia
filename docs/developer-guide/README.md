@@ -18,7 +18,7 @@ Guia de quem constrói e mantém o prumia. Leia na ordem se for novo no projeto.
 | [incomes-and-wallets.md](incomes-and-wallets.md) | pronto | Receitas, descontos, previsão, carteiras, saldos, resumo mensal e aviso de benefício |
 | [boleto-extraction.md](boleto-extraction.md) | pronto | Cascata de extração, validação e limites |
 | deployment.md | Fase 4 | Compose, nginx, Tailscale, VPS |
-| backup-restore.md | Fase 4 | Backup diário e restore testado |
+| [backup-restore.md](backup-restore.md) | pronto | Backup, rotação, restore (real e em outro banco), teste de restore e agendamento |
 | [security.md](security.md) | pronto | Modelo de ameaças, o que é protegido e como, checklist de produção, desempenho medido |
 
 Docs marcados com uma fase ainda não existem: são criados junto com a funcionalidade.
