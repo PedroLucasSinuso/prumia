@@ -1,10 +1,13 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api/client'
 import type { Category } from '../api/types'
-import { fail, me, mockApi, ok, renderAt, viewerMe } from '../test/utils'
+import { fail, invoice, me, mockApi, ok, renderAt, viewerMe } from '../test/utils'
+
+// A tela é carregada sob demanda (lazy): com a máquina carregada, o primeiro render pode passar de 1 s.
+configure({ asyncUtilTimeout: 5000 })
 
 beforeEach(() => vi.restoreAllMocks())
 
@@ -112,5 +115,13 @@ describe('ajustes · categorias', () => {
     renderAt('/configuracoes')
     expect(await screen.findByText(/Não foi possível carregar as categorias/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+  })
+
+  it('conta antiga de categoria arquivada continua com o nome no mês', async () => {
+    const treino = invoice({ id: 'i1', description: 'Mensalidade', categoryId: 'c9', dueDate: '2026-10-10', status: 'pending' })
+    mockApi({ me: ok(me), categories: ok(cats), invoices: ok({ items: [treino] }) })
+    renderAt('/?mes=2026-10')
+    expect(await screen.findByText(/Academia/)).toBeInTheDocument()
+    expect(screen.queryByText(/Sem categoria/)).not.toBeInTheDocument()
   })
 })
