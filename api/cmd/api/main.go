@@ -114,11 +114,7 @@ func run(args []string) error {
 		log.Info("migrations aplicadas")
 	}
 
-	srv := &http.Server{
-		Addr:              cfg.HTTPAddr,
-		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
+	srv := httpx.NewServer(cfg.HTTPAddr, router)
 
 	// ListenAndServe bloqueia; roda numa goroutine (thread leve) para podermos esperar o sinal de parada.
 	errCh := make(chan error, 1)
