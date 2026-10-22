@@ -363,7 +363,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Desfaz a exclusão */
+        /**
+         * Desfaz a exclusão. Em série, `scope=following` desfaz o lote "esta e as seguintes".
+         * @description `this` (padrão) restaura só esta invoice. `following` restaura, numa transação, esta e as da MESMA série com número/mês
+         *     maior ou igual que foram excluídas JUNTO com ela (mesmo lote: mesmo `deleted_at`); exclusões avulsas anteriores
+         *     continuam excluídas. Também desfaz o efeito do lote no cabeçalho: reabre a compra fechada e devolve o fim (ou reativa)
+         *     a recorrência encerrada pelo lote. 409 se a recorrência mudou depois do lote (ex.: foi encerrada antes).
+         */
         post: operations["restoreInvoice"];
         delete?: never;
         options?: never;
@@ -862,7 +868,8 @@ export interface components {
             totalAmountCents: components["schemas"]["Cents"];
             installmentsCount: number;
             notes?: string | null;
-            installments?: components["schemas"]["Invoice"][];
+            /** @description Parcelas não excluídas, por número. Sempre presente (também na listagem). */
+            installments: components["schemas"]["Invoice"][];
         };
         PurchaseInput: {
             /** Format: uuid */
@@ -1828,7 +1835,16 @@ export interface operations {
     };
     restoreInvoice: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
+                 *     recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
+                 *     escolhida), nunca marca como paga, e `dueDate`/`competenceMonth` não são aceitos (400). Em invoice avulsa equivale a `this`.
+                 *     No `DELETE` de recorrência, a série é encerrada no mês anterior (ou excluída, se for a 1ª ocorrência); no de compra, o
+                 *     cabeçalho é excluído quando não sobra parcela. Detalhes: docs/developer-guide/series-generation.md.
+                 */
+                scope?: components["parameters"]["SeriesScope"];
+            };
             header?: never;
             path: {
                 householdId: components["parameters"]["HouseholdId"];
@@ -1838,7 +1854,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description OK (a invoice escolhida) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1847,6 +1863,8 @@ export interface operations {
                     "application/json": components["schemas"]["Invoice"];
                 };
             };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     payInvoice: {
