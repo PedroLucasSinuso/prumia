@@ -5,13 +5,14 @@ import { useAuth } from '../auth/context'
 import { Logo } from './Logo'
 import { UserMenu } from './UserMenu'
 
-// Ícones de traço quadrado (mesma família dos nós e do medidor): calendário, entrada, barras.
+// Ícones de traço quadrado (mesma família dos nós e do medidor): calendário, entrada, barras, casa, controles deslizantes.
 const icons = {
   mes: 'M4 6 H20 V20 H4 Z M4 10 H20 M8 3 V7 M16 3 V7',
   receitas: 'M12 3 V15 M6 10 L12 16 L18 10 M4 20 H20',
   resumo: 'M5 20 V12 M12 20 V5 M19 20 V9',
   parcelas: 'M4 5 H20 M4 12 H20 M4 19 H20 M8 3 V7 M15 10 V14 M10 17 V21',
   casa: 'M4 11 L12 4 L20 11 M6 10 V20 H18 V10',
+  ajustes: 'M4 7 H20 M4 17 H20 M9 4 V10 M15 14 V20',
 } as const
 
 // Destinos do app. Só entra aqui o que já existe: a navegação cresce junto com as telas.
@@ -21,6 +22,7 @@ const destinations = [
   { to: '/resumo', label: 'resumo', icon: icons.resumo },
   { to: '/parcelas', label: 'parcelas', icon: icons.parcelas },
   { to: '/casa', label: 'casa', icon: icons.casa },
+  { to: '/configuracoes', label: 'ajustes', icon: icons.ajustes },
 ]
 
 const roleLabel = { admin: 'admin', member: 'membro', viewer: 'leitura' } as const
