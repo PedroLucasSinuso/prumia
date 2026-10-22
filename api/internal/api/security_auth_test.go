@@ -68,6 +68,31 @@ func TestLoginEncerraASessaoAnteriorDoNavegador(t *testing.T) {
 	}
 }
 
+// CSRF: o Origin do navegador tem de bater com o Host que o nginx repassa ($http_host, com a porta).
+// Cobre o acesso local (localhost:8080) e o por `tailscale serve` (HTTPS na 443, Host sem porta).
+func TestOrigemComparaHostEPorta(t *testing.T) {
+	a := newApp(t, opts{})
+	body := map[string]any{"email": "x@x.com", "password": "errada-errada"}
+	cases := []struct {
+		host, origin string
+		blocked      bool
+	}{
+		{"localhost:8080", "http://localhost:8080", false},
+		{"prumia.tail1234.ts.net", "https://prumia.tail1234.ts.net", false},
+		{"localhost:8080", "http://localhost:3000", true},       // outra porta = outra origem
+		{"localhost:8080", "http://localhost", true},            // sem porta
+		{"prumia.tail1234.ts.net", "https://evil.ts.net", true}, // outro host
+		{"prumia.tail1234.ts.net", "null", true},                // sandbox/arquivo local
+		{"prumia.tail1234.ts.net", "https://prumia.tail1234.ts.net.evil.com", true},
+	}
+	for _, tc := range cases {
+		r := a.do("POST", "http://"+tc.host+"/api/auth/login", body, nil, "Origin", tc.origin)
+		if got := r.Code == http.StatusForbidden; got != tc.blocked {
+			t.Errorf("Host %s, Origin %s: status %d (bloquear=%v)", tc.host, tc.origin, r.Code, tc.blocked)
+		}
+	}
+}
+
 // Busca `q` tem tamanho máximo (e % / _ continuam sendo texto, não curinga).
 func TestBuscaTemLimiteETrataCuringas(t *testing.T) {
 	a, c, house, catID := casa(t)
