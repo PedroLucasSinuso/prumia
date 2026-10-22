@@ -10,6 +10,7 @@ import MonthPage from './pages/MonthPage'
 const HousePage = lazy(() => import('./pages/HousePage'))
 const IncomesPage = lazy(() => import('./pages/IncomesPage'))
 const InvitePage = lazy(() => import('./pages/InvitePage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const SeriesPage = lazy(() => import('./pages/SeriesPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/resumo" element={<SummaryPage />} />
           <Route path="/parcelas" element={<SeriesPage />} />
           <Route path="/casa" element={<HousePage />} />
+          <Route path="/configuracoes" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<RequireAuth />} />
       </Routes>
