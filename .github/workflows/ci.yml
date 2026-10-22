@@ -1,0 +1,112 @@
+# Integração contínua do prumia. Quatro jobs independentes (rodam em paralelo):
+# api (Go), web (React), hooks (guard de Git do Claude Code) e docker (compose + imagens).
+# Reproduzir localmente: ver docs/developer-guide/getting-started.md, seção "Integração contínua".
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um push novo no mesmo PR/branch cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: api (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      # `make lint` também confere o código gerado, o que regenera os tipos TS: precisa do node_modules do front.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+
+      # Ferramentas da leitura de boleto: sem elas o TestRealPDFTools é pulado.
+      - name: Instala poppler, Ghostscript e Tesseract
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends poppler-utils ghostscript tesseract-ocr tesseract-ocr-por
+
+      - name: Lint (gofmt, vet, OpenAPI, código gerado em dia)
+        run: make lint
+
+      # Os testes de integração são PULADOS (não falham) sem Docker; aqui garantimos que ele existe.
+      - name: Confere o Docker (testcontainers)
+        run: docker info --format '{{.ServerVersion}}'
+
+      - name: Testes (unitários + integração com Postgres via testcontainers)
+        run: make test
+
+  web:
+    name: web (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Lint (oxlint)
+        run: npx oxlint
+      - name: Testes (Vitest)
+        run: npx vitest run
+      - name: Build
+        run: npm run build
+
+      - name: Tipos da API em dia com openapi/openapi.yaml
+        run: |
+          npm run --silent generate:api
+          git diff --exit-code -- src/api/schema.d.ts || {
+            echo "::error::web/src/api/schema.d.ts desatualizado: rode 'make generate' e commite o resultado"
+            exit 1
+          }
+
+  hooks:
+    name: hooks (guard de Git)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: make hooks-test
+
+  docker:
+    name: docker (compose e imagens)
+    runs-on: ubuntu-latest
+    # Valores fictícios só para o compose resolver as variáveis; nada sobe nem é publicado.
+    env:
+      POSTGRES_PASSWORD: ci-ficticia
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Valida o compose
+        run: docker compose -f deploy/compose.yaml config --quiet
+
+      - name: Build das imagens api e web (sem push)
+        run: docker compose -f deploy/compose.yaml build api web

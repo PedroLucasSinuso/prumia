@@ -22,6 +22,7 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 | Auth | argon2id; sessão por cookie httpOnly SameSite; rate limit no login |
 | Boleto | extração local: texto do PDF → código de barras → Tesseract; arquivo só em memória (nunca disco/log) |
 | Testes | unit nas regras críticas; integração com Postgres real (testcontainers); front só fluxos principais |
+| CI | GitHub Actions (`.github/workflows/ci.yml`): jobs `api`, `web`, `hooks`, `docker` em todo PR; mantenha verde |
 | Infra | Docker Compose (`deploy/compose.yaml`), 3 containers: `api`, `db`, `web` (nginx: estático + proxy `/api`; config em `deploy/nginx/default.conf`). Só o `web` publica porta (127.0.0.1:8080). Fase 1 local + Tailscale; fase 2 VPS + certbot |
 
 ## Layout do repositório
