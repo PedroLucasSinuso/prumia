@@ -13,7 +13,7 @@ const grouped = '00190.00009 01234.567890 12345.678901 2 12340000010000'
 const extraction = (over: Partial<BoletoExtraction> = {}): BoletoExtraction => ({
   boleto: {
     digitableLine: line, barcode: '00192123400000100000000901234567891234567890',
-    beneficiaryName: 'Companhia de Luz', documentAmountCents: 18990, documentDueDate: '2026-10-28',
+    beneficiaryName: 'Companhia de Luz', documentAmountCents: 18990, documentDueDate: '2026-10-28', documentCompetenceMonth: '2026-10-01',
   },
   method: 'pdf_text',
   ...over,
@@ -51,6 +51,7 @@ describe('importar boleto', () => {
     expect(within(dialog).getByLabelText('O que é')).toHaveValue('Companhia de Luz')
     expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('2026-10-28')
     expect(within(dialog).getByLabelText('Valor')).toHaveValue('R$ 189,90')
+    expect(within(dialog).getByLabelText(/Mês de competência/)).toHaveValue('2026-10')
 
     const [, init] = extractCalls()[0] as [string, { body: { file: File; password?: string } }]
     expect(init.body.file.name).toBe('boleto.pdf')
@@ -62,7 +63,7 @@ describe('importar boleto', () => {
         '/households/{householdId}/invoices',
         expect.objectContaining({
           body: expect.objectContaining({
-            description: 'Companhia de Luz', amountCents: 18990, dueDate: '2026-10-28',
+            description: 'Companhia de Luz', amountCents: 18990, dueDate: '2026-10-28', competenceMonth: '2026-10-01',
             boleto: { digitableLine: line, beneficiaryName: 'Companhia de Luz' },
           }),
         }),
