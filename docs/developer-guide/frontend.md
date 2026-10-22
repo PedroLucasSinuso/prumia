@@ -88,10 +88,19 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   de que ajustes manuais são sobrescritos. `DeductionsEditor` edita os descontos itemizados (INSS, IRRF, plano, coparticipação, outro).
 - **`pages/HousePage`** (`/casa`): pessoas na linha de prumo (`MembersList`: papel, link de nova senha, remover/sair com confirmação
   em dois toques), convite (`LinkBox` mostra o link **uma vez**, o servidor não guarda o token), renomear e excluir a casa. O que é só de
-  admin some para os demais (o servidor confere de novo). Sair da casa ou excluí-la encerra a sessão (ainda não há tela com várias casas).
+  admin some para os demais (o servidor confere de novo). **Criar outra casa** (`useCreateHousehold`; `household_limit` vira aviso).
+  Sair da casa ou excluí-la troca para outra casa; só encerra a sessão se era a **última**. A tela usa `key={casa}`: trocar de casa
+  a remonta, sem formulário ou aviso vazando de uma casa para outra.
 - **Links públicos** `/convite?token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha?token=`
   (`ResetPasswordPage`). Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
-  e abre um convite é avisado, nunca consome o convite sem querer. `acceptInvite` (conta existente entrando em 2ª casa) fica para o seletor de casa.
+  e abre um convite vê **Entrar na casa** (`useAcceptInvite` → `POST /invites/accept`, relê `/auth/me` e ativa a casa nova); nada é
+  consumido sem o toque. Sem sessão, além do cadastro há **Entrar e aceitar o convite**: vai a `/entrar` com
+  `state.from = /convite?token=…` e, logado, `RedirectIfAuthenticated` volta para o convite (o `from` vem do estado da navegação, nunca da URL).
+- **Casa ativa** (`auth/useActiveHouse.ts`): toda tela usa `useActiveHouse().house` (nunca `me.households[0]`). A escolha fica no
+  `AuthProvider` e no `localStorage` (`prumia.casaAtiva.<userId>`, por usuário; falha de armazenamento é ignorada). Casa guardada
+  que não está mais em `me.households` (saiu, removido, excluída) cai na 1ª. `selectHouse` grava a escolha e faz `queryClient.clear()`:
+  nenhum dado da casa anterior aparece na nova. `HouseSwitcher` (no topo do celular e na barra lateral) só vira botão com 2+ casas:
+  abre um `Sheet` com as casas e o papel em cada uma (alvos de 56px, marcador `[ ▪ ]` na ativa); um toque troca.
 - **Parcelas e contas fixas**: `InvoiceForm` ganhou o tipo (avulsa/parcelada/fixa) na criação. Parcelada chama `POST /purchases`
   (valor da parcela vira `installmentAmountCents` com total = parcela × N; "total da compra" deixa o servidor dividir). Fixa chama
   `POST /recurrences` com o dia do vencimento e o mês corrente. Ao editar uma invoice de série, "esta e as seguintes" manda

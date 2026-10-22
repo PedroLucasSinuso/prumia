@@ -8,7 +8,9 @@ info:
     Convenções:
     - Dinheiro: inteiro em **centavos** (BRL). R$ 660,00 = `66000`.
     - Datas: `YYYY-MM-DD`. Mês: dia 1 (`2026-10-01`).
-    - Autenticação: cookie de sessão httpOnly (`prumia_session`).
+    - Autenticação: cookie de sessão httpOnly (`prumia_session`). A sessão vale 30 dias desde o último uso (renovada
+      com o uso) e morre de vez `SESSION_MAX_AGE_DAYS` dias após o login (padrão 90), mesmo em uso. Sessão vencida
+      responde 401 `unauthenticated` e o cookie é apagado.
     - Casa: rotas de negócio ficam sob `/households/{householdId}`; o acesso é validado pela role do usuário.
     - Erros: `application/problem+json` (ver `Problem`).
     - Limite de corpo: requisições JSON acima de 64 KB respondem 413 (`code=body_too_large`); o upload de boleto tem limite próprio.
@@ -125,6 +127,9 @@ paths:
       tags: [households]
       operationId: createHousehold
       summary: Cria uma casa (o usuário vira admin) com categorias padrão
+      description: |
+        Cada usuário pode ter no máximo `MAX_HOUSEHOLDS_PER_USER` casas ativas criadas por ele (padrão 5; casas
+        excluídas não contam, casas em que ele só entrou por convite também não). Passou do limite: 409 `household_limit`.
       requestBody:
         required: true
         content:
@@ -135,6 +140,9 @@ paths:
               properties: { name: { type: string, minLength: 1, maxLength: 80 } }
       responses:
         '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Household' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /households/{householdId}:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
     get:
