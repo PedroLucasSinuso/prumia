@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, Category, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { BoletoExtraction, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -24,6 +24,42 @@ export function useCategories(houseId: string) {
     queryFn: (): Promise<Category[]> =>
       unwrap(api.GET('/households/{householdId}/categories', { params: { path: { householdId: houseId } } })),
   })
+}
+
+/** Todas as categorias, inclusive as arquivadas (tela de ajustes). Mesma raiz de chave: invalidar uma refaz as duas. */
+export function useAllCategories(houseId: string) {
+  return useQuery({
+    queryKey: [...keys.categories(houseId), 'all'] as const,
+    queryFn: (): Promise<Category[]> =>
+      unwrap(api.GET('/households/{householdId}/categories', { params: { path: { householdId: houseId }, query: { includeArchived: true } } })),
+  })
+}
+
+/**
+ * Criar, editar (inclui arquivar/restaurar via `archived`) e reordenar categorias.
+ * Reordenar não tem endpoint em lote: grava `sortOrder` = posição só nas que mudaram (alguns PATCH, poucas linhas).
+ */
+export function useCategoryActions(houseId: string) {
+  const qc = useQueryClient()
+  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: keys.categories(houseId) }), qc.invalidateQueries({ queryKey: keys.summary(houseId) })])
+  const patch = (id: string, body: CategoryPatch) =>
+    unwrap(api.PATCH('/households/{householdId}/categories/{categoryId}', { params: { path: { householdId: houseId, categoryId: id } }, body }))
+
+  const create = useMutation({
+    mutationFn: (body: CategoryInput) => unwrap(api.POST('/households/{householdId}/categories', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CategoryPatch }) => patch(id, body),
+    onSettled: refresh,
+  })
+  const reorder = useMutation({
+    mutationFn: async (ordered: Category[]) => {
+      for (const [i, c] of ordered.entries()) if (c.sortOrder !== i) await patch(c.id, { sortOrder: i })
+    },
+    onSettled: refresh,
+  })
+  return { create, update, reorder }
 }
 
 /** Todas as invoices de um mês de competência (segue o cursor se passar de uma página). */
