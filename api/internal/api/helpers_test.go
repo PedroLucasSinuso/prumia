@@ -68,17 +68,18 @@ func newApp(t *testing.T, o opts) *app {
 	recSvc := series.NewRecurrenceService(gdb, invSvc, today)
 	incSvc := income.NewService(gdb, today)
 	sumSvc := summary.NewService(gdb)
+	payeeSvc := payee.NewService(gdb)
 	Mount(router, NewServer(sqlDB,
 		auth.NewHandler(svc, cookie, log),
 		&Households{Svc: hs, Log: log},
 		&Categories{Svc: category.NewService(gdb), Log: log},
-		&Payees{Svc: payee.NewService(gdb), Log: log},
+		&Payees{Svc: payeeSvc, Log: log},
 		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},
 		&Recurrences{Svc: recSvc, Log: log},
 		&Incomes{Svc: incSvc, Log: log},
 		&Summaries{Svc: sumSvc, Log: log, Horizons: []HorizonEnsurer{incSvc, recSvc}},
-		NewBoletos(testExtractor(), invSvc, log),
+		NewBoletos(testExtractor(), invSvc, payeeSvc, log),
 	), auth.Middleware(svc, hs, cookie, log))
 	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
 }

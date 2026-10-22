@@ -71,6 +71,86 @@ describe('importar boleto', () => {
     )
   })
 
+  describe('favorecido', () => {
+    const cnpj = '01695370000153'
+    const comCnpj = (payee?: unknown) =>
+      extraction({ boleto: { ...extraction().boleto, beneficiaryName: 'CEG RIO S/A', beneficiaryCnpj: cnpj }, ...(payee ? { payee } : {}) } as Partial<BoletoExtraction>)
+    const gas = { id: 'p1', name: 'Gás', cnpj, defaultCategoryId: 'c2', archived: false }
+
+    it('cadastra o favorecido na própria importação: o apelido vai como newPayee e substitui o nome do boleto', async () => {
+      const user = userEvent.setup()
+      mockApi({ me: ok(me), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'Gás' })) })
+      const dialog = await openNew(user)
+      await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+      const apelido = await within(dialog).findByLabelText(/Como vocês chamam CEG RIO S\/A/)
+      expect(within(dialog).getByLabelText('O que é')).toHaveValue('CEG RIO S/A')
+      await user.type(apelido, 'Gás')
+      expect(within(dialog).getByLabelText('O que é')).toHaveValue('Gás')
+      await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+      await waitFor(() =>
+        expect(api.POST).toHaveBeenCalledWith(
+          '/households/{householdId}/invoices',
+          expect.objectContaining({
+            body: expect.objectContaining({
+              description: 'Gás', newPayee: { name: 'Gás' },
+              boleto: { digitableLine: line, beneficiaryName: 'CEG RIO S/A', beneficiaryCnpj: cnpj },
+            }),
+          }),
+        ),
+      )
+    })
+
+    it('apelido em branco: nada é cadastrado', async () => {
+      const user = userEvent.setup()
+      mockApi({ me: ok(me), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'CEG RIO S/A' })) })
+      const dialog = await openNew(user)
+      await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+      await within(dialog).findByLabelText(/Como vocês chamam/)
+      await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+      await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))
+      const call = vi.mocked(api.POST).mock.calls.find((c) => c[0] === '/households/{householdId}/invoices')
+      expect((call?.[1] as { body: Record<string, unknown> }).body.newPayee).toBeUndefined()
+    })
+
+    it('favorecido reconhecido pelo CNPJ: já vem escolhido, com nome e categoria sugerida, sem pedir apelido', async () => {
+      const user = userEvent.setup()
+      mockApi({ me: ok(me), payees: ok([gas]), extract: ok(comCnpj(gas)), create: ok(invoice({ id: 'n1', description: 'Gás' })) })
+      const dialog = await openNew(user)
+      await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+      expect(await within(dialog).findByText('Gás', { selector: 'strong' })).toBeInTheDocument()
+      expect(within(dialog).queryByLabelText(/Como vocês chamam/)).not.toBeInTheDocument()
+      expect(within(dialog).getByLabelText('O que é')).toHaveValue('Gás')
+      expect(within(dialog).getByRole('button', { name: /Mercado/ })).toHaveAttribute('aria-pressed', 'true')
+      await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+      await waitFor(() =>
+        expect(api.POST).toHaveBeenCalledWith(
+          '/households/{householdId}/invoices',
+          expect.objectContaining({ body: expect.objectContaining({ payeeId: 'p1', categoryId: 'c2' }) }),
+        ),
+      )
+    })
+
+    it('escolher um favorecido existente no lugar de criar: some o campo de apelido e o CNPJ será associado', async () => {
+      const user = userEvent.setup()
+      const antigo = { id: 'p9', name: 'Gás de rua', archived: false }
+      mockApi({ me: ok(me), payees: ok([antigo]), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'x' })) })
+      const dialog = await openNew(user)
+      await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+      await within(dialog).findByLabelText(/Como vocês chamam/)
+      // sem favorecido reconhecido e com algum cadastrado, "Mais opções" já vem aberto
+      await user.selectOptions(within(dialog).getByLabelText('Favorecido (opcional)'), 'p9')
+      expect(within(dialog).queryByLabelText(/Como vocês chamam/)).not.toBeInTheDocument()
+      expect(within(dialog).getByText(/CNPJ deste boleto será associado/)).toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+      await waitFor(() =>
+        expect(api.POST).toHaveBeenCalledWith(
+          '/households/{householdId}/invoices',
+          expect.objectContaining({ body: expect.objectContaining({ payeeId: 'p9', boleto: expect.objectContaining({ beneficiaryCnpj: cnpj }) }) }),
+        ),
+      )
+    })
+  })
+
   it('só vale para conta avulsa: parcelada ou fixa descarta o boleto e esconde o botão', async () => {
     const user = userEvent.setup()
     mockApi({ me: ok(me), extract: ok(extraction()) })
