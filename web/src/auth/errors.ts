@@ -12,6 +12,7 @@ const messages: Record<string, string> = {
   invalid_invite: 'Este convite é inválido, expirou ou foi revogado. Peça um novo a quem administra a casa.',
   invite_used: 'Este convite já foi usado.',
   already_member: 'Você já faz parte desta casa.',
+  household_limit: 'Você chegou ao limite de casas criadas por você. Exclua uma casa que não usa para criar outra.',
   last_admin: 'A casa precisa de pelo menos uma pessoa administradora.',
   forbidden: 'Apenas administradores da casa podem fazer isso.',
   validation_error: 'Confira os campos destacados.',

@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../api/errors'
-import { useHouseActions, useMembers } from '../api/queries'
-import type { InviteCreated, Member, Role } from '../api/types'
+import { useCreateHousehold, useHouseActions, useMembers } from '../api/queries'
+import type { InviteCreated, Me, Member, Role } from '../api/types'
 import { useAuth } from '../auth/context'
+import { useActiveHouse, type House } from '../auth/useActiveHouse'
 import { problemMessage } from '../auth/errors'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -25,12 +26,19 @@ const expiry = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyl
  * então a tela o mostra na hora para copiar e mandar. A noiva (ou qualquer pessoa) entra abrindo o link.
  */
 export default function HousePage() {
-  const { session, refresh, logout } = useAuth()
+  const { session } = useAuth()
+  const { house } = useActiveHouse()
+  if (session.status !== 'authenticated' || !house) return null
+  // key: trocar de casa remonta a tela (formulários e avisos não vazam de uma casa para a outra)
+  return <HouseView key={house.id} me={session.me} house={house} />
+}
+
+function HouseView({ me, house }: { me: Me; house: House }) {
+  const { refresh, logout } = useAuth()
+  const { selectHouse } = useActiveHouse()
   const navigate = useNavigate()
   const toast = useToast()
-  const me = session.status === 'authenticated' ? session.me : undefined
-  const house = me?.households[0]
-  const houseId = house?.id ?? ''
+  const houseId = house.id
 
   const members = useMembers(houseId)
   const actions = useHouseActions(houseId)
@@ -42,8 +50,10 @@ export default function HousePage() {
   const [reset, setReset] = useState<{ member: Member; token: string; expiresAt: string }>()
   const [error, setError] = useState<string>()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const createHouse = useCreateHousehold()
+  const [newName, setNewName] = useState('')
+  const [creating, setCreating] = useState(false)
 
-  if (!me || !house) return null
   const isAdmin = house.role === 'admin'
   const fail = (e: unknown) => setError(errorText(e))
 
@@ -81,13 +91,41 @@ export default function HousePage() {
     setError(undefined)
     actions.removeMember.mutate(m.userId, {
       onSuccess: async () => {
-        if (m.userId === me!.id) {
-          // saiu da casa: sem outra casa a sessão fica sem destino, então encerramos a sessão
-          await logout()
-          navigate('/entrar', { replace: true })
+        if (m.userId === me.id) {
+          await leftHouse(`Você saiu de ${house.name}.`)
           return
         }
         toast({ message: `${m.name} saiu da casa.` })
+      },
+      onError: fail,
+    })
+  }
+
+  /**
+   * Depois de sair ou excluir a casa ativa: se havia outra casa, troca para ela e volta ao mês;
+   * se era a ÚLTIMA, a sessão fica sem destino e é encerrada.
+   */
+  async function leftHouse(message: string) {
+    const fresh = await refresh()
+    const next = (fresh ?? me).households.find((h) => h.id !== house.id)
+    if (!next) {
+      await logout()
+      navigate('/entrar', { replace: true })
+      return
+    }
+    selectHouse(next.id)
+    toast({ message: `${message} Agora você está em ${next.name}.` })
+    navigate('/', { replace: true })
+  }
+
+  function onCreate(e: FormEvent) {
+    e.preventDefault()
+    setError(undefined)
+    createHouse.mutate(newName.trim(), {
+      onSuccess: async (created) => {
+        await refresh()
+        selectHouse(created.id)
+        toast({ message: `Casa ${created.name} criada. Agora você está nela.` })
       },
       onError: fail,
     })
@@ -102,10 +140,7 @@ export default function HousePage() {
   function onDelete() {
     setError(undefined)
     actions.remove.mutate(undefined, {
-      onSuccess: async () => {
-        await logout()
-        navigate('/entrar', { replace: true })
-      },
+      onSuccess: () => leftHouse(`Casa ${house.name} excluída.`),
       onError: fail,
     })
   }
@@ -192,6 +227,22 @@ export default function HousePage() {
                 </form>
               </section>
             )}
+
+            <section aria-label="Outra casa" className="rounded-md border border-graphite/20 p-4">
+              <h2 className={`${label} text-graphite/80`}>outra casa</h2>
+              <p className="mt-1 text-sm text-graphite/80">Uma casa separada, com contas e pessoas próprias. Você troca de casa pelo topo da tela.</p>
+              {creating ? (
+                <form onSubmit={onCreate} className="mt-3 flex flex-col gap-3">
+                  <Field label="Nome da nova casa" value={newName} maxLength={80} onChange={(e) => setNewName(e.target.value)} />
+                  <div className="flex items-center gap-3">
+                    <Button type="submit" disabled={createHouse.isPending || !newName.trim()}>{createHouse.isPending ? 'Criando…' : 'Criar casa'}</Button>
+                    <button type="button" onClick={() => setCreating(false)} className="h-11 text-sm underline underline-offset-4">cancelar</button>
+                  </div>
+                </form>
+              ) : (
+                <Button variant="ghost" className="mt-3" onClick={() => setCreating(true)}>Criar outra casa</Button>
+              )}
+            </section>
 
             {isAdmin && (
               <section aria-label="Excluir casa" className="rounded-md border border-signal/50 p-4">

@@ -120,7 +120,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cria uma casa (o usuário vira admin) com categorias padrão */
+        /**
+         * Cria uma casa (o usuário vira admin) com categorias padrão
+         * @description Cada usuário pode ter no máximo `MAX_HOUSEHOLDS_PER_USER` casas ativas criadas por ele (padrão 5; casas
+         *     excluídas não contam, casas em que ele só entrou por convite também não). Passou do limite: 409 `household_limit`.
+         */
         post: operations["createHousehold"];
         delete?: never;
         options?: never;
@@ -1309,6 +1313,9 @@ export interface operations {
                     "application/json": components["schemas"]["Household"];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
         };
     };
     getHousehold: {

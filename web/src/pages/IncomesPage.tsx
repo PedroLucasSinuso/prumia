@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { useIncomeActions, useIncomeSources, useIncomes, useMembers, useSourceActions } from '../api/queries'
 import type { Income, IncomeKind, IncomeSource } from '../api/types'
 import { useAuth } from '../auth/context'
+import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { IncomeForm } from '../components/IncomeForm'
@@ -38,7 +39,7 @@ export default function IncomesPage() {
   const desktop = useIsDesktop()
 
   const me = session.status === 'authenticated' ? session.me : undefined
-  const house = me?.households[0]
+  const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
 
   const incomes = useIncomes(houseId, month)

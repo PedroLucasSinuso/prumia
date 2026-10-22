@@ -1,10 +1,28 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { api } from '../api/client'
+import { readActiveHouse, writeActiveHouse } from './activeHouseStorage'
 import { AuthContext, type AuthValue, type Session } from './context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>({ status: 'loading' })
+  const queryClient = useQueryClient()
+  // Casa escolhida pelo usuário. Fica no localStorage por usuário (quem divide o aparelho não herda a escolha).
+  const [chosen, setChosen] = useState<{ userId: string; houseId?: string }>()
+  const userId = session.status === 'authenticated' ? session.me.id : undefined
+  const activeHouseId = userId ? (chosen?.userId === userId ? chosen.houseId : readActiveHouse(userId)) : undefined
+
+  const selectHouse = useCallback<AuthValue['selectHouse']>(
+    (houseId) => {
+      if (!userId) return
+      writeActiveHouse(userId, houseId)
+      setChosen({ userId, houseId })
+      // Dados da casa anterior não podem aparecer na nova: descarta todo o cache do TanStack Query.
+      queryClient.clear()
+    },
+    [userId, queryClient],
+  )
 
   // Ao abrir o app: o cookie de sessão (httpOnly, invisível ao JS) vai sozinho; 200 = logado, 401 = não.
   useEffect(() => {
@@ -55,15 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback<AuthValue['refresh']>(async () => {
     try {
       const { data } = await api.GET('/auth/me')
       if (data) setSession({ status: 'authenticated', me: data })
+      return data
     } catch {
       // sem rede: mantém o que já está na tela
+      return undefined
     }
   }, [])
 
-  const value = useMemo(() => ({ session, login, register, logout, refresh }), [session, login, register, logout, refresh])
+  const value = useMemo(
+    () => ({ session, login, register, logout, refresh, activeHouseId, selectHouse }),
+    [session, login, register, logout, refresh, activeHouseId, selectHouse],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
