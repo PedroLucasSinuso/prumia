@@ -845,6 +845,11 @@ export interface components {
             documentAmountCents?: (number & components["schemas"]["Cents"]) | null;
             /** Format: date */
             documentDueDate?: string | null;
+            /**
+             * Format: date
+             * @description Mês de referência lido do texto (dia 1), quando o documento informa
+             */
+            documentCompetenceMonth?: string | null;
         };
         BoletoExtraction: {
             boleto: components["schemas"]["Boleto"];

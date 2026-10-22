@@ -63,6 +63,8 @@ Vai no campo `password`, é usada só na memória e passada como argumento ao `p
 
 ## Limitações conhecidas
 
-- Beneficiário vem de heurística sobre o texto ("Beneficiário:" / "Cedente"); pode vir vazio ou errado, por isso é só sugestão na revisão.
+- Beneficiário vem de heurística sobre o texto, nesta ordem: "Razão social:", "Beneficiário:"/"Cedente" e, sem rótulo, a primeira razão social do documento (nome em maiúsculas terminado em S/A, LTDA etc.). Pode vir vazio ou errado, por isso é só sugestão na revisão.
+- Vencimento: o do código de barras prevalece. Conta de consumo (48 dígitos) não o traz, então se lê "Vencimento: dd/mm/aaaa" do texto (datas impossíveis são ignoradas).
+- Competência (`documentCompetenceMonth`, dia 1): lida de "Referência:", "Mês:" ou "Competência:" (`10/2026`, `OUT/2026`). Só texto de PDF/OCR; o código de barras não a informa.
 - Boleto de arrecadação não tem vencimento extraído.
 - Foto torta, amassada ou com reflexo pode falhar em todas as etapas; a resposta é explícita (`boleto_not_found`) e a tela oferece preencher manualmente.

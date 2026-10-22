@@ -167,6 +167,10 @@ func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
 		d := caldate.FromTime(res.DueDate)
 		out.Boleto.DocumentDueDate = &d
 	}
+	if !res.Competence.IsZero() {
+		m := caldate.FromTime(res.Competence)
+		out.Boleto.DocumentCompetenceMonth = &m
+	}
 	if res.Beneficiary != "" {
 		out.Boleto.BeneficiaryName = &res.Beneficiary
 	}

@@ -176,7 +176,7 @@ func FindInText(text string, ref time.Time) (Boleto, bool) {
 						b, err = Parse(w, ref)
 					}
 					if err == nil {
-						b.Beneficiary = findBeneficiary(text)
+						enrich(&b, text, ref)
 						return b, true
 					}
 				}
@@ -186,7 +186,91 @@ func FindInText(text string, ref time.Time) (Boleto, bool) {
 	return Boleto{}, false
 }
 
+// enrich completa o boleto com o que só o texto do documento diz: beneficiário, vencimento (conta de consumo não
+// o traz no código de barras) e competência. O vencimento do código de barras, quando existe, sempre prevalece.
+func enrich(b *Boleto, text string, ref time.Time) {
+	b.Beneficiary = findBeneficiary(text)
+	if b.DueDate.IsZero() {
+		b.DueDate = findDueDate(text)
+	}
+	b.Competence = findCompetence(text)
+}
+
+var (
+	dueDateRe = regexp.MustCompile(`(?i)vencimento\s*:?\s*(\d{2})/(\d{2})/(\d{4})`)
+	// "Referência: 10/2026", "Mês: OUT/2026", "Competência 10/2026", "Mês de referência: outubro/2026".
+	competenceRe = regexp.MustCompile(`(?i)(?:compet[eê]ncia|refer[eê]ncia|m[eê]s(?: de refer[eê]ncia)?)\s*:?\s*(\d{1,2}|[a-zç]{3,9})\s*/\s*(\d{4})`)
+	// Razão social: nome em maiúsculas terminado em tipo societário ("GASCO DISTRIBUIDORA S/A", "NETLINK PROVEDOR LTDA").
+	companyRe = regexp.MustCompile(`([A-ZÀ-Ú][A-ZÀ-Ú0-9&.' -]{1,60}?)\s+(S/A|S\.A\.?|LTDA\.?|EIRELI|S/S|EPP|ME)(?:\s|$|[-−–,.])`)
+	razaoRe   = regexp.MustCompile(`(?im)^\s*raz[aã]o social\s*:\s*(.+)$`)
+)
+
+var months = map[string]time.Month{
+	"jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
+	"jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+}
+
+func findDueDate(text string) time.Time {
+	m := dueDateRe.FindStringSubmatch(text)
+	if m == nil {
+		return time.Time{}
+	}
+	return validDate(m[3], m[2], m[1])
+}
+
+func validDate(y, mo, d string) time.Time {
+	year, month, day := toInt(y), toInt(mo), toInt(d)
+	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	// time.Date "normaliza" 31/02 para março: comparar de volta rejeita datas impossíveis.
+	if year < 2000 || t.Day() != day || int(t.Month()) != month {
+		return time.Time{}
+	}
+	return t
+}
+
+// findCompetence devolve o dia 1 do mês de referência, ou zero. Aceita mês numérico ou abreviado/extenso em português.
+func findCompetence(text string) time.Time {
+	for _, m := range competenceRe.FindAllStringSubmatch(text, -1) {
+		var month int
+		if m[1][0] >= '0' && m[1][0] <= '9' {
+			month = toInt(m[1])
+		} else if mo, ok := months[strings.ToLower(m[1])[:3]]; ok {
+			month = int(mo)
+		}
+		if month >= 1 && month <= 12 {
+			if y := toInt(m[2]); y >= 2000 && y <= 2100 {
+				return time.Date(y, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+			}
+		}
+	}
+	return time.Time{}
+}
+
 func findBeneficiary(text string) string {
+	if m := razaoRe.FindStringSubmatch(text); m != nil {
+		if name := cleanName(m[1]); name != "" {
+			return name
+		}
+	}
+	if name := findLabeledBeneficiary(text); name != "" {
+		return name
+	}
+	// Sem rótulo: a primeira razão social do documento costuma ser a de quem emitiu (conta de consumo).
+	if m := companyRe.FindStringSubmatch(text); m != nil {
+		return cleanName(m[1] + " " + m[2])
+	}
+	return ""
+}
+
+func cleanName(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if len(s) > 120 {
+		s = s[:120]
+	}
+	return s
+}
+
+func findLabeledBeneficiary(text string) string {
 	lines := strings.Split(text, "\n")
 	for i, l := range lines {
 		m := beneficiaryRe.FindStringSubmatch(l)
@@ -205,4 +289,12 @@ func findBeneficiary(text string) string {
 		}
 	}
 	return ""
+}
+
+func toInt(s string) int {
+	n := 0
+	for _, r := range s {
+		n = n*10 + int(r-'0')
+	}
+	return n
 }
