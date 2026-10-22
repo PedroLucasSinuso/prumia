@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useRecurrenceActions, usePurchases, useRecurrences } from '../api/queries'
 import type { Invoice, Purchase, Recurrence } from '../api/types'
-import { useAuth } from '../auth/context'
+import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { RecurrenceForm } from '../components/RecurrenceForm'
 import { Sheet } from '../components/Sheet'
@@ -61,9 +61,8 @@ function PurchaseItem({ purchase }: { purchase: Purchase }) {
  * cada parcela; as contas fixas (aluguel, internet) listam o molde mensal e deixam ajustar valor, dia e fim.
  */
 export default function SeriesPage() {
-  const { session } = useAuth()
   const toast = useToast()
-  const house = session.status === 'authenticated' ? session.me.households[0] : undefined
+  const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
 
   const [text, setText] = useState('')

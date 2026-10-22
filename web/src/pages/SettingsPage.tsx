@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { useCategories, useCategoryActions } from '../api/queries'
 import type { Category } from '../api/types'
-import { useAuth } from '../auth/context'
+import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { CategoryForm } from '../components/CategoryForm'
@@ -23,13 +23,17 @@ const meta = (c: Category) => [c.defaultWallet ? walletText[c.defaultWallet] : '
  * por enquanto, categorias (criar, editar, reordenar, arquivar/restaurar). Computador: lista + detalhe ao lado; celular: Sheet.
  */
 export default function SettingsPage() {
-  const { session } = useAuth()
+  const { house } = useActiveHouse()
+  // key: trocar de casa remonta a tela (o painel aberto de uma categoria não vaza para a outra casa)
+  return <SettingsView key={house?.id ?? 'sem-casa'} />
+}
+
+function SettingsView() {
   const toast = useToast()
   const desktop = useIsDesktop()
   const [editing, setEditing] = useState<Editing>(null)
 
-  const me = session.status === 'authenticated' ? session.me : undefined
-  const house = me?.households[0]
+  const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
 
   const categories = useCategories(houseId)
@@ -39,7 +43,7 @@ export default function SettingsPage() {
   const active = all.filter((c) => !c.archived)
   const archived = all.filter((c) => c.archived)
 
-  if (!me || !house) return null
+  if (!house) return null
   const canWrite = house.role !== 'viewer'
   const selected = editing?.kind === 'edit' ? all.find((c) => c.id === editing.id) : undefined
   const close = () => setEditing(null)

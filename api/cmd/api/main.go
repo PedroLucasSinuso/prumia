@@ -87,7 +87,8 @@ func run(args []string) error {
 
 	summaries := summary.NewService(gdb)
 	households := household.NewService(gdb)
-	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration})
+	households.MaxPerUser = cfg.MaxHouseholdsPerUser
+	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration, SessionMaxAge: cfg.SessionMaxAge})
 	if err != nil {
 		return err
 	}

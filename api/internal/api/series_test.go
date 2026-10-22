@@ -59,11 +59,12 @@ func serie(t *testing.T) (a *app, c *http.Cookie, house, catID string, clock *ti
 	return a, c, house, cats[0].ID, clock
 }
 
-// travel move o relógio do teste; a sessão ganha validade extra para continuar logada depois da viagem.
+// travel move o relógio do teste; a sessão ganha validade extra para continuar logada depois da viagem
+// (e "nasce" de novo no destino, senão a validade absoluta da sessão a derrubaria).
 func (a *app) travel(clock *time.Time, to time.Time) {
 	a.t.Helper()
 	*clock = to
-	a.db.Exec("UPDATE sessions SET expires_at = expires_at + interval '3 years'")
+	a.db.Exec("UPDATE sessions SET expires_at = expires_at + interval '3 years', created_at = ?", to)
 }
 
 func (a *app) newPurchase(c *http.Cookie, house, catID string, extra map[string]any) (purchaseT, resp) {

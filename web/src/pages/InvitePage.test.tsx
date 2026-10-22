@@ -5,7 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../api/client'
 import { fail, mockApi, ok, me, renderAt } from '../test/utils'
 
-beforeEach(() => vi.restoreAllMocks())
+beforeEach(() => {
+  vi.restoreAllMocks()
+  localStorage.clear()
+})
 
 describe('convite', () => {
   it('cadastra com o token do link e entra no app', async () => {
@@ -41,8 +44,47 @@ describe('convite', () => {
   it('quem já está logado não consome o convite sem querer', async () => {
     mockApi({ me: ok(me) })
     renderAt('/convite?token=abc')
-    expect(await screen.findByRole('button', { name: 'Sair e usar o convite' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Entrar na casa' })).toBeInTheDocument()
     expect(api.POST).not.toHaveBeenCalled()
+  })
+
+  it('com conta logada, "Entrar na casa" aceita o convite e ativa a casa nova', async () => {
+    let current = me
+    mockApi({ me: () => ok(current) })
+    vi.mocked(api.POST).mockImplementation((async (url: string) => {
+      if (url !== '/invites/accept') return ok()
+      current = { ...me, households: [...me.households, { id: 'h2', name: 'Casa da Ana', role: 'member' }] }
+      return ok({ id: 'h2', name: 'Casa da Ana', createdAt: '2026-10-21T00:00:00Z' })
+    }) as never)
+    renderAt('/convite?token=abc')
+    await userEvent.click(await screen.findByRole('button', { name: 'Entrar na casa' }))
+    expect(api.POST).toHaveBeenCalledWith('/invites/accept', { body: { token: 'abc' } })
+    expect((await screen.findAllByRole('button', { name: /Casa ativa: Casa da Ana/ })).length).toBeGreaterThan(0)
+    expect(localStorage.getItem('prumia.casaAtiva.u1')).toBe('h2')
+  })
+
+  it.each([
+    ['invalid_invite', 400, /inválido, expirou ou foi revogado/],
+    ['invite_used', 409, /já foi usado/],
+    ['already_member', 409, /já faz parte desta casa/],
+  ])('com conta logada, %s mostra o aviso', async (code, status, text) => {
+    mockApi({ me: ok(me), acceptInvite: fail(status, code) })
+    renderAt('/convite?token=abc')
+    await userEvent.click(await screen.findByRole('button', { name: 'Entrar na casa' }))
+    expect(await screen.findByText(text)).toBeInTheDocument()
+  })
+
+  it('sem sessão, "entrar e aceitar" faz login e volta ao convite com o token', async () => {
+    mockApi({ login: ok(me), acceptInvite: ok({ id: 'h1', name: 'Casa do Pedro', createdAt: '2026-10-21T00:00:00Z' }) })
+    renderAt('/convite?token=abc')
+    await userEvent.click(await screen.findByRole('link', { name: 'Entrar e aceitar o convite' }))
+    await userEvent.type(await screen.findByLabelText('E-mail'), 'ana@exemplo.com')
+    await userEvent.type(screen.getByLabelText('Senha'), 'senha-bem-longa')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findByRole('button', { name: 'Entrar na casa' })).toBeInTheDocument()
+    vi.mocked(api.POST).mockClear()
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar na casa' }))
+    expect(api.POST).toHaveBeenCalledWith('/invites/accept', { body: { token: 'abc' } })
   })
 })
 

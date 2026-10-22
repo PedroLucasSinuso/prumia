@@ -118,6 +118,9 @@ func Middleware(svc *Service, hs *household.Service, ck CookieConfig, log *slog.
 				httpx.Internal(c)
 				return
 			}
+			if ck.Token(c) != "" {
+				ck.Clear(c) // sessão vencida/inválida: apaga o cookie para o navegador não reenviá-lo
+			}
 			httpx.WriteProblem(c, httpx.Problem{Status: http.StatusUnauthorized, Code: "unauthenticated"})
 			return
 		}

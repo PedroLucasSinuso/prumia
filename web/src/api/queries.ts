@@ -300,6 +300,16 @@ export function useHouseActions(houseId: string) {
   return { rename, remove, setRole, removeMember, invite, resetLink }
 }
 
+/** Cria uma casa nova (quem cria vira admin). Passou do limite de casas: ApiError com code=household_limit. */
+export function useCreateHousehold() {
+  return useMutation({ mutationFn: (name: string) => unwrap(api.POST('/households', { body: { name } })) })
+}
+
+/** Aceita um convite com a conta já logada: a pessoa entra na casa do convite. */
+export function useAcceptInvite() {
+  return useMutation({ mutationFn: (token: string) => unwrap(api.POST('/invites/accept', { body: { token } })) })
+}
+
 /** Compras parceladas; `q` filtra pela descrição ("quando comprei o notebook?"). */
 export function usePurchases(houseId: string, q: string) {
   return useQuery({

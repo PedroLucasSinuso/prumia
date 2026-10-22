@@ -20,6 +20,14 @@ export const me: Me = {
   id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com',
   households: [{ id: 'h1', name: 'Casa do Pedro', role: 'admin' }],
 }
+/** Duas casas: a do Pedro (admin) e a da Ana, em que ele entrou como membro. */
+export const twoHousesMe: Me = {
+  ...me,
+  households: [
+    { id: 'h1', name: 'Casa do Pedro', role: 'admin' },
+    { id: 'h2', name: 'Casa da Ana', role: 'member' },
+  ],
+}
 export const viewerMe: Me = { ...me, households: [{ id: 'h1', name: 'Casa do Pedro', role: 'viewer' }] }
 
 export const categories: Category[] = [
@@ -64,7 +72,10 @@ type Routes = {
   unreceive?: Reply
   createSource?: Reply
   updateSource?: Reply
-  me?: Reply
+  /** /auth/me: resposta fixa ou calculada a cada chamada (ex.: o Me muda depois de aceitar um convite). */
+  me?: Reply | (() => Reply)
+  createHousehold?: Reply
+  acceptInvite?: Reply
   invoices?: Reply
   categories?: Reply
   createCategory?: Reply
@@ -97,7 +108,7 @@ type Routes = {
 export function mockApi(r: Routes = {}) {
   const unauth = fail(401, 'unauthenticated')
   vi.spyOn(api, 'GET').mockImplementation((async (url: string, init?: { params?: { query?: { includeArchived?: boolean } } }) => {
-    if (url === '/auth/me') return r.me ?? unauth
+    if (url === '/auth/me') return (typeof r.me === 'function' ? r.me() : r.me) ?? unauth
     if (url === '/households/{householdId}/categories') {
       // como a API: sem includeArchived=true, as arquivadas ficam de fora
       const reply = r.categories ?? ok(categories)
@@ -133,6 +144,8 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/categories': r.createCategory,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
+      '/households': r.createHousehold,
+      '/invites/accept': r.acceptInvite,
     }
     const reply = pick[url]
     if (reply instanceof Error) throw reply

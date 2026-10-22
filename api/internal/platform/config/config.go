@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,6 +21,10 @@ type Config struct {
 	// OpenRegistration permite cadastro sem convite mesmo já havendo usuários. Padrão: fechado
 	// (só o primeiro usuário se cadastra sozinho; os demais entram por convite).
 	OpenRegistration bool
+	// MaxHouseholdsPerUser limita as casas ativas criadas por um usuário (MAX_HOUSEHOLDS_PER_USER, padrão 5).
+	MaxHouseholdsPerUser int
+	// SessionMaxAge é a validade absoluta da sessão (SESSION_MAX_AGE_DAYS, padrão 90 dias).
+	SessionMaxAge time.Duration
 }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
@@ -48,6 +53,17 @@ func load(get func(string) string) (Config, error) {
 	if cfg.DatabaseURL == "" {
 		problems = append(problems, errors.New("DATABASE_URL é obrigatório"))
 	}
+	maxHouses, err := positiveInt(get("MAX_HOUSEHOLDS_PER_USER"), 5)
+	if err != nil {
+		problems = append(problems, fmt.Errorf("MAX_HOUSEHOLDS_PER_USER: %w", err))
+	}
+	cfg.MaxHouseholdsPerUser = maxHouses
+	maxDays, err := positiveInt(get("SESSION_MAX_AGE_DAYS"), 90)
+	if err != nil {
+		problems = append(problems, fmt.Errorf("SESSION_MAX_AGE_DAYS: %w", err))
+	}
+	cfg.SessionMaxAge = time.Duration(maxDays) * 24 * time.Hour
+
 	tz := valueOr(get("APP_TIMEZONE"), "America/Sao_Paulo")
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
@@ -59,6 +75,18 @@ func load(get func(string) string) (Config, error) {
 		return Config{}, errors.Join(problems...) // junta todos os erros de uma vez
 	}
 	return cfg, nil
+}
+
+// positiveInt lê um inteiro > 0; vazio devolve o padrão.
+func positiveInt(v string, def int) (int, error) {
+	if strings.TrimSpace(v) == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("use um inteiro maior que zero (recebido %q)", v)
+	}
+	return n, nil
 }
 
 func valueOr(v, def string) string {
