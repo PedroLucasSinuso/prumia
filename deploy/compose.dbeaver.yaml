@@ -1,0 +1,7 @@
+# Override OPCIONAL: publica o Postgres só em 127.0.0.1 para um cliente local (DBeaver, psql).
+# Uso: make db-expose / make db-hide (ver docs/developer-guide/getting-started.md).
+# NUNCA troque 127.0.0.1 por 0.0.0.0: o banco ficaria aberto para a rede inteira.
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5433}:5432"

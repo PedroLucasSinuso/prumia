@@ -17,7 +17,7 @@ Guia de quem constrói e mantém o prumia. Leia na ordem se for novo no projeto.
 | series-generation.md | Fase 1 | Como parcelas e recorrências são geradas e estendidas |
 | [incomes-and-wallets.md](incomes-and-wallets.md) | pronto | Receitas, descontos, previsão, carteiras, saldos, resumo mensal e aviso de benefício |
 | [boleto-extraction.md](boleto-extraction.md) | pronto | Cascata de extração, validação e limites |
-| deployment.md | Fase 4 | Compose, nginx, Tailscale, VPS |
+| [deployment.md](deployment.md) | pronto (VPS: fase 2) | Compose, nginx, Tailscale com HTTPS, HSTS, produção x desenvolvimento |
 | [backup-restore.md](backup-restore.md) | pronto | Backup, rotação, restore (real e em outro banco), teste de restore e agendamento |
 | [security.md](security.md) | pronto | Modelo de ameaças, o que é protegido e como, checklist de produção, desempenho medido |
 
