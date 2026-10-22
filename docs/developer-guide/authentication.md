@@ -50,8 +50,7 @@ Decisão de segurança: cada casa custa linhas (membro, 10 categorias); sem limi
   criação; 6 criações simultâneas com limite 2 dão 1 criada e 5 conflitos (teste em `limites_test.go`).
 - Configuração: `household.Service.MaxPerUser`, lida de `MAX_HOUSEHOLDS_PER_USER` (inteiro > 0).
 
-As duas variáveis são lidas pela API; o `deploy/compose.yaml` ainda não as repassa, então em produção valem os padrões
-até alguém acrescentá-las ao bloco `environment` do serviço `api`.
+As duas variáveis são lidas pela API; o `deploy/compose.yaml` as repassa do `.env` (comentadas no `.env.example`, com os padrões).
 
 ## Convites
 

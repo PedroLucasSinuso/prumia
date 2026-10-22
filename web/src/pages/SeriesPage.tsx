@@ -12,14 +12,15 @@ import { formatCents } from '../lib/money'
 
 const label = 'text-xs font-medium uppercase tracking-wider text-graphite/80'
 
-/** Valor da parcela: o das invoices geradas, ou total/parcelas quando a lista não traz as parcelas. */
+/** Valor da parcela: o das invoices geradas, ou total/parcelas se todas foram excluídas. */
 function installmentValue(p: Purchase): number {
-  const first = p.installments?.[0]
+  const first = p.installments[0]
   return first ? first.amountCents : Math.floor(p.totalAmountCents / p.installmentsCount)
 }
 
 function PurchaseItem({ purchase }: { purchase: Purchase }) {
-  const parcels: Invoice[] = purchase.installments ?? []
+  // A listagem já traz as parcelas (não excluídas, em ordem): "n de N pagas" e a lista não dependem de outra consulta.
+  const parcels: Invoice[] = purchase.installments
   const paid = parcels.filter((i) => i.status === 'paid').length
   return (
     <li className="border-t border-graphite/10 first:border-t-0">
@@ -29,7 +30,7 @@ function PurchaseItem({ purchase }: { purchase: Purchase }) {
             <span className="block truncate text-[15px] font-medium">{purchase.description}</span>
             <span className="block truncate text-xs text-graphite/80">
               comprada em {fullDate(purchase.purchaseDate)}
-              {parcels.length > 0 ? ` · ${paid} de ${purchase.installmentsCount} pagas` : ''}
+              {` · ${paid} de ${purchase.installmentsCount} pagas`}
             </span>
           </span>
           <span className="shrink-0 text-right">
@@ -37,8 +38,9 @@ function PurchaseItem({ purchase }: { purchase: Purchase }) {
             <span className="block text-[11px] text-graphite/75">total {formatCents(purchase.totalAmountCents)}</span>
           </span>
         </summary>
+        {parcels.length === 0 && <p className="mb-2 ml-1 text-[13px] text-graphite/75">Todas as parcelas foram excluídas.</p>}
         {parcels.length > 0 && (
-          <ul className="mb-2 ml-1 border-l border-teal/40 pl-3">
+          <ul aria-label={`Parcelas de ${purchase.description}`} className="mb-2 ml-1 border-l border-teal/40 pl-3">
             {parcels.map((i) => (
               <li key={i.id} className="flex justify-between gap-3 py-1 text-[13px]">
                 <span>

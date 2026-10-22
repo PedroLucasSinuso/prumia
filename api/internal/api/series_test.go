@@ -265,8 +265,8 @@ func TestListaDeComprasPaginada(t *testing.T) {
 		a.do("GET", "/api/households/"+house+"/purchases"+q, nil, c).json(&page)
 		for _, p := range page.Items {
 			ids = append(ids, p.Description)
-			if p.Installments != nil {
-				t.Error("a lista não traz parcelas")
+			if len(p.Installments) != 6 {
+				t.Errorf("a lista traz as parcelas: %d", len(p.Installments))
 			}
 		}
 		if page.NextCursor == "" {

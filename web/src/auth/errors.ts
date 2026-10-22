@@ -17,6 +17,9 @@ const messages: Record<string, string> = {
   forbidden: 'Apenas administradores da casa podem fazer isso.',
   validation_error: 'Confira os campos destacados.',
   not_implemented: 'Este recurso ainda não está disponível.',
+  category_exists: 'Já existe uma categoria com este nome (maiúsculas não contam).',
+  category_in_use: 'Esta categoria está em uso. Arquive em vez de apagar.',
+  not_found: 'Não encontrado. Recarregue a página.',
 }
 
 // Leitura de boleto (POST /boletos/extract): códigos do servidor -> texto. `boleto_not_found` = nada válido no arquivo.

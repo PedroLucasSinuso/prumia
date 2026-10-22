@@ -78,6 +78,8 @@ type Routes = {
   acceptInvite?: Reply
   invoices?: Reply
   categories?: Reply
+  createCategory?: Reply
+  updateCategory?: Reply
   login?: Reply | Error
   register?: Reply
   logout?: Reply
@@ -105,9 +107,14 @@ type Routes = {
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
 export function mockApi(r: Routes = {}) {
   const unauth = fail(401, 'unauthenticated')
-  vi.spyOn(api, 'GET').mockImplementation((async (url: string) => {
+  vi.spyOn(api, 'GET').mockImplementation((async (url: string, init?: { params?: { query?: { includeArchived?: boolean } } }) => {
     if (url === '/auth/me') return (typeof r.me === 'function' ? r.me() : r.me) ?? unauth
-    if (url === '/households/{householdId}/categories') return r.categories ?? ok(categories)
+    if (url === '/households/{householdId}/categories') {
+      // como a API: sem includeArchived=true, as arquivadas ficam de fora
+      const reply = r.categories ?? ok(categories)
+      if (init?.params?.query?.includeArchived || !Array.isArray(reply.data)) return reply
+      return { ...reply, data: (reply.data as Category[]).filter((c) => !c.archived) }
+    }
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
@@ -134,6 +141,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/purchases': r.createPurchase,
       '/households/{householdId}/recurrences': r.createRecurrence,
       '/households/{householdId}/invites': r.invite,
+      '/households/{householdId}/categories': r.createCategory,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
       '/households': r.createHousehold,
@@ -148,6 +156,7 @@ export function mockApi(r: Routes = {}) {
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
     if (url === '/households/{householdId}/recurrences/{recurrenceId}') return r.updateRecurrence ?? ok()
     if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
+    if (url === '/households/{householdId}/categories/{categoryId}') return r.updateCategory ?? ok({})
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
     if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
     return r.update ?? ok()
