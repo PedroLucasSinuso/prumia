@@ -23,6 +23,12 @@ const meta = (c: Category) => [c.defaultWallet ? walletText[c.defaultWallet] : '
  * por enquanto, categorias (criar, editar, reordenar, arquivar/restaurar). Computador: lista + detalhe ao lado; celular: Sheet.
  */
 export default function SettingsPage() {
+  const { house } = useActiveHouse()
+  // key: trocar de casa remonta a tela (o painel aberto de uma categoria não vaza para a outra casa)
+  return <SettingsView key={house?.id ?? 'sem-casa'} />
+}
+
+function SettingsView() {
   const toast = useToast()
   const desktop = useIsDesktop()
   const [editing, setEditing] = useState<Editing>(null)
