@@ -101,3 +101,17 @@ logs: ## Acompanha os logs
 .PHONY: ps
 ps: ## Estado dos containers
 	$(COMPOSE) ps
+
+# Backup e restore: ver docs/developer-guide/backup-restore.md. Os scripts leem o .env e falam com o container db.
+.PHONY: backup
+backup: ## Gera um backup do banco em backups/ (rotação: mantém os 14 mais recentes)
+	@scripts/backup.sh
+
+.PHONY: restore
+restore: ## Restaura um backup: make restore FILE=backups/prumia-....dump [TARGET=outro_banco]
+	@test -n "$(FILE)" || { echo "uso: make restore FILE=backups/prumia-AAAAMMDD-HHMMSS.dump [TARGET=outro_banco]"; exit 2; }
+	@scripts/restore.sh $(if $(TARGET),--target "$(TARGET)") "$(FILE)"
+
+.PHONY: test-restore
+test-restore: ## Testa o restore num banco temporário e compara com o banco real [FILE=... para um backup específico]
+	@scripts/test-restore.sh $(FILE)
