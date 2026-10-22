@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -113,7 +114,10 @@ func (h *Handler) Login(c *gin.Context) {
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "bad_request", Detail: "corpo JSON inválido"})
 		return
 	}
-	if !h.loginIP.Allow(c.ClientIP()) || !h.loginEmail.Allow(string(body.Email)) {
+	// A chave do limite por e-mail é o e-mail NORMALIZADO, igual ao que o serviço usa na busca: senão "Ana@x.com",
+	// "ANA@x.com" e " ana@x.com" seriam baldes diferentes para a mesma conta.
+	emailKey := strings.ToLower(strings.TrimSpace(string(body.Email)))
+	if !h.loginIP.Allow(c.ClientIP()) || !h.loginEmail.Allow(emailKey) {
 		tooMany(c)
 		return
 	}
@@ -121,6 +125,13 @@ func (h *Handler) Login(c *gin.Context) {
 	if err != nil {
 		h.writeError(c, err)
 		return
+	}
+	// A sessão que este navegador já tinha (de outra pessoa, ou antiga) é encerrada: o cookie vai ser trocado e
+	// a sessão anterior não deve continuar viva no banco.
+	if old := h.cookie.Token(c); old != "" {
+		if err := h.svc.Logout(c.Request.Context(), old); err != nil {
+			h.log.Error("encerrando sessão anterior", "erro", err)
+		}
 	}
 	h.cookie.Set(c, token)
 	h.respondMe(c, http.StatusOK, user)
