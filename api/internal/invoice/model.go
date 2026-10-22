@@ -19,9 +19,11 @@ type Invoice struct {
 	HouseholdID       uuid.UUID  `gorm:"type:uuid"`
 	CategoryID        uuid.UUID  `gorm:"type:uuid"`
 	ResponsibleUserID *uuid.UUID `gorm:"type:uuid"`
-	Description       string
-	AmountCents       money.Cents
-	DueDate           caldate.Date
+	// PayeeID: favorecido (opcional). Só ajuda a reconhecer e agrupar; nunca é obrigatório.
+	PayeeID     *uuid.UUID `gorm:"type:uuid"`
+	Description string
+	AmountCents money.Cents
+	DueDate     caldate.Date
 	// CompetenceMonth: mês a que o gasto se refere (dia 1). O resumo mensal usa este campo.
 	CompetenceMonth caldate.Date
 

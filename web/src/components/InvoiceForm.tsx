@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Boleto, BoletoExtraction, Category, Invoice, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
+import type { Boleto, BoletoExtraction, Category, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { addDays, dayMonth, fullDate, monthOf, todayISO } from '../lib/dates'
 import { formatCents } from '../lib/money'
@@ -16,6 +16,8 @@ type Props = {
   /** Mês exibido na tela (define o vencimento padrão ao criar). */
   month: string
   categories: Category[]
+  /** Todos os favorecidos da casa (arquivados só aparecem se a conta já usa um). Opcional: sem a lista, o campo some. */
+  payees?: Payee[]
   invoice?: Invoice // presente = editar
   canWrite: boolean
   /** Fecha o painel (celular) ou limpa a seleção (computador). */
@@ -36,7 +38,7 @@ type Props = {
 // Nomes dos campos da API -> nome que o formulário usa para mostrar o erro.
 const fieldMap: Record<string, string> = {
   description: 'description', amountCents: 'amount', dueDate: 'dueDate', categoryId: 'categoryId',
-  competenceMonth: 'competence', notes: 'notes', installmentsCount: 'count', totalAmountCents: 'amount',
+  competenceMonth: 'competence', notes: 'notes', payeeId: 'payeeId', installmentsCount: 'count', totalAmountCents: 'amount',
   installmentAmountCents: 'amount', dayOfMonth: 'dueDate', startMonth: 'dueDate', endMonth: 'endMonth', firstDueDate: 'dueDate',
   'boleto.digitableLine': 'boleto',
 }
@@ -58,7 +60,7 @@ const chip = (on: boolean) =>
  * Formulário de criar/editar conta. Valor em destaque; vencimento e categoria são BOTÕES visíveis (nada de menu suspenso):
  * menos toques e menos decisões escondidas. "Mais opções" guarda competência e observação.
  */
-export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
+export function InvoiceForm({ month, categories, payees = [], invoice, canWrite, onDone, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
@@ -69,6 +71,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   const [dueDate, setDueDate] = useState(invoice?.dueDate ?? defaultDue)
   const [otherDate, setOtherDate] = useState(editing || !inCurrentMonth)
   const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? categories[0]?.id ?? '')
+  const [payeeId, setPayeeId] = useState(invoice?.payeeId ?? '')
   const [competence, setCompetence] = useState(invoice ? invoice.competenceMonth.slice(0, 7) : '')
   const [notes, setNotes] = useState(invoice?.notes ?? '')
   const [kind, setKind] = useState<Kind>('single')
@@ -81,6 +84,8 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
   const [busy, setBusy] = useState(false)
   // Boleto lido e revisado: vai junto ao criar. `importKey` reinicia a importação ("Adicionar e lançar outra").
   const [boleto, setBoleto] = useState<Boleto>()
+  // Arquivados não se oferecem para contas novas, mas o da própria conta continua visível ao editar.
+  const payeeOptions = payees.filter((p) => !p.archived || p.id === invoice?.payeeId)
   const [importKey, setImportKey] = useState(0)
   // Competência lida do boleto: abre a seção "mais opções" para a pessoa ver e conferir o que foi preenchido.
   const [competenceImported, setCompetenceImported] = useState(false)
@@ -99,6 +104,16 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
     if (b.documentDueDate) { setDueDate(b.documentDueDate); setOtherDate(true); clear('dueDate') }
     if (b.documentCompetenceMonth) { setCompetence(b.documentCompetenceMonth.slice(0, 7)); setCompetenceImported(true); clear('competence') }
     if (!description.trim() && b.beneficiaryName) { setDescription(b.beneficiaryName); clear('description') }
+  }
+
+  // Escolher o favorecido ajuda a preencher: nome (se ainda vazio) e categoria sugerida (só ao criar).
+  function pickPayee(id: string) {
+    setPayeeId(id)
+    clear('payeeId')
+    const p = payees.find((x) => x.id === id)
+    if (!p || editing) return
+    if (!description.trim()) { setDescription(p.name); clear('description') }
+    if (p.defaultCategoryId && categories.some((c) => c.id === p.defaultCategoryId)) setCategoryId(p.defaultCategoryId)
   }
 
   // Boleto só vale para conta avulsa: trocar o tipo descarta a leitura (os campos já preenchidos ficam).
@@ -120,7 +135,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
           invoice.id,
           {
             description: following && invoice.series?.kind === 'installment' ? stripInstallmentSuffix(description) : description,
-            amountCents: amount, categoryId,
+            amountCents: amount, categoryId, payeeId: payeeId || null,
             ...(following ? {} : { dueDate, ...(competenceMonth ? { competenceMonth } : {}) }),
             notes: notes.trim() === '' ? null : notes,
           } as InvoicePatch,
@@ -146,6 +161,7 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
       } else {
         await onCreate({
           description, amountCents: amount, dueDate, categoryId,
+          ...(payeeId ? { payeeId } : {}),
           ...(competenceMonth ? { competenceMonth } : {}),
           ...(notes.trim() ? { notes } : {}),
           ...(boleto ? { boleto } : {}),
@@ -296,13 +312,24 @@ export function InvoiceForm({ month, categories, invoice, canWrite, onDone, onCr
         {fields.categoryId && <p className="text-xs text-signal">{fields.categoryId}</p>}
       </fieldset>
 
-      <details className="rounded-md border border-graphite/15 px-3 py-2" open={Boolean(fields.competence || fields.notes || competenceImported)}>
+      <details className="rounded-md border border-graphite/15 px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
         <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold">
-          Mais opções <span className="text-xs font-normal text-graphite/75">competência · observação</span>
+          Mais opções <span className="text-xs font-normal text-graphite/75">favorecido · competência · observação</span>
         </summary>
         <div className="mt-3 flex flex-col gap-4 pb-1">
           {!editing && kind === 'recurring' && (
             <Field label="Termina em (opcional)" type="month" name="endMonth" value={endMonth} onChange={(e) => { setEndMonth(e.target.value); clear('endMonth') }} hint="Em branco: continua até você encerrar." error={fields.endMonth} />
+          )}
+          {(editing || kind === 'single') && payeeOptions.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="invoice-payee" className="text-xs font-medium uppercase tracking-wider text-graphite/70">Favorecido (opcional)</label>
+              <select id="invoice-payee" value={payeeId} disabled={!canWrite} onChange={(e) => pickPayee(e.target.value)}
+                className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base text-graphite">
+                <option value="">nenhum</option>
+                {payeeOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              {fields.payeeId && <p className="text-xs text-signal">{fields.payeeId}</p>}
+            </div>
           )}
           {(editing || kind === 'single') && (
           <Field

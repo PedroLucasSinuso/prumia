@@ -47,6 +47,13 @@ isolamento entre casas (a primeira é o escopo `household_id` aplicado em todo r
 Por casa. `default_wallet` é só **sugestão** ao pagar (Mercado → `benefit`). `is_essential` alimenta, no pós-MVP, a meta da
 reserva de emergência (meses de gasto essencial). Em uso → **arquivar** (`archived_at`), não apagar.
 
+### payees (migration 00003)
+Favorecido: quem recebe o pagamento, com o **nome que a casa escolhe** (`name`: "Gás") e, opcionalmente, `cnpj` (só dígitos,
+validado pelos dígitos verificadores no serviço; único por casa entre os não excluídos), `legal_name` (razão social, informativa)
+e `default_category_id` (sugestão ao lançar a conta). Mesmo ciclo das categorias: em uso → **arquivar** (`archived_at`), não apagar.
+`invoices.payee_id` é nullable (FK composta `(household_id, payee_id)`) e nunca obrigatório; só a avulsa e a edição o usam por ora.
+Racional: [boleto-extraction.md](boleto-extraction.md) (o reconhecimento pelo CNPJ do boleto vem num PR seguinte).
+
 ### purchases (compra parcelada)
 Cabeçalho que responde *"quando comprei o notebook e quanto custou?"*: `purchase_date`, `total_amount_cents`,
 `installments_count`. As parcelas são linhas de `invoices`. Sem agrupamento por fatura de cartão (decisão do usuário).

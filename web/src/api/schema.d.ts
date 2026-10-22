@@ -310,6 +310,47 @@ export interface paths {
         patch: operations["updateCategory"];
         trace?: never;
     };
+    "/households/{householdId}/payees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /** Favorecidos da casa */
+        get: operations["listPayees"];
+        put?: never;
+        /** Cria favorecido (member+) */
+        post: operations["createPayee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/payees/{payeeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                payeeId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Exclui favorecido sem uso. Em uso, responde 409 (arquive em vez disso). */
+        delete: operations["deletePayee"];
+        options?: never;
+        head?: never;
+        /** Edita ou arquiva favorecido */
+        patch: operations["updatePayee"];
+        trace?: never;
+    };
     "/households/{householdId}/invoices": {
         parameters: {
             query?: never;
@@ -753,6 +794,35 @@ export interface components {
             sortOrder?: number;
             archived?: boolean;
         };
+        Payee: {
+            /** Format: uuid */
+            id: string;
+            /** @description Apelido escolhido pela casa (ex.: Gás) */
+            name: string;
+            /** @description Só dígitos */
+            cnpj?: string | null;
+            /** @description Razão social, informativa */
+            legalName?: string | null;
+            /** Format: uuid */
+            defaultCategoryId?: string | null;
+            archived: boolean;
+        };
+        PayeeInput: {
+            name: string;
+            /** @description Com ou sem máscara; os dígitos verificadores são conferidos */
+            cnpj?: string | null;
+            legalName?: string | null;
+            /** Format: uuid */
+            defaultCategoryId?: string | null;
+        };
+        PayeePatch: {
+            name?: string;
+            cnpj?: string | null;
+            legalName?: string | null;
+            /** Format: uuid */
+            defaultCategoryId?: string | null;
+            archived?: boolean;
+        };
         Invoice: {
             /** Format: uuid */
             id: string;
@@ -760,6 +830,8 @@ export interface components {
             categoryId: string;
             /** Format: uuid */
             responsibleUserId?: string | null;
+            /** Format: uuid */
+            payeeId?: string | null;
             description: string;
             amountCents: components["schemas"]["Cents"];
             /** Format: date */
@@ -798,6 +870,8 @@ export interface components {
             categoryId: string;
             /** Format: uuid */
             responsibleUserId?: string | null;
+            /** Format: uuid */
+            payeeId?: string | null;
             description: string;
             amountCents: components["schemas"]["Cents"];
             /** Format: date */
@@ -812,6 +886,8 @@ export interface components {
             categoryId?: string;
             /** Format: uuid */
             responsibleUserId?: string | null;
+            /** Format: uuid */
+            payeeId?: string | null;
             description?: string;
             amountCents?: components["schemas"]["Cents"];
             /** Format: date */
@@ -1691,6 +1767,111 @@ export interface operations {
                     "application/json": components["schemas"]["Category"];
                 };
             };
+        };
+    };
+    listPayees: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payee"][];
+                };
+            };
+        };
+    };
+    createPayee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayeeInput"];
+            };
+        };
+        responses: {
+            /** @description Criado */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payee"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deletePayee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                payeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Excluído */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updatePayee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                payeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayeePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payee"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     listInvoices: {

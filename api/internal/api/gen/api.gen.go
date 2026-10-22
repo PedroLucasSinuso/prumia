@@ -572,6 +572,7 @@ type Invoice struct {
 	Id                openapi_types.UUID  `json:"id"`
 	Notes             *string             `json:"notes,omitempty"`
 	Paid              *Payment            `json:"paid,omitempty"`
+	PayeeId           *openapi_types.UUID `json:"payeeId,omitempty"`
 	ResponsibleUserId *openapi_types.UUID `json:"responsibleUserId,omitempty"`
 	Series            *SeriesRef          `json:"series,omitempty"`
 
@@ -594,6 +595,7 @@ type InvoiceInput struct {
 	Description       string              `json:"description"`
 	DueDate           caldate.Date        `json:"dueDate"`
 	Notes             *string             `json:"notes,omitempty"`
+	PayeeId           *openapi_types.UUID `json:"payeeId,omitempty"`
 	ResponsibleUserId *openapi_types.UUID `json:"responsibleUserId,omitempty"`
 }
 
@@ -614,6 +616,7 @@ type InvoicePatch struct {
 	Description       *string             `json:"description,omitempty"`
 	DueDate           *caldate.Date       `json:"dueDate,omitempty"`
 	Notes             *string             `json:"notes,omitempty"`
+	PayeeId           *openapi_types.UUID `json:"payeeId,omitempty"`
 	ResponsibleUserId *openapi_types.UUID `json:"responsibleUserId,omitempty"`
 }
 
@@ -678,6 +681,40 @@ type PayResult struct {
 
 	// Warnings Avisos que não bloqueiam (ex. `benefit_balance_insufficient`)
 	Warnings *[]string `json:"warnings,omitempty"`
+}
+
+// Payee defines model for Payee.
+type Payee struct {
+	Archived bool `json:"archived"`
+
+	// Cnpj Só dígitos
+	Cnpj              *string             `json:"cnpj,omitempty"`
+	DefaultCategoryId *openapi_types.UUID `json:"defaultCategoryId,omitempty"`
+	Id                openapi_types.UUID  `json:"id"`
+
+	// LegalName Razão social, informativa
+	LegalName *string `json:"legalName,omitempty"`
+
+	// Name Apelido escolhido pela casa (ex.: Gás)
+	Name string `json:"name"`
+}
+
+// PayeeInput defines model for PayeeInput.
+type PayeeInput struct {
+	// Cnpj Com ou sem máscara; os dígitos verificadores são conferidos
+	Cnpj              *string             `json:"cnpj,omitempty"`
+	DefaultCategoryId *openapi_types.UUID `json:"defaultCategoryId,omitempty"`
+	LegalName         *string             `json:"legalName,omitempty"`
+	Name              string              `json:"name"`
+}
+
+// PayeePatch defines model for PayeePatch.
+type PayeePatch struct {
+	Archived          *bool               `json:"archived,omitempty"`
+	Cnpj              *string             `json:"cnpj,omitempty"`
+	DefaultCategoryId *openapi_types.UUID `json:"defaultCategoryId,omitempty"`
+	LegalName         *string             `json:"legalName,omitempty"`
+	Name              *string             `json:"name,omitempty"`
 }
 
 // Payment defines model for Payment.
@@ -985,6 +1022,11 @@ type UpdateMemberRoleJSONBody struct {
 	Role Role `json:"role"`
 }
 
+// ListPayeesParams defines parameters for ListPayees.
+type ListPayeesParams struct {
+	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
 // ListPurchasesParams defines parameters for ListPurchases.
 type ListPurchasesParams struct {
 	// Q Busca por descrição
@@ -1056,6 +1098,12 @@ type PayInvoiceJSONRequestBody = PayRequest
 
 // UpdateMemberRoleJSONRequestBody defines body for UpdateMemberRole for application/json ContentType.
 type UpdateMemberRoleJSONRequestBody UpdateMemberRoleJSONBody
+
+// CreatePayeeJSONRequestBody defines body for CreatePayee for application/json ContentType.
+type CreatePayeeJSONRequestBody = PayeeInput
+
+// UpdatePayeeJSONRequestBody defines body for UpdatePayee for application/json ContentType.
+type UpdatePayeeJSONRequestBody = PayeePatch
 
 // CreatePurchaseJSONRequestBody defines body for CreatePurchase for application/json ContentType.
 type CreatePurchaseJSONRequestBody = PurchaseInput
@@ -1185,6 +1233,18 @@ type ServerInterface interface {
 	// CreatePasswordResetLink Gera link de redefinição de senha para um membro (admin de todas as casas dele)
 	// (POST /households/{householdId}/members/{userId}/password-reset-link)
 	CreatePasswordResetLink(c *gin.Context, householdId HouseholdId, userId UserId)
+	// ListPayees Favorecidos da casa
+	// (GET /households/{householdId}/payees)
+	ListPayees(c *gin.Context, householdId HouseholdId, params ListPayeesParams)
+	// CreatePayee Cria favorecido (member+)
+	// (POST /households/{householdId}/payees)
+	CreatePayee(c *gin.Context, householdId HouseholdId)
+	// DeletePayee Exclui favorecido sem uso. Em uso, responde 409 (arquive em vez disso).
+	// (DELETE /households/{householdId}/payees/{payeeId})
+	DeletePayee(c *gin.Context, householdId HouseholdId, payeeId openapi_types.UUID)
+	// UpdatePayee Edita ou arquiva favorecido
+	// (PATCH /households/{householdId}/payees/{payeeId})
+	UpdatePayee(c *gin.Context, householdId HouseholdId, payeeId openapi_types.UUID)
 	// ListPurchases Compras parceladas ("quando comprei o notebook?")
 	// (GET /households/{householdId}/purchases)
 	ListPurchases(c *gin.Context, householdId HouseholdId, params ListPurchasesParams)
@@ -2372,6 +2432,135 @@ func (siw *ServerInterfaceWrapper) CreatePasswordResetLink(c *gin.Context) {
 	siw.Handler.CreatePasswordResetLink(c, householdId, userId)
 }
 
+// ListPayees operation middleware
+func (siw *ServerInterfaceWrapper) ListPayees(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPayeesParams
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", c.Request.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter includeArchived: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListPayees(c, householdId, params)
+}
+
+// CreatePayee operation middleware
+func (siw *ServerInterfaceWrapper) CreatePayee(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreatePayee(c, householdId)
+}
+
+// DeletePayee operation middleware
+func (siw *ServerInterfaceWrapper) DeletePayee(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "payeeId" -------------
+	var payeeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "payeeId", c.Param("payeeId"), &payeeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter payeeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeletePayee(c, householdId, payeeId)
+}
+
+// UpdatePayee operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePayee(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "payeeId" -------------
+	var payeeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "payeeId", c.Param("payeeId"), &payeeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter payeeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdatePayee(c, householdId, payeeId)
+}
+
 // ListPurchases operation middleware
 func (siw *ServerInterfaceWrapper) ListPurchases(c *gin.Context) {
 
@@ -2664,6 +2853,10 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/categories", wrapper.CreateCategory)
 	router.DELETE(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.DeleteCategory)
 	router.PATCH(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.UpdateCategory)
+	router.GET(options.BaseURL+"/households/:householdId/payees", wrapper.ListPayees)
+	router.POST(options.BaseURL+"/households/:householdId/payees", wrapper.CreatePayee)
+	router.DELETE(options.BaseURL+"/households/:householdId/payees/:payeeId", wrapper.DeletePayee)
+	router.PATCH(options.BaseURL+"/households/:householdId/payees/:payeeId", wrapper.UpdatePayee)
 	router.GET(options.BaseURL+"/households/:householdId/invoices", wrapper.ListInvoices)
 	router.POST(options.BaseURL+"/households/:householdId/invoices", wrapper.CreateInvoice)
 	router.DELETE(options.BaseURL+"/households/:householdId/invoices/:invoiceId", wrapper.DeleteInvoice)

@@ -13,6 +13,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
+	"github.com/PedroLucasSinuso/prumia/api/internal/payee"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
@@ -29,12 +30,18 @@ func writeDomainError(c *gin.Context, log *slog.Logger, err error) {
 	case errors.As(err, &ve):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "validation_error", Fields: ve.Fields})
 	case errors.Is(err, category.ErrNotFound), errors.Is(err, invoice.ErrNotFound), errors.Is(err, household.ErrNotFound), errors.Is(err, series.ErrNotFound),
-		errors.Is(err, income.ErrNotFound):
+		errors.Is(err, income.ErrNotFound), errors.Is(err, payee.ErrNotFound):
 		httpx.NotFound(c)
 	case errors.Is(err, category.ErrNameTaken):
 		problem(http.StatusConflict, "category_exists")
 	case errors.Is(err, category.ErrInUse):
 		problem(http.StatusConflict, "category_in_use")
+	case errors.Is(err, payee.ErrNameTaken):
+		problem(http.StatusConflict, "payee_exists")
+	case errors.Is(err, payee.ErrCNPJTaken):
+		problem(http.StatusConflict, "payee_cnpj_exists")
+	case errors.Is(err, payee.ErrInUse):
+		problem(http.StatusConflict, "payee_in_use")
 	case errors.Is(err, invoice.ErrAlreadyPaid):
 		problem(http.StatusConflict, "already_paid")
 	case errors.Is(err, invoice.ErrNotPaid):
