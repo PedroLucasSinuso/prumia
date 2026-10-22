@@ -39,6 +39,8 @@ Cada etapa só vale se o resultado **passar nos dígitos verificadores**. Númer
 | Maior que 5 MB | 413 | `file_too_large` |
 | Sem arquivo / multipart inválido | 400 | `bad_request` |
 | Muitas leituras seguidas (10, depois 1 a cada 6 s, por usuário) | 429 | `too_many_requests` |
+| Já há 2 leituras rodando no servidor e a vez não chegou em 60 s | 503 | `busy` |
+| Imagem (ou página desenhada do PDF) acima de 40 megapixels: recusada antes de decodificar | 422 | `boleto_not_found` |
 | Papel `viewer` | 403 | `forbidden` |
 
 O upload é lido **parte a parte direto para a memória** (`MultipartReader`); `ParseMultipartForm` gravaria o excedente em arquivo temporário e por isso não é usado. O nginx também mantém o corpo em memória (`client_body_buffer_size`), e o container da API tem `/tmp` em `tmpfs`.

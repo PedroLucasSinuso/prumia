@@ -31,6 +31,10 @@ services:
     # /tmp em memória: as ferramentas de leitura de boleto podem criar arquivos temporários, e boleto nunca deve tocar o disco.
     tmpfs:
       - /tmp
+    # O processo já roda sem root (Dockerfile); aqui ele também não ganha privilégio nenhum depois (setuid) nem
+    # capacidades do kernel. Nada no app precisa delas (pdftotext/gs/tesseract testados assim).
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       db:
         condition: service_healthy
