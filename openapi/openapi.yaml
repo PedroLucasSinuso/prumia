@@ -21,6 +21,7 @@ tags:
   - { name: auth, description: "Cadastro, login e sessão" }
   - { name: households, description: "Casas, membros e convites" }
   - { name: categories, description: "Categorias de despesa" }
+  - { name: payees, description: "Favorecidos (apelido + CNPJ opcional)" }
   - { name: invoices, description: "Despesas (contas, parcelas, recorrências)" }
   - { name: incomes, description: "Receitas (salário, benefício)" }
   - { name: summary, description: "Resumo mensal" }
@@ -326,6 +327,53 @@ paths:
       summary: Exclui categoria sem uso. Em uso, responde 409 (arquive em vez disso).
       responses:
         '204': { description: "Excluída" }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------------------------------------------------------------- payees
+  /households/{householdId}/payees:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [payees]
+      operationId: listPayees
+      summary: Favorecidos da casa
+      parameters:
+        - { name: includeArchived, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Payee' } } } } }
+    post:
+      tags: [payees]
+      operationId: createPayee
+      summary: Cria favorecido (member+)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PayeeInput' } } }
+      responses:
+        '201': { description: "Criado", content: { application/json: { schema: { $ref: '#/components/schemas/Payee' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/payees/{payeeId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: payeeId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [payees]
+      operationId: updatePayee
+      summary: Edita ou arquiva favorecido
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PayeePatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Payee' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [payees]
+      operationId: deletePayee
+      summary: Exclui favorecido sem uso. Em uso, responde 409 (arquive em vez disso).
+      responses:
+        '204': { description: "Excluído" }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
   # --------------------------------------------------------------- invoices
@@ -782,6 +830,33 @@ components:
         sortOrder: { type: integer }
         archived: { type: boolean }
 
+    Payee:
+      type: object
+      required: [id, name, archived]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, description: "Apelido escolhido pela casa (ex.: Gás)" }
+        cnpj: { type: string, pattern: '^[0-9]{14}$', nullable: true, description: "Só dígitos" }
+        legalName: { type: string, nullable: true, description: "Razão social, informativa" }
+        defaultCategoryId: { type: string, format: uuid, nullable: true }
+        archived: { type: boolean }
+    PayeeInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        cnpj: { type: string, nullable: true, description: "Com ou sem máscara; os dígitos verificadores são conferidos" }
+        legalName: { type: string, nullable: true, maxLength: 120 }
+        defaultCategoryId: { type: string, format: uuid, nullable: true }
+    PayeePatch:
+      type: object
+      properties:
+        name: { type: string }
+        cnpj: { type: string, nullable: true }
+        legalName: { type: string, nullable: true }
+        defaultCategoryId: { type: string, format: uuid, nullable: true }
+        archived: { type: boolean }
+
     Invoice:
       type: object
       required: [id, categoryId, description, amountCents, dueDate, competenceMonth, status]
@@ -789,6 +864,7 @@ components:
         id: { type: string, format: uuid }
         categoryId: { type: string, format: uuid }
         responsibleUserId: { type: string, format: uuid, nullable: true }
+        payeeId: { type: string, format: uuid, nullable: true }
         description: { type: string }
         amountCents: { $ref: '#/components/schemas/Cents' }
         dueDate: { type: string, format: date }
@@ -833,6 +909,7 @@ components:
       properties:
         categoryId: { type: string, format: uuid }
         responsibleUserId: { type: string, format: uuid, nullable: true }
+        payeeId: { type: string, format: uuid, nullable: true }
         description: { type: string, minLength: 1, maxLength: 120 }
         amountCents: { $ref: '#/components/schemas/Cents' }
         dueDate: { type: string, format: date }
@@ -844,6 +921,7 @@ components:
       properties:
         categoryId: { type: string, format: uuid }
         responsibleUserId: { type: string, format: uuid, nullable: true }
+        payeeId: { type: string, format: uuid, nullable: true }
         description: { type: string }
         amountCents: { $ref: '#/components/schemas/Cents' }
         dueDate: { type: string, format: date }

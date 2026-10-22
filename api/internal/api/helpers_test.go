@@ -18,6 +18,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
+	"github.com/PedroLucasSinuso/prumia/api/internal/payee"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -71,6 +72,7 @@ func newApp(t *testing.T, o opts) *app {
 		auth.NewHandler(svc, cookie, log),
 		&Households{Svc: hs, Log: log},
 		&Categories{Svc: category.NewService(gdb), Log: log},
+		&Payees{Svc: payee.NewService(gdb), Log: log},
 		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},
 		&Recurrences{Svc: recSvc, Log: log},

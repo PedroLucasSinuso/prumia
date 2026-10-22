@@ -24,6 +24,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
+	"github.com/PedroLucasSinuso/prumia/api/internal/payee"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
@@ -99,6 +100,7 @@ func run(args []string) error {
 		auth.NewHandler(authSvc, cookie, log),
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
+		&api.Payees{Svc: payee.NewService(gdb), Log: log},
 		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},
 		&api.Recurrences{Svc: recurrences, Log: log},

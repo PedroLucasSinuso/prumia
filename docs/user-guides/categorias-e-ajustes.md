@@ -33,6 +33,17 @@ Por isso uma categoria em uso nunca é apagada: ela é arquivada.
 1. Toque na categoria e depois em **Arquivar categoria**.
 2. Para trazer de volta: abra **arquivadas** (no fim da lista), toque na categoria e em **Restaurar categoria**.
 
+## Favorecidos
+
+Favorecido é quem recebe o pagamento, com o **nome que vocês usam**: a CEG pode ser o "Gás", a Powernet, a "Internet".
+
+1. Em **Ajustes**, role até **Favorecidos** e toque em **Novo favorecido**.
+2. Dê o **Nome**. O **CNPJ** e a **razão social** são opcionais; a **categoria sugerida** é preenchida sozinha ao lançar uma conta dele.
+3. Ao lançar uma conta avulsa, abra **Mais opções** e escolha o **Favorecido**: o nome e a categoria sugerida já vêm preenchidos.
+
+Como as categorias, um favorecido em uso não se apaga: **arquive** (em **arquivados**, no fim da lista, dá para restaurar).
+Não aceita o mesmo nome nem o mesmo CNPJ duas vezes na casa.
+
 ## E se...
 
 - **Aparece "Já existe uma categoria com este nome"**: já há uma com esse nome (maiúsculas não contam). Escolha outro ou restaure a arquivada.

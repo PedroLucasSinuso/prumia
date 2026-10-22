@@ -78,6 +78,9 @@ type Routes = {
   acceptInvite?: Reply
   invoices?: Reply
   categories?: Reply
+  payees?: Reply
+  createPayee?: Reply
+  updatePayee?: Reply
   createCategory?: Reply
   updateCategory?: Reply
   login?: Reply | Error
@@ -115,6 +118,7 @@ export function mockApi(r: Routes = {}) {
       if (init?.params?.query?.includeArchived || !Array.isArray(reply.data)) return reply
       return { ...reply, data: (reply.data as Category[]).filter((c) => !c.archived) }
     }
+    if (url === '/households/{householdId}/payees') return r.payees ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
@@ -142,6 +146,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/recurrences': r.createRecurrence,
       '/households/{householdId}/invites': r.invite,
       '/households/{householdId}/categories': r.createCategory,
+      '/households/{householdId}/payees': r.createPayee,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
       '/households': r.createHousehold,
@@ -157,6 +162,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/recurrences/{recurrenceId}') return r.updateRecurrence ?? ok()
     if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
     if (url === '/households/{householdId}/categories/{categoryId}') return r.updateCategory ?? ok({})
+    if (url === '/households/{householdId}/payees/{payeeId}') return r.updatePayee ?? ok({})
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
     if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
     return r.update ?? ok()
