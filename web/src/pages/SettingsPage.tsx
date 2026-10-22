@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { useAllCategories, useCategoryActions } from '../api/queries'
+import { useCategories, useCategoryActions } from '../api/queries'
 import type { Category } from '../api/types'
 import { useAuth } from '../auth/context'
 import { AppShell } from '../components/AppShell'
@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const house = me?.households[0]
   const houseId = house?.id ?? ''
 
-  const categories = useAllCategories(houseId)
+  const categories = useCategories(houseId)
   const actions = useCategoryActions(houseId)
 
   const all = useMemo(() => [...(categories.data ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'pt-BR')), [categories.data])

@@ -18,18 +18,13 @@ const keys = {
   recurrences: (house: string) => ['recurrences', house] as const,
 }
 
+/**
+ * Todas as categorias da casa, **inclusive as arquivadas**: contas antigas de uma categoria arquivada continuam mostrando o nome
+ * (mês e resumo procuram o nome aqui). Quem oferece categorias para escolher filtra `archived` (ver MonthPage).
+ */
 export function useCategories(houseId: string) {
   return useQuery({
     queryKey: keys.categories(houseId),
-    queryFn: (): Promise<Category[]> =>
-      unwrap(api.GET('/households/{householdId}/categories', { params: { path: { householdId: houseId } } })),
-  })
-}
-
-/** Todas as categorias, inclusive as arquivadas (tela de ajustes). Mesma raiz de chave: invalidar uma refaz as duas. */
-export function useAllCategories(houseId: string) {
-  return useQuery({
-    queryKey: [...keys.categories(houseId), 'all'] as const,
     queryFn: (): Promise<Category[]> =>
       unwrap(api.GET('/households/{householdId}/categories', { params: { path: { householdId: houseId }, query: { includeArchived: true } } })),
   })

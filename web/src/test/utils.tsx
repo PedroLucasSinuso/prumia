@@ -96,9 +96,14 @@ type Routes = {
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
 export function mockApi(r: Routes = {}) {
   const unauth = fail(401, 'unauthenticated')
-  vi.spyOn(api, 'GET').mockImplementation((async (url: string) => {
+  vi.spyOn(api, 'GET').mockImplementation((async (url: string, init?: { params?: { query?: { includeArchived?: boolean } } }) => {
     if (url === '/auth/me') return r.me ?? unauth
-    if (url === '/households/{householdId}/categories') return r.categories ?? ok(categories)
+    if (url === '/households/{householdId}/categories') {
+      // como a API: sem includeArchived=true, as arquivadas ficam de fora
+      const reply = r.categories ?? ok(categories)
+      if (init?.params?.query?.includeArchived || !Array.isArray(reply.data)) return reply
+      return { ...reply, data: (reply.data as Category[]).filter((c) => !c.archived) }
+    }
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])

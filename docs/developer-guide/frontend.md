@@ -90,8 +90,8 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   em dois toques), convite (`LinkBox` mostra o link **uma vez**, o servidor não guarda o token), renomear e excluir a casa. O que é só de
   admin some para os demais (o servidor confere de novo). Sair da casa ou excluí-la encerra a sessão (ainda não há tela com várias casas).
 - **`pages/SettingsPage`** (`/configuracoes`, item **ajustes**): onde cada casa molda o app; organizada em seções (hoje só **Categorias**).
-  `useAllCategories` lê `?includeArchived=true` (chave `['categories', casa, 'all']`, mesma raiz da `useCategories`, então invalidar uma refaz
-  as duas). Ativas na ordem de `sortOrder`; arquivadas num `<details>` recolhido. `CategoryForm` cria/edita nome, carteira padrão
+  `useCategories` lê `?includeArchived=true` em todas as telas: conta antiga de categoria arquivada continua mostrando o nome no mês e no
+  resumo; quem oferece categorias para escolher filtra `archived` (o `InvoiceForm` recebe só as ativas e a da conta aberta). Ativas na ordem de `sortOrder`; arquivadas num `<details>` recolhido. `CategoryForm` cria/edita nome, carteira padrão
   (livre/benefício/nenhuma: "nenhuma" vai como `null` no PATCH) e essencial, e arquiva/restaura (`archived`). **Reordenar** (botões ↑/↓,
   sem arrastar): não há endpoint em lote, então `useCategoryActions().reorder` grava `sortOrder = posição` só nas que mudaram, um PATCH
   por vez. Não há botão de excluir: categoria em uso é arquivada (o `DELETE` existe na API para as sem uso, mas a tela não o oferece).
