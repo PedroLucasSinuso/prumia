@@ -19,8 +19,9 @@ dois toques seguidos, ou duas pessoas ao mesmo tempo, pagam uma vez só e o segu
 `warnings: ["benefit_balance_insufficient"]` (saldo estimado do benefício negativo; não bloqueia): regra em
 [incomes-and-wallets.md](incomes-and-wallets.md#7-aviso-de-saldo-de-benefício-ao-pagar).
 
-**Exclusão lógica.** `DELETE` marca `deleted_at`; `POST .../restore` desfaz. Restaurar uma invoice cuja categoria foi excluída
-nesse meio tempo dá 409 `category_deleted`.
+**Exclusão lógica.** `DELETE` marca `deleted_at`; `POST .../restore` desfaz (`scope=following` desfaz o lote "esta e as seguintes":
+[series-generation.md](series-generation.md#desfazer-o-lote-post-invoicesidrestorescopefollowing)). Restaurar uma invoice cuja
+categoria foi excluída nesse meio tempo dá 409 `category_deleted`.
 
 **Referências.** A categoria precisa ser da casa e não estar arquivada; o responsável precisa ser membro ativo. Erro de validação
 (400 `validation_error`) traz `fields` por campo. O banco ainda reforça isso com FKs compostas.
@@ -57,6 +58,7 @@ presentes. O serviço recebe flags `...Set` junto do valor.
 | `already_paid` / `not_paid` | 409 | pagar o que já está pago / desfazer o que não está |
 | `not_deleted` | 409 | restaurar o que não está excluído |
 | `category_deleted` | 409 | restaurar invoice cuja categoria foi excluída |
+| `series_changed` | 409 | desfazer lote de recorrência que mudou depois (ex.: outro lote mais cedo ainda não desfeito) |
 
 O mapeamento de erro de serviço para HTTP fica **num lugar só**: `internal/api/errors.go`.
 

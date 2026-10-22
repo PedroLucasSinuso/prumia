@@ -127,6 +127,13 @@ describe('parcela no mês', () => {
       expect(api.DELETE).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}', { params: { path: { householdId: 'h1', invoiceId: 'p3' }, query: { scope: 'following' } } }),
     )
     expect(await screen.findByText('Esta e as seguintes foram excluídas.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Desfazer' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        '/households/{householdId}/invoices/{invoiceId}/restore',
+        { params: { path: { householdId: 'h1', invoiceId: 'p3' }, query: { scope: 'following' } } },
+      ),
+    )
   })
 
   it('conta avulsa não mostra a escolha de escopo', async () => {
@@ -156,6 +163,22 @@ describe('parcelas e contas fixas', () => {
     expect(screen.getByText(/1 de 6 pagas/)).toBeInTheDocument()
     expect(screen.getByText(/todo dia 5/)).toBeInTheDocument()
     expect(screen.getByText(/sem fim/)).toBeInTheDocument()
+  })
+
+  it('a lista já traz as parcelas: expande e mostra cada uma com o status', async () => {
+    const vazia: Purchase = { ...compra, id: 'pu2', description: 'Sofá', installments: [] }
+    mockApi({ me: ok(me), purchases: ok({ items: [compra, vazia] }) })
+    renderAt('/parcelas')
+    await userEvent.click(await screen.findByText('Notebook'))
+    const lista = screen.getByRole('list', { name: 'Parcelas de Notebook' })
+    expect(lista).toHaveTextContent('[ ▪ ] 1/6')
+    expect(lista).toHaveTextContent('[ ▫ ] 2/6')
+    // compra com todas as parcelas excluídas: "0 de 6" e o aviso, sem lista
+    expect(screen.getByText(/0 de 6 pagas/)).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Sofá'))
+    expect(screen.getByText('Todas as parcelas foram excluídas.')).toBeInTheDocument()
+    // uma consulta só (a lista), nenhuma busca de detalhe por compra
+    expect(api.GET).not.toHaveBeenCalledWith('/households/{householdId}/purchases/{purchaseId}', expect.anything())
   })
 
   it('busca "quando comprei o notebook?" consulta o servidor com q', async () => {

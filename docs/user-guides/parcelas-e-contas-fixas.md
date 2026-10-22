@@ -27,7 +27,8 @@ aparecem como **atrasadas** e já podem ser marcadas como pagas.
 
 1. Toque em **parcelas** no menu.
 2. Em **compras parceladas**, digite parte do nome na busca ("note").
-3. Cada compra mostra a data, o valor da parcela (6x R$ 660,00) e o total. Toque nela para ver as parcelas, cada uma com a situação.
+3. Cada compra mostra a data, quantas parcelas já foram pagas ("2 de 6 pagas"), o valor da parcela (6x R$ 660,00) e o total.
+   Toque nela para ver as parcelas, cada uma com a situação ([ ▪ ] paga, [ ▫ ] pendente). Parcelas excluídas não aparecem.
 
 ## Pagar uma parcela
 
@@ -75,6 +76,9 @@ primeira, ela é excluída por inteiro.
 
 - **Excluí uma conta de um mês por engano.** Toque em **Desfazer** logo após excluir, ou restaure pela lista de excluídas. O app
   **nunca recria sozinho** uma conta que você excluiu, mesmo quando renova os meses.
+- **Excluí "esta e as seguintes" por engano.** Toque em **Desfazer** no aviso: voltam todas as que saíram juntas, e a conta fixa
+  volta a ter o fim que tinha antes (ou volta a existir, se tinha sido excluída inteira). Contas que você já tinha excluído
+  separadamente antes continuam excluídas. Se você excluiu em lote duas vezes seguidas na mesma conta fixa, desfaça a mais recente primeiro.
 - **Errei o número de parcelas.** Exclua a compra (escolha **esta e as seguintes** na 1ª parcela) e registre de novo. Se alguma já foi
   paga, ela continua no histórico.
 - **Não consigo criar nem editar.** Pessoas com acesso só de leitura (`viewer`) apenas consultam. Peça a quem administra a casa para
