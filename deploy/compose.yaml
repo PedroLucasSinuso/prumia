@@ -16,7 +16,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    # Sem "ports": o banco só é acessível dentro da rede do compose.
+    # Sem "ports": o banco só é acessível dentro da rede do compose. Para o DBeaver: make db-expose (compose.dbeaver.yaml).
 
   api:
     build: ../api
@@ -45,9 +45,16 @@ services:
     restart: unless-stopped
     ports:
       # Por padrão só o próprio computador acessa. Para testar pelo celular na rede, defina WEB_BIND=0.0.0.0.
-      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    # nginx sem root (imagem nginx-unprivileged), sistema de arquivos só leitura e sem capacidades do kernel.
+    # /tmp em memória: pid e buffers temporários do nginx (o upload de boleto também fica só em memória).
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       api:
         condition: service_healthy
