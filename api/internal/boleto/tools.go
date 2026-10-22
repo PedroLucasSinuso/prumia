@@ -127,6 +127,9 @@ func sanitize(err error) error {
 
 // Barcode procura um código de barras do tipo ITF (o dos boletos) na imagem e devolve seus dígitos.
 func Barcode(img []byte) (string, error) {
+	if err := checkImageSize(img); err != nil {
+		return "", err
+	}
 	im, _, err := image.Decode(bytes.NewReader(img))
 	if err != nil {
 		return "", err

@@ -3,7 +3,9 @@ package boleto
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/png"
@@ -200,6 +202,59 @@ func TestRealPDFTools(t *testing.T) {
 	// rasterização funciona (usada quando o PDF não tem camada de texto)
 	if img, err := Rasterize(context.Background(), plain, "", 1); err != nil || !bytes.HasPrefix(img, []byte("\x89PNG")) {
 		t.Errorf("rasterizar: %v", err)
+	}
+}
+
+// pngComDimensoes devolve um PNG válido (1x1) com o cabeçalho reescrito para dizer w x h: poucos bytes que, ao
+// decodificar, pediriam w*h*4 bytes de memória ("bomba de descompressão").
+func pngComDimensoes(t *testing.T, w, h uint32) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewGray(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatal(err)
+	}
+	b := buf.Bytes()
+	// assinatura (8) + tamanho (4) + "IHDR" (4): largura no byte 16, altura no 20, CRC do bloco no 29
+	binary.BigEndian.PutUint32(b[16:], w)
+	binary.BigEndian.PutUint32(b[20:], h)
+	binary.BigEndian.PutUint32(b[29:], crc32.ChecksumIEEE(b[12:29]))
+	return b
+}
+
+// Imagem com dimensões absurdas não chega ao decodificador nem ao Tesseract: um PNG de poucos bytes declarando
+// 60000x60000 pedia ~14 GB de memória no image.Decode e derrubava a API para todo mundo.
+func TestImagemGiganteEhRecusadaSemDecodificar(t *testing.T) {
+	bomb := pngComDimensoes(t, 60000, 60000)
+	if cfg, _, err := image.DecodeConfig(bytes.NewReader(bomb)); err != nil || cfg.Width != 60000 {
+		t.Fatalf("PNG de teste malformado: %+v %v", cfg, err)
+	}
+	e := extractor()
+	e.Barcode = func([]byte) (string, error) {
+		t.Error("Barcode chamado com imagem gigante")
+		return "", errors.New("x")
+	}
+	e.OCR = func(context.Context, []byte) (string, error) {
+		t.Error("OCR chamado com imagem gigante")
+		return "", errors.New("x")
+	}
+	if _, err := e.Extract(context.Background(), bomb, ""); !errors.Is(err, ErrNotFound) {
+		t.Errorf("erro = %v", err)
+	}
+	// a página que o Ghostscript desenha passa pela mesma checagem
+	e.Rasterize = func(context.Context, []byte, string, int) ([]byte, error) { return bomb, nil }
+	if _, err := e.Extract(context.Background(), pdfBytes, ""); !errors.Is(err, ErrNotFound) {
+		t.Errorf("erro (PDF) = %v", err)
+	}
+	// o leitor real de código de barras também se recusa
+	if _, err := Barcode(bomb); err == nil {
+		t.Error("Barcode aceitou imagem gigante")
+	}
+	// imagem de tamanho normal (foto de 12 MP) segue a cascata
+	called := false
+	e = extractor()
+	e.Barcode = func([]byte) (string, error) { called = true; return exampleBarcode, nil }
+	if _, err := e.Extract(context.Background(), pngComDimensoes(t, 4000, 3000), ""); err != nil || !called {
+		t.Errorf("imagem normal: chamado=%v erro=%v", called, err)
 	}
 }
 
