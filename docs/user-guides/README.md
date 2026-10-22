@@ -13,7 +13,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 | [resumo-do-mes.md](resumo-do-mes.md) | pronto | Ler o resumo e o saldo do mês |
 | [importar-boleto.md](importar-boleto.md) | pronto (leitura no servidor: em breve) | Cadastrar conta a partir de PDF, foto ou print |
 | [fazer-backup.md](fazer-backup.md) | pronto | Fazer backup, conferir, restaurar e quando fazer |
-| instalar-no-celular.md | Fase 4 | Instalar o app (PWA) e acessar pelo Tailscale |
+| [instalar-no-celular.md](instalar-no-celular.md) | pronto (teste em celular: pendente) | Instalar o app (PWA) no Android e no iPhone |
 
 Os guias são criados junto com a funcionalidade (ver o plano de construção, mantido localmente em `docs/product/plan.md`).
 
