@@ -18,13 +18,39 @@ Na primeira vez cria o `.env` (com senha aleatória do banco), constrói as imag
 |---|---|---|
 | `db` | PostgreSQL 16, dados no volume `pgdata` | só rede interna do compose |
 | `api` | API Go; aplica as migrations ao subir (`AUTO_MIGRATE=true`) | só rede interna |
-| `web` | nginx: serve o front e faz proxy de `/api` para a `api` | `127.0.0.1:8080` |
+| `web` | nginx (sem root): serve o front e faz proxy de `/api` para a `api` | `127.0.0.1:8080` |
 
 Abra <http://localhost:8080>. Outros comandos: `make ps`, `make logs`, `make down` (mantém os dados; para apagar o banco,
 `docker volume rm prumia_pgdata`).
 
 Mudar porta ou liberar acesso pela rede (ex.: testar no celular): ajuste `WEB_PORT` e `WEB_BIND=0.0.0.0` no `.env` e rode
-`make up` de novo. Fora de teste, prefira o acesso por Tailscale (ver [deployment.md](deployment.md), fase 4).
+`make up` de novo. Fora de teste, use o acesso por Tailscale com HTTPS (`APP_ENV=production` + `make tailscale-up`; ver
+[deployment.md](deployment.md)). Localmente em `http://`, mantenha `APP_ENV=development` (o padrão).
+
+## Acessar o banco pelo DBeaver
+
+O banco não tem porta publicada. Para inspecionar com o DBeaver (ou `psql`), publique-o **só neste computador**:
+
+```bash
+make db-expose   # Postgres em 127.0.0.1:${DB_PORT:-5433} (override deploy/compose.dbeaver.yaml)
+make db-hide     # volta a ficar só na rede interna do compose
+```
+
+Sem o make: `docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.dbeaver.yaml up -d db`.
+
+| Campo no DBeaver (PostgreSQL) | Valor |
+|---|---|
+| Host | `127.0.0.1` |
+| Port | `DB_PORT` do `.env` (padrão `5433`, para não brigar com um Postgres local na 5432) |
+| Database | `POSTGRES_DB` (padrão `prumia`) |
+| Username | `POSTGRES_USER` (padrão `prumia`) |
+| Password | `POSTGRES_PASSWORD` do `.env` |
+| SSL | desligado (a conexão não sai do computador) |
+
+Aviso de segurança: é o banco de verdade, com dados financeiros e acesso de superusuário. A porta fica só em `127.0.0.1`;
+**nunca** troque por `0.0.0.0` no override. Prefira só leitura no DBeaver (Connection settings → *Read-only connection*),
+não altere dados por fora da API (quebra regras como soft delete e isolamento por casa) e rode `make db-hide` ao terminar.
+Um `make up` comum também volta a esconder a porta.
 
 ## Desenvolver (sem recompilar imagens)
 
@@ -67,7 +93,7 @@ No build local, `-p prumia-ci` evita sobrescrever as imagens do `make up`.
 ## Variáveis de ambiente
 
 Ver `.env.example`. Principais: `POSTGRES_*` (banco), `APP_ENV` (`development`/`production`), `APP_TIMEZONE`,
-`WEB_PORT`/`WEB_BIND`. Use só letras e números na senha do banco (ela entra numa URL de conexão).
+`WEB_PORT`/`WEB_BIND`, `DB_PORT` (só com `make db-expose`). Tabela completa e modo de produção: [deployment.md](deployment.md). Use só letras e números na senha do banco (ela entra numa URL de conexão).
 `AUTO_MIGRATE=true` é definido pelo compose; fora dele, rode `make migrate`.
 
 ## Problemas comuns

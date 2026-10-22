@@ -98,6 +98,23 @@ down: ## Para o app (os dados do banco são mantidos)
 logs: ## Acompanha os logs
 	$(COMPOSE) logs -f --tail=100
 
+.PHONY: db-expose
+db-expose: .env ## Publica o Postgres em 127.0.0.1:DB_PORT (padrão 5433) para o DBeaver
+	$(COMPOSE) -f deploy/compose.dbeaver.yaml up -d db
+	@echo "Postgres em 127.0.0.1:$$(grep -E '^DB_PORT=' .env | cut -d= -f2 | grep . || echo 5433) (senha: POSTGRES_PASSWORD do .env). Feche com make db-hide"
+
+.PHONY: db-hide
+db-hide: .env ## Volta o Postgres a ficar só na rede interna do compose
+	$(COMPOSE) up -d db
+
+.PHONY: tailscale-up
+tailscale-up: ## Publica o app no tailnet com HTTPS (tailscale serve -> 127.0.0.1:WEB_PORT)
+	@scripts/tailscale-serve.sh up
+
+.PHONY: tailscale-status
+tailscale-status: ## Mostra o que o tailscale serve está publicando e o endereço
+	@scripts/tailscale-serve.sh status
+
 .PHONY: ps
 ps: ## Estado dos containers
 	$(COMPOSE) ps
