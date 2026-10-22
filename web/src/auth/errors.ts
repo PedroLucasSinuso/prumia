@@ -19,6 +19,9 @@ const messages: Record<string, string> = {
   not_implemented: 'Este recurso ainda não está disponível.',
   category_exists: 'Já existe uma categoria com este nome (maiúsculas não contam).',
   category_in_use: 'Esta categoria está em uso. Arquive em vez de apagar.',
+  payee_exists: 'Já existe um favorecido com este nome (maiúsculas não contam).',
+  payee_cnpj_exists: 'Já existe um favorecido com este CNPJ.',
+  payee_in_use: 'Este favorecido está em uso. Arquive em vez de apagar.',
   not_found: 'Não encontrado. Recarregue a página.',
 }
 

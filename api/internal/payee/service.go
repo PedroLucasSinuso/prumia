@@ -56,6 +56,22 @@ func (s *Service) FindByCNPJ(ctx context.Context, householdID uuid.UUID, raw str
 	return p, err
 }
 
+// AdoptCNPJ grava o CNPJ (e a razão social, se faltar) num favorecido que ainda não tem um, quando nenhum outro
+// favorecido da casa já usa esse CNPJ. Usado ao lançar um boleto com um favorecido escolhido à mão. Devolve false
+// (sem erro) quando não há o que fazer.
+func (s *Service) AdoptCNPJ(ctx context.Context, householdID, id uuid.UUID, raw string, legalName *string) (bool, error) {
+	if !cnpj.Valid(raw) {
+		return false, nil
+	}
+	d := cnpj.Digits(raw)
+	res := s.db.WithContext(ctx).Exec(`
+		UPDATE payees SET cnpj = ?, legal_name = COALESCE(legal_name, ?), updated_at = now()
+		WHERE household_id = ? AND id = ? AND cnpj IS NULL AND deleted_at IS NULL
+		  AND NOT EXISTS (SELECT 1 FROM payees WHERE household_id = ? AND cnpj = ? AND deleted_at IS NULL)`,
+		d, legalName, householdID, id, householdID, d)
+	return res.RowsAffected > 0, res.Error
+}
+
 type CreateInput struct {
 	Name              string
 	CNPJ              *string

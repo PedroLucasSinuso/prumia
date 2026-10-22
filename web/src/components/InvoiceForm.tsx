@@ -38,7 +38,7 @@ type Props = {
 // Nomes dos campos da API -> nome que o formulário usa para mostrar o erro.
 const fieldMap: Record<string, string> = {
   description: 'description', amountCents: 'amount', dueDate: 'dueDate', categoryId: 'categoryId',
-  competenceMonth: 'competence', notes: 'notes', payeeId: 'payeeId', installmentsCount: 'count', totalAmountCents: 'amount',
+  competenceMonth: 'competence', notes: 'notes', payeeId: 'payeeId', newPayee: 'newPayee', name: 'newPayee', installmentsCount: 'count', totalAmountCents: 'amount',
   installmentAmountCents: 'amount', dayOfMonth: 'dueDate', startMonth: 'dueDate', endMonth: 'endMonth', firstDueDate: 'dueDate',
   'boleto.digitableLine': 'boleto',
 }
@@ -89,6 +89,9 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
   const [importKey, setImportKey] = useState(0)
   // Competência lida do boleto: abre a seção "mais opções" para a pessoa ver e conferir o que foi preenchido.
   const [competenceImported, setCompetenceImported] = useState(false)
+  // Favorecido reconhecido pelo CNPJ do boleto (já escolhido) e apelido de um favorecido NOVO a criar junto com a conta.
+  const [matchedPayee, setMatchedPayee] = useState<Payee>()
+  const [newPayeeName, setNewPayeeName] = useState('')
   const descRef = useRef<HTMLInputElement>(null)
 
   const clear = (f: string) => {
@@ -98,12 +101,20 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
 
   // Pré-preenche com o que o boleto diz; a descrição só se ainda estiver vazia. A pessoa sempre revisa antes de salvar.
   // Ao salvar vão só a linha e o beneficiário: o servidor recalcula valor e vencimento do documento a partir da linha.
-  function applyBoleto({ boleto: b }: BoletoExtraction) {
-    setBoleto({ digitableLine: b.digitableLine, beneficiaryName: b.beneficiaryName })
+  function applyBoleto({ boleto: b, payee }: BoletoExtraction) {
+    setBoleto({ digitableLine: b.digitableLine, beneficiaryName: b.beneficiaryName, beneficiaryCnpj: b.beneficiaryCnpj })
+    setNewPayeeName('')
+    setMatchedPayee(payee ?? undefined)
+    // Sem favorecido reconhecido e com algum já cadastrado: abre "Mais opções" para a pessoa poder escolher um existente.
+    if (b.beneficiaryCnpj && !payee && payees.length > 0) setCompetenceImported(true)
+    if (payee) {
+      setPayeeId(payee.id)
+      if (payee.defaultCategoryId && categories.some((c) => c.id === payee.defaultCategoryId)) setCategoryId(payee.defaultCategoryId)
+    }
     if (b.documentAmountCents) { setAmount(b.documentAmountCents); clear('amount') }
     if (b.documentDueDate) { setDueDate(b.documentDueDate); setOtherDate(true); clear('dueDate') }
     if (b.documentCompetenceMonth) { setCompetence(b.documentCompetenceMonth.slice(0, 7)); setCompetenceImported(true); clear('competence') }
-    if (!description.trim() && b.beneficiaryName) { setDescription(b.beneficiaryName); clear('description') }
+    if (!description.trim() && (payee?.name ?? b.beneficiaryName)) { setDescription(payee?.name ?? b.beneficiaryName ?? ''); clear('description') }
   }
 
   // Escolher o favorecido ajuda a preencher: nome (se ainda vazio) e categoria sugerida (só ao criar).
@@ -117,8 +128,13 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
   }
 
   // Boleto só vale para conta avulsa: trocar o tipo descarta a leitura (os campos já preenchidos ficam).
-  function discardBoleto() {
+  function clearBoleto() {
     setBoleto(undefined)
+    setNewPayeeName('')
+    if (matchedPayee) { setPayeeId(''); setMatchedPayee(undefined) }
+  }
+  function discardBoleto() {
+    clearBoleto()
     setImportKey((k) => k + 1)
   }
 
@@ -162,6 +178,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         await onCreate({
           description, amountCents: amount, dueDate, categoryId,
           ...(payeeId ? { payeeId } : {}),
+          ...(!payeeId && newPayeeName.trim() ? { newPayee: { name: newPayeeName.trim() } } : {}),
           ...(competenceMonth ? { competenceMonth } : {}),
           ...(notes.trim() ? { notes } : {}),
           ...(boleto ? { boleto } : {}),
@@ -221,13 +238,39 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
           key={importKey}
           onExtract={onExtractBoleto}
           onExtracted={applyBoleto}
-          onDiscard={() => { setBoleto(undefined); clear('boleto') }}
+          onDiscard={() => { clearBoleto(); clear('boleto') }}
           onManual={() => descRef.current?.focus()}
           onOpenInvoice={onOpenInvoice}
         />
       )}
       {fields.boleto && (
         <p className="text-xs text-signal">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
+      )}
+      {boleto && matchedPayee && (
+        <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm" aria-live="polite">
+          Favorecido: <strong>{matchedPayee.name}</strong> <span className="text-xs text-graphite/70">(reconhecido pelo CNPJ do boleto)</span>
+        </p>
+      )}
+      {boleto?.beneficiaryCnpj && !payeeId && (
+        <Field
+          label={`Como vocês chamam ${boleto.beneficiaryName ?? 'quem recebe'}? (opcional)`}
+          name="newPayee"
+          autoComplete="off"
+          maxLength={60}
+          value={newPayeeName}
+          placeholder="Gás, Internet, Luz…"
+          hint="Se preencher, o prumia guarda este favorecido e reconhece o boleto dele nas próximas vezes."
+          error={fields.newPayee}
+          onChange={(e) => {
+            setNewPayeeName(e.target.value)
+            clear('newPayee')
+            // o nome do boleto foi só uma sugestão: o apelido o substitui enquanto a descrição não foi editada à mão
+            if (!description.trim() || description === boleto.beneficiaryName || description === newPayeeName) setDescription(e.target.value)
+          }}
+        />
+      )}
+      {boleto?.beneficiaryCnpj && payeeId && !matchedPayee && (
+        <p className="text-xs text-graphite/70">O CNPJ deste boleto será associado ao favorecido escolhido, se ele ainda não tiver um.</p>
       )}
 
       <MoneyInput hero label={kind === 'installments' ? (amountIsTotal ? 'Valor total da compra' : 'Valor de cada parcela') : 'Valor'} value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />
