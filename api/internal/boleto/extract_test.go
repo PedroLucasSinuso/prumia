@@ -270,3 +270,46 @@ func gsPDF(t *testing.T, ps string, extra []string) []byte {
 	}
 	return out
 }
+
+// Trechos reais de contas de consumo (dados pessoais removidos): o rótulo e o valor podem vir em linhas separadas.
+func TestFindInTextMetadados(t *testing.T) {
+	ref := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+	gas := "GASCO DISTRIBUIDORA S/A − Rua Exemplo, 100 CNPJ: 11.222-333/0001-81.\nMês:\nVencimento:\nOUT/2026\n10/11/2026\n" +
+		"Mês: OUT/2026\nVencimento: 10/11/2026\n83630000001-2 23451112223-1 33444555666-8 77788899900-3"
+	b, ok := FindInText(gas, ref)
+	if !ok {
+		t.Fatal("linha de 48 dígitos não encontrada")
+	}
+	if b.Beneficiary != "GASCO DISTRIBUIDORA S/A" {
+		t.Errorf("beneficiário = %q", b.Beneficiary)
+	}
+	if got := b.DueDate.Format("2006-01-02"); got != "2026-11-10" {
+		t.Errorf("vencimento = %s", got)
+	}
+	if got := b.Competence.Format("2006-01-02"); got != "2026-10-01" {
+		t.Errorf("competência = %s", got)
+	}
+
+	net := "RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nReferência: 10/2026\nVencimento: 10/10/2026\n" +
+		"00190.05008 94014.481603 60680.935032 8 15950000005000"
+	b, ok = FindInText(net, ref)
+	if !ok {
+		t.Fatal("linha de 47 dígitos não encontrada")
+	}
+	if b.Beneficiary != "NETLINK PROVEDOR LTDA" || b.Competence.Format("2006-01") != "2026-10" {
+		t.Errorf("netlink: %q %v", b.Beneficiary, b.Competence)
+	}
+	// O vencimento do código de barras prevalece sobre o texto.
+	if got := b.DueDate.Format("2006-01-02"); got != "2026-10-10" {
+		t.Errorf("vencimento = %s", got)
+	}
+}
+
+func TestDatasImpossiveisSaoIgnoradas(t *testing.T) {
+	if d := findDueDate("Vencimento: 31/02/2026"); !d.IsZero() {
+		t.Errorf("31/02 aceito: %v", d)
+	}
+	if d := findCompetence("Mês: XYZ/2026 Referência: 13/2026"); !d.IsZero() {
+		t.Errorf("mês inválido aceito: %v", d)
+	}
+}
