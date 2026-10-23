@@ -168,9 +168,6 @@ export default function SeriesPage() {
             onCreateRecurrence={(body) => invoiceActions.createRecurrence.mutateAsync(body)}
             // Aqui só se cria: editar/pagar/excluir contas é na tela do mês.
             onUpdate={() => Promise.resolve()}
-            onDelete={() => {}}
-            onUnpay={() => {}}
-            onPay={() => {}}
           />
         </Sheet>
       )}
