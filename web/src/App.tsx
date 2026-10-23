@@ -9,6 +9,7 @@ import MonthPage from './pages/MonthPage'
 // O mês (tela inicial) e o login vêm no pacote principal; as demais telas são baixadas na primeira visita
 // (code splitting: o celular não paga por telas que talvez nem abra).
 const HousePage = lazy(() => import('./pages/HousePage'))
+const ImportPage = lazy(() => import('./pages/ImportPage'))
 const IncomesPage = lazy(() => import('./pages/IncomesPage'))
 const InvitePage = lazy(() => import('./pages/InvitePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/resumo" element={<SummaryPage />} />
           <Route path="/parcelas" element={<SeriesPage />} />
           <Route path="/casa" element={<HousePage />} />
+          <Route path="/importar" element={<ImportPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<RequireAuth />} />

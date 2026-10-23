@@ -17,19 +17,19 @@ import (
 
 // Defines values for BoletoExtractionMethod.
 const (
-	BarcodeImage BoletoExtractionMethod = "barcode_image"
-	Ocr          BoletoExtractionMethod = "ocr"
-	PdfText      BoletoExtractionMethod = "pdf_text"
+	BoletoExtractionMethodBarcodeImage BoletoExtractionMethod = "barcode_image"
+	BoletoExtractionMethodOcr          BoletoExtractionMethod = "ocr"
+	BoletoExtractionMethodPdfText      BoletoExtractionMethod = "pdf_text"
 )
 
 // Valid indicates whether the value is a known member of the BoletoExtractionMethod enum.
 func (e BoletoExtractionMethod) Valid() bool {
 	switch e {
-	case BarcodeImage:
+	case BoletoExtractionMethodBarcodeImage:
 		return true
-	case Ocr:
+	case BoletoExtractionMethodOcr:
 		return true
-	case PdfText:
+	case BoletoExtractionMethodPdfText:
 		return true
 	default:
 		return false
@@ -57,6 +57,48 @@ func (e DeductionKind) Valid() bool {
 	case DeductionKindIrrf:
 		return true
 	case DeductionKindOther:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DocumentExtractionKind.
+const (
+	DocumentExtractionKindBill   DocumentExtractionKind = "bill"
+	DocumentExtractionKindBoleto DocumentExtractionKind = "boleto"
+	DocumentExtractionKindList   DocumentExtractionKind = "list"
+)
+
+// Valid indicates whether the value is a known member of the DocumentExtractionKind enum.
+func (e DocumentExtractionKind) Valid() bool {
+	switch e {
+	case DocumentExtractionKindBill:
+		return true
+	case DocumentExtractionKindBoleto:
+		return true
+	case DocumentExtractionKindList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DocumentExtractionMethod.
+const (
+	DocumentExtractionMethodBarcodeImage DocumentExtractionMethod = "barcode_image"
+	DocumentExtractionMethodOcr          DocumentExtractionMethod = "ocr"
+	DocumentExtractionMethodPdfText      DocumentExtractionMethod = "pdf_text"
+)
+
+// Valid indicates whether the value is a known member of the DocumentExtractionMethod enum.
+func (e DocumentExtractionMethod) Valid() bool {
+	switch e {
+	case DocumentExtractionMethodBarcodeImage:
+		return true
+	case DocumentExtractionMethodOcr:
+		return true
+	case DocumentExtractionMethodPdfText:
 		return true
 	default:
 		return false
@@ -465,6 +507,46 @@ type Deduction struct {
 // DeductionKind defines model for DeductionKind.
 type DeductionKind string
 
+// DocumentExtraction defines model for DocumentExtraction.
+type DocumentExtraction struct {
+	Items []DocumentItem `json:"items"`
+
+	// Kind `boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)
+	Kind DocumentExtractionKind `json:"kind"`
+
+	// Method Como foi lido
+	Method DocumentExtractionMethod `json:"method"`
+}
+
+// DocumentExtractionKind `boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)
+type DocumentExtractionKind string
+
+// DocumentExtractionMethod Como foi lido
+type DocumentExtractionMethod string
+
+// DocumentItem Uma conta encontrada no arquivo. Tudo é sugestão para revisar; campos ausentes não foram lidos.
+type DocumentItem struct {
+	// AmountCents Valor em centavos (BRL)
+	AmountCents     *Cents  `json:"amountCents,omitempty"`
+	BeneficiaryCnpj *string `json:"beneficiaryCnpj,omitempty"`
+	BeneficiaryName *string `json:"beneficiaryName,omitempty"`
+
+	// BeneficiaryVerified Nome conferido pelo CNPJ na BrasilAPI
+	BeneficiaryVerified *bool   `json:"beneficiaryVerified,omitempty"`
+	Boleto              *Boleto `json:"boleto,omitempty"`
+
+	// CompetenceMonth Primeiro dia do mês
+	CompetenceMonth *Month `json:"competenceMonth,omitempty"`
+
+	// Description Descrição sugerida (item da lista ou nome de quem cobra)
+	Description *string       `json:"description,omitempty"`
+	DueDate     *caldate.Date `json:"dueDate,omitempty"`
+
+	// DuplicateOfInvoiceId Já existe invoice com esta linha digitável
+	DuplicateOfInvoiceId *openapi_types.UUID `json:"duplicateOfInvoiceId,omitempty"`
+	Payee                *Payee              `json:"payee,omitempty"`
+}
+
 // Household defines model for Household.
 type Household struct {
 	CreatedAt time.Time          `json:"createdAt"`
@@ -638,6 +720,16 @@ type Invoice struct {
 // InvoiceStatus Derivado (não é coluna). `overdue` = pendente com vencimento passado.
 type InvoiceStatus string
 
+// InvoiceBatchInput defines model for InvoiceBatchInput.
+type InvoiceBatchInput struct {
+	Items []InvoiceInput `json:"items"`
+}
+
+// InvoiceBatchResult defines model for InvoiceBatchResult.
+type InvoiceBatchResult struct {
+	Items []Invoice `json:"items"`
+}
+
 // InvoiceInput defines model for InvoiceInput.
 type InvoiceInput struct {
 	// AmountCents Valor em centavos (BRL)
@@ -650,9 +742,14 @@ type InvoiceInput struct {
 	Description     string       `json:"description"`
 	DueDate         caldate.Date `json:"dueDate"`
 
-	// NewPayee Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida.
+	// NewPayee Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; sem boleto, os de `cnpj`/`legalName` (conta sem boleto lida na importação). A categoria da conta vira a sugerida.
 	NewPayee *struct {
-		Name string `json:"name"`
+		// Cnpj Só sem boleto (com boleto vale o do boleto)
+		Cnpj *string `json:"cnpj,omitempty"`
+
+		// LegalName Só sem boleto
+		LegalName *string `json:"legalName,omitempty"`
+		Name      string  `json:"name"`
 	} `json:"newPayee,omitempty"`
 	Notes             *string             `json:"notes,omitempty"`
 	PayeeId           *openapi_types.UUID `json:"payeeId,omitempty"`
@@ -1009,6 +1106,12 @@ type ListCategoriesParams struct {
 	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
 }
 
+// ExtractDocumentMultipartBody defines parameters for ExtractDocument.
+type ExtractDocumentMultipartBody struct {
+	File     openapi_types.File `json:"file"`
+	Password *string            `json:"password,omitempty"`
+}
+
 // UpdateIncomeSourceParams defines parameters for UpdateIncomeSource.
 type UpdateIncomeSourceParams struct {
 	// ApplyFrom Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam.
@@ -1150,6 +1253,9 @@ type CreateCategoryJSONRequestBody = CategoryInput
 // UpdateCategoryJSONRequestBody defines body for UpdateCategory for application/json ContentType.
 type UpdateCategoryJSONRequestBody = CategoryPatch
 
+// ExtractDocumentMultipartRequestBody defines body for ExtractDocument for multipart/form-data ContentType.
+type ExtractDocumentMultipartRequestBody ExtractDocumentMultipartBody
+
 // CreateIncomeSourceJSONRequestBody defines body for CreateIncomeSource for application/json ContentType.
 type CreateIncomeSourceJSONRequestBody = IncomeSourceInput
 
@@ -1170,6 +1276,9 @@ type CreateInviteJSONRequestBody CreateInviteJSONBody
 
 // CreateInvoiceJSONRequestBody defines body for CreateInvoice for application/json ContentType.
 type CreateInvoiceJSONRequestBody = InvoiceInput
+
+// CreateInvoiceBatchJSONRequestBody defines body for CreateInvoiceBatch for application/json ContentType.
+type CreateInvoiceBatchJSONRequestBody = InvoiceBatchInput
 
 // UpdateInvoiceJSONRequestBody defines body for UpdateInvoice for application/json ContentType.
 type UpdateInvoiceJSONRequestBody = InvoicePatch
@@ -1248,6 +1357,9 @@ type ServerInterface interface {
 	// UpdateCategory Edita ou arquiva categoria
 	// (PATCH /households/{householdId}/categories/{categoryId})
 	UpdateCategory(c *gin.Context, householdId HouseholdId, categoryId openapi_types.UUID)
+	// ExtractDocument Lê contas de um arquivo (boleto, conta sem boleto ou lista). Nada é salvo; o usuário revisa antes de criar.
+	// (POST /households/{householdId}/documents/extract)
+	ExtractDocument(c *gin.Context, householdId HouseholdId)
 	// ListIncomeSources Fontes recorrentes (previsão de salário e benefício)
 	// (GET /households/{householdId}/income-sources)
 	ListIncomeSources(c *gin.Context, householdId HouseholdId)
@@ -1287,6 +1399,9 @@ type ServerInterface interface {
 	// CreateInvoice Cria invoice avulsa (member+)
 	// (POST /households/{householdId}/invoices)
 	CreateInvoice(c *gin.Context, householdId HouseholdId)
+	// CreateInvoiceBatch Cria várias invoices avulsas de uma vez (member+), tudo ou nada
+	// (POST /households/{householdId}/invoices/batch)
+	CreateInvoiceBatch(c *gin.Context, householdId HouseholdId)
 	// DeleteInvoice Exclusão lógica. Em série, `scope` define o alcance.
 	// (DELETE /households/{householdId}/invoices/{invoiceId})
 	DeleteInvoice(c *gin.Context, householdId HouseholdId, invoiceId InvoiceId, params DeleteInvoiceParams)
@@ -1710,6 +1825,31 @@ func (siw *ServerInterfaceWrapper) UpdateCategory(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateCategory(c, householdId, categoryId)
+}
+
+// ExtractDocument operation middleware
+func (siw *ServerInterfaceWrapper) ExtractDocument(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExtractDocument(c, householdId)
 }
 
 // ListIncomeSources operation middleware
@@ -2178,6 +2318,31 @@ func (siw *ServerInterfaceWrapper) CreateInvoice(c *gin.Context) {
 	}
 
 	siw.Handler.CreateInvoice(c, householdId)
+}
+
+// CreateInvoiceBatch operation middleware
+func (siw *ServerInterfaceWrapper) CreateInvoiceBatch(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateInvoiceBatch(c, householdId)
 }
 
 // DeleteInvoice operation middleware
@@ -3016,6 +3181,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PATCH(options.BaseURL+"/households/:householdId/payees/:payeeId", wrapper.UpdatePayee)
 	router.GET(options.BaseURL+"/households/:householdId/invoices", wrapper.ListInvoices)
 	router.POST(options.BaseURL+"/households/:householdId/invoices", wrapper.CreateInvoice)
+	router.POST(options.BaseURL+"/households/:householdId/invoices/batch", wrapper.CreateInvoiceBatch)
 	router.DELETE(options.BaseURL+"/households/:householdId/invoices/:invoiceId", wrapper.DeleteInvoice)
 	router.GET(options.BaseURL+"/households/:householdId/invoices/:invoiceId", wrapper.GetInvoice)
 	router.PATCH(options.BaseURL+"/households/:householdId/invoices/:invoiceId", wrapper.UpdateInvoice)
@@ -3040,4 +3206,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/households/:householdId/summary", wrapper.GetMonthlySummary)
 	router.GET(options.BaseURL+"/households/:householdId/summary/categories", wrapper.GetCategoryHistory)
 	router.POST(options.BaseURL+"/households/:householdId/boletos/extract", wrapper.ExtractBoleto)
+	router.POST(options.BaseURL+"/households/:householdId/documents/extract", wrapper.ExtractDocument)
 }

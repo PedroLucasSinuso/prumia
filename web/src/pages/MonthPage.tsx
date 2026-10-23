@@ -2,7 +2,7 @@ import { FileUp, Layers, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { getInvoice, useCategories, useCategoryActions, useExtractBoleto, useInvoiceActions, useInvoices, usePayees, usePurchase } from '../api/queries'
+import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvoiceActions, useInvoices, usePayees, usePurchase } from '../api/queries'
 import type { Category, Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
@@ -75,7 +75,6 @@ export default function MonthPage() {
   const payees = usePayees(houseId)
   const invoices = useInvoices(houseId, month)
   const actions = useInvoiceActions(houseId)
-  const extractBoleto = useExtractBoleto(houseId)
 
   const allCategories = useMemo(() => categories.data ?? [], [categories.data])
   const categoryById = useMemo(() => new Map(allCategories.map((c) => [c.id, c])), [allCategories])
@@ -315,7 +314,7 @@ export default function MonthPage() {
     onUpdate: (id: string, body: Parameters<typeof actions.update.mutateAsync>[0]['body'], scope: SeriesScope) => actions.update.mutateAsync({ id, body, scope }),
     onCreateCategory: (body: Parameters<typeof categoryActions.create.mutateAsync>[0]) => categoryActions.create.mutateAsync(body) as Promise<Category>,
     // reset() limpa as variáveis da mutação (arquivo e senha) assim que a resposta chega.
-    onExtractBoleto: (file: File, password?: string) => extractBoleto.mutateAsync({ file, password }).finally(() => extractBoleto.reset()),
+    onExtractBoleto: (file: File, password?: string) => extractDocument(houseId, file, password),
     onOpenInvoice: (id: string) => void openInvoice(id),
   }
   const ready = categories.isSuccess

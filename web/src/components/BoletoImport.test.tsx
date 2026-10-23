@@ -21,7 +21,7 @@ const extraction = (over: Partial<BoletoExtraction> = {}): BoletoExtraction => (
 
 const pdf = () => new File(['%PDF-1.4'], 'boleto.pdf', { type: 'application/pdf' })
 const extractCalls = () =>
-  (vi.mocked(api.POST).mock.calls as unknown as Array<[string, unknown]>).filter(([url]) => url === '/households/{householdId}/boletos/extract')
+  (vi.mocked(api.POST).mock.calls as unknown as Array<[string, unknown]>).filter(([url]) => url === '/households/{householdId}/documents/extract')
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -309,5 +309,49 @@ describe('importar boleto', () => {
     expect(within(box).getByText(grouped)).toBeInTheDocument()
     expect(within(box).getByRole('button', { name: 'Copiar linha digitável' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Importar boleto' })).not.toBeInTheDocument()
+  })
+})
+
+describe('importar conta sem boleto e lista', () => {
+  it('conta sem boleto: preenche valor, vencimento, competência e descrição, sem enviar boleto', async () => {
+    const user = userEvent.setup()
+    mockApi({
+      me: ok(me),
+      extractDocument: ok({
+        kind: 'bill', method: 'pdf_text',
+        items: [{ description: 'Gasco Distribuidora SA', amountCents: 13043, dueDate: '2026-07-17', competenceMonth: '2026-06-01', beneficiaryName: 'Gasco Distribuidora SA' }],
+      }),
+      create: ok(invoice({ id: 'n1', description: 'Gasco Distribuidora SA' })),
+    })
+    const dialog = await openNew(user)
+    await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+    const review = await within(dialog).findByRole('region', { name: 'Conferir antes de salvar' })
+    expect(within(review).getByText(/Conta sem código de barras/)).toBeInTheDocument()
+    expect(within(review).queryByRole('button', { name: 'Copiar linha digitável' })).not.toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Valor')).toHaveValue('R$ 130,43')
+    expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('2026-07-17')
+    expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Gasco Distribuidora SA')
+    await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
+    await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))
+    const create = (vi.mocked(api.POST).mock.calls as unknown as Array<[string, { body: object }]>).find(([url]) => url === '/households/{householdId}/invoices')
+    expect(create?.[1].body).toMatchObject({ amountCents: 13043, dueDate: '2026-07-17', competenceMonth: '2026-06-01' })
+    expect(create?.[1].body).not.toHaveProperty('boleto')
+  })
+
+  it('lista: mostra as contas e abre em Importar com os itens', async () => {
+    const user = userEvent.setup()
+    mockApi({
+      me: ok(me),
+      extractDocument: ok({ kind: 'list', method: 'ocr', items: [{ description: 'Gás', amountCents: 15782 }, { description: 'Mercado', amountCents: 56899 }] }),
+    })
+    const dialog = await openNew(user)
+    await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), new File(['\x89PNG'], 'conversa.png', { type: 'image/png' }))
+    const box = await within(dialog).findByRole('region', { name: 'Várias contas no arquivo' })
+    expect(within(box).getByText('Encontrei 2 contas neste arquivo')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Descrição')).toHaveValue('')
+    await user.click(within(box).getByRole('button', { name: 'Abrir em Importar' }))
+    expect(await screen.findByRole('heading', { name: 'Importar contas' }, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findAllByRole('listitem', { name: /^Conta \d/ })).toHaveLength(2)
+    expect(screen.getAllByText('conversa.png').length).toBeGreaterThan(0)
   })
 })

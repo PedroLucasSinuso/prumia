@@ -71,3 +71,17 @@ Vai no campo `password`, é usada só na memória e passada como argumento ao `p
 - Competência (`documentCompetenceMonth`, dia 1): lida de "Referência:", "Mês:" ou "Competência:" (`10/2026`, `OUT/2026`). Só texto de PDF/OCR; o código de barras não a informa.
 - Boleto de arrecadação não tem vencimento extraído.
 - Foto torta, amassada ou com reflexo pode falhar em todas as etapas; a resposta é explícita (`boleto_not_found`) e a tela oferece preencher manualmente.
+
+## Documentos: conta sem boleto, lista e lote
+
+`POST /households/{id}/documents/extract` (mesmos limites, limiter e semáforo do boleto; `/boletos/extract` continua igual) devolve
+`DocumentExtraction {method, kind, items[]}`. Código em `internal/boleto/document.go` e `table.go`; rota em `internal/api/documents.go`.
+
+Ordem de decisão (a primeira que valer): 1) `boleto`: linha digitável válida pela cascata de sempre, 1 item com tudo; 2) `list`: 2 ou mais linhas
+"descrição [:|-] R$ valor"; 3) `bill`: sem linha digitável, mas com valor (rótulos "total a pagar", "valor a pagar", "valor do documento", "total", ou um "R$ x" proeminente),
+de preferência com vencimento; 4) nada disso: 422 `boleto_not_found`. Leituras de tabela tratam cabeçalho com vários rótulos + linha seguinte
+com os valores; razão social aceita SA/S.A/Ltda/ME/EIRELI em qualquer caixa e o rótulo "Nome / Razão Social".
+
+`POST /households/{id}/invoices/batch {items: InvoiceInput[]}` (1 a 50) cria tudo numa só transação (tudo ou nada); erros de validação
+vêm por índice (`items.3.amountCents`); aceita `boleto`/`newPayee`/`payeeId` por item; linha digitável repetida dentro do lote é recusada. Viewer = 403.
+No front, `pages/ImportPage.tsx` lê os arquivos em sequência (backoff em 429) e `lib/importing.ts` sugere categoria e monta o lote.
