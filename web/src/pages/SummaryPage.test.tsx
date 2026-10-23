@@ -200,7 +200,7 @@ describe('resumo do mês', () => {
   it('a navegação leva do mês ao resumo mantendo o mês escolhido', async () => {
     mockApi({ me: ok(me), summary: ok(summary) })
     renderAt('/?mes=2026-08')
-    const links = await screen.findAllByRole('link', { name: /resumo/ })
+    const links = await screen.findAllByRole('link', { name: /resumo/i })
     expect(links[0]).toHaveAttribute('href', '/resumo?mes=2026-08')
   })
 })

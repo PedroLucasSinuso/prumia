@@ -31,7 +31,7 @@ isolamento entre casas (a primeira é o escopo `household_id` aplicado em todo r
 
 ## 2. Identidade e acesso
 
-- **users**: e-mail único case-insensitive entre ativos. `password_hash` = argon2id.
+- **users**: e-mail único case-insensitive entre ativos. `password_hash` = argon2id. `theme` (migration 00005): tema de cor da conta (`sistema`, `marfim`, `grafite`, `contraste`), padrão `sistema`; lido em `GET /auth/me` e gravado em `PATCH /auth/me`. Trocar a senha (`POST /auth/password`) apaga as outras sessões do usuário.
 - **sessions**: o cookie carrega o token; o banco guarda só o **SHA-256** (vazamento do banco não entrega sessões).
 - **households**: a unidade de dados.
 - **household_members**: PK `(household_id, user_id)`; `role` ∈ `admin|member|viewer`. **Nunca apaga**: quem sai ganha

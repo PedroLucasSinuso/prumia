@@ -1,84 +1,75 @@
-import { ArrowDownToLine, CalendarDays, ChartColumn, House, Layers, ScanLine, Settings, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { NavLink, useSearchParams } from 'react-router-dom'
+import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../auth/context'
+import { ICON, NAV_ITEMS, isActive } from '../lib/navigation'
 import { HouseSwitcher } from './HouseSwitcher'
 import { Logo } from './Logo'
 import { UserMenu } from './UserMenu'
 
-// Destinos do app. Só entra aqui o que já existe: a navegação cresce junto com as telas.
-// Ícones lucide (traço fino, herdam a cor do texto); os marcadores [ ▪ ] continuam sendo o status do item ativo.
-const destinations: { to: string; label: string; Icon: LucideIcon; desktopOnly?: boolean }[] = [
-  { to: '/', label: 'mês', Icon: CalendarDays },
-  { to: '/receitas', label: 'receitas', Icon: ArrowDownToLine },
-  { to: '/resumo', label: 'resumo', Icon: ChartColumn },
-  { to: '/parcelas', label: 'parcelas', Icon: Layers },
-  // No celular o acesso é o botão "Importar" do mês (a barra inferior já tem 6 destinos).
-  { to: '/importar', label: 'importar', Icon: ScanLine, desktopOnly: true },
-  { to: '/casa', label: 'casa', Icon: House },
-  { to: '/configuracoes', label: 'ajustes', Icon: Settings },
-]
-
 /**
- * Moldura do app logado. Computador (md+): barra lateral teal com símbolo, destinos e conta.
- * Celular: faixa no topo com símbolo, casa e conta, e navegação inferior com os destinos.
+ * Moldura do app logado. Os destinos vêm de NAV_ITEMS (lib/navigation.ts).
+ *
+ * - Computador (lg+): barra lateral `structure` com símbolo, destinos (ícone + rótulo) e, no rodapé, casa e conta.
+ * - Tela média (md): a mesma barra, recolhida só aos ícones (o rótulo continua para leitor de tela e no title).
+ * - Celular: faixa no topo (símbolo, casa, conta) e barra inferior com os destinos. O conteúdo ganha folga embaixo do
+ *   tamanho da barra (e da área segura do iPhone), para nada ficar escondido atrás dela.
+ *
  * Ao trocar de tela, o mês escolhido (?mes=) acompanha.
  */
 export function AppShell({ children }: { children: ReactNode }) {
-  const { session, logout } = useAuth()
+  const { session } = useAuth()
   const [params] = useSearchParams()
+  const { pathname } = useLocation()
   if (session.status !== 'authenticated') return null
-  const { me } = session
   const mes = params.get('mes')
   const search = mes ? `?mes=${mes}` : ''
+  const mobileItems = NAV_ITEMS.filter((i) => i.mobile !== false)
 
   return (
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (computador) */}
-      <aside className="hidden w-61 shrink-0 flex-col bg-structure px-4 py-6 text-on-structure md:sticky md:top-0 md:flex md:h-dvh">
-        <div className="flex items-center gap-3 px-2 pb-8">
-          <Logo size={40} tone="inverse" />
-          <span className="font-display text-3xl font-semibold tracking-tight">prumia</span>
+      <aside className="hidden shrink-0 flex-col bg-structure px-2 py-4 text-on-structure md:sticky md:top-0 md:flex md:h-dvh md:w-16 lg:w-60 lg:px-3">
+        <div className="flex items-center gap-2.5 px-1.5 pb-6 lg:px-2">
+          <Logo size={32} tone="inverse" />
+          <span className="hidden font-display text-2xl font-semibold tracking-tight lg:inline">prumia</span>
         </div>
-        <nav aria-label="Principal" className="flex flex-col gap-1">
-          {destinations.map((d) => (
-            <NavLink
-              key={d.to}
-              to={{ pathname: d.to, search }}
-              end
-              className={({ isActive }) =>
-                `flex h-11 items-center gap-3 rounded-md px-3 text-base ${isActive ? 'bg-on-structure/12 font-semibold' : 'text-on-structure/85 hover:bg-on-structure/8'}`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <d.Icon size={18} strokeWidth={1.5} aria-hidden="true" />
-                  {d.label}
-                  {isActive && (
-                    <span className="ml-auto font-mono text-[10px]" aria-hidden="true">
-                      [ ▪ ]
-                    </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          ))}
+        <nav aria-label="Principal" className="flex flex-col gap-0.5">
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(item, pathname)
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={{ pathname: item.to, search }}
+                aria-current={active ? 'page' : undefined}
+                title={item.label}
+                className={`group flex h-10 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-150 lg:px-3 ${
+                  active ? 'bg-on-structure/12 font-semibold' : 'text-on-structure/80 hover:bg-on-structure/8 hover:text-on-structure'
+                }`}
+              >
+                <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0" />
+                <span className="sr-only lg:not-sr-only lg:flex-1">{item.label}</span>
+                {active && (
+                  <span aria-hidden="true" className="hidden font-mono text-[11px] text-on-structure/70 lg:inline">
+                    [ ▪ ]
+                  </span>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
-        <div className="mt-auto border-t border-on-structure/20 px-1 pt-4">
-          <HouseSwitcher tone="inverse" />
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-2 px-2">
-          <p className="min-w-0 truncate text-sm font-semibold">{me.name}</p>
-          <button onClick={() => void logout()} className="h-11 shrink-0 rounded-sm px-2 text-sm font-semibold underline underline-offset-4">
-            sair
-          </button>
+        <div className="mt-auto flex flex-col gap-2 border-t border-on-structure/20 pt-3">
+          <div className="hidden px-1 lg:block">
+            <HouseSwitcher tone="inverse" />
+          </div>
+          <UserMenu tone="inverse" placement="above" />
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         {/* Faixa superior (celular) */}
-        <header className="flex items-center justify-between px-4 pt-3 md:hidden">
+        <header className="flex items-center justify-between gap-3 px-4 pt-3 md:hidden">
           <div className="flex min-w-0 items-center gap-2.5">
             <Logo size={30} />
             <HouseSwitcher />
@@ -88,28 +79,30 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
 
-      {/* Navegação inferior (celular) */}
-      <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-20 grid h-18 grid-flow-col auto-cols-fr border-t border-ink/20 bg-surface md:hidden">
-        {destinations
-          .filter((d) => !d.desktopOnly)
-          .map((d) => (
-          <NavLink
-            key={d.to}
-            to={{ pathname: d.to, search }}
-            end
-            className={({ isActive }) =>
-              `relative flex flex-col items-center justify-center gap-1 text-[11px] tracking-wide ${isActive ? 'font-semibold text-structure' : 'font-medium text-ink/80'}`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && <span aria-hidden="true" className="absolute inset-x-[22%] -top-px h-[3px] bg-structure" />}
-                <d.Icon size={22} strokeWidth={1.5} aria-hidden="true" />
-                {d.label}
-              </>
-            )}
-          </NavLink>
-        ))}
+      {/* Navegação inferior (celular): ícone + rótulo, alvo de toque inteiro (≥ 44 px) */}
+      <nav
+        aria-label="Principal"
+        style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}
+        className="fixed inset-x-0 bottom-0 z-20 grid border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        {mobileItems.map((item) => {
+          const active = isActive(item, pathname)
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.to}
+              to={{ pathname: item.to, search }}
+              aria-current={active ? 'page' : undefined}
+              className={`relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors duration-150 ${
+                active ? 'font-semibold text-structure' : 'font-medium text-ink/75'
+              }`}
+            >
+              {active && <span aria-hidden="true" className="absolute inset-x-[24%] -top-px h-[3px] bg-structure" />}
+              <Icon aria-hidden="true" size={22} strokeWidth={active ? 2 : ICON.strokeWidth} />
+              {item.label}
+            </NavLink>
+          )
+        })}
       </nav>
     </div>
   )

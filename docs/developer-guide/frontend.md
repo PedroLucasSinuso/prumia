@@ -84,7 +84,7 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 
 ## Receitas, resumo e navegação
 
-- **Navegação** (`AppShell`): mês, receitas, resumo, parcelas, casa e ajustes, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
+- **Navegação** (`AppShell`, destinos em `lib/navigation.ts` → `NAV_ITEMS`): Mês, Receitas, Resumo e Ajustes (para acrescentar um destino, inclua um item na lista; `mobile: false` o deixa só na barra lateral). Barra lateral `structure` no computador (só ícones em `md`, ícone + rótulo em `lg`; casa e `UserMenu` no rodapé) e barra inferior no celular (ícones lucide, alvos ≥ 44 px, o conteúdo ganha `pb-36`). `/parcelas` fica fora da lista (aberta pelo Mês/Resumo; tem botões próprios que reaproveitam `InvoiceForm` via `initialKind`). Telas lazy: `LoggedInSuspense` (App.tsx) mostra o `AppShell` + `PageSkeleton` na hora. `UserMenu` = avatar com troca de casa, Minha conta, Aparência e Sair. O mês escolhido
   (`?mes=`, `useMonthParam`) acompanha ao trocar de tela.
 - **`pages/SummaryPage`**: destaques (saldo projetado da casa, a pagar, atrasado com quantidade, pago), carteiras (`WalletCard`:
   **saldo projetado** como número principal e o realizado "hoje" embaixo; coral só se o projetado for negativo), "para onde vai o
@@ -102,19 +102,21 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   um toque recebe, com Desfazer), números do mês, e o bloco de **fontes** (o molde mensal do salário/VR).
   `IncomeForm` ajusta o mês (líquido ao vivo); `SourceForm` cria/edita a fonte, com **reaplicar aos meses previstos** (`applyFrom`) e o aviso
   de que ajustes manuais são sobrescritos. `DeductionsEditor` edita os descontos itemizados (INSS, IRRF, plano, coparticipação, outro).
-- **`pages/HousePage`** (`/casa`): pessoas na linha de prumo (`MembersList`: papel, link de nova senha, remover/sair com confirmação
-  em dois toques), convite (`LinkBox` mostra o link **uma vez**, o servidor não guarda o token), renomear e excluir a casa. O que é só de
-  admin some para os demais (o servidor confere de novo). **Criar outra casa** (`useCreateHousehold`; `household_limit` vira aviso).
-  Sair da casa ou excluí-la troca para outra casa; só encerra a sessão se era a **última**. A tela usa `key={casa}`: trocar de casa
-  a remonta, sem formulário ou aviso vazando de uma casa para outra.
-- **`pages/SettingsPage`** (`/configuracoes`, item **ajustes**): onde cada casa molda o app; organizada em seções (hoje só **Categorias**).
-  `useCategories` lê `?includeArchived=true` em todas as telas: conta antiga de categoria arquivada continua mostrando o nome no mês e no
-  resumo; quem oferece categorias para escolher filtra `archived` (o `InvoiceForm` recebe só as ativas e a da conta aberta). Ativas na ordem de `sortOrder`; arquivadas num `<details>` recolhido. `CategoryForm` cria/edita nome, carteira padrão
-  (livre/benefício/nenhuma: "nenhuma" vai como `null` no PATCH) e essencial, e arquiva/restaura (`archived`). **Reordenar** (botões ↑/↓,
-  sem arrastar): não há endpoint em lote, então `useCategoryActions().reorder` grava `sortOrder = posição` só nas que mudaram, um PATCH
-  por vez. Não há botão de excluir: categoria em uso é arquivada (o `DELETE` existe na API para as sem uso, mas a tela não o oferece).
-  `category_exists` aparece no campo Nome. Viewer vê os dados com campos desabilitados e sem botões de escrita. Computador: lista + painel
-  ao lado; celular: `Sheet`. Testes: `pages/SettingsPage.test.tsx` (rotas `createCategory`/`updateCategory` no `mockApi`).
+- **`pages/SettingsPage`** (`/ajustes/:secao`; `/casa` -> `/ajustes/casa` e `/configuracoes` -> `/ajustes` por `<Navigate>`): painel único.
+  Seções em `components/settings/`: `HouseSection` (pessoas na linha de prumo com `MembersList`, convite com `LinkBox` que mostra o
+  link **uma vez**, renomear, criar outra casa, zona de perigo; o próprio papel não se troca; `household_limit` vira aviso; sair/excluir
+  a casa troca para outra e só encerra a sessão se era a **última**), `CategoriesSection`, `PayeesSection`, `AppearanceSection`,
+  `AccountSection`, `DataSection`, `AboutSection`. Computador (`useIsDesktop`): sub-navegação à esquerda e detalhe em `DetailPanel`
+  (lateral, não modal; no celular vira `Sheet`); celular: `/ajustes` é o menu de seções e cada seção tem "voltar". A tela usa
+  `key={casa}`: trocar de casa a remonta, sem painel aberto vazando de uma casa para outra. Tema: `AuthProvider` aplica `me.theme`
+  ao entrar (o `localStorage` é só cache); `AppearanceSection` aplica na hora e grava `PATCH /auth/me`. `AccountSection` usa
+  `PATCH /auth/me`, `POST /auth/password` (encerra as outras sessões) e `DELETE /auth/sessions/others`. `DataSection` baixa
+  `GET /households/{id}/export/invoices.csv` com `fetch` (resposta é arquivo, não JSON). `Sobre` lê `__APP_VERSION__` (Vite `define`, do package.json).
+  Categorias: `useCategories` lê `?includeArchived=true`; conta antiga de categoria arquivada continua mostrando o nome. Reordenar:
+  computador arrasta pela alça (HTML5 drag, sem biblioteca; teclado ↑/↓ na alça, com `aria-live`), celular usa o modo **Reordenar**; não
+  há endpoint em lote, então `reorder` grava `sortOrder = posição` só nas que mudaram, um PATCH por vez. Ações por linha no `ActionMenu` (⋯).
+  Não há excluir: categoria em uso é arquivada. Testes: `pages/Ajustes.test.tsx`, `SettingsPage.test.tsx`, `SettingsHouse.test.tsx`
+  (para simular computador, `matchMedia` falso com `min-width`).
 - **Links públicos** `/convite?token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha?token=`
   (`ResetPasswordPage`). Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
   e abre um convite vê **Entrar na casa** (`useAcceptInvite` → `POST /invites/accept`, relê `/auth/me` e ativa a casa nova); nada é

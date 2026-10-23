@@ -14,7 +14,7 @@ Toda casa tem sempre pelo menos um administrador.
 
 Só administradores convidam.
 
-1. Toque em **casa** no menu.
+1. Abra **Ajustes** e escolha **Casa e pessoas**.
 2. Em **convidar alguém**, escolha o **papel** (membro, leitura ou admin) e por quanto tempo o convite **vale** (1, 2 ou 7 dias).
 3. Toque em **Gerar link de convite**.
 4. Toque em **Copiar link** e envie para a pessoa (WhatsApp, por exemplo).
@@ -43,12 +43,12 @@ Uma conta pode participar de várias casas (por exemplo, a sua e a dos seus pais
 
 - **Trocar de casa**: toque no nome da casa no topo da tela (no computador, na barra lateral) e escolha outra. O app lembra a
   última casa usada neste aparelho. Com uma casa só, o nome aparece sem o seletor.
-- **Criar outra casa**: em **casa**, toque em **Criar outra casa**, dê um nome e toque em **Criar casa**. Você vira administrador
+- **Criar outra casa**: em **Ajustes > Casa e pessoas**, toque em **Criar outra casa**, dê um nome e toque em **Criar casa**. Você vira administrador
   dela. Cada pessoa cria no máximo 5 casas; para criar mais, exclua uma que não usa.
 
 ## Mudar o que uma pessoa pode fazer
 
-1. Em **casa**, na lista **pessoas da casa**, ache a pessoa.
+1. Em **Ajustes > Casa e pessoas**, na lista **pessoas da casa**, ache a pessoa.
 2. Em **papel**, escolha o novo.
 
 Se você é a única pessoa administradora, o app não deixa você se rebaixar. Primeiro torne outra pessoa administradora.
@@ -60,11 +60,11 @@ Se você é a única pessoa administradora, o app não deixa você se rebaixar. 
 
 Quem sai perde o acesso na hora, mas as contas que já foram lançadas continuam na casa, com o nome da pessoa.
 
-Se você é o único administrador, o app não deixa você sair. Torne outra pessoa administradora ou, se a casa não é mais necessária, exclua a casa.
+Você não troca o seu próprio papel: se é o único administrador, o app não deixa você sair nem deixar de ser admin. Torne outra pessoa administradora ou, se a casa não é mais necessária, exclua a casa.
 
 ## Mudar o nome ou excluir a casa
 
-Só administradores, na tela **casa**.
+Só administradores, em **Ajustes > Casa e pessoas**.
 
 1. Em **nome da casa**, escreva o novo nome e toque em **Salvar nome**.
 2. Para excluir, toque em **Excluir casa…** e depois em **Sim, excluir a casa**. A casa some para todos. Se você tem outra casa, o app passa para ela.

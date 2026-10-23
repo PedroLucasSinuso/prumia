@@ -102,6 +102,58 @@ paths:
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [auth]
+      operationId: updateMe
+      summary: Atualiza o próprio nome e/ou o tema de cor (preferência da conta, vale em todos os aparelhos)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MePatch' }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/password:
+    post:
+      tags: [auth]
+      operationId: changePassword
+      summary: Troca a própria senha (confere a atual) e encerra as OUTRAS sessões do usuário
+      description: |
+        A sessão atual continua válida. Senha atual errada responde 400 com `fields.currentPassword`.
+        Tem limite de tentativas como o login (429 `too_many_requests`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password, minLength: 10, maxLength: 128 }
+      responses:
+        '204': { description: "Senha trocada" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/sessions/others:
+    delete:
+      tags: [auth]
+      operationId: endOtherSessions
+      summary: Sai de todos os outros aparelhos (encerra as sessões do usuário, menos a atual)
+      responses:
+        '200':
+          description: "Sessões encerradas"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ended]
+                properties:
+                  ended: { type: integer, description: "Quantas sessões foram encerradas" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /auth/password-reset:
     post:
       tags: [auth]
@@ -679,6 +731,28 @@ paths:
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSource' } } } }
 
+  /households/{householdId}/export/invoices.csv:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [invoices]
+      operationId: exportInvoicesCsv
+      summary: Exporta as contas da casa em CSV (planilha). Todos os membros, inclusive leitura, podem exportar.
+      description: |
+        Filtra pelo **vencimento** (`from` e `to` inclusivos; ambos opcionais). Contas excluídas ficam de fora.
+        Formato pensado para o Excel em português: UTF-8 com BOM, separador `;`, valores em reais com vírgula
+        (`1234,56`) e datas `dd/mm/aaaa`. Colunas: vencimento, competência, descrição, categoria (`Mãe › Filha`),
+        favorecido, valor, status (pendente, atrasada, paga), pago em, carteira, valor pago.
+      parameters:
+        - { name: from, in: query, description: "Vencimento a partir de (inclusive)", schema: { type: string, format: date } }
+        - { name: to, in: query, description: "Vencimento até (inclusive)", schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: "Arquivo CSV (Content-Disposition: attachment)"
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
   # ---------------------------------------------------------------- summary
   /households/{householdId}/summary:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
@@ -839,14 +913,27 @@ components:
         password: { type: string }
     Me:
       type: object
-      required: [id, name, email, households]
+      required: [id, name, email, theme, households]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         email: { type: string, format: email }
+        theme: { $ref: '#/components/schemas/Theme' }
         households:
           type: array
           items: { $ref: '#/components/schemas/HouseholdRef' }
+
+    Theme:
+      type: string
+      enum: [sistema, marfim, grafite, contraste]
+      description: Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+
+    MePatch:
+      type: object
+      description: Só os campos presentes mudam.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        theme: { $ref: '#/components/schemas/Theme' }
 
     HouseholdRef:
       type: object

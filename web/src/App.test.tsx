@@ -129,7 +129,8 @@ describe('sair', () => {
   it('encerra a sessão e volta para a tela de entrar', async () => {
     mockApi({ me: ok(me) })
     renderAt('/')
-    await userEvent.click(await screen.findByRole('button', { name: 'Sair' }))
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Conta de Pedro' }))[0])
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Sair/ }))
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
     await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/auth/logout'))
   })

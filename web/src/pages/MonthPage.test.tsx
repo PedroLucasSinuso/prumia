@@ -544,8 +544,10 @@ describe('lista: filtro e busca', () => {
   it('mês vazio oferece lançar a primeira conta e importar', async () => {
     mockApi({ me: ok(me) })
     renderAt(mes)
-    expect(await screen.findByRole('link', { name: 'Importar' })).toHaveAttribute('href', `/importar?mes=2026-10`)
-    await userEvent.click(screen.getByRole('button', { name: 'Lançar a primeira conta' }))
+    const first = await screen.findByRole('button', { name: 'Lançar a primeira conta' })
+    // há também o atalho Importar da barra lateral: todos levam ao mesmo lugar, com o mês
+    for (const link of screen.getAllByRole('link', { name: 'Importar' })) expect(link).toHaveAttribute('href', `/importar?mes=2026-10`)
+    await userEvent.click(first)
     expect(screen.getByRole('dialog', { name: 'Nova conta' })).toBeInTheDocument()
   })
 })
