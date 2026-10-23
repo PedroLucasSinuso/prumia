@@ -916,6 +916,13 @@ components:
         competenceMonth: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Padrão = mês do vencimento" }
         notes: { type: string, nullable: true }
         boleto: { type: object, allOf: [ { $ref: '#/components/schemas/Boleto' } ], nullable: true }
+        newPayee:
+          type: object
+          nullable: true
+          description: "Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida."
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 60 }
     InvoicePatch:
       type: object
       properties:
@@ -957,6 +964,7 @@ components:
         digitableLine: { type: string, pattern: '^[0-9]{47,48}$' }
         barcode: { type: string, pattern: '^[0-9]{44}$', nullable: true }
         beneficiaryName: { type: string, nullable: true }
+        beneficiaryCnpj: { type: string, pattern: '^[0-9]{14}$', nullable: true, description: "CNPJ de quem recebe, lido do texto e validado pelos dígitos verificadores" }
         documentAmountCents: { type: integer, allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
         documentDueDate: { type: string, format: date, nullable: true }
         documentCompetenceMonth: { type: string, format: date, nullable: true, description: "Mês de referência lido do texto (dia 1), quando o documento informa" }
@@ -967,6 +975,7 @@ components:
         boleto: { $ref: '#/components/schemas/Boleto' }
         method: { type: string, enum: [pdf_text, barcode_image, ocr], description: "Como foi extraído" }
         duplicateOfInvoiceId: { type: string, format: uuid, nullable: true, description: "Já existe invoice com esta linha digitável" }
+        payee: { type: object, allOf: [ { $ref: '#/components/schemas/Payee' } ], nullable: true, description: "Favorecido da casa com o CNPJ lido do boleto (não arquivado)" }
 
     Purchase:
       type: object

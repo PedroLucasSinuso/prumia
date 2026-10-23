@@ -65,6 +65,8 @@ Vai no campo `password`, é usada só na memória e passada como argumento ao `p
 
 - Beneficiário vem de heurística sobre o texto, nesta ordem: "Razão social:", "Beneficiário:"/"Cedente" e, sem rótulo, a primeira razão social do documento (nome em maiúsculas terminado em S/A, LTDA etc.). Pode vir vazio ou errado, por isso é só sugestão na revisão.
 - Vencimento: o do código de barras prevalece. Conta de consumo (48 dígitos) não o traz, então se lê "Vencimento: dd/mm/aaaa" do texto (datas impossíveis são ignoradas).
+- CNPJ (`beneficiaryCnpj`): primeiro CNPJ válido (dígitos verificadores; aceita a máscara torta `01.695-370/0001-53`) a partir do rótulo "Razão social/Beneficiário/Cedente", para não pegar o do pagador. Exige a barra, então CPF nunca entra.
+- Favorecido: com o CNPJ, a resposta traz `payee` (favorecido **não arquivado** da casa com esse CNPJ, ou `null`). Ao salvar a conta: `newPayee {name}` cria o favorecido **na mesma transação** (CNPJ e razão social vêm do boleto, categoria sugerida = a da conta; nome repetido = 409 e a conta não é gravada); `payeeId` de um favorecido sem CNPJ recebe o CNPJ do boleto (`AdoptCNPJ`, nunca rouba CNPJ de outro favorecido). Não combinam entre si. Contas sem CNPJ continuam sem favorecido, que é o caso comum.
 - Competência (`documentCompetenceMonth`, dia 1): lida de "Referência:", "Mês:" ou "Competência:" (`10/2026`, `OUT/2026`). Só texto de PDF/OCR; o código de barras não a informa.
 - Boleto de arrecadação não tem vencimento extraído.
 - Foto torta, amassada ou com reflexo pode falhar em todas as etapas; a resposta é explícita (`boleto_not_found`) e a tela oferece preencher manualmente.

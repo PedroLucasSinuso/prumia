@@ -335,7 +335,10 @@ func (e RestoreInvoiceParamsScope) Valid() bool {
 
 // Boleto defines model for Boleto.
 type Boleto struct {
-	Barcode             *string `json:"barcode,omitempty"`
+	Barcode *string `json:"barcode,omitempty"`
+
+	// BeneficiaryCnpj CNPJ de quem recebe, lido do texto e validado pelos dígitos verificadores
+	BeneficiaryCnpj     *string `json:"beneficiaryCnpj,omitempty"`
 	BeneficiaryName     *string `json:"beneficiaryName,omitempty"`
 	DigitableLine       string  `json:"digitableLine"`
 	DocumentAmountCents *Cents  `json:"documentAmountCents,omitempty"`
@@ -354,6 +357,9 @@ type BoletoExtraction struct {
 
 	// Method Como foi extraído
 	Method BoletoExtractionMethod `json:"method"`
+
+	// Payee Favorecido da casa com o CNPJ lido do boleto (não arquivado)
+	Payee *Payee `json:"payee,omitempty"`
 }
 
 // BoletoExtractionMethod Como foi extraído
@@ -591,9 +597,14 @@ type InvoiceInput struct {
 	CategoryId  openapi_types.UUID `json:"categoryId"`
 
 	// CompetenceMonth Padrão = mês do vencimento
-	CompetenceMonth   *Month              `json:"competenceMonth,omitempty"`
-	Description       string              `json:"description"`
-	DueDate           caldate.Date        `json:"dueDate"`
+	CompetenceMonth *Month       `json:"competenceMonth,omitempty"`
+	Description     string       `json:"description"`
+	DueDate         caldate.Date `json:"dueDate"`
+
+	// NewPayee Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida.
+	NewPayee *struct {
+		Name string `json:"name"`
+	} `json:"newPayee,omitempty"`
 	Notes             *string             `json:"notes,omitempty"`
 	PayeeId           *openapi_types.UUID `json:"payeeId,omitempty"`
 	ResponsibleUserId *openapi_types.UUID `json:"responsibleUserId,omitempty"`

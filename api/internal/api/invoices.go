@@ -128,7 +128,7 @@ func (h *Invoices) CreateInvoice(c *gin.Context, householdId gen.HouseholdId) {
 		return
 	}
 	v, err := h.Svc.Create(c.Request.Context(), householdId, auth.CurrentUser(c).ID, invoice.CreateInput{
-		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, PayeeID: body.PayeeId, Description: body.Description,
+		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, PayeeID: body.PayeeId, NewPayee: newPayeeInput(body.NewPayee), Description: body.Description,
 		AmountCents: body.AmountCents, DueDate: body.DueDate, CompetenceMonth: body.CompetenceMonth, Notes: body.Notes,
 		Boleto: boletoInput(body.Boleto),
 	})
@@ -257,5 +257,14 @@ func boletoInput(b *gen.Boleto) *invoice.BoletoInput {
 	if b == nil {
 		return nil
 	}
-	return &invoice.BoletoInput{DigitableLine: b.DigitableLine, BeneficiaryName: b.BeneficiaryName}
+	return &invoice.BoletoInput{DigitableLine: b.DigitableLine, BeneficiaryName: b.BeneficiaryName, BeneficiaryCNPJ: b.BeneficiaryCnpj}
+}
+
+func newPayeeInput(n *struct {
+	Name string `json:"name"`
+}) *invoice.NewPayeeInput {
+	if n == nil {
+		return nil
+	}
+	return &invoice.NewPayeeInput{Name: n.Name}
 }

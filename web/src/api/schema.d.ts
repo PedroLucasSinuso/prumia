@@ -880,6 +880,10 @@ export interface components {
             competenceMonth?: components["schemas"]["Month"];
             notes?: string | null;
             boleto?: components["schemas"]["Boleto"] | null;
+            /** @description Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida. */
+            newPayee?: {
+                name: string;
+            } | null;
         };
         InvoicePatch: {
             /** Format: uuid */
@@ -918,6 +922,8 @@ export interface components {
             digitableLine: string;
             barcode?: string | null;
             beneficiaryName?: string | null;
+            /** @description CNPJ de quem recebe, lido do texto e validado pelos dígitos verificadores */
+            beneficiaryCnpj?: string | null;
             documentAmountCents?: (number & components["schemas"]["Cents"]) | null;
             /** Format: date */
             documentDueDate?: string | null;
@@ -939,6 +945,8 @@ export interface components {
              * @description Já existe invoice com esta linha digitável
              */
             duplicateOfInvoiceId?: string | null;
+            /** @description Favorecido da casa com o CNPJ lido do boleto (não arquivado) */
+            payee?: components["schemas"]["Payee"] | null;
         };
         Purchase: {
             /** Format: uuid */
