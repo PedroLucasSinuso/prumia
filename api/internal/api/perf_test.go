@@ -76,6 +76,7 @@ func TestDesempenhoComVolumeRealista(t *testing.T) {
 		base + "/invoices?status=overdue&limit=200",
 		base + "/invoices?q=conta%2012&limit=50",
 		base + "/summary?month=2026-10-01",
+		base + "/summary/categories?from=2025-11-01&to=2026-10-01",
 		base + "/incomes?month=2026-10-01",
 		base + "/income-sources",
 		base + "/purchases?limit=50",

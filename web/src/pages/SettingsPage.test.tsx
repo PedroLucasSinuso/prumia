@@ -293,3 +293,17 @@ describe('ajustes · favorecidos', () => {
     expect(screen.queryByRole('button', { name: /Novo favorecido/ })).not.toBeInTheDocument()
   })
 })
+
+describe('ajustes · aparência', () => {
+  it('escolher o tema aplica na hora e fica marcado', async () => {
+    mockApi({ me: ok(me), categories: ok(cats) })
+    renderAt('/configuracoes')
+    const grupo = await screen.findByRole('radiogroup', { name: 'Tema' })
+    expect(within(grupo).getByRole('radio', { name: /Marfim/ })).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(within(grupo).getByRole('radio', { name: /Grafite/ }))
+    expect(document.documentElement.dataset.theme).toBe('grafite')
+    expect(within(grupo).getByRole('radio', { name: /Grafite/ })).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(within(grupo).getByRole('radio', { name: /Marfim/ }))
+    expect(document.documentElement.dataset.theme).toBe('marfim')
+  })
+})
