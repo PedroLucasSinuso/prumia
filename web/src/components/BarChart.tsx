@@ -110,7 +110,7 @@ export function BarChart({ stack, label, height = 200 }: Props) {
               }
             }
             return (
-              <g key={b.month} onMouseEnter={() => setActive(i)}>
+              <g key={b.month} onMouseEnter={() => setActive(i)} onClick={() => setActive(i)}>
                 {/* alvo do mouse maior que a barra: a coluna inteira */}
                 <rect x={PAD.left + slot * i} y={PAD.top} width={slot} height={plotH} fill="transparent" />
                 {active === i && <rect x={PAD.left + slot * i + 2} y={PAD.top} width={slot - 4} height={plotH} fill="currentColor" className="text-ink/5" />}
@@ -145,7 +145,7 @@ export function BarChart({ stack, label, height = 200 }: Props) {
                 ))}
           </>
         ) : (
-          <span className="text-ink/60">Passe o mouse ou use as setas para ver o valor de cada mês.</span>
+          <span className="text-ink/60">Selecione um mês (ou use as setas) para ver o valor exato.</span>
         )}
       </p>
 
