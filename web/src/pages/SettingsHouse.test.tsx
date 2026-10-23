@@ -1,9 +1,12 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api/client'
 import { fail, mockApi, ok, me, renderAt, viewerMe } from '../test/utils'
+
+// A tela é carregada sob demanda (lazy): com a máquina carregada, o primeiro render pode passar de 1 s.
+configure({ asyncUtilTimeout: 5000 })
 
 beforeEach(() => vi.restoreAllMocks())
 

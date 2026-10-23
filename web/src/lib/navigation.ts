@@ -1,4 +1,4 @@
-import { CalendarDays, ChartColumn, HandCoins, Settings2, type LucideIcon } from 'lucide-react'
+import { CalendarDays, ChartColumn, HandCoins, ScanLine, Settings2, type LucideIcon } from 'lucide-react'
 
 /**
  * Destinos principais do app (barra inferior no celular, barra lateral no computador). Ordem = ordem na tela.
@@ -21,6 +21,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Mês', icon: CalendarDays },
   { to: '/receitas', label: 'Receitas', icon: HandCoins },
   { to: '/resumo', label: 'Resumo', icon: ChartColumn },
+  // No celular o acesso é o botão "Importar" do mês; na barra lateral do computador é um atalho.
+  { to: '/importar', label: 'Importar', icon: ScanLine, mobile: false },
   { to: '/ajustes', label: 'Ajustes', icon: Settings2, matchPrefix: '/ajustes' },
 ]
 

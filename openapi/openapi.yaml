@@ -13,7 +13,7 @@ info:
       responde 401 `unauthenticated` e o cookie é apagado.
     - Casa: rotas de negócio ficam sob `/households/{householdId}`; o acesso é validado pela role do usuário.
     - Erros: `application/problem+json` (ver `Problem`).
-    - Limite de corpo: requisições JSON acima de 64 KB respondem 413 (`code=body_too_large`); o upload de boleto tem limite próprio.
+    - Limite de corpo: requisições JSON acima de 64 KB respondem 413 (`code=body_too_large`); o upload de boleto/documento tem limite próprio (5 MB) e o lote de invoices aceita até 512 KB.
 servers:
   - url: /api
 tags:
@@ -471,6 +471,24 @@ paths:
         '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/invoices/batch:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    post:
+      tags: [invoices]
+      operationId: createInvoiceBatch
+      summary: Cria várias invoices avulsas de uma vez (member+), tudo ou nada
+      description: |
+        Usado pela tela "Importar". Cada item segue as regras do `createInvoice` (inclusive `boleto`, `payeeId` e `newPayee`).
+        Tudo numa transação: se um item falhar, nenhum é gravado. Erros de validação vêm em `fields` com o índice do item
+        (`items.3.amountCents`). A mesma linha digitável em dois itens do lote é recusada (`items.N.boleto.digitableLine`).
+        `newPayee` com o mesmo nome em mais de um item cria um só favorecido. Corpo até 512 KB.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceBatchInput' } } }
+      responses:
+        '201': { description: "Criadas, na ordem dos itens", content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceBatchResult' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /households/{householdId}/invoices/{invoiceId}:
     parameters:
       - { $ref: '#/components/parameters/HouseholdId' }
@@ -792,6 +810,34 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '503': { description: "Servidor ocupado com outras leituras (`code=busy`); tente de novo", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
 
+  /households/{householdId}/documents/extract:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    post:
+      tags: [boleto]
+      operationId: extractDocument
+      summary: Lê contas de um arquivo (boleto, conta sem boleto ou lista). Nada é salvo; o usuário revisa antes de criar.
+      description: |
+        Mesmo upload, limites e regras de memória do `extractBoleto`. Ordem de decisão: (1) linha digitável válida =
+        `boleto` (1 item com `boleto`); (2) valor com rótulo forte ("total a pagar", "valor a pagar", "valor do documento")
+        ou com vencimento = `bill` (1 item sem boleto); (3) duas ou mais linhas "descrição R$ valor" = `list` (N itens);
+        (4) um único valor (rótulo "total" ou o maior "R$ x") = `bill`. Nada disso = 422 `boleto_not_found`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                password: { type: string, format: password }
+      responses:
+        '200': { description: "Lido", content: { application/json: { schema: { $ref: '#/components/schemas/DocumentExtraction' } } } }
+        '413': { description: "Arquivo maior que 5 MB", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '422': { description: "Não foi possível ler ou senha necessária", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { description: "Servidor ocupado com outras leituras (`code=busy`); tente de novo", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
 components:
   securitySchemes:
     cookieAuth:
@@ -1047,10 +1093,12 @@ components:
         newPayee:
           type: object
           nullable: true
-          description: "Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida."
+          description: "Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; sem boleto, os de `cnpj`/`legalName` (conta sem boleto lida na importação). A categoria da conta vira a sugerida."
           required: [name]
           properties:
             name: { type: string, minLength: 1, maxLength: 60 }
+            cnpj: { type: string, pattern: '^[0-9]{14}$', description: "Só sem boleto (com boleto vale o do boleto)" }
+            legalName: { type: string, maxLength: 120, description: "Só sem boleto" }
     InvoicePatch:
       type: object
       properties:
@@ -1106,6 +1154,40 @@ components:
         duplicateOfInvoiceId: { type: string, format: uuid, nullable: true, description: "Já existe invoice com esta linha digitável" }
         payee: { type: object, allOf: [ { $ref: '#/components/schemas/Payee' } ], nullable: true, description: "Favorecido da casa com o CNPJ lido do boleto (não arquivado)" }
 
+    InvoiceBatchInput:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, minItems: 1, maxItems: 50, items: { $ref: '#/components/schemas/InvoiceInput' } }
+    InvoiceBatchResult:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Invoice' } }
+    DocumentItem:
+      type: object
+      description: Uma conta encontrada no arquivo. Tudo é sugestão para revisar; campos ausentes não foram lidos.
+      properties:
+        description: { type: string, description: "Descrição sugerida (item da lista ou nome de quem cobra)" }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        dueDate: { type: string, format: date }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
+        beneficiaryName: { type: string }
+        beneficiaryCnpj: { type: string, pattern: '^[0-9]{14}$' }
+        beneficiaryVerified: { type: boolean, description: "Nome conferido pelo CNPJ na BrasilAPI" }
+        boleto: { $ref: '#/components/schemas/Boleto' }
+        duplicateOfInvoiceId: { type: string, format: uuid, description: "Já existe invoice com esta linha digitável" }
+        payee: { $ref: '#/components/schemas/Payee' }
+    DocumentExtraction:
+      type: object
+      required: [method, kind, items]
+      properties:
+        method: { type: string, enum: [pdf_text, barcode_image, ocr], description: "Como foi lido" }
+        kind:
+          type: string
+          enum: [boleto, bill, list]
+          description: "`boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)"
+        items: { type: array, minItems: 1, items: { $ref: '#/components/schemas/DocumentItem' } }
     Purchase:
       type: object
       required: [id, description, purchaseDate, totalAmountCents, installmentsCount, categoryId, installments]

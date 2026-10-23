@@ -201,11 +201,14 @@ func enrich(b *Boleto, text string, ref time.Time) {
 
 var (
 	dueDateRe = regexp.MustCompile(`(?i)vencimento\s*:?\s*(\d{2})/(\d{2})/(\d{4})`)
-	// "Referência: 10/2026", "Mês: OUT/2026", "Competência 10/2026", "Mês de referência: outubro/2026".
-	competenceRe = regexp.MustCompile(`(?i)(?:compet[eê]ncia|refer[eê]ncia|m[eê]s(?: de refer[eê]ncia)?)\s*:?\s*(\d{1,2}|[a-zç]{3,9})\s*/\s*(\d{4})`)
-	// Razão social: nome em maiúsculas terminado em tipo societário ("GASCO DISTRIBUIDORA S/A", "NETLINK PROVEDOR LTDA").
-	companyRe = regexp.MustCompile(`([A-ZÀ-Ú][A-ZÀ-Ú0-9&.' -]{1,60}?)\s+(S/A|S\.A\.?|LTDA\.?|EIRELI|S/S|EPP|ME)(?:\s|$|[-−–,.])`)
-	razaoRe   = regexp.MustCompile(`(?im)^\s*raz[aã]o social\s*:\s*(.+)$`)
+	// "Referência: 10/2026", "Mês: OUT/2026", "Competência 10/2026", "Mês de referência: outubro/2026", "REF: JUN/2026".
+	competenceRe = regexp.MustCompile(`(?i)(?:compet[eê]ncia|refer[eê]ncia|\bref\b\.?|m[eê]s(?: de refer[eê]ncia)?)\s*:?\s*(\d{1,2}|[a-zç]{3,9})\s*/\s*(\d{4})`)
+	// Razão social: palavras com inicial maiúscula (ou tudo maiúsculo) terminadas em tipo societário, na mesma linha:
+	// "GASCO DISTRIBUIDORA S/A", "Gasco Distribuidora SA", "Netlink Provedor Ltda". "SA"/"ME" só em maiúsculas
+	// (em minúsculas são palavras comuns); "Ltda"/"Eireli"/"S.A." em qualquer caixa. Conectivos (de, da, do, e) são aceitos.
+	companyRe = regexp.MustCompile(`((?:[A-ZÀ-Ú][\p{L}0-9&.'-]*[ \t]+(?:(?:de|da|do|dos|das|e)[ \t]+)?){1,8}?)(S/A|(?i:s\.a\.?)|SA|(?i:ltda)\.?|(?i:eireli)|S/S|EPP|ME)(?:\s|$|[-−–,.])`)
+	// "Razão social: X" e "Nome / Razão Social: X" (o valor pode vir na linha de baixo).
+	razaoRe = regexp.MustCompile(`(?im)^[ \t]*(?:nome[ \t]*/[ \t]*)?raz[aã]o[ \t]+social[ \t]*:?[ \t]*(.*)$`)
 )
 
 var months = map[string]time.Month{
@@ -213,12 +216,15 @@ var months = map[string]time.Month{
 	"jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
 }
 
+// findDueDate lê "Vencimento: dd/mm/aaaa" (o valor pode vir na linha de baixo) ou, se não houver, a coluna
+// "Vencimento" de uma tabela (rótulos numa linha, valores na seguinte; ver table.go).
 func findDueDate(text string) time.Time {
-	m := dueDateRe.FindStringSubmatch(text)
-	if m == nil {
-		return time.Time{}
+	if m := dueDateRe.FindStringSubmatch(text); m != nil {
+		if d := validDate(m[3], m[2], m[1]); !d.IsZero() {
+			return d
+		}
 	}
-	return validDate(m[3], m[2], m[1])
+	return readTable(text).due
 }
 
 func validDate(y, mo, d string) time.Time {
@@ -234,26 +240,36 @@ func validDate(y, mo, d string) time.Time {
 // findCompetence devolve o dia 1 do mês de referência, ou zero. Aceita mês numérico ou abreviado/extenso em português.
 func findCompetence(text string) time.Time {
 	for _, m := range competenceRe.FindAllStringSubmatch(text, -1) {
-		var month int
-		if m[1][0] >= '0' && m[1][0] <= '9' {
-			month = toInt(m[1])
-		} else if mo, ok := months[strings.ToLower(m[1])[:3]]; ok {
-			month = int(mo)
-		}
-		if month >= 1 && month <= 12 {
+		if month := monthOf(m[1]); month != 0 {
 			if y := toInt(m[2]); y >= 2000 && y <= 2100 {
 				return time.Date(y, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 			}
 		}
 	}
-	return time.Time{}
+	return readTable(text).competence
+}
+
+// monthOf converte "06", "6", "jun" ou "junho" no número do mês (0 = inválido).
+func monthOf(s string) int {
+	if s == "" {
+		return 0
+	}
+	if s[0] >= '0' && s[0] <= '9' {
+		if m := toInt(s); m >= 1 && m <= 12 {
+			return m
+		}
+		return 0
+	}
+	r := []rune(strings.ToLower(s))
+	if len(r) < 3 {
+		return 0
+	}
+	return int(months[string(r[:3])])
 }
 
 func findBeneficiary(text string) string {
-	if m := razaoRe.FindStringSubmatch(text); m != nil {
-		if name := cleanName(m[1]); name != "" {
-			return name
-		}
+	if name := findRazao(text); name != "" {
+		return name
 	}
 	if name := findLabeledBeneficiary(text); name != "" {
 		return name
@@ -263,6 +279,41 @@ func findBeneficiary(text string) string {
 		return cleanName(m[1] + " " + m[2])
 	}
 	return ""
+}
+
+// findRazao lê o valor do rótulo "Razão social" / "Nome / Razão Social", na mesma linha ou na de baixo. Numa tabela
+// ("Nome / Razão Social   CNPJ" e os valores embaixo) o que vem depois do nome (outra coluna, o CNPJ) é cortado.
+func findRazao(text string) string {
+	loc := razaoRe.FindStringSubmatchIndex(text)
+	if loc == nil {
+		return ""
+	}
+	name := cutColumn(text[loc[2]:loc[3]])
+	if name == "" || otherLabelRe.MatchString(name) {
+		rest := strings.SplitN(text[loc[1]:], "\n", 3)
+		if len(rest) < 2 {
+			return ""
+		}
+		name = cutColumn(rest[1])
+	}
+	if len(digits(name)) > len(name)/2 {
+		return ""
+	}
+	return cleanName(name)
+}
+
+var (
+	// O que termina a coluna do nome: "|", tabulação ou 2+ espaços (pdftotext -layout/OCR), o rótulo CNPJ/CPF ou um número longo.
+	columnEndRe  = regexp.MustCompile(`(?i)\||\t|\s{2,}|\bcnpj\b|\bcpf\b|\d{2}[. ]?\d{3}[. ]?\d{3}`)
+	otherLabelRe = regexp.MustCompile(`(?i)^(?:cnpj|cpf|endere[cç]o|inscri[cç][aã]o)`)
+)
+
+func cutColumn(s string) string {
+	s = strings.TrimLeft(s, " \t:|-")
+	if loc := columnEndRe.FindStringIndex(s); loc != nil {
+		s = s[:loc[0]]
+	}
+	return strings.TrimRight(strings.TrimSpace(s), ":-,")
 }
 
 func cleanName(s string) string {

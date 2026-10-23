@@ -221,8 +221,13 @@ type CreateInput struct {
 	Boleto *BoletoInput
 }
 
-// NewPayeeInput: nome (apelido) do favorecido a criar junto com a conta.
-type NewPayeeInput struct{ Name string }
+// NewPayeeInput: nome (apelido) do favorecido a criar junto com a conta. CNPJ e razão social só valem sem boleto
+// (conta sem boleto lida na importação); com boleto, valem os do boleto.
+type NewPayeeInput struct {
+	Name      string
+	CNPJ      *string
+	LegalName *string
+}
 
 // BoletoInput é o que o cliente envia sobre o boleto. Só a linha é confiável (validada); o resto é descritivo.
 type BoletoInput struct {
@@ -234,80 +239,183 @@ type BoletoInput struct {
 
 func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in CreateInput) (View, error) {
 	var v validation.Collector
-	in.Description = CheckDescription(in.Description, &v)
-	CheckAmount(in.AmountCents, "amountCents", &v)
+	p, err := s.prepare(ctx, householdID, userID, in, &v)
+	if err != nil {
+		return View{}, err
+	}
+	if err := v.Err(); err != nil {
+		return View{}, err
+	}
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return p.write(ctx, tx, householdID, nil)
+	})
+	if err != nil {
+		return View{}, err
+	}
+	out := s.view(p.inv)
+	out.Boleto = p.bol
+	return out, nil
+}
+
+// MaxBatch é o máximo de contas criadas de uma vez (tela "Importar").
+const MaxBatch = 50
+
+// CreateBatch cria várias invoices numa transação só: ou todas entram, ou nenhuma. Cada item é validado como no
+// Create e os erros voltam com o índice ("items.3.amountCents"), para a tela marcar a linha certa.
+// A mesma linha digitável em dois itens é recusada; newPayee com o mesmo nome em vários itens cria UM favorecido.
+func (s *Service) CreateBatch(ctx context.Context, householdID, userID uuid.UUID, items []CreateInput) ([]View, error) {
+	var v validation.Collector
+	if len(items) < 1 || len(items) > MaxBatch {
+		v.Add("items", fmt.Sprintf("envie de 1 a %d contas", MaxBatch))
+		return nil, v.Err()
+	}
+	prepared := make([]prepared, len(items))
+	lines := map[string]int{}
+	for i, in := range items {
+		var iv validation.Collector
+		p, err := s.prepare(ctx, householdID, userID, in, &iv)
+		if err != nil {
+			return nil, err
+		}
+		prefix := fmt.Sprintf("items.%d.", i)
+		if ierr := iv.Err(); ierr != nil {
+			var ve *validation.Error
+			if errors.As(ierr, &ve) {
+				for f, msg := range ve.Fields {
+					v.Add(prefix+f, msg)
+				}
+			}
+		}
+		if p.bol != nil {
+			if first, seen := lines[p.bol.DigitableLine]; seen {
+				v.Add(prefix+"boleto.digitableLine", fmt.Sprintf("o mesmo boleto já está na conta %d do lote", first+1))
+			} else {
+				lines[p.bol.DigitableLine] = i
+			}
+		}
+		prepared[i] = p
+	}
+	if err := v.Err(); err != nil {
+		return nil, err
+	}
+	created := map[string]uuid.UUID{} // nome do novo favorecido (sem caixa) -> id criado neste lote
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for i := range prepared {
+			if err := prepared[i].write(ctx, tx, householdID, created); err != nil {
+				// Validação de um favorecido novo também aponta o item.
+				var ve *validation.Error
+				if errors.As(err, &ve) {
+					fields := map[string]string{}
+					for f, msg := range ve.Fields {
+						fields[fmt.Sprintf("items.%d.newPayee.%s", i, f)] = msg
+					}
+					return &validation.Error{Fields: fields}
+				}
+				return fmt.Errorf("conta %d do lote: %w", i+1, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]View, len(prepared))
+	for i, p := range prepared {
+		out[i] = s.view(p.inv)
+		out[i].Boleto = p.bol
+	}
+	return out, nil
+}
+
+// prepared é uma invoice validada, pronta para gravar (a validação acontece fora da transação).
+type prepared struct {
+	in  CreateInput
+	inv Invoice
+	bol *Boleto
+}
+
+// prepare valida a entrada (os erros de campo vão para v) e monta a linha. O erro devolvido é só falha de banco.
+func (s *Service) prepare(ctx context.Context, householdID, userID uuid.UUID, in CreateInput, v *validation.Collector) (prepared, error) {
+	in.Description = CheckDescription(in.Description, v)
+	CheckAmount(in.AmountCents, "amountCents", v)
 	if in.DueDate.IsZero() {
 		v.Add("dueDate", "informe a data de vencimento")
 	}
 	competence := in.DueDate.StartOfMonth()
 	if in.CompetenceMonth != nil {
 		competence = *in.CompetenceMonth
-		CheckCompetence(competence, &v)
+		CheckCompetence(competence, v)
 	}
-	in.Notes = CheckNotes(in.Notes, &v)
-	if err := s.CheckRefs(ctx, householdID, &in.CategoryID, in.ResponsibleUserID, &v); err != nil {
-		return View{}, err
+	in.Notes = CheckNotes(in.Notes, v)
+	if err := s.CheckRefs(ctx, householdID, &in.CategoryID, in.ResponsibleUserID, v); err != nil {
+		return prepared{}, err
 	}
-	if err := s.checkPayee(ctx, householdID, in.PayeeID, &v); err != nil {
-		return View{}, err
+	if err := s.checkPayee(ctx, householdID, in.PayeeID, v); err != nil {
+		return prepared{}, err
 	}
 	if in.NewPayee != nil && in.PayeeID != nil {
 		v.Add("newPayee", "escolha um favorecido existente ou crie um novo, não os dois")
 	}
-	if err := v.Err(); err != nil {
-		return View{}, err
-	}
-	inv := Invoice{
+	p := prepared{in: in, inv: Invoice{
 		HouseholdID: householdID, CategoryID: in.CategoryID, ResponsibleUserID: in.ResponsibleUserID, PayeeID: in.PayeeID,
 		Description: in.Description, AmountCents: in.AmountCents, DueDate: in.DueDate, CompetenceMonth: competence,
 		Notes: in.Notes, CreatedBy: userID,
-	}
-	var bol *Boleto
+	}}
 	if in.Boleto != nil {
 		parsed, err := boleto.Parse(in.Boleto.DigitableLine, s.today().Time())
 		if err != nil {
 			v.Add("boleto.digitableLine", "linha digitável inválida: confira os números")
-			return View{}, v.Err()
+		} else {
+			p.bol = boletoRow(parsed, in.Boleto.BeneficiaryName)
 		}
-		bol = boletoRow(parsed, in.Boleto.BeneficiaryName)
 	}
+	return p, nil
+}
+
+// write grava a invoice (e o favorecido novo e o boleto) dentro da transação tx. created, se não for nil, reaproveita
+// o favorecido novo de mesmo nome já criado no lote (sem ele, o 2º item daria "nome já existe" e o lote cairia).
+func (p *prepared) write(ctx context.Context, tx *gorm.DB, householdID uuid.UUID, created map[string]uuid.UUID) error {
+	in := p.in
 	// CNPJ e razão social vêm do boleto lido; sem boleto (ou sem CNPJ válido) o favorecido nasce só com o nome.
 	var boletoCNPJ, boletoName *string
 	if in.Boleto != nil {
 		boletoCNPJ, boletoName = in.Boleto.BeneficiaryCNPJ, in.Boleto.BeneficiaryName
+	} else if in.NewPayee != nil {
+		boletoCNPJ, boletoName = in.NewPayee.CNPJ, in.NewPayee.LegalName
 	}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		payees := payee.NewService(tx) // com o tx: o favorecido só existe se a conta for gravada
-		if in.NewPayee != nil {
-			created, err := payees.Create(ctx, householdID, payee.CreateInput{
-				Name: in.NewPayee.Name, CNPJ: boletoCNPJ, LegalName: boletoName, DefaultCategoryID: &in.CategoryID,
-			})
-			if err != nil {
-				return err
-			}
-			inv.PayeeID = &created.ID
-		} else if in.PayeeID != nil && boletoCNPJ != nil {
-			if _, err := payees.AdoptCNPJ(ctx, householdID, *in.PayeeID, *boletoCNPJ, boletoName); err != nil {
-				return err
-			}
+	payees := payee.NewService(tx) // com o tx: o favorecido só existe se a conta for gravada
+	switch {
+	case in.NewPayee != nil:
+		key := strings.ToLower(strings.TrimSpace(in.NewPayee.Name))
+		if id, ok := created[key]; ok && created != nil {
+			p.inv.PayeeID = &id
+			break
 		}
-		if err := tx.Create(&inv).Error; err != nil {
-			return fmt.Errorf("criando invoice: %w", err)
+		np, err := payees.Create(ctx, householdID, payee.CreateInput{
+			Name: in.NewPayee.Name, CNPJ: boletoCNPJ, LegalName: boletoName, DefaultCategoryID: &in.CategoryID,
+		})
+		if err != nil {
+			return err
 		}
-		if bol != nil {
-			bol.InvoiceID, bol.HouseholdID = inv.ID, householdID
-			if err := tx.Create(bol).Error; err != nil {
-				return fmt.Errorf("gravando boleto: %w", err)
-			}
+		p.inv.PayeeID = &np.ID
+		if created != nil {
+			created[key] = np.ID
 		}
-		return nil
-	})
-	if err != nil {
-		return View{}, err
+	case in.PayeeID != nil && boletoCNPJ != nil:
+		if _, err := payees.AdoptCNPJ(ctx, householdID, *in.PayeeID, *boletoCNPJ, boletoName); err != nil {
+			return err
+		}
 	}
-	out := s.view(inv)
-	out.Boleto = bol
-	return out, nil
+	if err := tx.Create(&p.inv).Error; err != nil {
+		return fmt.Errorf("criando invoice: %w", err)
+	}
+	if p.bol != nil {
+		p.bol.InvoiceID, p.bol.HouseholdID = p.inv.ID, householdID
+		if err := tx.Create(p.bol).Error; err != nil {
+			return fmt.Errorf("gravando boleto: %w", err)
+		}
+	}
+	return nil
 }
 
 // boletoRow converte o boleto lido (valor e vencimento calculados da linha, não do que o cliente disse) na linha do banco.

@@ -37,7 +37,7 @@ describe('navegação', () => {
   it('a barra tem os quatro destinos principais e a página ativa fica marcada', async () => {
     mockApi({ me: ok(me) })
     renderAt('/resumo')
-    const nav = (await screen.findAllByRole('navigation', { name: 'Principal' }))[0]
+    const nav = (await screen.findAllByRole('navigation', { name: 'Principal' })).at(-1)!
     expect(within(nav).getAllByRole('link').map((l) => l.textContent?.replace('[ ▪ ]', '').trim())).toEqual(['Mês', 'Receitas', 'Resumo', 'Ajustes'])
     expect(within(nav).getAllByRole('link')).toHaveLength(4)
     expect(within(nav).getByRole('link', { name: /Resumo/ })).toHaveAttribute('aria-current', 'page')
