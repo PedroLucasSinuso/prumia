@@ -11,7 +11,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 | [salario-e-previsao.md](salario-e-previsao.md) | pronto | Lançar salário, descontos e acompanhar a previsão |
 | [carteiras.md](carteiras.md) | pronto | Entender saldo livre e saldo de benefício (VR) |
 | [resumo-do-mes.md](resumo-do-mes.md) | pronto | Ler o resumo e o saldo do mês |
-| [importar-boleto.md](importar-boleto.md) | pronto (leitura no servidor: em breve) | Cadastrar conta a partir de PDF, foto ou print |
+| [importar-boleto.md](importar-boleto.md) | pronto (leitura no servidor: em breve) | Cadastrar contas a partir de PDF, foto, print ou lista (vários arquivos) |
 | [categorias-e-ajustes.md](categorias-e-ajustes.md) | pronto | Criar, editar, reordenar e arquivar categorias e favorecidos da casa |
 | [fazer-backup.md](fazer-backup.md) | pronto | Fazer backup, conferir, restaurar e quando fazer |
 | [acessar-pelo-celular.md](acessar-pelo-celular.md) | pronto | Acessar o prumia pelo celular com o Tailscale (HTTPS) |
