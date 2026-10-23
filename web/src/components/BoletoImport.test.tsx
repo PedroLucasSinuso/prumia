@@ -109,7 +109,7 @@ describe('importar boleto', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
       await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))
       const call = vi.mocked(api.POST).mock.calls.find((c) => c[0] === '/households/{householdId}/invoices')
-      expect((call?.[1] as { body: Record<string, unknown> }).body.newPayee).toBeUndefined()
+      expect((call?.[1] as unknown as { body: Record<string, unknown> }).body.newPayee).toBeUndefined()
     })
 
     it('favorecido reconhecido pelo CNPJ: já vem escolhido, com nome e categoria sugerida, sem pedir apelido', async () => {
