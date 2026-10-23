@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { forwardRef, useId } from 'react'
 
 import { digitsToCents, formatCents } from '../lib/money'
 
@@ -12,13 +12,16 @@ type Props = {
   hideLabel?: boolean
   /** `hero`: o valor em destaque (números grandes num bloco com borda teal), usado ao cadastrar uma conta. */
   hero?: boolean
+  /** Recebe o foco ao aparecer (o valor é o 1º campo ao lançar uma conta). */
+  autoFocus?: boolean
 }
 
 /**
  * Campo de dinheiro: a pessoa digita só números e o valor vai se formando da direita para a esquerda
  * ("1", "15", "150", ... => R$ 0,01, R$ 0,15, R$ 1,50). Teclado numérico no celular. Guarda centavos (inteiro).
+ * `forwardRef` deixa quem usa focar o campo (ex.: "Adicionar e lançar outra" volta ao valor).
  */
-export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel }: Props) {
+export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInput({ label, value, onChange, error, id, hero, hideLabel, autoFocus }, ref) {
   const auto = useId()
   const fieldId = id ?? auto
   const label_ = (
@@ -28,9 +31,12 @@ export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel 
   )
   const input = (
     <input
+      ref={ref}
       id={fieldId}
       inputMode="numeric"
       autoComplete="off"
+      autoFocus={autoFocus}
+      data-autofocus={autoFocus ? '' : undefined}
       aria-invalid={error ? true : undefined}
       aria-describedby={error ? `${fieldId}-erro` : undefined}
       className={
@@ -49,7 +55,7 @@ export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel 
   )
   if (hero) {
     return (
-      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-white/35 px-3 py-2.5 focus-within:border-accent ${error ? 'border-alert' : 'border-structure'}`}>
+      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-white/35 px-3 py-2.5 transition-colors focus-within:border-accent ${error ? 'border-alert' : 'border-structure'}`}>
         {label_}
         {input}
         <p className="text-xs text-ink/75">digite só os números: 18735 vira R$ 187,35</p>
@@ -64,4 +70,4 @@ export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel 
       {err}
     </div>
   )
-}
+})

@@ -20,6 +20,16 @@ Use **Todas**, **A pagar** e **Pagas** para filtrar a lista.
 
 Para mudar de mês, use as setas **‹** e **›**. Em outro mês, aparece o atalho **ir para o mês atual**.
 
+## No computador
+
+- No alto: o mês com setas, **Importar**, **Nova conta** e o link **Parcelas e fixas**. Depois, quatro destaques: **a pagar**, **atrasado** (só fica coral quando há atraso), **pago** e **total**.
+- A lista tem colunas (dia, descrição, categoria, situação, valor) e três **seções**: **Atrasadas**, **Daqui pra frente** e **Pagas**. Clique no título da seção para recolher; o aparelho lembra a escolha. Contas pagas continuam na lista, riscadas.
+- **Filtros**: Todas / A pagar / Pagas, categoria (a principal inclui as subcategorias) e **busca** (tecla `/`).
+- Passe o mouse numa linha para ver o botão de pagar e a caixa de seleção. Marque várias (Shift+clique marca um intervalo) e use **Pagar N selecionadas**; o aviso tem **Desfazer**.
+- Sem conta aberta, o painel ao lado mostra os **próximos 7 dias**. Ao abrir uma conta ele mostra o detalhe, com **Pagar**, **Editar**, **Copiar linha do boleto** e **Excluir**.
+- **Nova conta** abre um painel lateral à direita (Esc, clique fora ou × fecham).
+- **Atalhos**: `N` nova conta, `←`/`→` mês, `/` busca, `↑`/`↓` percorrem a lista, `Enter` abre, `Espaço` ou `P` paga, `Esc` fecha, `?` lista os atalhos.
+
 ## Cadastrar uma conta
 
 1. Toque no botão **+** (no computador, em **Nova conta**, no alto da tela).
@@ -28,6 +38,8 @@ Para mudar de mês, use as setas **‹** e **›**. Em outro mês, aparece o ata
 4. Escolha quando **vence**: **hoje**, **amanhã**, **em 7 dias** ou **outra data**.
 5. Toque na **Categoria**. As que mostram **VR** sugerem a carteira de benefício.
 6. Toque em **Adicionar conta**. Para lançar várias seguidas, use **Adicionar e lançar outra**: a categoria e o vencimento ficam, e o cursor volta para o começo.
+
+Se a categoria que você precisa não existe, use **+ nova** no fim dos botões de categoria: ela é criada na hora e já fica escolhida (dentro de uma categoria principal aberta, vira subcategoria).
 
 Em **Mais opções** você pode informar o **Mês de competência** e uma **Observação**. A competência é o mês a que o gasto pertence. Por exemplo, a conta de luz de outubro que vence em novembro conta como outubro. Se deixar em branco, vale o mês do vencimento.
 

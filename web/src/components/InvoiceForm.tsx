@@ -1,12 +1,12 @@
+import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Boleto, DocumentExtraction, DocumentItem, Category, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
+import type { Boleto, DocumentExtraction, DocumentItem, Category, CategoryInput, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { addDays, dayMonth, fullDate, monthOf, todayISO } from '../lib/dates'
+import { addDays, dayMonth, monthOf, todayISO } from '../lib/dates'
 import { buildTree } from '../lib/categories'
 import { formatCents } from '../lib/money'
-import { BoletoBox } from './BoletoBox'
 import { BoletoImport } from './BoletoImport'
 import { Button } from './Button'
 import { Field } from './Field'
@@ -21,15 +21,16 @@ type Props = {
   payees?: Payee[]
   invoice?: Invoice // presente = editar
   canWrite: boolean
-  /** Fecha o painel (celular) ou limpa a seleção (computador). */
+  /** Terminou (salvou): ao criar, fecha o painel; ao editar, volta ao detalhe da conta. */
   onDone: () => void
+  /** Desiste da edição (volta ao detalhe). Sem ela, não há botão Cancelar. */
+  onCancel?: () => void
   onCreate: (body: InvoiceInput) => Promise<unknown>
   onCreatePurchase: (body: PurchaseInput) => Promise<unknown>
   onCreateRecurrence: (body: RecurrenceInput) => Promise<unknown>
   onUpdate: (id: string, body: InvoicePatch, scope: SeriesScope) => Promise<unknown>
-  onDelete: (invoice: Invoice, scope: SeriesScope) => void
-  onUnpay: (invoice: Invoice) => void
-  onPay: (invoice: Invoice) => void
+  /** Cria uma categoria na hora (botão "+ nova"). Sem ela, o botão não aparece. */
+  onCreateCategory?: (body: CategoryInput) => Promise<Category>
   /** Lê um boleto (só na criação). Sem ela, o botão "Importar boleto" não aparece. */
   onExtractBoleto?: (file: File, password?: string) => Promise<DocumentExtraction>
   /** Abre outra conta (aviso de boleto duplicado). */
@@ -44,34 +45,41 @@ const fieldMap: Record<string, string> = {
   'boleto.digitableLine': 'boleto',
 }
 
-const walletName = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
-
 type Kind = 'single' | 'installments' | 'recurring'
 const kinds: Array<[Kind, string]> = [['single', 'avulsa'], ['installments', 'parcelada'], ['recurring', 'fixa todo mês']]
 
 /** O servidor acrescenta " (n/N)" ao descrever parcelas; ao editar "esta e as seguintes" mandamos só o nome-base. */
 const stripInstallmentSuffix = (d: string) => d.replace(/\s*\(\d+\/\d+\)\s*$/, '')
 
+// Botão de escolha. `whitespace-nowrap`: o rótulo nunca quebra ("hoje ·" / "20/10"); quem quebra é a fileira.
+// Celular: 44 px de alvo; computador (md+): 36 px, mais denso para o mouse.
 const chip = (on: boolean) =>
-  `flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] ${
+  `flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-[13px] transition-colors md:min-h-9 ${
     on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium text-ink hover:bg-ink/5'
   }`
 
+type NewCategory = { name: string; asChild: boolean; busy: boolean; error?: string }
+
 /**
- * Formulário de criar/editar conta. Valor em destaque; vencimento e categoria são BOTÕES visíveis (nada de menu suspenso):
- * menos toques e menos decisões escondidas. "Mais opções" guarda competência e observação.
+ * Formulário de criar/editar conta. Valor em destaque (recebe o foco ao abrir); vencimento e categoria são BOTÕES visíveis
+ * (nada de menu suspenso): menos toques e menos decisões escondidas. "Mais opções" guarda favorecido, competência e observação.
+ * Pagar, desfazer e excluir ficam no detalhe da conta (`InvoiceDetail`), não aqui. Enter salva (envio nativo do formulário).
  */
-export function InvoiceForm({ month, categories, payees = [], invoice, canWrite, onDone, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
+export function InvoiceForm({ month, categories: baseCategories, payees = [], invoice, canWrite, onDone, onCancel, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onCreateCategory, onExtractBoleto, onOpenInvoice }: Props) {
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
   const defaultDue = inCurrentMonth ? today : month
 
+  // Categoria criada aqui ("+ nova") entra na hora; a lista do servidor chega logo depois e já a traz.
+  const [created, setCreated] = useState<Category[]>([])
+  const categories = [...baseCategories, ...created.filter((c) => !baseCategories.some((b) => b.id === c.id))]
+
   const [description, setDescription] = useState(invoice?.description ?? '')
   const [amount, setAmount] = useState(invoice?.amountCents ?? 0)
   const [dueDate, setDueDate] = useState(invoice?.dueDate ?? defaultDue)
   const [otherDate, setOtherDate] = useState(editing || !inCurrentMonth)
-  const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? buildTree(categories)[0]?.category.id ?? '')
+  const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? buildTree(baseCategories)[0]?.category.id ?? '')
   const [payeeId, setPayeeId] = useState(invoice?.payeeId ?? '')
   const [competence, setCompetence] = useState(invoice ? invoice.competenceMonth.slice(0, 7) : '')
   const [notes, setNotes] = useState(invoice?.notes ?? '')
@@ -93,7 +101,10 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
   // Favorecido reconhecido pelo CNPJ do boleto (já escolhido) e apelido de um favorecido NOVO a criar junto com a conta.
   const [matchedPayee, setMatchedPayee] = useState<Payee>()
   const [newPayeeName, setNewPayeeName] = useState('')
+  // "+ nova" categoria: nome digitado e se entra dentro da categoria principal aberta.
+  const [newCat, setNewCat] = useState<NewCategory | null>(null)
   const descRef = useRef<HTMLInputElement>(null)
+  const amountRef = useRef<HTMLInputElement>(null)
 
   const clear = (f: string) => {
     setFields(({ [f]: _removed, ...rest }) => rest)
@@ -189,12 +200,12 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
           ...(boleto ? { boleto } : {}),
         })
         if (addAnother) {
-          // mantém categoria e vencimento (lançar várias contas parecidas) e volta ao começo
+          // mantém categoria e vencimento (lançar várias contas parecidas) e volta ao começo: o valor
           setDescription('')
           setAmount(0)
           setNotes('')
           discardBoleto()
-          descRef.current?.focus()
+          amountRef.current?.focus()
         } else {
           onDone()
         }
@@ -214,13 +225,37 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
     void submit(false)
   }
 
-  const paid = invoice?.status === 'paid' && invoice.paid
   const inSeries = invoice?.series != null
   const selectedCat = categories.find((c) => c.id === categoryId)
   // Categoria da conta = a mais específica. A linha de cima mostra as mães (e as categorias sem filhas); a de baixo, as filhas da escolhida.
   const tree = buildTree(categories)
   const topId = selectedCat?.parentId && categories.some((c) => c.id === selectedCat.parentId) ? selectedCat.parentId : categoryId
   const topNode = tree.find((n) => n.category.id === topId)
+
+  // "+ nova": cria a categoria pela API e já a escolhe. Marcada "dentro de X", vira subcategoria da principal aberta.
+  async function createCategory() {
+    if (!newCat || !onCreateCategory || !newCat.name.trim()) return
+    const parent = newCat.asChild && topNode ? topNode.category : undefined
+    setNewCat({ ...newCat, busy: true, error: undefined })
+    try {
+      const cat = await onCreateCategory({
+        name: newCat.name.trim(),
+        isEssential: parent?.isEssential ?? false,
+        ...(parent ? { parentId: parent.id } : {}),
+        // a filha herda a carteira sugerida da mãe (Mercado › Feira continua sugerindo o benefício)
+        ...(parent?.defaultWallet ? { defaultWallet: parent.defaultWallet } : {}),
+      })
+      setCreated((list) => [...list, cat])
+      setCategoryId(cat.id)
+      clear('categoryId')
+      setNewCat(null)
+    } catch (err) {
+      const api = err instanceof ApiError ? err : undefined
+      const msg = api?.problem?.code === 'category_exists' ? 'Já existe uma categoria com esse nome.' : api?.network ? networkErrorMessage : problemMessage(api?.problem)
+      setNewCat((c) => (c ? { ...c, busy: false, error: msg } : c))
+    }
+  }
+
   const pick = (c: Category, text: string, on: boolean, key = c.id) => (
     <button key={key} type="button" aria-pressed={on} onClick={() => { setCategoryId(c.id); clear('categoryId') }} className={`${chip(on)} min-h-10`}>
       {text}
@@ -231,7 +266,6 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
       )}
     </button>
   )
-  const payWallet = selectedCat?.defaultWallet ?? 'free'
   const dueChips = [
     { label: `hoje · ${dayMonth(today)}`, value: today },
     { label: `amanhã · ${dayMonth(addDays(today, 1))}`, value: addDays(today, 1) },
@@ -292,7 +326,15 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         <p className="text-xs text-ink/70">O CNPJ deste boleto será associado ao favorecido escolhido, se ele ainda não tiver um.</p>
       )}
 
-      <MoneyInput hero label={kind === 'installments' ? (amountIsTotal ? 'Valor total da compra' : 'Valor de cada parcela') : 'Valor'} value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />
+      <MoneyInput
+        ref={amountRef}
+        autoFocus={!editing}
+        hero
+        label={kind === 'installments' ? (amountIsTotal ? 'Valor total da compra' : 'Valor de cada parcela') : 'Valor'}
+        value={amount}
+        onChange={(c) => { setAmount(c); clear('amount') }}
+        error={fields.amount}
+      />
 
       {!editing && kind === 'installments' && (
         <div className="flex flex-col gap-3">
@@ -321,7 +363,6 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         ref={descRef}
         label="Descrição"
         name="description"
-        autoFocus={!editing}
         autoComplete="off"
         required
         value={description}
@@ -333,13 +374,13 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
       <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
         <legend className={otherDate ? 'sr-only' : 'mb-1 text-xs font-medium uppercase tracking-wider text-ink/80'}>{!editing && kind === 'installments' ? '1ª parcela vence' : !editing && kind === 'recurring' ? 'Vence no dia' : 'Vence'}</legend>
         {!otherDate ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="flex flex-wrap gap-2">
             {dueChips.map((c) => (
-              <button key={c.value} type="button" aria-pressed={dueDate === c.value} onClick={() => { setDueDate(c.value); clear('dueDate') }} className={chip(dueDate === c.value)}>
+              <button key={c.value} type="button" aria-pressed={dueDate === c.value} onClick={() => { setDueDate(c.value); clear('dueDate') }} className={`${chip(dueDate === c.value)} flex-auto`}>
                 {c.label}
               </button>
             ))}
-            <button type="button" onClick={() => setOtherDate(true)} className={chip(false)}>
+            <button type="button" onClick={() => setOtherDate(true)} className={`${chip(false)} flex-auto`}>
               outra data
             </button>
           </div>
@@ -361,8 +402,50 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">Categoria</legend>
         <div className="flex flex-wrap gap-2">
           {tree.map(({ category: c }) => pick(c, c.name, topId === c.id))}
+          {canWrite && onCreateCategory && !newCat && (
+            <button
+              type="button"
+              onClick={() => setNewCat({ name: '', asChild: false, busy: false })}
+              className="flex min-h-10 items-center gap-1 whitespace-nowrap rounded-md border border-dashed border-ink/40 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-ink/5 md:min-h-9"
+            >
+              <Plus size={15} strokeWidth={1.5} aria-hidden="true" /> nova
+            </button>
+          )}
         </div>
-        {/* Só aparece para quem criou subcategorias: tocar numa mãe com filhas abre esta 2ª linha (geral · Gás · Luz…). */}
+        {newCat && (
+          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md border border-line p-3">
+            <div className="flex flex-wrap gap-2">
+              <input
+                aria-label="Nome da nova categoria"
+                autoFocus
+                maxLength={60}
+                value={newCat.name}
+                placeholder="Ex.: Pets"
+                onChange={(e) => setNewCat({ ...newCat, name: e.target.value, error: undefined })}
+                onKeyDown={(e) => {
+                  // Enter aqui cria a categoria (e não envia a conta); Esc desiste sem fechar o painel.
+                  if (e.key === 'Enter') { e.preventDefault(); void createCategory() }
+                  if (e.key === 'Escape') { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setNewCat(null) }
+                }}
+                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink md:h-9 md:text-sm"
+              />
+              <Button type="button" disabled={newCat.busy || !newCat.name.trim()} onClick={() => void createCategory()} className="md:h-9">
+                {newCat.busy ? 'Criando…' : 'Criar categoria'}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setNewCat(null)} className="md:h-9">
+                Cancelar
+              </Button>
+            </div>
+            {topNode && (
+              <label className="flex min-h-9 items-center gap-2 text-sm">
+                <input type="checkbox" checked={newCat.asChild} onChange={(e) => setNewCat({ ...newCat, asChild: e.target.checked })} className="size-4 accent-[var(--color-structure)]" />
+                dentro de {topNode.category.name} (subcategoria)
+              </label>
+            )}
+            {newCat.error && <p role="alert" className="text-xs text-alert">{newCat.error}</p>}
+          </div>
+        )}
+        {/* Só aparece para quem criou subcategorias: escolher uma mãe com filhas abre esta 2ª linha (geral · Gás · Luz…). */}
         {topNode && topNode.children.length > 0 && (
           <div role="group" aria-label={`Detalhe de ${topNode.category.name}`} className="flex flex-wrap gap-2 border-l-2 border-ink/20 pl-3">
             {pick(topNode.category, 'geral', categoryId === topNode.category.id, 'geral')}
@@ -407,12 +490,6 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         </div>
       </details>
 
-      {editing && invoice.boleto && (
-        <section aria-label="Boleto" className="rounded-md border border-line px-3 py-3">
-          <BoletoBox boleto={invoice.boleto} />
-        </section>
-      )}
-
       {inSeries && canWrite && (
         <fieldset className="flex flex-col gap-1.5">
           <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">
@@ -428,20 +505,9 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         </fieldset>
       )}
 
-      {paid && invoice.paid && (
-        <p className="rounded-md border border-line px-3 py-2 text-sm">
-          <span className="font-mono text-accent">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · {walletName[invoice.paid.wallet]} · {formatCents(invoice.paid.amountCents)}
-        </p>
-      )}
-
       {canWrite && (
         <div className="flex flex-col gap-1.5">
-          {editing && !paid && (
-            <Button type="button" onClick={() => onPay(invoice)}>
-              Marcar como paga · {walletName[payWallet]}
-            </Button>
-          )}
-          <Button type="submit" variant={editing && !paid ? 'ghost' : 'primary'} disabled={busy || !description || amount <= 0 || !dueDate || !categoryId || (kind === 'installments' && !editing && !(Number(count) >= 2))}>
+          <Button type="submit" title="Enter salva" disabled={busy || !description || amount <= 0 || !dueDate || !categoryId || (kind === 'installments' && !editing && !(Number(count) >= 2))}>
             {busy ? 'Salvando…' : editing ? 'Salvar alterações' : kind === 'installments' ? 'Adicionar compra parcelada' : kind === 'recurring' ? 'Adicionar conta fixa' : 'Adicionar conta'}
           </Button>
           {!editing && kind === 'single' && (
@@ -454,22 +520,10 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
               Adicionar e lançar outra
             </button>
           )}
-          {editing && paid && (
-            <Button type="button" variant="ghost" onClick={() => onUnpay(invoice)}>
-              Desfazer pagamento
+          {editing && onCancel && (
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Cancelar
             </Button>
-          )}
-          {editing && (
-            <>
-              <button type="button" onClick={() => onDelete(invoice, 'this')} className="h-11 text-sm font-semibold text-ink underline underline-offset-4">
-                {inSeries ? 'Excluir só esta' : 'Excluir conta'}
-              </button>
-              {inSeries && (
-                <button type="button" onClick={() => onDelete(invoice, 'following')} className="h-11 text-sm font-semibold text-ink underline underline-offset-4">
-                  Excluir esta e as seguintes
-                </button>
-              )}
-            </>
           )}
         </div>
       )}

@@ -377,6 +377,16 @@ export function usePurchases(houseId: string, q: string) {
   })
 }
 
+/** Uma compra parcelada com todas as parcelas (total, pagas e quanto falta). Só consulta com `purchaseId`. */
+export function usePurchase(houseId: string, purchaseId: string | null | undefined) {
+  return useQuery({
+    queryKey: [...keys.purchases(houseId), 'detalhe', purchaseId] as const,
+    enabled: Boolean(purchaseId),
+    queryFn: (): Promise<Purchase> =>
+      unwrap(api.GET('/households/{householdId}/purchases/{purchaseId}', { params: { path: { householdId: houseId, purchaseId: purchaseId! } } })),
+  })
+}
+
 /** Contas fixas (recorrências). O servidor estende a previsão ao listar. */
 export function useRecurrences(houseId: string) {
   return useQuery({

@@ -114,6 +114,8 @@ type Routes = {
   /** POST /invoices/batch: fixa ou calculada pelos itens enviados. */
   createBatch?: Reply | ((body: { items: unknown[] }) => Reply)
   invoiceDetail?: Reply
+  /** GET /purchases/{id} (detalhe da compra no painel da parcela). Padrão: 404. */
+  purchase?: Reply
 }
 
 /** Converte a resposta do /boletos/extract (formato antigo) no DocumentExtraction equivalente. */
@@ -158,6 +160,7 @@ export function mockApi(r: Routes = {}) {
       return r.history ?? ok({ months: monthsBetween(q.from, q.to), series: [] })
     }
     if (url === '/households/{householdId}/invoices/{invoiceId}') return r.invoiceDetail ?? fail(404, 'not_found')
+    if (url === '/households/{householdId}/purchases/{purchaseId}') return r.purchase ?? fail(404, 'not_found')
     throw new Error('GET inesperado: ' + url)
   }) as never)
   vi.spyOn(api, 'POST').mockImplementation((async (url: string, init?: { body?: unknown }) => {
