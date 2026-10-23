@@ -80,8 +80,19 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 
 - **Navegação** (`AppShell`): mês, receitas, resumo, parcelas, casa e ajustes, na barra lateral (computador) e na barra inferior (celular). O mês escolhido
   (`?mes=`, `useMonthParam`) acompanha ao trocar de tela.
-- **`pages/SummaryPage`**: "sobra ou falta?" por carteira (`WalletCard`: saldo, previsto, recebido, pago), pago x a pagar e total por
-  categoria (barra pago + a pagar). Só lê `GET /summary`; o cálculo é do servidor (recebido − pago, por competência).
+- **`pages/SummaryPage`**: destaques (saldo projetado da casa, a pagar, atrasado com quantidade, pago), carteiras (`WalletCard`:
+  **saldo projetado** como número principal e o realizado "hoje" embaixo; coral só se o projetado for negativo), "para onde vai o
+  dinheiro" (`CategoryBreakdown` com `onSelect`: cada categoria/filha abre o histórico) e "Compromissos futuros" (soma de
+  `seriesCents` dos 3 meses seguintes, link para `/parcelas`; some quando é zero). Lê `GET /summary` e `GET /summary/categories`
+  (`useCategoryHistory`, sob a chave `['summary', casa]`: tudo que invalida o resumo atualiza os gráficos). Computador
+  (`useIsDesktop`): grade com "Gasto por mês" (casa) ao lado das carteiras e o histórico da categoria num painel ao lado da lista
+  (sem modal; padrão = a categoria que mais pesa). Celular: o histórico abre no `Sheet`.
+- **Gráficos** (`components/BarChart`, `components/HistoryPanel`, `lib/history.ts`): SVG próprio, sem biblioteca. Barras por mês
+  (6 ou 12), mãe = filhas empilhadas (até 4 fatias + "outras"; cor por POSIÇÃO, fixa, só tokens com opacidade: `accent`,
+  `structure`, `ink/60`, `accent/45`, `ink/30`), **pago sólido e a pagar tracejado** (`<pattern>` a 45° + contorno, cor via
+  `currentColor`). Eixo em mono com valor curto (`R$ 1,5 mil`), rótulo `out/26`, largura medida por `ResizeObserver`. Acessível:
+  `role="img"` com resumo dos valores, grupo focável (setas/Home/End mostram o valor exato numa dica `aria-live`) e tabela `sr-only`.
+  Média do período e variação do último mês contra o anterior em números simples. As funções de `lib/history.ts` são puras e testadas.
 - **`pages/IncomesPage`**: receitas do mês numa linha de prumo de entradas (`IncomeList`: nó cobalto, oco = previsto, cheio = recebido;
   um toque recebe, com Desfazer), números do mês, e o bloco de **fontes** (o molde mensal do salário/VR).
   `IncomeForm` ajusta o mês (líquido ao vivo); `SourceForm` cria/edita a fonte, com **reaplicar aos meses previstos** (`applyFrom`) e o aviso

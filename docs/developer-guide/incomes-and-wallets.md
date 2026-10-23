@@ -96,13 +96,16 @@ critérios (uma invoice de setembro paga em outubro pertence a setembro). Conseq
 
 ## 6. Resumo mensal (`GET /summary?month=`)
 
-Escopado por `household_id`, tudo por competência, em **3 consultas agregadas** (sem N+1): receitas por carteira, pagos por
-carteira, invoices por categoria. A montagem (`summary.assemble`) é pura e testada em tabela.
+Escopado por `household_id`, tudo por competência, em **4 consultas agregadas** (sem N+1): receitas por carteira, pagos por
+carteira, pendentes por carteira estimada (com o atraso), invoices por categoria. A montagem (`summary.assemble`) é pura e testada em tabela.
 
 | Campo | Cálculo |
 |---|---|
 | `wallets.{free,benefit}.expectedIncomeCents / receivedIncomeCents / paidCents` | ver seção 5 |
-| `wallets.*.balanceCents` | `receivedIncomeCents - paidCents` (pode ser negativo) |
+| `wallets.*.balanceCents` | **realizado**: `receivedIncomeCents - paidCents` (pode ser negativo) |
+| `wallets.*.pendingCents` | **estimativa** do que falta pagar com a carteira (ver "saldo projetado" abaixo) |
+| `wallets.*.projectedCents` | **saldo projetado**: `expectedIncomeCents - paidCents - pendingCents` |
+| `overdueCents` / `overdueCount` | pendentes da competência com `due_date < hoje` (fuso da app): soma e quantidade |
 | `totalPaidCents` | soma de `paid_amount_cents` das invoices **pagas** da competência |
 | `totalPendingCents` | soma de `amount_cents` das invoices **não pagas** da competência; **inclui as atrasadas** |
 | `byCategory[].totalCents` | por categoria: valor pago (se paga) ou valor da invoice (se pendente), somados |
@@ -111,6 +114,35 @@ carteira, invoices por categoria. A montagem (`summary.assemble`) é pura e test
 
 Categorias arquivadas aparecem se tiverem invoices no mês. O nome da categoria não vem no resumo; o front cruza pelo `categoryId`
 com `GET /categories?includeArchived=true`. Mês sem dados devolve zeros e `byCategory: []`. `month` fora do dia 1 = 400 no campo `month`.
+
+### Saldo projetado (o número principal do resumo)
+
+`projetado = previsto para entrar − (já pago + a pagar)`. Responde "no fim do mês, sobra ou falta?" sem depender de a pessoa ter
+marcado o salário como recebido: no dia 22, com o salário do dia 30 só previsto, o **realizado** (recebido − pago) é negativo, mas
+isso não é alarme. Por isso a UI usa o projetado como número principal e o coral/`[ ✖ ]` **só quando o projetado é negativo**; o
+realizado aparece em segundo plano ("hoje: …").
+
+**Decisão sobre o "a pagar" por carteira**: a carteira de uma conta pendente só é conhecida ao pagar (`paid_wallet`). A estimativa
+usa a **carteira padrão da categoria** (`categories.default_wallet`); se a categoria é filha e não tem padrão, usa a da mãe; sem
+nenhuma, vai para a **livre**. Na soma da casa (`free.projected + benefit.projected`) a escolha não importa: o total é
+`previsto − pago − pendente` de qualquer jeito. Por carteira é uma estimativa (quem paga o mercado com a livre, por exemplo, verá
+a livre "melhor" do que vai ficar até pagar). `BenefitBalance` (aviso ao pagar, seção 7) continua usando o **realizado**.
+
+## 6.1 Histórico por categoria (`GET /summary/categories?from=&to=`)
+
+Alimenta os gráficos do resumo. Código em `api/internal/summary/history.go`.
+
+- Intervalo: `from` e `to` são dias 1. Padrão: os **6 meses até o mês atual** (fuso da app); com só `to`, os 6 até ele; com só `from`,
+  os 6 a partir dele. Máximo **24 meses**; dia ≠ 1, `to < from` ou intervalo maior = 400 `validation_error`.
+- Uma consulta: `GROUP BY category_id, competence_month` sobre `invoices` não excluídas da casa no intervalo, coberta pelo índice
+  `invoices_competence_idx (household_id, competence_month) WHERE deleted_at IS NULL` (sem migration nova).
+- Por categoria **folha** (como o resumo): a soma da mãe e o empilhamento das filhas são feitos no front (`web/src/lib/history.ts`).
+- `totalCents` segue a régua do resumo (pago = valor efetivo; pendente = valor da invoice); `paidCents` é a parte paga; `seriesCents`
+  é a parte que é **parcela ou conta fixa** (`purchase_id` ou `recurrence_id`): é o que a seção "Compromissos futuros" soma.
+- **Todos os meses aparecem** em cada série (zero onde não houve conta); `months` lista o intervalo. Séries ordenadas pela soma do
+  período (maior primeiro), empate pelo id.
+- Como o resumo, estende o horizonte das contas fixas e das receitas até `to` antes de ler (o intervalo é validado antes, então um
+  pedido inválido não grava nada). Todos os membros leem, inclusive `viewer`.
 
 ## 7. Aviso de saldo de benefício ao pagar
 
@@ -151,9 +183,12 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 ## 11. Testes
 
 - Unitários (sem Docker): `income/rules_test.go` (líquido, soma de descontos, carteira, previsão com dia 31, horizonte) e
-  `summary/summary_test.go` (saldo, montagem, ordem das categorias).
+  `summary/summary_test.go` (saldo, projetado, atraso, montagem, ordem das categorias) e `summary/history_test.go` (intervalo
+  padrão e limites, meses vazios com zero, ordem das séries).
 - Ponta a ponta (Postgres real, `api/internal/api/incomes_test.go`): salário com INSS/IRRF/plano/coparticipação variável,
   reaplicação com `applyFrom` sem tocar nos recebidos, exclusão que não ressuscita, horizonte sob demanda, encerramento,
   VR em carteira livre, receber duas vezes, resumo com receita e despesa em carteiras diferentes, aviso de saldo, isolamento entre
-  casas, `viewer` e responsável fora da casa.
+  casas, `viewer` e responsável fora da casa. `summary_history_test.go`: histórico por competência (≠ vencimento), excluídas fora,
+  parcelas e fixas em `seriesCents`, horizonte estendido até `to`, 400 nos intervalos inválidos, `viewer` lendo, isolamento entre
+  casas; saldo projetado com o salário só previsto, "a pagar" estimado pela carteira da categoria (filha herda da mãe) e atraso.
 - Manual: pasta **8. Receitas, fontes de receita e resumo do mês** da coleção em [postman/](postman/prumia.postman_collection.json).
