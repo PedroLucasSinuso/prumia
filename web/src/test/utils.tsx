@@ -107,6 +107,8 @@ type Routes = {
   /** Leitura de boleto: resposta fixa ou calculada pelo corpo (ex.: pedir senha só se ela não veio). */
   extract?: Reply | ((body: { file: File; password?: string }) => Reply)
   invoiceDetail?: Reply
+  /** GET /purchases/{id} (detalhe da compra no painel da parcela). Padrão: 404. */
+  purchase?: Reply
 }
 
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
@@ -130,6 +132,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/recurrences') return r.recurrences ?? ok([])
     if (url === '/households/{householdId}/summary') return r.summary ?? ok(emptySummary)
     if (url === '/households/{householdId}/invoices/{invoiceId}') return r.invoiceDetail ?? fail(404, 'not_found')
+    if (url === '/households/{householdId}/purchases/{purchaseId}') return r.purchase ?? fail(404, 'not_found')
     throw new Error('GET inesperado: ' + url)
   }) as never)
   vi.spyOn(api, 'POST').mockImplementation((async (url: string, init?: { body?: unknown }) => {

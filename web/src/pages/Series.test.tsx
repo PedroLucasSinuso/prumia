@@ -97,6 +97,7 @@ describe('parcela no mês', () => {
     mockApi({ me: ok(me), invoices: ok({ items: [parcela] }) })
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Notebook (3/6)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Editar' }))
     await userEvent.click(screen.getByRole('button', { name: 'esta e as seguintes' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(api.PATCH).toHaveBeenCalled())
@@ -111,6 +112,7 @@ describe('parcela no mês', () => {
     mockApi({ me: ok(me), invoices: ok({ items: [parcela] }) })
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Notebook (3/6)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Editar' }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledWith(
       '/households/{householdId}/invoices/{invoiceId}',

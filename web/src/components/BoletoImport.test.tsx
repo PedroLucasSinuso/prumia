@@ -284,7 +284,8 @@ describe('importar boleto', () => {
     await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
     await user.click(within(await within(dialog).findByRole('alert')).getByRole('button', { name: 'Abrir a conta' }))
     expect(await screen.findByRole('dialog', { name: 'Detalhes da conta' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Descrição')).toHaveValue('Luz de setembro')
+    // abre em modo leitura (o detalhe), com a descrição como título
+    expect(screen.getByRole('heading', { name: 'Luz de setembro' })).toBeInTheDocument()
   })
 
   it('copiar linha digitável copia só os dígitos e avisa', async () => {
