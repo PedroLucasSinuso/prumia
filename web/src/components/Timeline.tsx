@@ -34,17 +34,17 @@ export function Timeline({ invoices, categoryName, today, selectedId, canWrite, 
   return (
     <ol className="relative">
       {/* o prumo: a linha que passa pelo centro dos nós (12 + 40 + 22 = 74px) */}
-      <span aria-hidden="true" className="absolute bottom-0 left-[73px] top-0 w-0.5 bg-graphite/20 md:left-[85px]" />
+      <span aria-hidden="true" className="absolute bottom-0 left-[73px] top-0 w-0.5 bg-ink/20 md:left-[85px]" />
       {items.map((item, idx) =>
         item.kind === 'today' ? (
           <li key={`hoje-${idx}`} className="grid min-h-9 grid-cols-[40px_44px_1fr] items-center px-3 md:grid-cols-[56px_44px_1fr]">
             <span />
             <span className="flex justify-center">
-              <span aria-hidden="true" className="size-3 rotate-45 bg-signal outline-[3px] outline-ivory" />
+              <span aria-hidden="true" className="size-3 rotate-45 bg-alert outline-[3px] outline-surface" />
             </span>
             <span className="flex items-center gap-2.5 pl-1.5">
               <span className="font-mono text-[11px] font-semibold tracking-widest">HOJE · {dayMonth(today!)}</span>
-              <span aria-hidden="true" className="flex-1 border-t-2 border-signal" />
+              <span aria-hidden="true" className="flex-1 border-t-2 border-alert" />
             </span>
           </li>
         ) : (
@@ -77,7 +77,7 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
 }) {
   const paid = invoice.status === 'paid'
   const overdue = invoice.status === 'overdue'
-  const node = paid ? 'border-teal bg-teal' : overdue ? 'border-signal bg-signal' : 'border-graphite'
+  const node = paid ? 'border-structure bg-structure' : overdue ? 'border-alert bg-alert' : 'border-ink'
   const tag = seriesTag(invoice)
   const lateDays = overdue && today ? daysBetween(invoice.dueDate, today) : 0
   const meta = paid && invoice.paid
@@ -87,10 +87,10 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
       : `vence dia ${invoice.dueDate.slice(8, 10)}`
 
   return (
-    <li className={`grid min-h-15 grid-cols-[40px_44px_1fr] items-center border-l-4 px-3 md:grid-cols-[56px_44px_1fr] ${selected ? 'border-teal bg-teal/7' : 'border-transparent'}`}>
+    <li className={`grid min-h-15 grid-cols-[40px_44px_1fr] items-center border-l-4 px-3 md:grid-cols-[56px_44px_1fr] ${selected ? 'border-structure bg-structure/7' : 'border-transparent'}`}>
       <span className="flex flex-col items-end pr-2 leading-tight md:pr-2.5">
         <span className="font-mono text-[15px] font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
-        <span className="text-[11px] text-graphite/75">{weekdayShort(invoice.dueDate)}</span>
+        <span className="text-[11px] text-ink/75">{weekdayShort(invoice.dueDate)}</span>
       </span>
       <button
         aria-label={paid ? `Desfazer pagamento de ${invoice.description}` : `Pagar ${invoice.description}`}
@@ -98,19 +98,19 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
         onClick={() => onTogglePaid(invoice)}
         className="flex h-14 w-11 items-center justify-center disabled:cursor-default"
       >
-        <span className={`flex size-5 items-center justify-center rounded-sm border-2 outline-4 outline-ivory ${node}`}>
-          {paid && <span className="size-2 rounded-[1px] bg-ivory" />}
+        <span className={`flex size-5 items-center justify-center rounded-sm border-2 outline-4 outline-surface ${node}`}>
+          {paid && <span className="size-2 rounded-[1px] bg-on-structure" />}
         </span>
       </button>
       <button aria-label={`Detalhes de ${invoice.description}`} onClick={() => onOpen(invoice)} className="flex min-h-14 min-w-0 items-center justify-between gap-3 py-2 pl-1 text-left">
         <span className="min-w-0">
-          <span className={`block truncate text-[15px] font-medium ${paid ? 'text-graphite/60 line-through' : ''}`}>{invoice.description}</span>
-          <span className="block truncate text-xs text-graphite/80">
-            {tag && <span className="mr-1 rounded-xs border border-graphite/40 px-1 font-mono text-[10px] text-graphite/80">{tag}</span>}
+          <span className={`block truncate text-[15px] font-medium ${paid ? 'text-ink/60 line-through' : ''}`}>{invoice.description}</span>
+          <span className="block truncate text-xs text-ink/80">
+            {tag && <span className="mr-1 rounded-xs border border-ink/40 px-1 font-mono text-[10px] text-ink/80">{tag}</span>}
             {category} · {meta}
           </span>
         </span>
-        <span className={`shrink-0 font-mono text-[15px] font-semibold tabular-nums ${paid ? 'text-graphite/60 line-through' : ''}`}>
+        <span className={`shrink-0 font-mono text-[15px] font-semibold tabular-nums ${paid ? 'text-ink/60 line-through' : ''}`}>
           {formatCents(invoice.amountCents)}
         </span>
       </button>

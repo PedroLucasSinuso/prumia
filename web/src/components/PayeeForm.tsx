@@ -22,8 +22,8 @@ type Props = {
   onDone: (message: string) => void
 }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-graphite/70'
-const select = 'h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base text-graphite'
+const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
+const select = 'h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink'
 
 /**
  * Favorecido: o nome que a casa escolhe ("Gás") para quem recebe o pagamento, com CNPJ opcional (serve para
@@ -106,8 +106,8 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
           }
         }} />
       {found && (
-        <p className="-mt-2 text-xs text-graphite/75" aria-live="polite">
-          <span aria-hidden="true" className="font-mono text-cobalt">[ ▪ ]</span> CNPJ conferido: {found.legalName}
+        <p className="-mt-2 text-xs text-ink/75" aria-live="polite">
+          <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> CNPJ conferido: {found.legalName}
           {found.tradeName ? ` (${found.tradeName})` : ''}
         </p>
       )}
@@ -123,7 +123,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
             ...n.children.map((c) => <option key={c.id} value={c.id}>{n.category.name} › {c.name}</option>),
           ])}
         </select>
-        {fields.defaultCategoryId && <p className="text-xs text-signal">{fields.defaultCategoryId}</p>}
+        {fields.defaultCategoryId && <p className="text-xs text-alert">{fields.defaultCategoryId}</p>}
       </div>
 
       {canWrite && (
@@ -133,17 +133,17 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
       )}
 
       {payee && canWrite && (
-        <div className="flex flex-col gap-2 border-t border-graphite/15 pt-4">
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
           {archived ? (
             <>
-              <p className="text-sm text-graphite/80">Arquivado: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
+              <p className="text-sm text-ink/80">Arquivado: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
               <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: false }), `${payee.name} restaurado.`)}>
                 Restaurar favorecido
               </Button>
             </>
           ) : (
             <>
-              <p className="text-sm text-graphite/80">Arquivar tira o favorecido da lista ao lançar contas novas. As contas antigas continuam com ele.</p>
+              <p className="text-sm text-ink/80">Arquivar tira o favorecido da lista ao lançar contas novas. As contas antigas continuam com ele.</p>
               <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: true }), `${payee.name} arquivado.`)}>
                 Arquivar favorecido
               </Button>

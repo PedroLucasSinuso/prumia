@@ -23,16 +23,16 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled }: Pro
 
   return (
     <fieldset className="flex flex-col gap-2" disabled={disabled}>
-      <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80">Descontos</legend>
-      {value.length === 0 && <p className="text-xs text-graphite/75">Sem descontos. Adicione INSS, IRRF, plano de saúde, coparticipação...</p>}
+      <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">Descontos</legend>
+      {value.length === 0 && <p className="text-xs text-ink/75">Sem descontos. Adicione INSS, IRRF, plano de saúde, coparticipação...</p>}
       {value.map((d, i) => (
-        <div key={i} className="flex flex-col gap-1.5 rounded-md border border-graphite/15 p-2">
+        <div key={i} className="flex flex-col gap-1.5 rounded-md border border-line p-2">
           <div className="flex items-start gap-2">
             <select
               aria-label={`Tipo do desconto ${i + 1}`}
               value={d.kind}
               onChange={(e) => setKind(i, e.target.value as DeductionKind)}
-              className="h-11 min-w-0 flex-1 rounded-md border border-graphite/25 bg-white/40 px-2 text-sm"
+              className="h-11 min-w-0 flex-1 rounded-md border border-ink/25 bg-white/40 px-2 text-sm"
             >
               {deductionKinds.map((k) => (
                 <option key={k} value={k}>
@@ -47,7 +47,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled }: Pro
               type="button"
               aria-label={`Remover desconto ${i + 1}`}
               onClick={() => onChange(value.filter((_, k) => k !== i))}
-              className="flex size-11 shrink-0 items-center justify-center rounded-md text-lg hover:bg-graphite/5"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md text-lg hover:bg-ink/5"
             >
               ×
             </button>
@@ -57,9 +57,9 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled }: Pro
           )}
         </div>
       ))}
-      {errors.deductions && <p className="text-xs text-signal">{errors.deductions}</p>}
+      {errors.deductions && <p className="text-xs text-alert">{errors.deductions}</p>}
       <div className="flex items-center justify-between gap-2">
-        <button type="button" onClick={add} className="h-11 text-sm font-semibold text-cobalt underline underline-offset-4">
+        <button type="button" onClick={add} className="h-11 text-sm font-semibold text-accent underline underline-offset-4">
           + Adicionar desconto
         </button>
         {value.length > 0 && <span className="font-mono text-sm tabular-nums">− {formatCents(sumDeductions(value))}</span>}

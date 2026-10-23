@@ -41,20 +41,20 @@ export function MonthRuler({ invoices, month, todayDay, barArea = 56, className 
         {Array.from({ length: days }, (_, i) => {
           const day = i + 1
           const list = byDay.get(day)
-          if (!list) return <span key={day} className="min-h-[3px] flex-1 bg-graphite/30" style={{ height: 3 }} />
+          if (!list) return <span key={day} className="min-h-[3px] flex-1 bg-ink/30" style={{ height: 3 }} />
           const sum = list.reduce((s, x) => s + x.amountCents, 0)
           const overdue = list.some((x) => x.status === 'overdue')
           const allPaid = list.every((x) => x.status === 'paid')
-          const tone = overdue ? 'bg-signal' : allPaid ? 'bg-teal' : 'bg-cobalt'
+          const tone = overdue ? 'bg-alert' : allPaid ? 'bg-structure' : 'bg-accent'
           return <span key={day} className={`flex-1 rounded-t-xs ${tone}`} style={{ height: Math.max(10, Math.round((sum / max) * barArea)) }} />
         })}
         {todayDay !== undefined && (
-          <span aria-hidden="true" className="pointer-events-none absolute -top-1.5 bottom-0 border-l-[1.5px] border-graphite" style={{ left: `${((todayDay - 0.5) / days) * 100}%` }}>
-            <span className="absolute -left-[5px] -top-0.5 size-[9px] rotate-45 bg-graphite" />
+          <span aria-hidden="true" className="pointer-events-none absolute -top-1.5 bottom-0 border-l-[1.5px] border-ink" style={{ left: `${((todayDay - 0.5) / days) * 100}%` }}>
+            <span className="absolute -left-[5px] -top-0.5 size-[9px] rotate-45 bg-ink" />
           </span>
         )}
       </div>
-      <div aria-hidden="true" className="mt-1 flex justify-between font-mono text-[11px] text-graphite/75">
+      <div aria-hidden="true" className="mt-1 flex justify-between font-mono text-[11px] text-ink/75">
         <span>01</span>
         <span>10</span>
         <span>20</span>

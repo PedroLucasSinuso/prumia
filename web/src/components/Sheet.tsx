@@ -16,19 +16,19 @@ export function Sheet({ title, onClose, children }: Props) {
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-graphite/50 sm:items-center" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/50 sm:items-center" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-md border border-graphite/15 bg-ivory p-4 sm:rounded-md"
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-md border border-line bg-surface p-4 sm:rounded-md"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 id={titleId} className="text-xl font-semibold tracking-tight">
             {title}
           </h2>
-          <button aria-label="Fechar" onClick={onClose} className="h-11 w-11 rounded-md text-xl text-graphite hover:bg-graphite/5">
+          <button aria-label="Fechar" onClick={onClose} className="h-11 w-11 rounded-md text-xl text-ink hover:bg-ink/5">
             ×
           </button>
         </div>

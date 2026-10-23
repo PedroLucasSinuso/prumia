@@ -40,8 +40,8 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <AuthLayout title="Nova senha">
-        <p className="text-sm text-graphite/85">Este link está incompleto. Peça a quem administra a casa para gerar um novo.</p>
-        <Link to="/entrar" className="text-sm font-semibold text-cobalt underline underline-offset-2">Ir para o login</Link>
+        <p className="text-sm text-ink/85">Este link está incompleto. Peça a quem administra a casa para gerar um novo.</p>
+        <Link to="/entrar" className="text-sm font-semibold text-accent underline underline-offset-2">Ir para o login</Link>
       </AuthLayout>
     )
   }

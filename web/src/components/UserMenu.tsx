@@ -9,13 +9,13 @@ export function UserMenu() {
     <details className="relative">
       <summary
         aria-label={`Conta de ${name}`}
-        className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-md border border-graphite/25 text-base font-semibold text-teal [&::-webkit-details-marker]:hidden"
+        className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-md border border-ink/25 text-base font-semibold text-structure [&::-webkit-details-marker]:hidden"
       >
         {name.slice(0, 1).toUpperCase()}
       </summary>
-      <div className="absolute right-0 top-12 z-20 w-44 rounded-md border border-graphite/15 bg-ivory p-2 shadow-lg">
+      <div className="absolute right-0 top-12 z-20 w-44 rounded-md border border-line bg-surface p-2 shadow-lg">
         <p className="truncate px-2 pb-2 text-sm font-semibold">{name}</p>
-        <button onClick={() => void logout()} className="h-11 w-full rounded-sm px-2 text-left text-sm font-semibold text-teal hover:bg-graphite/5">
+        <button onClick={() => void logout()} className="h-11 w-full rounded-sm px-2 text-left text-sm font-semibold text-structure hover:bg-ink/5">
           Sair
         </button>
       </div>

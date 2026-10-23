@@ -54,7 +54,7 @@ const stripInstallmentSuffix = (d: string) => d.replace(/\s*\(\d+\/\d+\)\s*$/, '
 
 const chip = (on: boolean) =>
   `flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] ${
-    on ? 'border-teal bg-teal font-semibold text-ivory' : 'border-graphite/30 font-medium text-graphite hover:bg-graphite/5'
+    on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium text-ink hover:bg-ink/5'
   }`
 
 /**
@@ -221,7 +221,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
     <button key={key} type="button" aria-pressed={on} onClick={() => { setCategoryId(c.id); clear('categoryId') }} className={`${chip(on)} min-h-10`}>
       {text}
       {c.defaultWallet === 'benefit' && text !== 'geral' && (
-        <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-ivory/70' : 'border-graphite/50'}`} title="Sugere a carteira de benefício">
+        <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-on-structure/70' : 'border-ink/50'}`} title="Sugere a carteira de benefício">
           VR
         </span>
       )}
@@ -259,11 +259,11 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         />
       )}
       {fields.boleto && (
-        <p className="text-xs text-signal">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
+        <p className="text-xs text-alert">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
       )}
       {boleto && matchedPayee && (
-        <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm" aria-live="polite">
-          Favorecido: <strong>{matchedPayee.name}</strong> <span className="text-xs text-graphite/70">(reconhecido pelo CNPJ do boleto)</span>
+        <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
+          Favorecido: <strong>{matchedPayee.name}</strong> <span className="text-xs text-ink/70">(reconhecido pelo CNPJ do boleto)</span>
         </p>
       )}
       {boleto?.beneficiaryCnpj && !payeeId && (
@@ -285,7 +285,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         />
       )}
       {boleto?.beneficiaryCnpj && payeeId && !matchedPayee && (
-        <p className="text-xs text-graphite/70">O CNPJ deste boleto será associado ao favorecido escolhido, se ele ainda não tiver um.</p>
+        <p className="text-xs text-ink/70">O CNPJ deste boleto será associado ao favorecido escolhido, se ele ainda não tiver um.</p>
       )}
 
       <MoneyInput hero label={kind === 'installments' ? (amountIsTotal ? 'Valor total da compra' : 'Valor de cada parcela') : 'Valor'} value={amount} onChange={(c) => { setAmount(c); clear('amount') }} error={fields.amount} />
@@ -298,7 +298,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
             <button type="button" aria-pressed={amountIsTotal} onClick={() => setAmountIsTotal(true)} className={chip(amountIsTotal)}>total da compra</button>
           </div>
           {amount > 0 && Number(count) >= 2 && (
-            <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm" aria-live="polite">
+            <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
               {amountIsTotal
                 ? `${count}x de ${formatCents(Math.floor(amount / Number(count)))} (total ${formatCents(amount)}; sobra de centavos na última)`
                 : `${count}x de ${formatCents(amount)} = ${formatCents(amount * Number(count))}`}
@@ -308,7 +308,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
         </div>
       )}
       {!editing && kind === 'recurring' && (
-        <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm">
+        <p className="rounded-md border border-line px-3 py-2 text-sm">
           {amount > 0 ? `${formatCents(amount)} ` : ''}todo dia {dueDate.slice(8, 10)}, a partir deste mês. O app cria os próximos 12 meses e continua criando sozinho.
         </p>
       )}
@@ -327,7 +327,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
       />
 
       <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
-        <legend className={otherDate ? 'sr-only' : 'mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80'}>{!editing && kind === 'installments' ? '1ª parcela vence' : !editing && kind === 'recurring' ? 'Vence no dia' : 'Vence'}</legend>
+        <legend className={otherDate ? 'sr-only' : 'mb-1 text-xs font-medium uppercase tracking-wider text-ink/80'}>{!editing && kind === 'installments' ? '1ª parcela vence' : !editing && kind === 'recurring' ? 'Vence no dia' : 'Vence'}</legend>
         {!otherDate ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {dueChips.map((c) => (
@@ -350,27 +350,27 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
             error={fields.dueDate}
           />
         )}
-        {!otherDate && fields.dueDate && <p className="text-xs text-signal">{fields.dueDate}</p>}
+        {!otherDate && fields.dueDate && <p className="text-xs text-alert">{fields.dueDate}</p>}
       </fieldset>
 
       <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
-        <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80">Categoria</legend>
+        <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">Categoria</legend>
         <div className="flex flex-wrap gap-2">
           {tree.map(({ category: c }) => pick(c, c.name, topId === c.id))}
         </div>
         {/* Só aparece para quem criou subcategorias: tocar numa mãe com filhas abre esta 2ª linha (geral · Gás · Luz…). */}
         {topNode && topNode.children.length > 0 && (
-          <div role="group" aria-label={`Detalhe de ${topNode.category.name}`} className="flex flex-wrap gap-2 border-l-2 border-graphite/20 pl-3">
+          <div role="group" aria-label={`Detalhe de ${topNode.category.name}`} className="flex flex-wrap gap-2 border-l-2 border-ink/20 pl-3">
             {pick(topNode.category, 'geral', categoryId === topNode.category.id, 'geral')}
             {topNode.children.map((c) => pick(c, c.name, categoryId === c.id))}
           </div>
         )}
-        {fields.categoryId && <p className="text-xs text-signal">{fields.categoryId}</p>}
+        {fields.categoryId && <p className="text-xs text-alert">{fields.categoryId}</p>}
       </fieldset>
 
-      <details className="rounded-md border border-graphite/15 px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
+      <details className="rounded-md border border-line px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
         <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold">
-          Mais opções <span className="text-xs font-normal text-graphite/75">favorecido · competência · observação</span>
+          Mais opções <span className="text-xs font-normal text-ink/75">favorecido · competência · observação</span>
         </summary>
         <div className="mt-3 flex flex-col gap-4 pb-1">
           {!editing && kind === 'recurring' && (
@@ -378,13 +378,13 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
           )}
           {(editing || kind === 'single') && payeeOptions.length > 0 && (
             <div className="flex flex-col gap-1">
-              <label htmlFor="invoice-payee" className="text-xs font-medium uppercase tracking-wider text-graphite/70">Favorecido (opcional)</label>
+              <label htmlFor="invoice-payee" className="text-xs font-medium uppercase tracking-wider text-ink/70">Favorecido (opcional)</label>
               <select id="invoice-payee" value={payeeId} disabled={!canWrite} onChange={(e) => pickPayee(e.target.value)}
-                className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base text-graphite">
+                className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink">
                 <option value="">nenhum</option>
                 {payeeOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-              {fields.payeeId && <p className="text-xs text-signal">{fields.payeeId}</p>}
+              {fields.payeeId && <p className="text-xs text-alert">{fields.payeeId}</p>}
             </div>
           )}
           {(editing || kind === 'single') && (
@@ -404,14 +404,14 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
       </details>
 
       {editing && invoice.boleto && (
-        <section aria-label="Boleto" className="rounded-md border border-graphite/15 px-3 py-3">
+        <section aria-label="Boleto" className="rounded-md border border-line px-3 py-3">
           <BoletoBox boleto={invoice.boleto} />
         </section>
       )}
 
       {inSeries && canWrite && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80">
+          <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">
             {invoice.series?.kind === 'recurrence' ? 'Esta conta é fixa. Alterar' : 'Esta conta é uma parcela. Alterar'}
           </legend>
           <div className="grid grid-cols-2 gap-2">
@@ -419,14 +419,14 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
             <button type="button" aria-pressed={scope === 'following'} onClick={() => setScope('following')} className={chip(scope === 'following')}>esta e as seguintes</button>
           </div>
           {scope === 'following' && (
-            <p className="text-xs text-graphite/75">Vale para as ainda não pagas daqui para frente. Contas pagas e anteriores não mudam, e o vencimento de cada uma é mantido.</p>
+            <p className="text-xs text-ink/75">Vale para as ainda não pagas daqui para frente. Contas pagas e anteriores não mudam, e o vencimento de cada uma é mantido.</p>
           )}
         </fieldset>
       )}
 
       {paid && invoice.paid && (
-        <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm">
-          <span className="font-mono text-cobalt">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · {walletName[invoice.paid.wallet]} · {formatCents(invoice.paid.amountCents)}
+        <p className="rounded-md border border-line px-3 py-2 text-sm">
+          <span className="font-mono text-accent">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · {walletName[invoice.paid.wallet]} · {formatCents(invoice.paid.amountCents)}
         </p>
       )}
 
@@ -445,7 +445,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
               type="button"
               disabled={busy || !description || amount <= 0 || !dueDate || !categoryId}
               onClick={() => void submit(true)}
-              className="h-11 text-sm font-semibold text-cobalt underline underline-offset-4 disabled:text-graphite/40"
+              className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-ink/40"
             >
               Adicionar e lançar outra
             </button>
@@ -457,11 +457,11 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
           )}
           {editing && (
             <>
-              <button type="button" onClick={() => onDelete(invoice, 'this')} className="h-11 text-sm font-semibold text-graphite underline underline-offset-4">
+              <button type="button" onClick={() => onDelete(invoice, 'this')} className="h-11 text-sm font-semibold text-ink underline underline-offset-4">
                 {inSeries ? 'Excluir só esta' : 'Excluir conta'}
               </button>
               {inSeries && (
-                <button type="button" onClick={() => onDelete(invoice, 'following')} className="h-11 text-sm font-semibold text-graphite underline underline-offset-4">
+                <button type="button" onClick={() => onDelete(invoice, 'following')} className="h-11 text-sm font-semibold text-ink underline underline-offset-4">
                   Excluir esta e as seguintes
                 </button>
               )}

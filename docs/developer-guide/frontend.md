@@ -143,18 +143,40 @@ no detalhe de uma conta que já tem `boleto`. Testes: `components/BoletoImport.t
 
 ## Marca no código
 
-Os tokens estão em `src/index.css` (`@theme`) e viram classes do Tailwind:
+As cores são **tokens semânticos** (papel, não nome de cor) em `src/index.css` (`@theme inline`) e viram classes do Tailwind.
+Nunca use as classes antigas `ivory`/`teal`/`graphite`/`cobalt`/`signal` (não existem mais).
 
-| Token | Classe | Uso |
-|---|---|---|
-| `#F3EBDD` ivory | `bg-ivory` | fundo (≈60%) |
-| `#203D40` teal | `bg-teal` / `text-teal` | estrutura: topo, menus, painéis |
-| `#313638` graphite | `text-graphite` | texto e bordas |
-| `#416A91` cobalt | `text-cobalt` | acento: seleção, dados ativos |
-| `#F06B4F` signal | `text-signal` | alertas (raro, nunca inundar) |
+| Token | Classe | Uso | Marfim |
+|---|---|---|---|
+| `surface` | `bg-surface` | fundo da página, folhas, menus | ivory |
+| `ink` | `text-ink`, `border-ink/25`, `bg-ink/5` | texto e bordas (tons por opacidade) | graphite |
+| `line` | `border-line` | borda padrão (= `ink/15`; mais forte no tema Contraste) | graphite 15% |
+| `structure` | `bg-structure` / `text-structure` | títulos, valores em destaque, botão primário, painéis, barra lateral | teal |
+| `on-structure` | `text-on-structure` | texto/ícone sobre `bg-structure` | ivory |
+| `accent` | `text-accent` / `bg-accent` | dado ativo, links, seleção | cobalt |
+| `alert` | `text-alert` / `bg-alert` | só alerta (atraso, hoje, erro; ≤10%) | signal |
+
+**Como funciona.** Cada token aponta para uma variável `--prumia-*` (`@theme inline { --color-ink: var(--prumia-ink) }`), e
+o tema troca essas variáveis pelo atributo `data-theme` do `<html>` (`marfim`, `grafite`, `contraste`, `sistema`). Como o
+Tailwind escreve `var(--prumia-ink)` direto na classe, opacidade funciona em qualquer tema (`bg-ink/15` vira
+`color-mix(in oklab, var(--prumia-ink) 15%, transparent)`). `text-accent` tem variável própria (`--prumia-accent-text`)
+porque no Grafite o cobalto não passa 4,5:1 como texto; `bg-accent`/`border-accent` seguem cobalto. Em valor arbitrário,
+use a variável do token (`shadow-[0_2px_0_var(--color-ink)]`). Pares que sempre funcionam: `bg-surface text-ink`,
+`bg-structure text-on-structure`, `bg-ink text-surface` (avisos invertidos).
+
+**Tema no código.** `src/lib/theme.ts`:
+- `useTheme()` → `{ theme, resolved, setTheme }` (compartilhado entre componentes; `resolved` diz se `sistema` está claro ou escuro);
+- `THEMES` (id, rótulo e descrição em pt-BR, para a tela de escolha), `DEFAULT_THEME` (`marfim`), `THEME_STORAGE_KEY`;
+- preferência por aparelho em `localStorage` (`prumia.theme`, com try/catch); `setTheme` aplica `data-theme` e a
+  `<meta name="theme-color">`.
+
+`public/theme-init.js` aplica o tema salvo **antes** do bundle (sem piscar); é arquivo externo porque a CSP só aceita
+scripts de `'self'`. Mantenha-o em sincronia com `theme.ts` (há teste que confere). `main.tsx` chama `startThemeSync()`, que
+atualiza a cor da barra quando o aparelho troca de modo no tema `sistema`. Ao criar um tema novo: só as 5 cores, defina o
+bloco `:root[data-theme='...']` em `index.css`, acrescente em `THEMES`/`THEME_COLOR` e no `theme-init.js`, e meça o contraste.
 
 Regras (manual de identidade): sem gradientes nem `rounded-full`; raio de 4–6px (`rounded-sm`/`rounded-md`); bordas finas
-`border-graphite/15`; números com `tabular-nums` (já global) e `font-mono` nos saldos; textos em pt-BR; marca sempre
+`border-line`; números com `tabular-nums` (já global) e `font-mono` nos saldos; textos em pt-BR; marca sempre
 minúscula. Status com os marcadores `[ ▪ ]`, `[ ▫ ]`, `[ ✖ ]`.
 
 O `public/favicon.svg` é um **placeholder**; falta o símbolo oficial (os ícones do PWA também; ver a seção PWA).
