@@ -7,6 +7,7 @@ import App from '../App'
 import { api } from '../api/client'
 import type { Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
+import { addMonths } from '../lib/dates'
 import { ToastProvider } from '../components/Toast'
 
 export type Reply = { data?: unknown; error?: Problem; response?: { ok: boolean } }
@@ -43,10 +44,10 @@ export const members: Member[] = [
 export const emptySummary: MonthlySummary = {
   month: '2026-10-01',
   wallets: {
-    free: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0 },
-    benefit: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0 },
+    free: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0, pendingCents: 0, projectedCents: 0 },
+    benefit: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0, pendingCents: 0, projectedCents: 0 },
   },
-  totalPaidCents: 0, totalPendingCents: 0, byCategory: [],
+  totalPaidCents: 0, totalPendingCents: 0, overdueCents: 0, overdueCount: 0, byCategory: [],
 }
 
 export function income(over: Partial<Income> & Pick<Income, 'id' | 'description'>): Income {
@@ -65,6 +66,8 @@ type Routes = {
   incomes?: Reply
   sources?: Reply
   summary?: Reply
+  /** GET /summary/categories: fixa ou calculada pelo intervalo pedido. Padrão: os meses do intervalo, sem séries. */
+  history?: Reply | ((q: { from: string; to: string }) => Reply)
   createIncome?: Reply
   updateIncome?: Reply
   removeIncome?: Reply
@@ -133,6 +136,11 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/purchases') return r.purchases ?? ok({ items: [] })
     if (url === '/households/{householdId}/recurrences') return r.recurrences ?? ok([])
     if (url === '/households/{householdId}/summary') return r.summary ?? ok(emptySummary)
+    if (url === '/households/{householdId}/summary/categories') {
+      const q = (init?.params?.query ?? {}) as { from: string; to: string }
+      if (typeof r.history === 'function') return r.history(q)
+      return r.history ?? ok({ months: monthsBetween(q.from, q.to), series: [] })
+    }
     if (url === '/households/{householdId}/invoices/{invoiceId}') return r.invoiceDetail ?? fail(404, 'not_found')
     throw new Error('GET inesperado: ' + url)
   }) as never)
@@ -190,6 +198,13 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.removeIncome ?? { response: { ok: true } }
     return r.remove ?? { response: { ok: true } }
   }) as never)
+}
+
+/** Meses "AAAA-MM-01" de `from` a `to`, inclusive (como o servidor devolve em `months`). */
+export function monthsBetween(from: string, to: string): string[] {
+  const out: string[] = []
+  for (let m = from; m <= to && out.length < 24; m = addMonths(m, 1)) out.push(m)
+  return out
 }
 
 export function renderAt(path: string) {

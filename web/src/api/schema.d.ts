@@ -709,6 +709,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/summary/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Gasto por categoria mês a mês (histórico para os gráficos), por competência
+         * @description Uma série por categoria FOLHA (a soma da categoria principal é feita no cliente), com todos os meses do intervalo
+         *     (meses sem contas vêm com zero). `from` e `to` são dias 1; padrão = os 6 meses até o mês atual. Máximo 24 meses.
+         *     Estende a previsão das contas fixas até `to`, como o resumo. Todos os membros leem.
+         */
+        get: operations["getCategoryHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/boletos/extract": {
         parameters: {
             query?: never;
@@ -1271,6 +1295,10 @@ export interface components {
             paidCents: components["schemas"]["Cents"];
             /** @description Recebido - pago (estimativa, não é saldo bancário) */
             balanceCents: components["schemas"]["Cents"];
+            /** @description Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar. */
+            pendingCents: components["schemas"]["Cents"];
+            /** @description Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar. */
+            projectedCents: components["schemas"]["Cents"];
         };
         MonthlySummary: {
             month: components["schemas"]["Month"];
@@ -1280,8 +1308,32 @@ export interface components {
             };
             totalPaidCents: components["schemas"]["Cents"];
             totalPendingCents: components["schemas"]["Cents"];
+            /** @description Parte do pendente já vencida (vencimento antes de hoje) */
+            overdueCents: components["schemas"]["Cents"];
+            /** @description Quantas invoices da competência estão atrasadas */
+            overdueCount: number;
             /** @description Ordenado por total (maior primeiro). Inclui categorias arquivadas que tenham invoices no mês. */
             byCategory: components["schemas"]["CategoryTotal"][];
+        };
+        CategoryHistory: {
+            /** @description Todos os meses do intervalo, em ordem */
+            months: components["schemas"]["Month"][];
+            /** @description Uma por categoria com contas no intervalo, da maior soma para a menor. Cada uma tem um ponto por mês de `months`. */
+            series: components["schemas"]["CategorySeries"][];
+        };
+        CategorySeries: {
+            /** Format: uuid */
+            categoryId: string;
+            points: components["schemas"]["CategoryPoint"][];
+        };
+        CategoryPoint: {
+            month: components["schemas"]["Month"];
+            /** @description Como no resumo: pago (valor efetivo) + pendente (valor da invoice) */
+            totalCents: components["schemas"]["Cents"];
+            /** @description Parte já paga */
+            paidCents: components["schemas"]["Cents"];
+            /** @description Parte do total que é parcela ou conta fixa (compromissos) */
+            seriesCents: components["schemas"]["Cents"];
         };
         CategoryTotal: {
             /** Format: uuid */
@@ -2727,6 +2779,34 @@ export interface operations {
                     "application/json": components["schemas"]["MonthlySummary"];
                 };
             };
+        };
+    };
+    getCategoryHistory: {
+        parameters: {
+            query?: {
+                /** @description Primeiro mês (dia 1). Padrão: 5 meses antes de `to` */
+                from?: string;
+                /** @description Último mês (dia 1). Padrão: o mês atual */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryHistory"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
     };
     extractBoleto: {

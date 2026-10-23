@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { BoletoExtraction, DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -256,6 +256,19 @@ export function useSummary(houseId: string, month: string) {
     queryKey: [...keys.summary(houseId), month] as const,
     queryFn: (): Promise<MonthlySummary> =>
       unwrap(api.GET('/households/{householdId}/summary', { params: { path: { householdId: houseId }, query: { month } } })),
+  })
+}
+
+/**
+ * Histórico por categoria (gráficos do resumo), de `from` a `to` (dias 1, no máximo 24 meses). Fica sob a chave do resumo:
+ * tudo que invalida o resumo (pagar, lançar, receber) também atualiza os gráficos.
+ */
+export function useCategoryHistory(houseId: string, from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: [...keys.summary(houseId), 'history', from, to] as const,
+    enabled: enabled && houseId !== '',
+    queryFn: (): Promise<CategoryHistory> =>
+      unwrap(api.GET('/households/{householdId}/summary/categories', { params: { path: { householdId: houseId }, query: { from, to } } })),
   })
 }
 
