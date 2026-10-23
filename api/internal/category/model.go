@@ -27,8 +27,10 @@ type Category struct {
 	// IsEssential marca gasto essencial: base da meta da reserva de emergência (pós-MVP).
 	IsEssential bool
 	SortOrder   int
-	ArchivedAt  *time.Time
-	DeletedAt   gorm.DeletedAt
+	// ParentID: categoria-mãe (nil = de topo). Só dois níveis: a mãe é sempre de topo.
+	ParentID   *uuid.UUID `gorm:"type:uuid"`
+	ArchivedAt *time.Time
+	DeletedAt  gorm.DeletedAt
 }
 
 func (Category) TableName() string { return "categories" }

@@ -375,7 +375,10 @@ type Category struct {
 	Id            openapi_types.UUID `json:"id"`
 	IsEssential   bool               `json:"isEssential"`
 	Name          string             `json:"name"`
-	SortOrder     int                `json:"sortOrder"`
+
+	// ParentId Categoria principal (só dois níveis); null = de topo
+	ParentId  *openapi_types.UUID `json:"parentId,omitempty"`
+	SortOrder int                 `json:"sortOrder"`
 }
 
 // CategoryInput defines model for CategoryInput.
@@ -383,6 +386,9 @@ type CategoryInput struct {
 	DefaultWallet *Wallet `json:"defaultWallet,omitempty"`
 	IsEssential   *bool   `json:"isEssential,omitempty"`
 	Name          string  `json:"name"`
+
+	// ParentId Cria dentro desta categoria principal
+	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
 }
 
 // CategoryPatch defines model for CategoryPatch.
@@ -391,7 +397,10 @@ type CategoryPatch struct {
 	DefaultWallet *Wallet `json:"defaultWallet,omitempty"`
 	IsEssential   *bool   `json:"isEssential,omitempty"`
 	Name          *string `json:"name,omitempty"`
-	SortOrder     *int    `json:"sortOrder,omitempty"`
+
+	// ParentId Move para dentro de uma categoria principal; null = volta ao topo
+	ParentId  *openapi_types.UUID `json:"parentId,omitempty"`
+	SortOrder *int                `json:"sortOrder,omitempty"`
 }
 
 // CategoryTotal defines model for CategoryTotal.
@@ -1182,7 +1191,7 @@ type ServerInterface interface {
 	// CreateCategory Cria categoria (member+)
 	// (POST /households/{householdId}/categories)
 	CreateCategory(c *gin.Context, householdId HouseholdId)
-	// DeleteCategory Exclui categoria sem uso. Em uso, responde 409 (arquive em vez disso).
+	// DeleteCategory Exclui categoria sem uso e sem subcategorias. Em uso ou com subcategorias, responde 409.
 	// (DELETE /households/{householdId}/categories/{categoryId})
 	DeleteCategory(c *gin.Context, householdId HouseholdId, categoryId openapi_types.UUID)
 	// UpdateCategory Edita ou arquiva categoria

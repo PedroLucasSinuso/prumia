@@ -9,8 +9,10 @@ import { InvoiceSheet } from '../components/InvoiceSheet'
 import { MonthRuler } from '../components/MonthRuler'
 import { MonthSelector } from '../components/MonthSelector'
 import { PaidGauge } from '../components/PaidGauge'
+import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { Timeline } from '../components/Timeline'
 import { useToast } from '../components/toastContext'
+import { rollup } from '../lib/categories'
 import { currentMonth, todayISO } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { useIsDesktop } from '../lib/useIsDesktop'
@@ -55,11 +57,17 @@ export default function MonthPage() {
     () => list.filter((i) => (filter === 'all' ? true : filter === 'paid' ? i.status === 'paid' : i.status !== 'paid')),
     [list, filter],
   )
+  // Por categoria: a mãe soma as filhas (a conta fica na categoria mais específica; ver lib/categories).
   const byCategory = useMemo(() => {
-    const sums = new Map<string, number>()
-    for (const i of list) sums.set(i.categoryId, (sums.get(i.categoryId) ?? 0) + i.amountCents)
-    return [...sums.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-  }, [list])
+    const sums = new Map<string, { totalCents: number; paidCents: number }>()
+    for (const i of list) {
+      const cur = sums.get(i.categoryId) ?? { totalCents: 0, paidCents: 0 }
+      cur.totalCents += i.amountCents
+      if (i.status === 'paid') cur.paidCents += i.paid?.amountCents ?? i.amountCents
+      sums.set(i.categoryId, cur)
+    }
+    return rollup([...sums.entries()].map(([categoryId, v]) => ({ categoryId, ...v })), categories.data ?? []).slice(0, 5)
+  }, [list, categories.data])
 
   if (!house) return null
   const canWrite = house.role !== 'viewer'
@@ -274,19 +282,7 @@ export default function MonthPage() {
               {byCategory.length > 0 && (
                 <section aria-label="Por categoria" className="rounded-md border border-graphite/20 p-4">
                   <h2 className={`${label} mb-3 text-graphite/80`}>por categoria</h2>
-                  <ul className="flex flex-col gap-2.5">
-                    {byCategory.map(([id, sum]) => (
-                      <li key={id}>
-                        <p className="flex justify-between text-[13px]">
-                          <span className="font-medium">{categoryById.get(id)?.name ?? 'Sem categoria'}</span>
-                          <span className="font-mono tabular-nums">{formatCents(sum)}</span>
-                        </p>
-                        <span className="mt-1 block h-2 rounded-xs bg-graphite/10">
-                          <span className="block h-2 rounded-xs bg-cobalt" style={{ width: `${Math.round((sum / byCategory[0][1]) * 100)}%` }} />
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <CategoryBreakdown rows={byCategory} gap="gap-2.5" />
                 </section>
               )}
             </aside>

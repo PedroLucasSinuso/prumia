@@ -126,6 +126,75 @@ describe('ajustes · categorias', () => {
   })
 })
 
+describe('ajustes · subcategorias', () => {
+  const tree: Category[] = [
+    { id: 'c1', name: 'Moradia', defaultWallet: 'benefit', isEssential: true, sortOrder: 0, archived: false },
+    { id: 'c3', name: 'Lazer', isEssential: false, sortOrder: 1, archived: false },
+    { id: 'g1', name: 'Gás', isEssential: true, sortOrder: 0, archived: false, parentId: 'c1' },
+    { id: 'l1', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
+  ]
+
+  it('mostra as subcategorias logo abaixo da mãe', async () => {
+    mockApi({ me: ok(me), categories: ok(tree) })
+    renderAt('/configuracoes')
+    await screen.findByRole('button', { name: 'Abrir Moradia' })
+    const list = screen.getByRole('list', { name: 'Categorias ativas' })
+    expect(within(list).getAllByRole('button', { name: /^Abrir/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Abrir Moradia', 'Abrir Gás', 'Abrir Luz', 'Abrir Lazer'])
+  })
+
+  it('"+ sub" cria dentro da mãe, já com a carteira e o essencial dela', async () => {
+    mockApi({ me: ok(me), categories: ok(tree), createCategory: ok({ id: 'n1', name: 'Água', isEssential: true, sortOrder: 2, archived: false, parentId: 'c1' }) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova subcategoria em Moradia' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nova subcategoria' })
+    expect(within(dialog).getByLabelText('dentro de')).toHaveValue('c1')
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Água')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Criar categoria' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        '/households/{householdId}/categories',
+        expect.objectContaining({ body: { name: 'Água', defaultWallet: 'benefit', isEssential: true, parentId: 'c1' } }),
+      ),
+    )
+  })
+
+  it('mover uma categoria para dentro de outra manda parentId; voltar ao topo manda null; sem mudar, não manda', async () => {
+    mockApi({ me: ok(me), categories: ok(tree) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: 'Abrir Lazer' }))
+    let dialog = await screen.findByRole('dialog', { name: 'Lazer' })
+    await userEvent.selectOptions(within(dialog).getByLabelText('dentro de'), 'c1')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Lazer', defaultWallet: null, isEssential: false, parentId: 'c1' }))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Abrir Gás' }))
+    dialog = await screen.findByRole('dialog', { name: 'Gás' })
+    await userEvent.selectOptions(within(dialog).getByLabelText('dentro de'), '')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', defaultWallet: null, isEssential: true, parentId: null }))
+  })
+
+  it('categoria com subcategorias não pode virar filha e avisa o que acontece ao arquivar', async () => {
+    mockApi({ me: ok(me), categories: ok(tree) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: 'Abrir Moradia' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Moradia' })
+    expect(within(dialog).queryByLabelText('dentro de')).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/tem subcategorias/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/subcategorias são arquivadas junto/)).toBeInTheDocument()
+  })
+
+  it('as setas movem só entre as irmãs (as filhas têm ordem própria)', async () => {
+    mockApi({ me: ok(me), categories: ok(tree) })
+    renderAt('/configuracoes')
+    expect(await screen.findByRole('button', { name: 'Subir Gás' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Subir Luz' }))
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2))
+    const calls = vi.mocked(api.PATCH).mock.calls.map((c) => [(c[1] as { params: { path: { categoryId: string } } }).params.path.categoryId, (c[1] as { body: unknown }).body])
+    expect(calls).toEqual([['l1', { sortOrder: 0 }], ['g1', { sortOrder: 1 }]])
+  })
+})
+
 describe('ajustes · favorecidos', () => {
   const gas = { id: 'p1', name: 'Gás', cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', defaultCategoryId: 'c1', archived: false }
 

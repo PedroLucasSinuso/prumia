@@ -9,9 +9,10 @@ import { CategoryForm } from '../components/CategoryForm'
 import { PayeesSection } from '../components/PayeesSection'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/toastContext'
+import { buildTree } from '../lib/categories'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
-type Editing = { kind: 'new' } | { kind: 'edit'; id: string } | null
+type Editing = { kind: 'new'; parentId?: string } | { kind: 'edit'; id: string } | null
 
 const label = 'text-xs font-medium uppercase tracking-wider'
 const walletText = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
@@ -43,14 +44,16 @@ function SettingsView() {
   const all = useMemo(() => [...(categories.data ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'pt-BR')), [categories.data])
   const active = all.filter((c) => !c.archived)
   const archived = all.filter((c) => c.archived)
+  const tree = useMemo(() => buildTree(active), [active])
 
   if (!house) return null
   const canWrite = house.role !== 'viewer'
   const selected = editing?.kind === 'edit' ? all.find((c) => c.id === editing.id) : undefined
   const close = () => setEditing(null)
 
-  function move(index: number, delta: -1 | 1) {
-    const next = [...active]
+  // Setas movem a categoria dentro das irmãs (mesma mãe, ou entre as de topo): `siblings` é o grupo.
+  function move(siblings: Category[], index: number, delta: -1 | 1) {
+    const next = [...siblings]
     const [item] = next.splice(index, 1)
     next.splice(index + delta, 0, item)
     actions.reorder.mutate(next, { onError: () => toast({ message: 'Não foi possível mudar a ordem. Tente de novo.' }) })
@@ -59,8 +62,10 @@ function SettingsView() {
   const form =
     editing?.kind === 'new' || selected ? (
       <CategoryForm
-        key={selected?.id ?? 'nova'}
+        key={selected?.id ?? `nova-${editing?.kind === 'new' ? (editing.parentId ?? '') : ''}`}
         category={selected}
+        all={all}
+        defaultParentId={editing?.kind === 'new' ? editing.parentId : undefined}
         canWrite={canWrite}
         onCreate={(body) => actions.create.mutateAsync(body)}
         onUpdate={(id, body) => actions.update.mutateAsync({ id, body })}
@@ -70,22 +75,29 @@ function SettingsView() {
         }}
       />
     ) : null
-  const panelTitle = editing?.kind === 'new' ? 'Nova categoria' : (selected?.name ?? 'Categoria')
+  const panelTitle = editing?.kind === 'new' ? (editing.parentId ? 'Nova subcategoria' : 'Nova categoria') : (selected?.name ?? 'Categoria')
 
-  const row = (c: Category, index?: number) => (
-    <li key={c.id} className={`flex items-center gap-2 border-t border-graphite/10 first:border-t-0 ${selected?.id === c.id ? 'bg-cobalt/8' : ''}`}>
+  const row = (c: Category, siblings?: Category[], index?: number, child = false) => (
+    <li key={c.id} className={`flex items-center gap-2 border-t border-graphite/10 first:border-t-0 ${selected?.id === c.id ? 'bg-cobalt/8' : ''} ${child ? 'ml-5 border-l-2 border-l-graphite/20 pl-2' : ''}`}>
       <button aria-label={`Abrir ${c.name}`} onClick={() => setEditing({ kind: 'edit', id: c.id })} className="flex min-h-14 min-w-0 flex-1 flex-col justify-center px-1 py-2 text-left">
         <span className={`block truncate text-[15px] font-medium ${c.archived ? 'text-graphite/70' : ''}`}>{c.name}</span>
         <span className="block truncate text-xs text-graphite/75">{meta(c)}</span>
       </button>
-      {canWrite && index !== undefined && (
+      {canWrite && !child && !c.archived && (
+        <button aria-label={`Nova subcategoria em ${c.name}`} title="Nova subcategoria" onClick={() => setEditing({ kind: 'new', parentId: c.id })} className="flex h-11 shrink-0 items-center rounded-md border border-graphite/20 px-2.5 text-xs font-medium hover:bg-graphite/5">
+          + sub
+        </button>
+      )}
+      {canWrite && siblings && index !== undefined && (
         <span className="flex shrink-0 gap-1">
-          <button aria-label={`Subir ${c.name}`} disabled={index === 0 || actions.reorder.isPending} onClick={() => move(index, -1)} className={arrow}>↑</button>
-          <button aria-label={`Descer ${c.name}`} disabled={index === active.length - 1 || actions.reorder.isPending} onClick={() => move(index, 1)} className={arrow}>↓</button>
+          <button aria-label={`Subir ${c.name}`} disabled={index === 0 || actions.reorder.isPending} onClick={() => move(siblings, index, -1)} className={arrow}>↑</button>
+          <button aria-label={`Descer ${c.name}`} disabled={index === siblings.length - 1 || actions.reorder.isPending} onClick={() => move(siblings, index, 1)} className={arrow}>↓</button>
         </span>
       )}
     </li>
   )
+
+  const tops = tree.map((n) => n.category)
 
   return (
     <AppShell>
@@ -123,7 +135,10 @@ function SettingsView() {
             )}
 
             <ul aria-label="Categorias ativas" className="mt-3 flex flex-col">
-              {active.map((c, i) => row(c, i))}
+              {tree.flatMap((n, i) => [
+                row(n.category, tops, i),
+                ...n.children.map((c, k) => row(c, n.children, k, true)),
+              ])}
             </ul>
 
             {archived.length > 0 && (

@@ -4,6 +4,7 @@ import { ApiError } from '../api/errors'
 import { lookupCnpj } from '../api/queries'
 import type { Category, CnpjInfo, Payee, PayeeInput, PayeePatch } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
+import { buildTree } from '../lib/categories'
 import { cnpjDigits, formatCnpj } from '../lib/cnpj'
 import { Button } from './Button'
 import { Field } from './Field'
@@ -117,7 +118,10 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
         <label htmlFor="payee-category" className={label}>categoria sugerida (opcional)</label>
         <select id="payee-category" className={select} value={categoryId} disabled={!canWrite} onChange={(e) => { setCategoryId(e.target.value); clear('defaultCategoryId') }}>
           <option value="">nenhuma</option>
-          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {buildTree(categories).flatMap((n) => [
+            <option key={n.category.id} value={n.category.id}>{n.category.name}</option>,
+            ...n.children.map((c) => <option key={c.id} value={c.id}>{n.category.name} › {c.name}</option>),
+          ])}
         </select>
         {fields.defaultCategoryId && <p className="text-xs text-signal">{fields.defaultCategoryId}</p>}
       </div>

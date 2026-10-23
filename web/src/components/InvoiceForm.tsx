@@ -4,6 +4,7 @@ import { ApiError } from '../api/errors'
 import type { Boleto, BoletoExtraction, Category, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { addDays, dayMonth, fullDate, monthOf, todayISO } from '../lib/dates'
+import { buildTree } from '../lib/categories'
 import { formatCents } from '../lib/money'
 import { BoletoBox } from './BoletoBox'
 import { BoletoImport } from './BoletoImport'
@@ -70,7 +71,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
   const [amount, setAmount] = useState(invoice?.amountCents ?? 0)
   const [dueDate, setDueDate] = useState(invoice?.dueDate ?? defaultDue)
   const [otherDate, setOtherDate] = useState(editing || !inCurrentMonth)
-  const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? categories[0]?.id ?? '')
+  const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? buildTree(categories)[0]?.category.id ?? '')
   const [payeeId, setPayeeId] = useState(invoice?.payeeId ?? '')
   const [competence, setCompetence] = useState(invoice ? invoice.competenceMonth.slice(0, 7) : '')
   const [notes, setNotes] = useState(invoice?.notes ?? '')
@@ -212,6 +213,20 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
   const paid = invoice?.status === 'paid' && invoice.paid
   const inSeries = invoice?.series != null
   const selectedCat = categories.find((c) => c.id === categoryId)
+  // Categoria da conta = a mais específica. A linha de cima mostra as mães (e as categorias sem filhas); a de baixo, as filhas da escolhida.
+  const tree = buildTree(categories)
+  const topId = selectedCat?.parentId && categories.some((c) => c.id === selectedCat.parentId) ? selectedCat.parentId : categoryId
+  const topNode = tree.find((n) => n.category.id === topId)
+  const pick = (c: Category, text: string, on: boolean, key = c.id) => (
+    <button key={key} type="button" aria-pressed={on} onClick={() => { setCategoryId(c.id); clear('categoryId') }} className={`${chip(on)} min-h-10`}>
+      {text}
+      {c.defaultWallet === 'benefit' && text !== 'geral' && (
+        <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-ivory/70' : 'border-graphite/50'}`} title="Sugere a carteira de benefício">
+          VR
+        </span>
+      )}
+    </button>
+  )
   const payWallet = selectedCat?.defaultWallet ?? 'free'
   const dueChips = [
     { label: `hoje · ${dayMonth(today)}`, value: today },
@@ -341,17 +356,15 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
       <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
         <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80">Categoria</legend>
         <div className="flex flex-wrap gap-2">
-          {categories.map((c) => (
-            <button key={c.id} type="button" aria-pressed={categoryId === c.id} onClick={() => { setCategoryId(c.id); clear('categoryId') }} className={`${chip(categoryId === c.id)} min-h-10`}>
-              {c.name}
-              {c.defaultWallet === 'benefit' && (
-                <span className={`rounded-xs border px-1 font-mono text-[10px] ${categoryId === c.id ? 'border-ivory/70' : 'border-graphite/50'}`} title="Sugere a carteira de benefício">
-                  VR
-                </span>
-              )}
-            </button>
-          ))}
+          {tree.map(({ category: c }) => pick(c, c.name, topId === c.id))}
         </div>
+        {/* Só aparece para quem criou subcategorias: tocar numa mãe com filhas abre esta 2ª linha (geral · Gás · Luz…). */}
+        {topNode && topNode.children.length > 0 && (
+          <div role="group" aria-label={`Detalhe de ${topNode.category.name}`} className="flex flex-wrap gap-2 border-l-2 border-graphite/20 pl-3">
+            {pick(topNode.category, 'geral', categoryId === topNode.category.id, 'geral')}
+            {topNode.children.map((c) => pick(c, c.name, categoryId === c.id))}
+          </div>
+        )}
         {fields.categoryId && <p className="text-xs text-signal">{fields.categoryId}</p>}
       </fieldset>
 

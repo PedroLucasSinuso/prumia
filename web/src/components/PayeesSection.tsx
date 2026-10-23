@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { usePayeeActions, usePayees } from '../api/queries'
 import type { Category, Payee } from '../api/types'
+import { categoryPath } from '../lib/categories'
 import { formatCnpj } from '../lib/cnpj'
 import { Button } from './Button'
 import { PayeeForm } from './PayeeForm'
@@ -20,7 +21,7 @@ export function PayeesSection({ houseId, categories, canWrite }: { houseId: stri
   const all = useMemo(() => [...(payees.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')), [payees.data])
   const active = all.filter((p) => !p.archived)
   const archived = all.filter((p) => p.archived)
-  const categoryName = (id?: string | null) => categories.find((c) => c.id === id)?.name
+  const categoryName = (id?: string | null) => categoryPath(categories.find((c) => c.id === id), categories)
   const selected = editing?.kind === 'edit' ? all.find((p) => p.id === editing.id) : undefined
   const close = () => setEditing(null)
 

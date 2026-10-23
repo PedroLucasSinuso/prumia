@@ -36,6 +36,8 @@ func writeDomainError(c *gin.Context, log *slog.Logger, err error) {
 		problem(http.StatusConflict, "category_exists")
 	case errors.Is(err, category.ErrInUse):
 		problem(http.StatusConflict, "category_in_use")
+	case errors.Is(err, category.ErrHasChildren):
+		problem(http.StatusConflict, "category_has_children")
 	case errors.Is(err, payee.ErrNameTaken):
 		problem(http.StatusConflict, "payee_exists")
 	case errors.Is(err, payee.ErrCNPJTaken):

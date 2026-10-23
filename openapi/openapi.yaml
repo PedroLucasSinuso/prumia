@@ -324,7 +324,7 @@ paths:
     delete:
       tags: [categories]
       operationId: deleteCategory
-      summary: Exclui categoria sem uso. Em uso, responde 409 (arquive em vez disso).
+      summary: Exclui categoria sem uso e sem subcategorias. Em uso ou com subcategorias, responde 409.
       responses:
         '204': { description: "Excluída" }
         '409': { $ref: '#/components/responses/Conflict' }
@@ -828,6 +828,7 @@ components:
         isEssential: { type: boolean }
         sortOrder: { type: integer }
         archived: { type: boolean }
+        parentId: { type: string, format: uuid, nullable: true, description: "Categoria principal (só dois níveis); null = de topo" }
     CategoryInput:
       type: object
       required: [name]
@@ -835,6 +836,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 60 }
         defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
         isEssential: { type: boolean, default: false }
+        parentId: { type: string, format: uuid, nullable: true, description: "Cria dentro desta categoria principal" }
     CategoryPatch:
       type: object
       properties:
@@ -843,6 +845,7 @@ components:
         isEssential: { type: boolean }
         sortOrder: { type: integer }
         archived: { type: boolean }
+        parentId: { type: string, format: uuid, nullable: true, description: "Move para dentro de uma categoria principal; null = volta ao topo" }
 
     CnpjInfo:
       type: object

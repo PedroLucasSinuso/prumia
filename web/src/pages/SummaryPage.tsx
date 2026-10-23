@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { useCategories, useSummary } from '../api/queries'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
+import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { MonthSelector } from '../components/MonthSelector'
 import { WalletCard } from '../components/WalletCard'
+import { rollup } from '../lib/categories'
 import { formatCents } from '../lib/money'
 import { useMonthParam } from '../lib/useMonthParam'
 
@@ -22,12 +24,11 @@ export default function SummaryPage() {
   const categories = useCategories(houseId)
 
   if (!house) return null
-  const nameOf = (id: string) => (categories.data ?? []).find((c) => c.id === id)?.name ?? 'Sem categoria'
   const s = summary.data
   const noIncome = s !== undefined && s.wallets.free.expectedIncomeCents === 0 && s.wallets.benefit.expectedIncomeCents === 0
   const total = s ? s.totalPaidCents + s.totalPendingCents : 0
   const paidShare = total > 0 && s ? s.totalPaidCents / total : 0
-  const max = s?.byCategory[0]?.totalCents ?? 1
+  const rows = rollup(s?.byCategory ?? [], categories.data ?? [])
 
   return (
     <AppShell>
@@ -87,20 +88,7 @@ export default function SummaryPage() {
               {s.byCategory.length === 0 ? (
                 <p className="mt-2 text-sm text-graphite/75">Nenhuma conta neste mês.</p>
               ) : (
-                <ul className="mt-3 flex flex-col gap-3">
-                  {s.byCategory.map((c) => (
-                    <li key={c.categoryId}>
-                      <p className="flex justify-between gap-3 text-[13px]">
-                        <span className="font-medium">{nameOf(c.categoryId)}</span>
-                        <span className="font-mono tabular-nums">{formatCents(c.totalCents)}</span>
-                      </p>
-                      <span className="mt-1 flex h-2 rounded-xs bg-graphite/10" aria-hidden="true">
-                        <span className="h-2 rounded-l-xs bg-teal" style={{ width: `${(c.paidCents / max) * 100}%` }} />
-                        <span className="h-2 bg-cobalt" style={{ width: `${((c.totalCents - c.paidCents) / max) * 100}%` }} />
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-3"><CategoryBreakdown rows={rows} split /></div>
               )}
               <p className="mt-3 flex items-center gap-4 text-xs text-graphite/80">
                 <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-teal" />pago</span>
