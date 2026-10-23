@@ -1,4 +1,4 @@
--- Favorecidos: quem recebe o pagamento (empresa ou pessoa), com o NOME QUE A CASA ESCOLHE ("Gás" para a Gasco/Gasco).
+-- Favorecidos: quem recebe o pagamento (empresa ou pessoa), com o NOME QUE A CASA ESCOLHE ("Gás" para a distribuidora).
 -- O CNPJ é opcional e serve para reconhecer o favorecido num boleto. Aditiva: nada existente muda de significado,
 -- invoices.payee_id é nullable e dispensa backfill.
 

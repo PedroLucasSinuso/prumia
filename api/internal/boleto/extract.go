@@ -302,7 +302,7 @@ func toInt(s string) int {
 	return n
 }
 
-// cnpjRe aceita as máscaras que aparecem em PDF e OCR, inclusive a torta "11.222-333/0001-81". Exige a barra: sem ela,
+// cnpjRe aceita as máscaras que aparecem em PDF e OCR, inclusive fora do padrão ("11.222-333/0001-81"). Exige a barra: sem ela,
 // um CPF (11 dígitos) ou qualquer número longo não vira candidato.
 var cnpjRe = regexp.MustCompile(`\d{2}[. ]?\d{3}[.\- ]?\d{3}\s?/\s?\d{4}\s?-?\s?\d{2}`)
 
