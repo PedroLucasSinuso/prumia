@@ -15,7 +15,7 @@ type Payee struct {
 	HouseholdID uuid.UUID `gorm:"type:uuid"`
 	Name        string    // apelido da casa ("Gás")
 	CNPJ        *string   // só dígitos, validado; opcional
-	LegalName   *string   // razão social, informativa ("CEG RIO S/A")
+	LegalName   *string   // razão social, informativa ("GASCO DISTRIBUIDORA S/A")
 	// DefaultCategoryID é sugestão ao lançar conta deste favorecido; nil = sem sugestão.
 	DefaultCategoryID *uuid.UUID `gorm:"type:uuid"`
 	ArchivedAt        *time.Time

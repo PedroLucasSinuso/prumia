@@ -35,7 +35,7 @@ Por isso uma categoria em uso nunca é apagada: ela é arquivada.
 
 ## Favorecidos
 
-Favorecido é quem recebe o pagamento, com o **nome que vocês usam**: a CEG pode ser o "Gás", a Powernet, a "Internet".
+Favorecido é quem recebe o pagamento, com o **nome que vocês usam**: a distribuidora pode ser o "Gás" e o provedor, a "Internet".
 
 1. Em **Ajustes**, role até **Favorecidos** e toque em **Novo favorecido**.
 2. Dê o **Nome**. O **CNPJ** e a **razão social** são opcionais; a **categoria sugerida** é preenchida sozinha ao lançar uma conta dele.

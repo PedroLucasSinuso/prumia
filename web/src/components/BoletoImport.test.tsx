@@ -72,9 +72,9 @@ describe('importar boleto', () => {
   })
 
   describe('favorecido', () => {
-    const cnpj = '01695370000153'
+    const cnpj = '11222333000181'
     const comCnpj = (payee?: unknown) =>
-      extraction({ boleto: { ...extraction().boleto, beneficiaryName: 'CEG RIO S/A', beneficiaryCnpj: cnpj }, ...(payee ? { payee } : {}) } as Partial<BoletoExtraction>)
+      extraction({ boleto: { ...extraction().boleto, beneficiaryName: 'GASCO DISTRIBUIDORA S/A', beneficiaryCnpj: cnpj }, ...(payee ? { payee } : {}) } as Partial<BoletoExtraction>)
     const gas = { id: 'p1', name: 'Gás', cnpj, defaultCategoryId: 'c2', archived: false }
 
     it('cadastra o favorecido na própria importação: o apelido vai como newPayee e substitui o nome do boleto', async () => {
@@ -82,8 +82,8 @@ describe('importar boleto', () => {
       mockApi({ me: ok(me), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'Gás' })) })
       const dialog = await openNew(user)
       await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
-      const apelido = await within(dialog).findByLabelText(/Como vocês chamam CEG RIO S\/A/)
-      expect(within(dialog).getByLabelText('O que é')).toHaveValue('CEG RIO S/A')
+      const apelido = await within(dialog).findByLabelText(/Como vocês chamam GASCO DISTRIBUIDORA S\/A/)
+      expect(within(dialog).getByLabelText('O que é')).toHaveValue('GASCO DISTRIBUIDORA S/A')
       await user.type(apelido, 'Gás')
       expect(within(dialog).getByLabelText('O que é')).toHaveValue('Gás')
       await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
@@ -93,7 +93,7 @@ describe('importar boleto', () => {
           expect.objectContaining({
             body: expect.objectContaining({
               description: 'Gás', newPayee: { name: 'Gás' },
-              boleto: { digitableLine: line, beneficiaryName: 'CEG RIO S/A', beneficiaryCnpj: cnpj },
+              boleto: { digitableLine: line, beneficiaryName: 'GASCO DISTRIBUIDORA S/A', beneficiaryCnpj: cnpj },
             }),
           }),
         ),
@@ -113,7 +113,7 @@ describe('importar boleto', () => {
 
     it('apelido em branco: nada é cadastrado', async () => {
       const user = userEvent.setup()
-      mockApi({ me: ok(me), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'CEG RIO S/A' })) })
+      mockApi({ me: ok(me), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'GASCO DISTRIBUIDORA S/A' })) })
       const dialog = await openNew(user)
       await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
       await within(dialog).findByLabelText(/Como vocês chamam/)

@@ -45,7 +45,7 @@ export function PayeesSection({ houseId, categories, canWrite }: { houseId: stri
         )}
       </div>
       <p className="mt-1 text-sm text-graphite/80">
-        Quem recebe seus pagamentos, com o nome que vocês usam (a CEG pode ser o “Gás”). O CNPJ é opcional e ajuda a reconhecer o boleto.
+        Quem recebe seus pagamentos, com o nome que vocês usam (a distribuidora pode ser o “Gás”). O CNPJ é opcional e ajuda a reconhecer o boleto.
       </p>
 
       {payees.isPending && <p role="status" className="mt-3 text-sm text-graphite/70">carregando…</p>}

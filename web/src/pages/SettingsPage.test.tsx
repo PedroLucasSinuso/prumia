@@ -127,14 +127,14 @@ describe('ajustes · categorias', () => {
 })
 
 describe('ajustes · favorecidos', () => {
-  const gas = { id: 'p1', name: 'Gás', cnpj: '01695370000153', legalName: 'CEG RIO S/A', defaultCategoryId: 'c1', archived: false }
+  const gas = { id: 'p1', name: 'Gás', cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', defaultCategoryId: 'c1', archived: false }
 
   it('lista com CNPJ formatado e a categoria sugerida', async () => {
     mockApi({ me: ok(me), categories: ok(cats), payees: ok([gas, { id: 'p2', name: 'Antigo', archived: true }]) })
     renderAt('/configuracoes')
     await screen.findByRole('button', { name: 'Abrir favorecido Gás' })
     const list = screen.getByRole('list', { name: 'Favorecidos ativos' })
-    expect(within(list).getByText('01.695.370/0001-53 · Moradia')).toBeInTheDocument()
+    expect(within(list).getByText('11.222.333/0001-81 · Moradia')).toBeInTheDocument()
     expect(screen.getByText('arquivados (1)')).toBeInTheDocument()
   })
 
@@ -144,28 +144,28 @@ describe('ajustes · favorecidos', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
-    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '01695370000153')
-    expect(within(dialog).getByLabelText('CNPJ (opcional)')).toHaveValue('01.695.370/0001-53')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
+    expect(within(dialog).getByLabelText('CNPJ (opcional)')).toHaveValue('11.222.333/0001-81')
     await userEvent.selectOptions(within(dialog).getByLabelText(/categoria sugerida/), 'c1')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
         '/households/{householdId}/payees',
-        expect.objectContaining({ body: { name: 'Gás', cnpj: '01695370000153', legalName: null, defaultCategoryId: 'c1' } }),
+        expect.objectContaining({ body: { name: 'Gás', cnpj: '11222333000181', legalName: null, defaultCategoryId: 'c1' } }),
       ),
     )
     expect(await screen.findByText('Gás criado.')).toBeInTheDocument()
   })
 
   it('ao completar o CNPJ, busca a razão social e preenche (sem sobrescrever o que já foi digitado)', async () => {
-    mockApi({ me: ok(me), categories: ok(cats), cnpj: ok({ cnpj: '01695370000153', legalName: 'CEG RIO S/A', tradeName: 'NATURGY' }) })
+    mockApi({ me: ok(me), categories: ok(cats), cnpj: ok({ cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', tradeName: 'GASCO' }) })
     renderAt('/configuracoes')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
-    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '01695370000153')
-    expect(await within(dialog).findByText(/CNPJ conferido: CEG RIO S\/A \(NATURGY\)/)).toBeInTheDocument()
-    expect(within(dialog).getByLabelText('Razão social (opcional)')).toHaveValue('CEG RIO S/A')
-    expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', { params: { path: { cnpj: '01695370000153' } } })
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
+    expect(await within(dialog).findByText(/CNPJ conferido: GASCO DISTRIBUIDORA S\/A \(GASCO\)/)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Razão social (opcional)')).toHaveValue('GASCO DISTRIBUIDORA S/A')
+    expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', { params: { path: { cnpj: '11222333000181' } } })
 
     // a razão social editada à mão não é sobrescrita por uma nova consulta
     const razao = within(dialog).getByLabelText('Razão social (opcional)')
@@ -181,7 +181,7 @@ describe('ajustes · favorecidos', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
-    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '01695370000153')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
     await waitFor(() => expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', expect.anything()))
     expect(within(dialog).queryByText(/CNPJ conferido/)).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
@@ -201,7 +201,7 @@ describe('ajustes · favorecidos', () => {
     expect(api.POST).not.toHaveBeenCalled()
 
     await userEvent.clear(within(dialog).getByLabelText('CNPJ (opcional)'))
-    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '01695370000153')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
     await waitFor(() => expect(api.POST).toHaveBeenCalledTimes(1))
     expect(await within(dialog).findAllByText(/CNPJ/)).not.toHaveLength(0)
@@ -214,7 +214,7 @@ describe('ajustes · favorecidos', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Gás' })
     await userEvent.clear(within(dialog).getByLabelText('CNPJ (opcional)'))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar favorecido' }))
-    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', cnpj: null, legalName: 'CEG RIO S/A', defaultCategoryId: 'c1' }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', cnpj: null, legalName: 'GASCO DISTRIBUIDORA S/A', defaultCategoryId: 'c1' }))
   })
 
   it('viewer vê a lista sem botão de criar', async () => {

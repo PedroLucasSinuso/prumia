@@ -283,7 +283,7 @@ func TestBoletoLimiteDeRequisicoes(t *testing.T) {
 
 func TestBoletoReconheceFavoritoPeloCNPJ(t *testing.T) {
 	a, c, house, catID := casa(t)
-	text := "RAZÃO SOCIAL: LOJA EXEMPLO LTDA\nCNPJ: 11.802.875/0001-23\n" + lineMasked
+	text := "RAZÃO SOCIAL: LOJA EXEMPLO LTDA\nCNPJ: 45.678.901/0001-75\n" + lineMasked
 
 	// Sem favorecido cadastrado: devolve o CNPJ e nenhum favorecido (a tela oferece cadastrar).
 	var ex struct {
@@ -293,7 +293,7 @@ func TestBoletoReconheceFavoritoPeloCNPJ(t *testing.T) {
 		Payee *payeeOut `json:"payee"`
 	}
 	a.upload(house, c, fakePDF(text), "").json(&ex)
-	if ex.Boleto.BeneficiaryCnpj == nil || *ex.Boleto.BeneficiaryCnpj != "11802875000123" || ex.Payee != nil {
+	if ex.Boleto.BeneficiaryCnpj == nil || *ex.Boleto.BeneficiaryCnpj != "45678901000175" || ex.Payee != nil {
 		t.Fatalf("antes de cadastrar: %+v", ex)
 	}
 
@@ -301,14 +301,14 @@ func TestBoletoReconheceFavoritoPeloCNPJ(t *testing.T) {
 	created, r := a.newInvoice(c, house, catID, map[string]any{
 		"description": "Internet", "amountCents": 100,
 		"newPayee": map[string]any{"name": "Internet"},
-		"boleto":   map[string]any{"digitableLine": lineDigits, "beneficiaryName": "LOJA EXEMPLO LTDA", "beneficiaryCnpj": "11802875000123"},
+		"boleto":   map[string]any{"digitableLine": lineDigits, "beneficiaryName": "LOJA EXEMPLO LTDA", "beneficiaryCnpj": "45678901000175"},
 	})
 	if r.Code != http.StatusCreated {
 		t.Fatalf("criar com newPayee: %d %s", r.Code, r.Body)
 	}
 	var list []payeeOut
 	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
-	if len(list) != 1 || list[0].Name != "Internet" || list[0].CNPJ == nil || *list[0].CNPJ != "11802875000123" ||
+	if len(list) != 1 || list[0].Name != "Internet" || list[0].CNPJ == nil || *list[0].CNPJ != "45678901000175" ||
 		list[0].LegalName == nil || *list[0].LegalName != "LOJA EXEMPLO LTDA" || list[0].DefaultCategoryID == nil || *list[0].DefaultCategoryID != catID {
 		t.Fatalf("favorecido criado = %+v", list)
 	}
@@ -342,14 +342,14 @@ func TestBoletoComFavoritoExistenteAdotaOCNPJ(t *testing.T) {
 	a.do("POST", "/api/households/"+house+"/payees", map[string]any{"name": "Gás"}, c).json(&p)
 	_, r := a.newInvoice(c, house, catID, map[string]any{
 		"description": "Gás", "amountCents": 100, "payeeId": p.ID,
-		"boleto": map[string]any{"digitableLine": lineDigits, "beneficiaryName": "CEG RIO S/A", "beneficiaryCnpj": "01695370000153"},
+		"boleto": map[string]any{"digitableLine": lineDigits, "beneficiaryName": "GASCO DISTRIBUIDORA S/A", "beneficiaryCnpj": "11222333000181"},
 	})
 	if r.Code != http.StatusCreated {
 		t.Fatalf("criar: %d %s", r.Code, r.Body)
 	}
 	var list []payeeOut
 	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
-	if list[0].CNPJ == nil || *list[0].CNPJ != "01695370000153" || list[0].LegalName == nil || *list[0].LegalName != "CEG RIO S/A" {
+	if list[0].CNPJ == nil || *list[0].CNPJ != "11222333000181" || list[0].LegalName == nil || *list[0].LegalName != "GASCO DISTRIBUIDORA S/A" {
 		t.Fatalf("não adotou o CNPJ: %+v", list[0])
 	}
 
@@ -358,7 +358,7 @@ func TestBoletoComFavoritoExistenteAdotaOCNPJ(t *testing.T) {
 	a.do("POST", "/api/households/"+house+"/payees", map[string]any{"name": "Outro"}, c).json(&q)
 	a.newInvoice(c, house, catID, map[string]any{
 		"description": "x", "amountCents": 100, "payeeId": q.ID,
-		"boleto": map[string]any{"digitableLine": lineDigits, "beneficiaryCnpj": "01695370000153"},
+		"boleto": map[string]any{"digitableLine": lineDigits, "beneficiaryCnpj": "11222333000181"},
 	})
 	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
 	for _, x := range list {

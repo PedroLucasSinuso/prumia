@@ -67,7 +67,7 @@ func novoMundo(t *testing.T) *mundo {
 	}
 	r.json(&c)
 	var pe struct{ Id string }
-	r = a.do("POST", "/api/households/"+m.houseA+"/payees", map[string]any{"name": "Só da Ana", "cnpj": "11.802.875/0001-23"}, m.ana)
+	r = a.do("POST", "/api/households/"+m.houseA+"/payees", map[string]any{"name": "Só da Ana", "cnpj": "45.678.901/0001-75"}, m.ana)
 	if r.Code != 201 {
 		t.Fatalf("favorecido: %d %s", r.Code, r.Body)
 	}

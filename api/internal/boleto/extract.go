@@ -203,7 +203,7 @@ var (
 	dueDateRe = regexp.MustCompile(`(?i)vencimento\s*:?\s*(\d{2})/(\d{2})/(\d{4})`)
 	// "Referência: 10/2026", "Mês: OUT/2026", "Competência 10/2026", "Mês de referência: outubro/2026".
 	competenceRe = regexp.MustCompile(`(?i)(?:compet[eê]ncia|refer[eê]ncia|m[eê]s(?: de refer[eê]ncia)?)\s*:?\s*(\d{1,2}|[a-zç]{3,9})\s*/\s*(\d{4})`)
-	// Razão social: nome em maiúsculas terminado em tipo societário ("CEG RIO S/A", "POWERNET SOLUTIONS LTDA").
+	// Razão social: nome em maiúsculas terminado em tipo societário ("GASCO DISTRIBUIDORA S/A", "NETLINK PROVEDOR LTDA").
 	companyRe = regexp.MustCompile(`([A-ZÀ-Ú][A-ZÀ-Ú0-9&.' -]{1,60}?)\s+(S/A|S\.A\.?|LTDA\.?|EIRELI|S/S|EPP|ME)(?:\s|$|[-−–,.])`)
 	razaoRe   = regexp.MustCompile(`(?im)^\s*raz[aã]o social\s*:\s*(.+)$`)
 )
@@ -302,7 +302,7 @@ func toInt(s string) int {
 	return n
 }
 
-// cnpjRe aceita as máscaras que aparecem em PDF e OCR, inclusive a torta "01.695-370/0001-53". Exige a barra: sem ela,
+// cnpjRe aceita as máscaras que aparecem em PDF e OCR, inclusive fora do padrão ("11.222-333/0001-81"). Exige a barra: sem ela,
 // um CPF (11 dígitos) ou qualquer número longo não vira candidato.
 var cnpjRe = regexp.MustCompile(`\d{2}[. ]?\d{3}[.\- ]?\d{3}\s?/\s?\d{4}\s?-?\s?\d{2}`)
 

@@ -30,13 +30,13 @@ func (f *fakeLooker) Lookup(_ context.Context, cnpj string) (brasilapi.Company, 
 }
 
 const (
-	cegCNPJ = "01695370000153"
-	netCNPJ = "11802875000123"
+	gasCNPJ = "11222333000181"
+	netCNPJ = "45678901000175"
 )
 
 func companies() *fakeLooker {
 	return &fakeLooker{companies: map[string]brasilapi.Company{
-		cegCNPJ: {CNPJ: cegCNPJ, LegalName: "CEG RIO S/A", TradeName: "NATURGY"},
+		gasCNPJ: {CNPJ: gasCNPJ, LegalName: "GASCO DISTRIBUIDORA S/A", TradeName: "GASCO"},
 	}}
 }
 
@@ -55,17 +55,17 @@ func TestBoletoNomeEhConferidoPeloCNPJ(t *testing.T) {
 
 	// O texto do boleto traz o nome com erro de leitura; a BrasilAPI manda o nome certo.
 	var ex extractedName
-	a.upload(house, c, fakePDF("RAZÃO SOCIAL: CEC R10 S/A\nCNPJ: 01.695-370/0001-53\n"+lineMasked), "").json(&ex)
-	if ex.Boleto.BeneficiaryName == nil || *ex.Boleto.BeneficiaryName != "CEG RIO S/A" {
+	a.upload(house, c, fakePDF("RAZÃO SOCIAL: GASC0 D1STRIBUIDORA S/A\nCNPJ: 11.222-333/0001-81\n"+lineMasked), "").json(&ex)
+	if ex.Boleto.BeneficiaryName == nil || *ex.Boleto.BeneficiaryName != "GASCO DISTRIBUIDORA S/A" {
 		t.Fatalf("nome = %v", ex.Boleto.BeneficiaryName)
 	}
-	if ex.Boleto.BeneficiaryVerified == nil || !*ex.Boleto.BeneficiaryVerified || ex.Boleto.BeneficiaryCnpj == nil || *ex.Boleto.BeneficiaryCnpj != cegCNPJ {
+	if ex.Boleto.BeneficiaryVerified == nil || !*ex.Boleto.BeneficiaryVerified || ex.Boleto.BeneficiaryCnpj == nil || *ex.Boleto.BeneficiaryCnpj != gasCNPJ {
 		t.Fatalf("verificado/cnpj: %+v", ex.Boleto)
 	}
 
 	// CNPJ que a API não conhece (texto de PDF, que é confiável): mantém o nome e o CNPJ do documento, sem selo.
 	ex = extractedName{}
-	a.upload(house, c, fakePDF("RAZÃO SOCIAL: LOJA EXEMPLO LTDA\nCNPJ: 11.802.875/0001-23\n"+lineMasked), "").json(&ex)
+	a.upload(house, c, fakePDF("RAZÃO SOCIAL: LOJA EXEMPLO LTDA\nCNPJ: 45.678.901/0001-75\n"+lineMasked), "").json(&ex)
 	if ex.Boleto.BeneficiaryName == nil || *ex.Boleto.BeneficiaryName != "LOJA EXEMPLO LTDA" || ex.Boleto.BeneficiaryVerified != nil || ex.Boleto.BeneficiaryCnpj == nil {
 		t.Fatalf("CNPJ desconhecido: %+v", ex.Boleto)
 	}
@@ -76,13 +76,13 @@ func TestBoletoSegueSemABrasilAPI(t *testing.T) {
 	f.unavailable = true
 	a := newApp(t, opts{openRegistration: true, company: f})
 	c, house := a.register("Ana", "ana@x.com", "Casa")
-	r := a.upload(house, c, fakePDF("RAZÃO SOCIAL: CEG RIO S/A\nCNPJ: 01.695-370/0001-53\n"+lineMasked), "")
+	r := a.upload(house, c, fakePDF("RAZÃO SOCIAL: GASCO DISTRIBUIDORA S/A\nCNPJ: 11.222-333/0001-81\n"+lineMasked), "")
 	if r.Code != http.StatusOK {
 		t.Fatalf("a falha da API não pode derrubar a leitura: %d %s", r.Code, r.Body)
 	}
 	var ex extractedName
 	r.json(&ex)
-	if ex.Boleto.BeneficiaryName == nil || *ex.Boleto.BeneficiaryName != "CEG RIO S/A" || ex.Boleto.BeneficiaryVerified != nil || ex.Boleto.BeneficiaryCnpj == nil {
+	if ex.Boleto.BeneficiaryName == nil || *ex.Boleto.BeneficiaryName != "GASCO DISTRIBUIDORA S/A" || ex.Boleto.BeneficiaryVerified != nil || ex.Boleto.BeneficiaryCnpj == nil {
 		t.Fatalf("sem a API: %+v", ex.Boleto)
 	}
 }
@@ -95,7 +95,7 @@ func TestBoletoOCRComCNPJInexistenteDescartaOCNPJ(t *testing.T) {
 		PDFText:   func(context.Context, []byte, string) (string, error) { return "", nil },
 		Rasterize: func(context.Context, []byte, string, int) ([]byte, error) { return []byte("img"), nil },
 		OCR: func(context.Context, []byte) (string, error) {
-			return "Beneficiário: LOJA EXEMPLO LTDA\nCNPJ 11.802.875/0001-23\n" + lineMasked, nil
+			return "Beneficiário: LOJA EXEMPLO LTDA\nCNPJ 45.678.901/0001-75\n" + lineMasked, nil
 		},
 	}
 	a := newApp(t, opts{openRegistration: true, company: companies(), extractor: ocr})
@@ -119,7 +119,7 @@ func TestConsultaDeCNPJ(t *testing.T) {
 	a := newApp(t, opts{openRegistration: true, company: f})
 	c, _ := a.register("Ana", "ana@x.com", "Casa")
 
-	r := a.do("GET", "/api/cnpj/"+cegCNPJ, nil, c)
+	r := a.do("GET", "/api/cnpj/"+gasCNPJ, nil, c)
 	if r.Code != 200 {
 		t.Fatalf("consulta: %d %s", r.Code, r.Body)
 	}
@@ -128,13 +128,13 @@ func TestConsultaDeCNPJ(t *testing.T) {
 		TradeName       *string
 	}
 	r.json(&co)
-	if co.Cnpj != cegCNPJ || co.LegalName != "CEG RIO S/A" || co.TradeName == nil || *co.TradeName != "NATURGY" {
+	if co.Cnpj != gasCNPJ || co.LegalName != "GASCO DISTRIBUIDORA S/A" || co.TradeName == nil || *co.TradeName != "GASCO" {
 		t.Errorf("empresa = %+v", co)
 	}
 
 	// dígitos verificadores errados: 404 sem nem consultar
 	calls := f.calls
-	if r := a.do("GET", "/api/cnpj/01695370000154", nil, c); r.Code != 404 || f.calls != calls {
+	if r := a.do("GET", "/api/cnpj/11222333000182", nil, c); r.Code != 404 || f.calls != calls {
 		t.Errorf("inválido: %d (consultas %d -> %d)", r.Code, calls, f.calls)
 	}
 	// válido mas inexistente: 404
@@ -142,12 +142,12 @@ func TestConsultaDeCNPJ(t *testing.T) {
 		t.Errorf("inexistente: %d", r.Code)
 	}
 	// sem login: 401
-	if r := a.do("GET", "/api/cnpj/"+cegCNPJ, nil, nil); r.Code != 401 {
+	if r := a.do("GET", "/api/cnpj/"+gasCNPJ, nil, nil); r.Code != 401 {
 		t.Errorf("sem sessão: %d", r.Code)
 	}
 	// API fora do ar: 503 com código próprio
 	f.unavailable = true
-	assertCode(t, a.do("GET", "/api/cnpj/"+cegCNPJ, nil, c), 503, "lookup_unavailable")
+	assertCode(t, a.do("GET", "/api/cnpj/"+gasCNPJ, nil, c), 503, "lookup_unavailable")
 }
 
 func TestConsultaDeCNPJTemLimite(t *testing.T) {
@@ -155,7 +155,7 @@ func TestConsultaDeCNPJTemLimite(t *testing.T) {
 	c, _ := a.register("Ana", "ana@x.com", "Casa")
 	var limited bool
 	for i := 0; i < 15; i++ {
-		if a.do("GET", "/api/cnpj/"+cegCNPJ, nil, c).Code == http.StatusTooManyRequests {
+		if a.do("GET", "/api/cnpj/"+gasCNPJ, nil, c).Code == http.StatusTooManyRequests {
 			limited = true
 			break
 		}

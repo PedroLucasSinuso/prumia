@@ -33,7 +33,7 @@ Se a consulta estiver fora do ar, tudo segue normal com o nome lido do boleto. S
 
 ## Dar um nome a quem recebe (favorecido)
 
-Quando o boleto traz o CNPJ de quem recebe, o quadro mostra **Como vocês chamam CEG RIO S/A?**. Digite o seu nome ("Gás") e salve:
+Quando o boleto traz o CNPJ de quem recebe, o quadro mostra **Como vocês chamam GASCO DISTRIBUIDORA S/A?**. Digite o seu nome ("Gás") e salve:
 o prumia guarda esse favorecido e, **nos próximos boletos dessa empresa, já vem com o seu nome e a categoria preenchidos**.
 É opcional: deixe em branco e nada é cadastrado. Se você já criou o favorecido à mão, abra **Mais opções**, escolha-o em
 **Favorecido** e o CNPJ do boleto passa a valer para ele.

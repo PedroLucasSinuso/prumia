@@ -3,7 +3,7 @@ package cnpj
 
 import "strings"
 
-// Digits devolve só os dígitos de s (aceita qualquer máscara, até a torta "01.695-370/0001-53").
+// Digits devolve só os dígitos de s (aceita qualquer máscara, até a fora do padrão "11.222-333/0001-81").
 func Digits(s string) string {
 	var b strings.Builder
 	for _, r := range s {

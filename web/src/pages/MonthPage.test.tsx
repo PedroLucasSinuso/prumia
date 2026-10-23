@@ -221,12 +221,12 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     await userEvent.selectOptions(select, 'p1')
     expect(screen.getByLabelText('O que é')).toHaveValue('Gás')
     expect(screen.getByRole('button', { name: /Mercado/ })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.type(screen.getByLabelText('Valor'), '15472')
+    await userEvent.type(screen.getByLabelText('Valor'), '12345')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
         '/households/{householdId}/invoices',
-        expect.objectContaining({ body: { description: 'Gás', amountCents: 15472, dueDate: '2026-05-01', categoryId: 'c2', payeeId: 'p1' } }),
+        expect.objectContaining({ body: { description: 'Gás', amountCents: 12345, dueDate: '2026-05-01', categoryId: 'c2', payeeId: 'p1' } }),
       ),
     )
   })

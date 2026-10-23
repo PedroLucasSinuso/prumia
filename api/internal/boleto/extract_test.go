@@ -274,13 +274,13 @@ func gsPDF(t *testing.T, ps string, extra []string) []byte {
 // Trechos reais de contas de consumo (dados pessoais removidos): o rótulo e o valor podem vir em linhas separadas.
 func TestFindInTextMetadados(t *testing.T) {
 	ref := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
-	gas := "CEG RIO S/A − Rua São Cristóvão, 1200 CNPJ: 01.695-370/0001-53.\nMês:\nVencimento:\nOUT/2026\n10/11/2026\n" +
-		"Mês: OUT/2026\nVencimento: 10/11/2026\n83630000001-2 54720100000-7 00005243971-8 89102026200-4"
+	gas := "GASCO DISTRIBUIDORA S/A − Rua Exemplo, 100 CNPJ: 11.222-333/0001-81.\nMês:\nVencimento:\nOUT/2026\n10/11/2026\n" +
+		"Mês: OUT/2026\nVencimento: 10/11/2026\n83630000001-2 23451112223-1 33444555666-8 77788899900-3"
 	b, ok := FindInText(gas, ref)
 	if !ok {
 		t.Fatal("linha de 48 dígitos não encontrada")
 	}
-	if b.Beneficiary != "CEG RIO S/A" {
+	if b.Beneficiary != "GASCO DISTRIBUIDORA S/A" {
 		t.Errorf("beneficiário = %q", b.Beneficiary)
 	}
 	if got := b.DueDate.Format("2006-01-02"); got != "2026-11-10" {
@@ -290,14 +290,14 @@ func TestFindInTextMetadados(t *testing.T) {
 		t.Errorf("competência = %s", got)
 	}
 
-	net := "RAZÃO SOCIAL: POWERNET SOLUTIONS LTDA\nReferência: 10/2026\nVencimento: 10/10/2026\n" +
-		"10491.25717 35000.100046 00054.300124 2 15950000010990"
+	net := "RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nReferência: 10/2026\nVencimento: 10/10/2026\n" +
+		"00190.05008 94014.481603 60680.935032 8 15950000005000"
 	b, ok = FindInText(net, ref)
 	if !ok {
 		t.Fatal("linha de 47 dígitos não encontrada")
 	}
-	if b.Beneficiary != "POWERNET SOLUTIONS LTDA" || b.Competence.Format("2006-01") != "2026-10" {
-		t.Errorf("powernet: %q %v", b.Beneficiary, b.Competence)
+	if b.Beneficiary != "NETLINK PROVEDOR LTDA" || b.Competence.Format("2006-01") != "2026-10" {
+		t.Errorf("provedor: %q %v", b.Beneficiary, b.Competence)
 	}
 	// O vencimento do código de barras prevalece sobre o texto.
 	if got := b.DueDate.Format("2006-01-02"); got != "2026-10-10" {
@@ -316,11 +316,11 @@ func TestDatasImpossiveisSaoIgnoradas(t *testing.T) {
 
 func TestFindCNPJ(t *testing.T) {
 	for name, tc := range map[string]struct{ text, want string }{
-		"máscara torta da CEG":      {"CEG RIO S/A − Rua X CNPJ: 01.695-370/0001-53. Inscrição", "01695370000153"},
-		"com rótulo de razão":       {"RAZÃO SOCIAL: POWERNET SOLUTIONS LTDA\nCNPJ: 11.802.875/0001-23\nCNPJ/CPF: 160.541.277-56", "11802875000123"},
-		"prefere o do beneficiário": {"Pagador CNPJ 01.695.370/0001-53\nBeneficiário: LOJA\nCNPJ 11.802.875/0001-23", "11802875000123"},
-		"dígito errado é ignorado":  {"CNPJ: 11.802.875/0001-24", ""},
-		"CPF não é CNPJ":            {"CPF 160.541.277-56", ""},
+		"máscara fora do padrão":    {"GASCO DISTRIBUIDORA S/A − Rua X CNPJ: 11.222-333/0001-81. Inscrição", "11222333000181"},
+		"com rótulo de razão":       {"RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nCNPJ: 45.678.901/0001-75\nCNPJ/CPF: 123.456.789-09", "45678901000175"},
+		"prefere o do beneficiário": {"Pagador CNPJ 11.222.333/0001-81\nBeneficiário: LOJA\nCNPJ 45.678.901/0001-75", "45678901000175"},
+		"dígito errado é ignorado":  {"CNPJ: 45.678.901/0001-76", ""},
+		"CPF não é CNPJ":            {"CPF 123.456.789-09", ""},
 	} {
 		if got := findCNPJ(tc.text); got != tc.want {
 			t.Errorf("%s: %q, quer %q", name, got, tc.want)

@@ -110,7 +110,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
           {found.tradeName ? ` (${found.tradeName})` : ''}
         </p>
       )}
-      <Field label="Razão social (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="CEG RIO S/A" error={fields.legalName}
+      <Field label="Razão social (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="GASCO DISTRIBUIDORA S/A" error={fields.legalName}
         onChange={(e) => { setLegalName(e.target.value); clear('legalName') }} />
 
       <div className="flex flex-col gap-1">
