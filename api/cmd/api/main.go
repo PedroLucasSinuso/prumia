@@ -87,7 +87,7 @@ func run(args []string) error {
 		return nil
 	}
 
-	summaries := summary.NewService(gdb)
+	summaries := summary.NewService(gdb, today)
 	households := household.NewService(gdb)
 	payeeSvc := payee.NewService(gdb)
 	cnpjClient := brasilapi.New(cfg.CNPJLookupURL) // nil se CNPJ_LOOKUP_URL=off

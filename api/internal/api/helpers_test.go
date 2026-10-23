@@ -72,7 +72,7 @@ func newApp(t *testing.T, o opts) *app {
 	invSvc := invoice.NewService(gdb, today)
 	recSvc := series.NewRecurrenceService(gdb, invSvc, today)
 	incSvc := income.NewService(gdb, today)
-	sumSvc := summary.NewService(gdb)
+	sumSvc := summary.NewService(gdb, today)
 	payeeSvc := payee.NewService(gdb)
 	Mount(router, NewServer(sqlDB,
 		auth.NewHandler(svc, cookie, log),

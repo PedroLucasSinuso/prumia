@@ -405,6 +405,15 @@ type Category struct {
 	SortOrder int                 `json:"sortOrder"`
 }
 
+// CategoryHistory defines model for CategoryHistory.
+type CategoryHistory struct {
+	// Months Todos os meses do intervalo, em ordem
+	Months []Month `json:"months"`
+
+	// Series Uma por categoria com contas no intervalo, da maior soma para a menor. Cada uma tem um ponto por mês de `months`.
+	Series []CategorySeries `json:"series"`
+}
+
 // CategoryInput defines model for CategoryInput.
 type CategoryInput struct {
 	DefaultWallet *Wallet `json:"defaultWallet,omitempty"`
@@ -425,6 +434,27 @@ type CategoryPatch struct {
 	// ParentId Move para dentro de uma categoria principal; null = volta ao topo
 	ParentId  *openapi_types.UUID `json:"parentId,omitempty"`
 	SortOrder *int                `json:"sortOrder,omitempty"`
+}
+
+// CategoryPoint defines model for CategoryPoint.
+type CategoryPoint struct {
+	// Month Primeiro dia do mês
+	Month Month `json:"month"`
+
+	// PaidCents Parte já paga
+	PaidCents Cents `json:"paidCents"`
+
+	// SeriesCents Parte do total que é parcela ou conta fixa (compromissos)
+	SeriesCents Cents `json:"seriesCents"`
+
+	// TotalCents Como no resumo: pago (valor efetivo) + pendente (valor da invoice)
+	TotalCents Cents `json:"totalCents"`
+}
+
+// CategorySeries defines model for CategorySeries.
+type CategorySeries struct {
+	CategoryId openapi_types.UUID `json:"categoryId"`
+	Points     []CategoryPoint    `json:"points"`
 }
 
 // CategoryTotal defines model for CategoryTotal.
@@ -719,6 +749,12 @@ type MonthlySummary struct {
 	// Month Primeiro dia do mês
 	Month Month `json:"month"`
 
+	// OverdueCents Parte do pendente já vencida (vencimento antes de hoje)
+	OverdueCents Cents `json:"overdueCents"`
+
+	// OverdueCount Quantas invoices da competência estão atrasadas
+	OverdueCount int `json:"overdueCount"`
+
 	// TotalPaidCents Valor em centavos (BRL)
 	TotalPaidCents Cents `json:"totalPaidCents"`
 
@@ -935,6 +971,12 @@ type WalletBalance struct {
 	// PaidCents Valor efetivamente pago das invoices da competência pagas com esta carteira
 	PaidCents Cents `json:"paidCents"`
 
+	// PendingCents Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar.
+	PendingCents Cents `json:"pendingCents"`
+
+	// ProjectedCents Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar.
+	ProjectedCents Cents `json:"projectedCents"`
+
 	// ReceivedIncomeCents Líquido das receitas já recebidas
 	ReceivedIncomeCents Cents `json:"receivedIncomeCents"`
 }
@@ -1121,6 +1163,15 @@ type ListPurchasesParams struct {
 // GetMonthlySummaryParams defines parameters for GetMonthlySummary.
 type GetMonthlySummaryParams struct {
 	Month caldate.Date `form:"month" json:"month"`
+}
+
+// GetCategoryHistoryParams defines parameters for GetCategoryHistory.
+type GetCategoryHistoryParams struct {
+	// From Primeiro mês (dia 1). Padrão: 5 meses antes de `to`
+	From *caldate.Date `form:"from,omitempty" json:"from,omitempty"`
+
+	// To Último mês (dia 1). Padrão: o mês atual
+	To *caldate.Date `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // AcceptInviteJSONBody defines parameters for AcceptInvite.
@@ -1370,6 +1421,9 @@ type ServerInterface interface {
 	// GetMonthlySummary Resumo do mês por competência, com saldos por carteira
 	// (GET /households/{householdId}/summary)
 	GetMonthlySummary(c *gin.Context, householdId HouseholdId, params GetMonthlySummaryParams)
+	// GetCategoryHistory Gasto por categoria mês a mês (histórico para os gráficos), por competência
+	// (GET /households/{householdId}/summary/categories)
+	GetCategoryHistory(c *gin.Context, householdId HouseholdId, params GetCategoryHistoryParams)
 	// AcceptInvite Usuário logado entra em outra casa com um token de convite
 	// (POST /invites/accept)
 	AcceptInvite(c *gin.Context)
@@ -3004,6 +3058,50 @@ func (siw *ServerInterfaceWrapper) GetMonthlySummary(c *gin.Context) {
 	siw.Handler.GetMonthlySummary(c, householdId, params)
 }
 
+// GetCategoryHistory operation middleware
+func (siw *ServerInterfaceWrapper) GetCategoryHistory(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCategoryHistoryParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCategoryHistory(c, householdId, params)
+}
+
 // AcceptInvite operation middleware
 func (siw *ServerInterfaceWrapper) AcceptInvite(c *gin.Context) {
 
@@ -3098,5 +3196,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PATCH(options.BaseURL+"/households/:householdId/income-sources/:sourceId", wrapper.UpdateIncomeSource)
 	router.GET(options.BaseURL+"/households/:householdId/export/invoices.csv", wrapper.ExportInvoicesCsv)
 	router.GET(options.BaseURL+"/households/:householdId/summary", wrapper.GetMonthlySummary)
+	router.GET(options.BaseURL+"/households/:householdId/summary/categories", wrapper.GetCategoryHistory)
 	router.POST(options.BaseURL+"/households/:householdId/boletos/extract", wrapper.ExtractBoleto)
 }

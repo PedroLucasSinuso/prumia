@@ -30,7 +30,7 @@ O favorecido é opcional e só serve para reconhecer boletos (CNPJ) e sugerir ca
 Quer ver o gasto de "Gás" **e** o de "Moradia" (que soma gás, luz, internet…). Hierarquia de **dois níveis**, não tag. Risco: **alto** (migration). Em PRs separados:
 
 1. **Subcategorias**: `categories.parent_id` opcional (FK composta por casa; filha não tem filha; nome único por mãe). Aditiva, sem backfill: o que existe continua no topo. Fluxo: quem não usa não vê diferença; ao lançar, tocar numa mãe com filhas abre uma 2ª linha de botões (geral · Gás · Luz…). Arquivar a mãe esconde as filhas junto e restaurar a traz de volta. A soma da mãe é feita no front (o resumo continua por categoria folha).
-2. **Gráficos**: em "Por categoria" (resumo), tocar numa categoria abre o histórico dela (6 meses; mãe = filhas empilhadas; pendentes tracejados). Endpoint de série mensal por categoria (competência). SVG próprio com a paleta da marca, sem biblioteca.
+2. ~~**Gráficos**~~ **feito** (PR `feat/resumo-graficos`): em "Por categoria" (resumo), cada categoria abre o histórico dela (6 ou 12 meses; mãe = filhas empilhadas; a pagar tracejado), "Gasto por mês" da casa no computador, saldo projetado como número principal e compromissos futuros. Endpoint `GET /summary/categories` (competência). SVG próprio com a paleta da marca, sem biblioteca.
 3. Criar categoria na hora de lançar (sem ir a Ajustes) e "mover para dentro de…".
 
 ## Planejamento: carteiras configuráveis (a desenhar conversando; NÃO implementar ainda)

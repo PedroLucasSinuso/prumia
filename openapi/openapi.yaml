@@ -748,6 +748,23 @@ paths:
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/MonthlySummary' } } } }
 
+  /households/{householdId}/summary/categories:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [summary]
+      operationId: getCategoryHistory
+      summary: Gasto por categoria mês a mês (histórico para os gráficos), por competência
+      description: |
+        Uma série por categoria FOLHA (a soma da categoria principal é feita no cliente), com todos os meses do intervalo
+        (meses sem contas vêm com zero). `from` e `to` são dias 1; padrão = os 6 meses até o mês atual. Máximo 24 meses.
+        Estende a previsão das contas fixas até `to`, como o resumo. Todos os membros leem.
+      parameters:
+        - { name: from, in: query, description: "Primeiro mês (dia 1). Padrão: 5 meses antes de `to`", schema: { type: string, format: date } }
+        - { name: to, in: query, description: "Último mês (dia 1). Padrão: o mês atual", schema: { type: string, format: date } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/CategoryHistory' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
   # ----------------------------------------------------------------- boleto
   /households/{householdId}/boletos/extract:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
@@ -1254,15 +1271,17 @@ components:
 
     WalletBalance:
       type: object
-      required: [expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents]
+      required: [expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents, pendingCents, projectedCents]
       properties:
         expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (previstas + recebidas)" }
         receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas já recebidas" }
         paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Valor efetivamente pago das invoices da competência pagas com esta carteira" }
         balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Recebido - pago (estimativa, não é saldo bancário)" }
+        pendingCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar." }
+        projectedCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar." }
     MonthlySummary:
       type: object
-      required: [month, wallets, totalPaidCents, totalPendingCents, byCategory]
+      required: [month, wallets, totalPaidCents, totalPendingCents, overdueCents, overdueCount, byCategory]
       properties:
         month: { $ref: '#/components/schemas/Month' }
         wallets:
@@ -1273,10 +1292,35 @@ components:
             benefit: { $ref: '#/components/schemas/WalletBalance' }
         totalPaidCents: { $ref: '#/components/schemas/Cents' }
         totalPendingCents: { $ref: '#/components/schemas/Cents' }
+        overdueCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Parte do pendente já vencida (vencimento antes de hoje)" }
+        overdueCount: { type: integer, description: "Quantas invoices da competência estão atrasadas" }
         byCategory:
           type: array
           description: Ordenado por total (maior primeiro). Inclui categorias arquivadas que tenham invoices no mês.
           items: { $ref: '#/components/schemas/CategoryTotal' }
+    CategoryHistory:
+      type: object
+      required: [months, series]
+      properties:
+        months: { type: array, items: { $ref: '#/components/schemas/Month' }, description: "Todos os meses do intervalo, em ordem" }
+        series:
+          type: array
+          description: Uma por categoria com contas no intervalo, da maior soma para a menor. Cada uma tem um ponto por mês de `months`.
+          items: { $ref: '#/components/schemas/CategorySeries' }
+    CategorySeries:
+      type: object
+      required: [categoryId, points]
+      properties:
+        categoryId: { type: string, format: uuid }
+        points: { type: array, items: { $ref: '#/components/schemas/CategoryPoint' } }
+    CategoryPoint:
+      type: object
+      required: [month, totalCents, paidCents, seriesCents]
+      properties:
+        month: { $ref: '#/components/schemas/Month' }
+        totalCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Como no resumo: pago (valor efetivo) + pendente (valor da invoice)" }
+        paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Parte já paga" }
+        seriesCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Parte do total que é parcela ou conta fixa (compromissos)" }
     CategoryTotal:
       type: object
       required: [categoryId, totalCents, paidCents]
