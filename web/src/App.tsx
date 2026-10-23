@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 import { RedirectIfAuthenticated, RequireAuth } from './auth/RequireAuth'
+import { PageSkeleton } from './components/PageSkeleton'
 import LoginPage from './pages/LoginPage'
 import MonthPage from './pages/MonthPage'
 
@@ -19,7 +20,7 @@ const SummaryPage = lazy(() => import('./pages/SummaryPage'))
 
 export default function App() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route element={<RedirectIfAuthenticated />}>
           <Route path="/entrar" element={<LoginPage />} />
