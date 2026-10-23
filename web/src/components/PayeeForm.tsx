@@ -68,7 +68,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
     e.preventDefault()
     const clean = name.trim()
     if (!clean) {
-      setFields({ name: 'Dê um nome ao favorecido.' })
+      setFields({ name: 'Dê um apelido ao favorecido.' })
       return
     }
     const digits = cnpjDigits(cnpj)
@@ -86,7 +86,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <FormError message={error} />
-      <Field label="Nome" value={name} maxLength={60} disabled={!canWrite} hint="O nome que vocês usam: Gás, Internet, Luz." error={fields.name}
+      <Field label="Apelido" value={name} maxLength={60} disabled={!canWrite} hint="Como vocês chamam: Gás, Internet, Luz. Pode mudar quando quiser." error={fields.name}
         onChange={(e) => { setName(e.target.value); clear('name') }} />
       <Field label="CNPJ (opcional)" inputMode="numeric" autoComplete="off" value={cnpj} disabled={!canWrite} placeholder="00.000.000/0000-00"
         hint="Com o CNPJ, o prumia reconhece este favorecido nos boletos." error={fields.cnpj}
@@ -110,7 +110,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
           {found.tradeName ? ` (${found.tradeName})` : ''}
         </p>
       )}
-      <Field label="Razão social (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="GASCO DISTRIBUIDORA S/A" error={fields.legalName}
+      <Field label="Nome oficial (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="GASCO DISTRIBUIDORA S/A" error={fields.legalName}
         onChange={(e) => { setLegalName(e.target.value); clear('legalName') }} />
 
       <div className="flex flex-col gap-1">

@@ -24,7 +24,7 @@ Para mudar de mês, use as setas **‹** e **›**. Em outro mês, aparece o ata
 
 1. Toque no botão **+** (no computador, em **Nova conta**, no alto da tela).
 2. Digite o **Valor**. Basta digitar os números: ao digitar `9990`, o campo mostra `R$ 99,90`.
-3. Escreva **O que é** (por exemplo, "Aluguel").
+3. Escreva **Descrição** (por exemplo, "Aluguel").
 4. Escolha quando **vence**: **hoje**, **amanhã**, **em 7 dias** ou **outra data**.
 5. Toque na **Categoria**. As que mostram **VR** sugerem a carteira de benefício.
 6. Toque em **Adicionar conta**. Para lançar várias seguidas, use **Adicionar e lançar outra**: a categoria e o vencimento ficam, e o cursor volta para o começo.

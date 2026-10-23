@@ -7,7 +7,7 @@ quiser lançar a mesma coisa várias vezes.
 
 1. Na tela do mês, toque em **+** (Nova conta) e escolha **parcelada**.
 2. Informe o valor. Por padrão é o **de cada parcela** (6x de R$ 660,00: digite 660,00); toque em **total da compra** se preferir informar o total.
-3. Escreva o que comprou em **O que é** (por exemplo, "Notebook") e confira o aviso com a conta (6x de R$ 660,00 = R$ 3.960,00).
+3. Escreva o que comprou em **Descrição** (por exemplo, "Notebook") e confira o aviso com a conta (6x de R$ 660,00 = R$ 3.960,00).
 4. Digite o número de **Parcelas** (de 2 a 120).
 5. Escolha quando a **1ª parcela vence** e a **categoria**.
 6. Toque em **Adicionar compra parcelada**.

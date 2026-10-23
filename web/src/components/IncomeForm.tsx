@@ -120,7 +120,7 @@ export function IncomeForm({ month, members, defaultUserId, income, canWrite, on
         </p>
       )}
 
-      <Field label="O que é" name="description" autoComplete="off" autoFocus={!editing} required value={description} disabled={!canWrite}
+      <Field label="Descrição" name="description" autoComplete="off" autoFocus={!editing} required value={description} disabled={!canWrite}
         onChange={(e) => { setDescription(e.target.value); clear('description') }} error={fields.description} />
 
       <MoneyInput hero label="Valor bruto" value={gross} onChange={(c) => { setGross(c); clear('grossAmountCents') }} error={fields.grossAmountCents} />

@@ -134,7 +134,7 @@ describe('ajustes · favorecidos', () => {
     renderAt('/configuracoes')
     await screen.findByRole('button', { name: 'Abrir favorecido Gás' })
     const list = screen.getByRole('list', { name: 'Favorecidos ativos' })
-    expect(within(list).getByText('11.222.333/0001-81 · Moradia')).toBeInTheDocument()
+    expect(within(list).getByText('GASCO DISTRIBUIDORA S/A · 11.222.333/0001-81 · Moradia')).toBeInTheDocument()
     expect(screen.getByText('arquivados (1)')).toBeInTheDocument()
   })
 
@@ -143,7 +143,7 @@ describe('ajustes · favorecidos', () => {
     renderAt('/configuracoes')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
-    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
+    await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
     expect(within(dialog).getByLabelText('CNPJ (opcional)')).toHaveValue('11.222.333/0001-81')
     await userEvent.selectOptions(within(dialog).getByLabelText(/categoria sugerida/), 'c1')
@@ -157,18 +157,18 @@ describe('ajustes · favorecidos', () => {
     expect(await screen.findByText('Gás criado.')).toBeInTheDocument()
   })
 
-  it('ao completar o CNPJ, busca a razão social e preenche (sem sobrescrever o que já foi digitado)', async () => {
+  it('ao completar o CNPJ, busca o nome oficial e preenche (sem sobrescrever o que já foi digitado)', async () => {
     mockApi({ me: ok(me), categories: ok(cats), cnpj: ok({ cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', tradeName: 'GASCO' }) })
     renderAt('/configuracoes')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
     expect(await within(dialog).findByText(/CNPJ conferido: GASCO DISTRIBUIDORA S\/A \(GASCO\)/)).toBeInTheDocument()
-    expect(within(dialog).getByLabelText('Razão social (opcional)')).toHaveValue('GASCO DISTRIBUIDORA S/A')
+    expect(within(dialog).getByLabelText('Nome oficial (opcional)')).toHaveValue('GASCO DISTRIBUIDORA S/A')
     expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', { params: { path: { cnpj: '11222333000181' } } })
 
     // a razão social editada à mão não é sobrescrita por uma nova consulta
-    const razao = within(dialog).getByLabelText('Razão social (opcional)')
+    const razao = within(dialog).getByLabelText('Nome oficial (opcional)')
     await userEvent.clear(razao)
     await userEvent.type(razao, 'Nome meu')
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '{Backspace}3')
@@ -180,7 +180,7 @@ describe('ajustes · favorecidos', () => {
     renderAt('/configuracoes')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
-    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
+    await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
     await waitFor(() => expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', expect.anything()))
     expect(within(dialog).queryByText(/CNPJ conferido/)).not.toBeInTheDocument()
@@ -194,7 +194,7 @@ describe('ajustes · favorecidos', () => {
     renderAt('/configuracoes')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
-    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
+    await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '0169')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
     expect(await within(dialog).findByText('O CNPJ tem 14 dígitos.')).toBeInTheDocument()

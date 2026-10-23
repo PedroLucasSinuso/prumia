@@ -300,7 +300,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
 
       <Field
         ref={descRef}
-        label="O que é"
+        label="Descrição"
         name="description"
         autoFocus={!editing}
         autoComplete="off"

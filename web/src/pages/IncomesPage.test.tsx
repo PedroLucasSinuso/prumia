@@ -184,7 +184,7 @@ describe('ajustar uma receita do mês', () => {
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
     await userEvent.click(screen.getByRole('button', { name: 'Outra' }))
-    await userEvent.type(screen.getByLabelText('O que é'), 'Freela')
+    await userEvent.type(screen.getByLabelText('Descrição'), 'Freela')
     await userEvent.type(screen.getByLabelText('Valor bruto'), '120000')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar receita' }))
     await waitFor(() =>
@@ -211,7 +211,7 @@ describe('computador', () => {
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Salário Pedro' }))
     const painel = await screen.findByRole('region', { name: 'Detalhes' })
-    expect(within(painel).getByLabelText('O que é')).toHaveValue('Salário Pedro')
+    expect(within(painel).getByLabelText('Descrição')).toHaveValue('Salário Pedro')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

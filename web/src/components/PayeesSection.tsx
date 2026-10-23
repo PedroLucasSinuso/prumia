@@ -24,7 +24,7 @@ export function PayeesSection({ houseId, categories, canWrite }: { houseId: stri
   const selected = editing?.kind === 'edit' ? all.find((p) => p.id === editing.id) : undefined
   const close = () => setEditing(null)
 
-  const meta = (p: Payee) => [p.cnpj ? formatCnpj(p.cnpj) : 'sem CNPJ', categoryName(p.defaultCategoryId)].filter(Boolean).join(' · ')
+  const meta = (p: Payee) => [p.legalName, p.cnpj ? formatCnpj(p.cnpj) : 'sem CNPJ', categoryName(p.defaultCategoryId)].filter(Boolean).join(' · ')
   const row = (p: Payee) => (
     <li key={p.id} className="border-t border-graphite/10 first:border-t-0">
       <button aria-label={`Abrir favorecido ${p.name}`} onClick={() => setEditing({ kind: 'edit', id: p.id })} className="flex min-h-14 w-full min-w-0 flex-col justify-center px-1 py-2 text-left">

@@ -48,7 +48,7 @@ describe('importar boleto', () => {
     expect(within(review).getByText(grouped)).toBeInTheDocument()
     expect(within(review).getByText(/Companhia de Luz/)).toBeInTheDocument()
     expect(within(review).getByText(/lido do texto do PDF/)).toBeInTheDocument()
-    expect(within(dialog).getByLabelText('O que é')).toHaveValue('Companhia de Luz')
+    expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Companhia de Luz')
     expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('2026-10-28')
     expect(within(dialog).getByLabelText('Valor')).toHaveValue('R$ 189,90')
     expect(within(dialog).getByLabelText(/Mês de competência/)).toHaveValue('2026-10')
@@ -83,9 +83,9 @@ describe('importar boleto', () => {
       const dialog = await openNew(user)
       await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
       const apelido = await within(dialog).findByLabelText(/Como vocês chamam GASCO DISTRIBUIDORA S\/A/)
-      expect(within(dialog).getByLabelText('O que é')).toHaveValue('GASCO DISTRIBUIDORA S/A')
+      expect(within(dialog).getByLabelText('Descrição')).toHaveValue('GASCO DISTRIBUIDORA S/A')
       await user.type(apelido, 'Gás')
-      expect(within(dialog).getByLabelText('O que é')).toHaveValue('Gás')
+      expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Gás')
       await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
       await waitFor(() =>
         expect(api.POST).toHaveBeenCalledWith(
@@ -130,7 +130,7 @@ describe('importar boleto', () => {
       await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
       expect(await within(dialog).findByText('Gás', { selector: 'strong' })).toBeInTheDocument()
       expect(within(dialog).queryByLabelText(/Como vocês chamam/)).not.toBeInTheDocument()
-      expect(within(dialog).getByLabelText('O que é')).toHaveValue('Gás')
+      expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Gás')
       expect(within(dialog).getByRole('button', { name: /Mercado/ })).toHaveAttribute('aria-pressed', 'true')
       await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
       await waitFor(() =>
@@ -186,10 +186,10 @@ describe('importar boleto', () => {
     const user = userEvent.setup()
     mockApi({ me: ok(me), extract: ok(extraction()) })
     const dialog = await openNew(user)
-    await user.type(within(dialog).getByLabelText('O que é'), 'Luz de casa')
+    await user.type(within(dialog).getByLabelText('Descrição'), 'Luz de casa')
     await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
     await within(dialog).findByRole('region', { name: 'Conferir antes de salvar' })
-    expect(within(dialog).getByLabelText('O que é')).toHaveValue('Luz de casa')
+    expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Luz de casa')
   })
 
   it('PDF com senha: pede a senha, reenvia e limpa o campo', async () => {
@@ -225,7 +225,7 @@ describe('importar boleto', () => {
     expect(within(dialog).getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Preencher manualmente' }))
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
-    expect(within(dialog).getByLabelText('O que é')).toHaveFocus()
+    expect(within(dialog).getByLabelText('Descrição')).toHaveFocus()
     expect(within(dialog).getByRole('button', { name: 'Importar boleto' })).toBeInTheDocument()
   })
 
@@ -284,7 +284,7 @@ describe('importar boleto', () => {
     await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
     await user.click(within(await within(dialog).findByRole('alert')).getByRole('button', { name: 'Abrir a conta' }))
     expect(await screen.findByRole('dialog', { name: 'Detalhes da conta' })).toBeInTheDocument()
-    expect(screen.getByLabelText('O que é')).toHaveValue('Luz de setembro')
+    expect(screen.getByLabelText('Descrição')).toHaveValue('Luz de setembro')
   })
 
   it('copiar linha digitável copia só os dígitos e avisa', async () => {
