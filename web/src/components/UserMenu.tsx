@@ -57,7 +57,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
   }
 
   function onMenuKey(e: KeyboardEvent) {
-    const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])]
+    const items = Array.from(menu.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])
     const at = items.indexOf(document.activeElement as HTMLElement)
     const focus = (i: number) => items[(i + items.length) % items.length]?.focus()
     if (e.key === 'Escape') { e.preventDefault(); close() }

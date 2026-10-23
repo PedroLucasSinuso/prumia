@@ -72,7 +72,7 @@ describe('casas na tela /casa', () => {
       current = { ...twoHousesMe, households: [...twoHousesMe.households, { id: 'h3', name: 'Casa da praia', role: 'admin' }] }
       return ok({ id: 'h3', name: 'Casa da praia', createdAt: '2026-10-21T00:00:00Z' }) as never
     })
-    renderAt('/casa')
+    renderAt('/ajustes/casa')
     await userEvent.click(await screen.findByRole('button', { name: 'Criar outra casa' }))
     await userEvent.type(screen.getByLabelText('Nome da nova casa'), 'Casa da praia')
     await userEvent.click(screen.getByRole('button', { name: 'Criar casa' }))
@@ -83,7 +83,7 @@ describe('casas na tela /casa', () => {
 
   it('avisa quando passou do limite de casas', async () => {
     mockApi({ me: ok(me), createHousehold: fail(409, 'household_limit') })
-    renderAt('/casa')
+    renderAt('/ajustes/casa')
     await userEvent.click(await screen.findByRole('button', { name: 'Criar outra casa' }))
     await userEvent.type(screen.getByLabelText('Nome da nova casa'), 'Sexta casa')
     await userEvent.click(screen.getByRole('button', { name: 'Criar casa' }))
@@ -98,7 +98,7 @@ describe('casas na tela /casa', () => {
       current = me // depois de sair, só sobra a casa do Pedro
       return { response: { ok: true } }
     }) as never)
-    renderAt('/casa')
+    renderAt('/ajustes/casa')
     expect(await screen.findByRole('heading', { name: 'Casa da Ana' })).toBeInTheDocument()
     const list = await screen.findByRole('region', { name: 'Pessoas' })
     await userEvent.click(await within(list).findByRole('button', { name: 'sair da casa' }))
@@ -110,7 +110,7 @@ describe('casas na tela /casa', () => {
 
   it('sair da ÚLTIMA casa encerra a sessão', async () => {
     mockApi({ me: ok(me), members: ok([{ userId: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', role: 'member', joinedAt: '2026-01-01T00:00:00Z' }]) })
-    renderAt('/casa')
+    renderAt('/ajustes/casa')
     const list = await screen.findByRole('region', { name: 'Pessoas' })
     await userEvent.click(await within(list).findByRole('button', { name: 'sair da casa' }))
     await userEvent.click(within(list).getByRole('button', { name: 'Confirmar saída' }))

@@ -34,6 +34,8 @@ type Props = {
   onExtractBoleto?: (file: File, password?: string) => Promise<BoletoExtraction>
   /** Abre outra conta (aviso de boleto duplicado). */
   onOpenInvoice?: (id: string) => void
+  /** Tipo já escolhido ao criar (ex.: a tela de Parcelas abre direto em "parcelada" ou "fixa"). Padrão: avulsa. */
+  initialKind?: 'single' | 'installments' | 'recurring'
 }
 
 // Nomes dos campos da API -> nome que o formulário usa para mostrar o erro.
@@ -61,7 +63,7 @@ const chip = (on: boolean) =>
  * Formulário de criar/editar conta. Valor em destaque; vencimento e categoria são BOTÕES visíveis (nada de menu suspenso):
  * menos toques e menos decisões escondidas. "Mais opções" guarda competência e observação.
  */
-export function InvoiceForm({ month, categories, payees = [], invoice, canWrite, onDone, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice }: Props) {
+export function InvoiceForm({ month, categories, payees = [], invoice, canWrite, onDone, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onDelete, onUnpay, onPay, onExtractBoleto, onOpenInvoice, initialKind }: Props) {
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
@@ -75,7 +77,7 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
   const [payeeId, setPayeeId] = useState(invoice?.payeeId ?? '')
   const [competence, setCompetence] = useState(invoice ? invoice.competenceMonth.slice(0, 7) : '')
   const [notes, setNotes] = useState(invoice?.notes ?? '')
-  const [kind, setKind] = useState<Kind>('single')
+  const [kind, setKind] = useState<Kind>(initialKind ?? 'single')
   const [count, setCount] = useState('6')
   const [amountIsTotal, setAmountIsTotal] = useState(false)
   const [endMonth, setEndMonth] = useState('')

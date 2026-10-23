@@ -18,7 +18,7 @@ export const fail = (status: number, code: string, fields?: Record<string, strin
 })
 
 export const me: Me = {
-  id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com',
+  id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', theme: 'sistema',
   households: [{ id: 'h1', name: 'Casa do Pedro', role: 'admin' }],
 }
 /** Duas casas: a do Pedro (admin) e a da Ana, em que ele entrou como membro. */
@@ -110,6 +110,9 @@ type Routes = {
   /** Leitura de boleto: resposta fixa ou calculada pelo corpo (ex.: pedir senha só se ela não veio). */
   extract?: Reply | ((body: { file: File; password?: string }) => Reply)
   invoiceDetail?: Reply
+  updateMe?: Reply
+  changePassword?: Reply
+  endOthers?: Reply
 }
 
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
@@ -160,6 +163,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/payees': r.createPayee,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
+      '/auth/password': r.changePassword,
       '/households': r.createHousehold,
       '/invites/accept': r.acceptInvite,
     }
@@ -170,6 +174,7 @@ export function mockApi(r: Routes = {}) {
     return reply ?? ok()
   }) as never)
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
+    if (url === '/auth/me') return r.updateMe ?? ok()
     if (url === '/households/{householdId}/recurrences/{recurrenceId}') return r.updateRecurrence ?? ok()
     if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
     if (url === '/households/{householdId}/categories/{categoryId}') return r.updateCategory ?? ok({})
@@ -179,6 +184,7 @@ export function mockApi(r: Routes = {}) {
     return r.update ?? ok()
   }) as never)
   vi.spyOn(api, 'DELETE').mockImplementation((async (url: string) => {
+    if (url === '/auth/sessions/others') return r.endOthers ?? ok({ ended: 1 })
     if (url === '/households/{householdId}/members/{userId}') return r.removeMember ?? { response: { ok: true } }
     if (url.endsWith('/pay')) return r.unpay ?? ok()
     if (url.endsWith('/receive')) return r.unreceive ?? ok()

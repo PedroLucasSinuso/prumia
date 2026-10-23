@@ -193,6 +193,31 @@ describe('parcelas e contas fixas', () => {
     )
   })
 
+  it('cria uma compra parcelada direto da tela de parcelas, já no tipo parcelada', async () => {
+    mockApi({ me: ok(me), createPurchase: ok({}) })
+    renderAt('/parcelas')
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova compra parcelada' }))
+    expect(await screen.findByRole('button', { name: 'parcelada' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.type(screen.getByLabelText('Descrição'), 'Geladeira')
+    await userEvent.type(screen.getByLabelText('Valor de cada parcela'), '50000')
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar compra parcelada' }))
+    await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/purchases', expect.anything()))
+  })
+
+  it('"Nova conta fixa" abre o formulário no tipo fixa; leitura não vê os botões', async () => {
+    mockApi({ me: ok(me) })
+    renderAt('/parcelas')
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova conta fixa' }))
+    expect(await screen.findByRole('button', { name: 'fixa todo mês' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('leitura não vê os botões de criar', async () => {
+    mockApi({ me: ok(viewerMe) })
+    renderAt('/parcelas')
+    await screen.findByRole('heading', { name: /Parcelas/ })
+    expect(screen.queryByRole('button', { name: 'Nova compra parcelada' })).not.toBeInTheDocument()
+  })
+
   it('edita o valor da conta fixa', async () => {
     mockApi({ me: ok(me), recurrences: ok([aluguel]) })
     renderAt('/parcelas')

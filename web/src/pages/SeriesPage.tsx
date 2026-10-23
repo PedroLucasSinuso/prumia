@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 
-import { useRecurrenceActions, usePurchases, useRecurrences } from '../api/queries'
+import { useCategories, useInvoiceActions, usePayees, useRecurrenceActions, usePurchases, useRecurrences } from '../api/queries'
 import type { Invoice, Purchase, Recurrence } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
+import { Button } from '../components/Button'
+import { InvoiceForm } from '../components/InvoiceForm'
 import { RecurrenceForm } from '../components/RecurrenceForm'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/toastContext'
-import { dayMonth, fullDate, monthLabel } from '../lib/dates'
+import { currentMonth, dayMonth, fullDate, monthLabel } from '../lib/dates'
 import { formatCents } from '../lib/money'
 
 const label = 'text-xs font-medium uppercase tracking-wider text-ink/80'
@@ -77,6 +79,11 @@ export default function SeriesPage() {
   const recurrences = useRecurrences(houseId)
   const actions = useRecurrenceActions(houseId)
   const [editing, setEditing] = useState<Recurrence>()
+  // Criar daqui reaproveita o formulário de conta (o mesmo do Mês), já no tipo escolhido.
+  const [creating, setCreating] = useState<'installments' | 'recurring'>()
+  const categories = useCategories(houseId)
+  const payees = usePayees(houseId)
+  const invoiceActions = useInvoiceActions(houseId)
 
   if (!house) return null
   const canWrite = house.role !== 'viewer'
@@ -86,7 +93,13 @@ export default function SeriesPage() {
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
         <header>
           <h1 className="font-display text-[32px] font-bold leading-none text-structure font-stretch-condensed">Parcelas e contas fixas</h1>
-          <p className="mt-1 text-sm text-ink/80">Para lançar, use <strong>+</strong> na tela do mês e escolha parcelada ou fixa.</p>
+          <p className="mt-1 text-sm text-ink/80">Compras no cartão e contas que se repetem todo mês.</p>
+          {canWrite && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={() => setCreating('installments')}>Nova compra parcelada</Button>
+              <Button variant="ghost" onClick={() => setCreating('recurring')}>Nova conta fixa</Button>
+            </div>
+          )}
         </header>
 
         <div className="grid gap-6 md:grid-cols-2 md:items-start">
@@ -139,6 +152,28 @@ export default function SeriesPage() {
           </section>
         </div>
       </main>
+
+      {creating && categories.isSuccess && (
+        <Sheet title={creating === 'installments' ? 'Nova compra parcelada' : 'Nova conta fixa'} onClose={() => setCreating(undefined)}>
+          <InvoiceForm
+            key={creating}
+            month={currentMonth()}
+            categories={categories.data.filter((c) => !c.archived)}
+            payees={payees.data}
+            canWrite={canWrite}
+            initialKind={creating}
+            onDone={() => setCreating(undefined)}
+            onCreate={(body) => invoiceActions.create.mutateAsync(body)}
+            onCreatePurchase={(body) => invoiceActions.createPurchase.mutateAsync(body)}
+            onCreateRecurrence={(body) => invoiceActions.createRecurrence.mutateAsync(body)}
+            // Aqui só se cria: editar/pagar/excluir contas é na tela do mês.
+            onUpdate={() => Promise.resolve()}
+            onDelete={() => {}}
+            onUnpay={() => {}}
+            onPay={() => {}}
+          />
+        </Sheet>
+      )}
 
       {editing && (
         <Sheet title={editing.description} onClose={() => setEditing(undefined)}>

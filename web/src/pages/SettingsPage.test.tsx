@@ -23,18 +23,20 @@ const patchCalls = () => vi.mocked(api.PATCH).mock.calls.map((c) => (c[1] as { b
 describe('ajustes · categorias', () => {
   it('lista as ativas em ordem e as arquivadas à parte', async () => {
     mockApi({ me: ok(me), categories: ok(cats) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await screen.findByRole('button', { name: 'Abrir Moradia' })
     const list = screen.getByRole('list', { name: 'Categorias ativas' })
     expect(within(list).getAllByRole('button', { name: /^Abrir/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Abrir Moradia', 'Abrir Mercado', 'Abrir Lazer'])
-    expect(within(list).getByText(/carteira de benefício · essencial/)).toBeInTheDocument()
+    expect(within(list).getAllByText('essencial').length).toBe(2)
+    expect(within(list).getByText('VR')).toBeInTheDocument()
+    expect(within(list).queryByText(/sem carteira/)).not.toBeInTheDocument()
     expect(screen.getByText('arquivadas (1)')).toBeInTheDocument()
     expect(api.GET).toHaveBeenCalledWith('/households/{householdId}/categories', expect.objectContaining({ params: expect.objectContaining({ query: { includeArchived: true } }) }))
   })
 
   it('cria uma categoria com carteira e essencial', async () => {
     mockApi({ me: ok(me), categories: ok(cats), createCategory: ok({ id: 'c10', name: 'Pets', isEssential: false, sortOrder: 4, archived: false }) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: /Nova categoria/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova categoria' })
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Pets')
@@ -48,7 +50,7 @@ describe('ajustes · categorias', () => {
 
   it('edita nome, carteira e essencial (nenhuma carteira vai como null)', async () => {
     mockApi({ me: ok(me), categories: ok(cats) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Mercado' }))
     const dialog = await screen.findByRole('dialog', { name: 'Mercado' })
     const name = within(dialog).getByLabelText('Nome')
@@ -62,7 +64,7 @@ describe('ajustes · categorias', () => {
 
   it('arquiva uma ativa e restaura uma arquivada', async () => {
     mockApi({ me: ok(me), categories: ok(cats) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Lazer' }))
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Arquivar categoria' }))
     await waitFor(() => expect(patchCalls()).toContainEqual({ archived: true }))
@@ -76,7 +78,8 @@ describe('ajustes · categorias', () => {
 
   it('reordena com subir: grava sortOrder só nas que mudaram', async () => {
     mockApi({ me: ok(me), categories: ok(cats) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
+    await userEvent.click(await screen.findByRole('button', { name: 'Reordenar' }))
     expect(await screen.findByRole('button', { name: 'Subir Moradia' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Descer Lazer' })).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Subir Lazer' }))
@@ -90,18 +93,18 @@ describe('ajustes · categorias', () => {
 
   it('viewer só lê: sem criar, reordenar, salvar ou arquivar', async () => {
     mockApi({ me: ok(viewerMe), categories: ok(cats) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Moradia' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByLabelText('Nome')).toBeDisabled()
     expect(within(dialog).queryByRole('button', { name: /Salvar|Arquivar/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Nova categoria/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Subir/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reordenar' })).not.toBeInTheDocument()
   })
 
   it('nome repetido mostra o erro em pt-BR no campo', async () => {
     mockApi({ me: ok(me), categories: ok(cats), createCategory: fail(409, 'category_exists') })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: /Nova categoria/ }))
     const dialog = await screen.findByRole('dialog')
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'mercado')
@@ -112,7 +115,7 @@ describe('ajustes · categorias', () => {
 
   it('erro ao carregar oferece tentar de novo', async () => {
     mockApi({ me: ok(me), categories: fail(500, 'internal') })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     expect(await screen.findByText(/Não foi possível carregar as categorias/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
   })
@@ -136,7 +139,7 @@ describe('ajustes · subcategorias', () => {
 
   it('mostra as subcategorias logo abaixo da mãe', async () => {
     mockApi({ me: ok(me), categories: ok(tree) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await screen.findByRole('button', { name: 'Abrir Moradia' })
     const list = screen.getByRole('list', { name: 'Categorias ativas' })
     expect(within(list).getAllByRole('button', { name: /^Abrir/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Abrir Moradia', 'Abrir Gás', 'Abrir Luz', 'Abrir Lazer'])
@@ -144,8 +147,9 @@ describe('ajustes · subcategorias', () => {
 
   it('"+ sub" cria dentro da mãe, já com a carteira e o essencial dela', async () => {
     mockApi({ me: ok(me), categories: ok(tree), createCategory: ok({ id: 'n1', name: 'Água', isEssential: true, sortOrder: 2, archived: false, parentId: 'c1' }) })
-    renderAt('/configuracoes')
-    await userEvent.click(await screen.findByRole('button', { name: 'Nova subcategoria em Moradia' }))
+    renderAt('/ajustes/categorias')
+    await userEvent.click(await screen.findByRole('button', { name: 'Ações de Moradia' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Nova subcategoria' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova subcategoria' })
     expect(within(dialog).getByLabelText('dentro de')).toHaveValue('c1')
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Água')
@@ -160,7 +164,7 @@ describe('ajustes · subcategorias', () => {
 
   it('mover uma categoria para dentro de outra manda parentId; voltar ao topo manda null; sem mudar, não manda', async () => {
     mockApi({ me: ok(me), categories: ok(tree) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Lazer' }))
     let dialog = await screen.findByRole('dialog', { name: 'Lazer' })
     await userEvent.selectOptions(within(dialog).getByLabelText('dentro de'), 'c1')
@@ -176,7 +180,7 @@ describe('ajustes · subcategorias', () => {
 
   it('categoria com subcategorias não pode virar filha e avisa o que acontece ao arquivar', async () => {
     mockApi({ me: ok(me), categories: ok(tree) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Moradia' }))
     const dialog = await screen.findByRole('dialog', { name: 'Moradia' })
     expect(within(dialog).queryByLabelText('dentro de')).not.toBeInTheDocument()
@@ -186,7 +190,8 @@ describe('ajustes · subcategorias', () => {
 
   it('as setas movem só entre as irmãs (as filhas têm ordem própria)', async () => {
     mockApi({ me: ok(me), categories: ok(tree) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/categorias')
+    await userEvent.click(await screen.findByRole('button', { name: 'Reordenar' }))
     expect(await screen.findByRole('button', { name: 'Subir Gás' })).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Subir Luz' }))
     await waitFor(() => expect(api.PATCH).toHaveBeenCalledTimes(2))
@@ -200,7 +205,7 @@ describe('ajustes · favorecidos', () => {
 
   it('lista com CNPJ formatado e a categoria sugerida', async () => {
     mockApi({ me: ok(me), categories: ok(cats), payees: ok([gas, { id: 'p2', name: 'Antigo', archived: true }]) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await screen.findByRole('button', { name: 'Abrir favorecido Gás' })
     const list = screen.getByRole('list', { name: 'Favorecidos ativos' })
     expect(within(list).getByText('GASCO DISTRIBUIDORA S/A · 11.222.333/0001-81 · Moradia')).toBeInTheDocument()
@@ -209,7 +214,7 @@ describe('ajustes · favorecidos', () => {
 
   it('cria um favorecido: o CNPJ é mascarado ao digitar e vai só com dígitos', async () => {
     mockApi({ me: ok(me), categories: ok(cats), createPayee: ok({ ...gas, id: 'p3' }) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
@@ -228,7 +233,7 @@ describe('ajustes · favorecidos', () => {
 
   it('ao completar o CNPJ, busca o nome oficial e preenche (sem sobrescrever o que já foi digitado)', async () => {
     mockApi({ me: ok(me), categories: ok(cats), cnpj: ok({ cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', tradeName: 'GASCO' }) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
@@ -246,7 +251,7 @@ describe('ajustes · favorecidos', () => {
 
   it('consulta fora do ar não atrapalha: nenhum aviso e o cadastro segue normal', async () => {
     mockApi({ me: ok(me), categories: ok(cats), createPayee: ok({ ...gas, id: 'p3' }) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
@@ -260,7 +265,7 @@ describe('ajustes · favorecidos', () => {
 
   it('CNPJ incompleto é recusado antes de enviar e CNPJ repetido mostra o aviso do servidor', async () => {
     mockApi({ me: ok(me), categories: ok(cats), createPayee: fail(409, 'payee_cnpj_exists') })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
     await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
@@ -278,7 +283,7 @@ describe('ajustes · favorecidos', () => {
 
   it('arquiva e limpa o CNPJ (null) ao editar', async () => {
     mockApi({ me: ok(me), categories: ok(cats), payees: ok([gas]) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir favorecido Gás' }))
     const dialog = await screen.findByRole('dialog', { name: 'Gás' })
     await userEvent.clear(within(dialog).getByLabelText('CNPJ (opcional)'))
@@ -288,7 +293,7 @@ describe('ajustes · favorecidos', () => {
 
   it('viewer vê a lista sem botão de criar', async () => {
     mockApi({ me: ok(viewerMe), categories: ok(cats), payees: ok([gas]) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/favorecidos')
     await screen.findByRole('button', { name: 'Abrir favorecido Gás' })
     expect(screen.queryByRole('button', { name: /Novo favorecido/ })).not.toBeInTheDocument()
   })
@@ -297,10 +302,11 @@ describe('ajustes · favorecidos', () => {
 describe('ajustes · aparência', () => {
   it('escolher o tema aplica na hora e fica marcado', async () => {
     mockApi({ me: ok(me), categories: ok(cats) })
-    renderAt('/configuracoes')
+    renderAt('/ajustes/aparencia')
     const grupo = await screen.findByRole('radiogroup', { name: 'Tema' })
-    expect(within(grupo).getByRole('radio', { name: /Marfim/ })).toHaveAttribute('aria-checked', 'true')
+    expect(within(grupo).getByRole('radio', { name: /Sistema/ })).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(within(grupo).getByRole('radio', { name: /Grafite/ }))
+    await waitFor(() => expect(api.PATCH).toHaveBeenCalledWith('/auth/me', { body: { theme: 'grafite' } }))
     expect(document.documentElement.dataset.theme).toBe('grafite')
     expect(within(grupo).getByRole('radio', { name: /Grafite/ })).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(within(grupo).getByRole('radio', { name: /Marfim/ }))

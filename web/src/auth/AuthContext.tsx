@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { api } from '../api/client'
+import { setTheme } from '../lib/theme'
 import { readActiveHouse, writeActiveHouse } from './activeHouseStorage'
 import { AuthContext, type AuthValue, type Session } from './context'
 
@@ -12,6 +13,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [chosen, setChosen] = useState<{ userId: string; houseId?: string }>()
   const userId = session.status === 'authenticated' ? session.me.id : undefined
   const activeHouseId = userId ? (chosen?.userId === userId ? chosen.houseId : readActiveHouse(userId)) : undefined
+
+  // O tema da conta (servidor) vale ao entrar; o localStorage é só cache para o primeiro desenho. Só reage a quem entra
+  // (id do usuário), não a cada refresh: assim uma troca de tema que falhou ao salvar não volta sozinha.
+  const serverTheme = session.status === 'authenticated' ? session.me.theme : undefined
+  useEffect(() => {
+    if (userId && serverTheme) setTheme(serverTheme)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   const selectHouse = useCallback<AuthValue['selectHouse']>(
     (houseId) => {
