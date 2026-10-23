@@ -1,20 +1,41 @@
 import { Link } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
 
-import { useCategories, useSummary } from '../api/queries'
+import { useCategories, useCategoryHistory, useSummary } from '../api/queries'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
+import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
+import { Sheet } from '../components/Sheet'
 import { WalletCard } from '../components/WalletCard'
 import { rollup } from '../lib/categories'
+import { addMonths } from '../lib/dates'
+import { commitments, monthShort } from '../lib/history'
 import { formatCents } from '../lib/money'
+import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
 
-const label = 'text-xs font-medium uppercase tracking-wider text-graphite/80'
+const label = 'text-xs font-medium uppercase tracking-wider text-ink/80'
+const card = 'rounded-md border border-ink/20 p-4'
+
+/** Um destaque da linha do topo: rótulo, valor em mono e uma nota curta. */
+function Tile({ title, value, note, strong = false }: { title: string; value: string; note?: ReactNode; strong?: boolean }) {
+  return (
+    <div className={`rounded-md p-3 md:p-4 ${strong ? 'border-2 border-structure' : 'border border-ink/20'}`}>
+      <p className={label}>{title}</p>
+      <p className={`mt-1 font-mono text-xl font-semibold tabular-nums md:text-2xl ${strong ? 'text-structure' : 'text-ink'}`}>{value}</p>
+      {note && <p className="mt-0.5 text-xs text-ink/75">{note}</p>}
+    </div>
+  )
+}
 
 /**
- * Resumo do mês: "sobra ou falta?" por carteira (livre e benefício), quanto já foi pago x o que falta pagar,
- * e para onde o dinheiro vai (total por categoria). Tudo por competência. O saldo é recebido − pago: uma estimativa.
+ * Resumo do mês. Número principal: o SALDO PROJETADO (previsto para entrar − pago − a pagar), da casa e de cada carteira;
+ * coral só se ele for negativo. Depois as carteiras, "para onde vai o dinheiro" (cada categoria abre o histórico dela) e os
+ * compromissos dos próximos 3 meses (parcelas e contas fixas). Tudo por competência.
+ * Computador: grade com destaques, carteiras lado a lado e o histórico num painel ao lado da lista. Celular: uma coluna e o
+ * histórico abre num painel que sobe da base.
  */
 export default function SummaryPage() {
   const [month, setMonth] = useMonthParam()
@@ -22,26 +43,34 @@ export default function SummaryPage() {
   const houseId = house?.id ?? ''
   const summary = useSummary(houseId, month)
   const categories = useCategories(houseId)
+  const future = useCategoryHistory(houseId, addMonths(month, 1), addMonths(month, 3))
+  const desktop = useIsDesktop()
+  const [picked, setPicked] = useState<string | null>(null)
 
   if (!house) return null
   const s = summary.data
+  const cats = categories.data ?? []
   const noIncome = s !== undefined && s.wallets.free.expectedIncomeCents === 0 && s.wallets.benefit.expectedIncomeCents === 0
-  const total = s ? s.totalPaidCents + s.totalPendingCents : 0
-  const paidShare = total > 0 && s ? s.totalPaidCents / total : 0
-  const rows = rollup(s?.byCategory ?? [], categories.data ?? [])
+  const rows = rollup(s?.byCategory ?? [], cats)
+  const projected = s ? s.wallets.free.projectedCents + s.wallets.benefit.projectedCents : 0
+  // No computador o painel nunca fica vazio: sem escolha, mostra a categoria que mais pesa.
+  const selected = picked ?? (desktop ? (rows[0]?.id ?? null) : null)
+  const selectedName = selected ? (cats.find((c) => c.id === selected)?.name ?? 'Sem categoria') : ''
+  const ahead = future.data ? commitments(future.data) : []
+  const aheadTotal = ahead.reduce((sum, m) => sum + m.cents, 0)
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-none md:gap-6 md:px-10 md:pb-10 md:pt-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-6xl md:gap-5 md:px-8 md:pb-10 md:pt-8">
         <header>
           <MonthSelector month={month} onChange={setMonth} />
-          <p className="mt-2 hidden text-sm text-graphite/75 md:block">Resumo do mês: o que entrou, o que saiu e para onde foi.</p>
+          <p className="mt-2 hidden text-sm text-ink/75 md:block">Resumo do mês: o que entra, o que sai e para onde vai.</p>
         </header>
 
-        {summary.isPending && <p role="status" className="text-sm text-graphite/70">carregando…</p>}
+        {summary.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
         {summary.isError && (
-          <p role="alert" className="rounded-md border border-signal/60 bg-signal/10 px-3 py-2 text-sm">
-            <span className="font-mono text-signal">[ ✖ ]</span> Não foi possível carregar o resumo.{' '}
+          <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
+            <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar o resumo.{' '}
             <button className="font-semibold underline" onClick={() => void summary.refetch()}>
               Tentar de novo
             </button>
@@ -51,55 +80,116 @@ export default function SummaryPage() {
         {s && (
           <>
             {noIncome && (
-              <p className="rounded-md border border-dashed border-graphite/25 p-4 text-sm text-graphite/80">
-                Ainda não há receitas neste mês, então o saldo mostra só o que foi pago. Cadastre o salário e o vale em{' '}
-                <Link to="/receitas" className="font-semibold text-cobalt underline underline-offset-2">
+              <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/80">
+                Ainda não há receitas neste mês, então o saldo mostra só o que sai. Cadastre o salário e o vale em{' '}
+                <Link to="/receitas" className="font-semibold text-accent underline underline-offset-2">
                   receitas
                 </Link>
                 .
               </p>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <WalletCard title="Carteira livre" hint="salário e outras receitas" balance={s.wallets.free} tone="free" />
-              <WalletCard title="Carteira de benefício" hint="vale-refeição" balance={s.wallets.benefit} tone="benefit" />
-            </div>
-
-            <section aria-label="Pago e a pagar" className="rounded-md border border-graphite/20 p-4">
-              <h2 className={label}>contas do mês</h2>
-              <div className="mt-2 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-graphite/80">já pago</p>
-                  <p className="font-mono text-2xl font-semibold tabular-nums text-teal">{formatCents(s.totalPaidCents)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-graphite/80">a pagar</p>
-                  <p className="font-mono text-2xl font-semibold tabular-nums text-cobalt">{formatCents(s.totalPendingCents)}</p>
-                </div>
+            <section aria-label="Destaques do mês">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Tile
+                  strong
+                  title="saldo projetado"
+                  value={formatCents(Math.abs(projected))}
+                  note={
+                    projected < 0 ? (
+                      <>
+                        <span className="font-mono text-alert" aria-hidden="true">[ ✖ ]</span> vai faltar no mês
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono" aria-hidden="true">[ ▪ ]</span> deve sobrar no mês
+                      </>
+                    )
+                  }
+                />
+                <Tile title="a pagar" value={formatCents(s.totalPendingCents)} note="inclui as atrasadas" />
+                <Tile
+                  title="atrasado"
+                  value={formatCents(s.overdueCents)}
+                  note={
+                    s.overdueCount > 0 ? (
+                      <>
+                        <span className="font-mono text-alert" aria-hidden="true">[ ✖ ]</span> {s.overdueCount === 1 ? '1 conta vencida' : `${s.overdueCount} contas vencidas`}
+                      </>
+                    ) : (
+                      'nenhuma conta vencida'
+                    )
+                  }
+                />
+                <Tile title="pago" value={formatCents(s.totalPaidCents)} note="valor efetivamente pago" />
               </div>
-              <div role="img" aria-label={`${Math.round(paidShare * 100)}% das contas do mês já foi pago`} className="mt-3 flex h-3 overflow-hidden rounded-xs bg-graphite/10">
-                <span className="bg-teal" style={{ width: `${paidShare * 100}%` }} />
-                <span className="bg-cobalt" style={{ width: `${(1 - paidShare) * 100}%`, opacity: total > 0 ? 1 : 0 }} />
-              </div>
-            </section>
-
-            <section aria-label="Por categoria" className="rounded-md border border-graphite/20 p-4">
-              <h2 className={label}>para onde vai o dinheiro</h2>
-              {s.byCategory.length === 0 ? (
-                <p className="mt-2 text-sm text-graphite/75">Nenhuma conta neste mês.</p>
-              ) : (
-                <div className="mt-3"><CategoryBreakdown rows={rows} split /></div>
-              )}
-              <p className="mt-3 flex items-center gap-4 text-xs text-graphite/80">
-                <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-teal" />pago</span>
-                <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-cobalt" />a pagar</span>
+              <p className="mt-2 text-xs text-ink/70">
+                Projetado = tudo o que está previsto para entrar menos o que já foi pago e o que falta pagar no mês.
               </p>
             </section>
 
-            <p className="text-xs text-graphite/70">
-              Saldo = o que já foi <strong>recebido</strong> menos o que já foi <strong>pago</strong> na competência do mês. É uma estimativa, não o
-              saldo do banco; receitas ainda só previstas não entram.
-            </p>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
+              <WalletCard title="Carteira livre" hint="salário e outras receitas" balance={s.wallets.free} tone="free" />
+              <WalletCard title="Carteira de benefício" hint="vale-refeição" balance={s.wallets.benefit} tone="benefit" />
+              {desktop && (
+                <div className={`${card} md:col-span-2 lg:col-span-1`}>
+                  <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} />
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+              <section aria-label="Por categoria" className={card}>
+                <h2 className={label}>para onde vai o dinheiro</h2>
+                {s.byCategory.length === 0 ? (
+                  <p className="mt-2 text-sm text-ink/75">Nenhuma conta neste mês.</p>
+                ) : (
+                  <>
+                    <p className="mt-1 text-xs text-ink/70">Selecione uma categoria para ver o histórico.</p>
+                    <div className="mt-3">
+                      <CategoryBreakdown rows={rows} split onSelect={setPicked} selectedId={selected} />
+                    </div>
+                  </>
+                )}
+                <p className="mt-3 flex items-center gap-4 text-xs text-ink/80">
+                  <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-structure" />pago</span>
+                  <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-accent" />a pagar</span>
+                </p>
+              </section>
+
+              {desktop && selected && (
+                <div className={card}>
+                  <HistoryPanel key={selected} houseId={houseId} month={month} categoryId={selected} categories={cats} />
+                </div>
+              )}
+            </div>
+
+            {aheadTotal > 0 && (
+              <section aria-label="Compromissos futuros" className={card}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className={label}>compromissos futuros</h2>
+                  <Link to="/parcelas" className="text-sm font-semibold text-accent underline underline-offset-2">
+                    ver parcelas e fixas
+                  </Link>
+                </div>
+                <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-structure">{formatCents(aheadTotal)}</p>
+                <p className="text-xs text-ink/75">em parcelas e contas fixas nos próximos 3 meses</p>
+                <ul className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                  {ahead.map((m) => (
+                    <li key={m.month} className="border-t border-ink/10 pt-2">
+                      <span className="block text-xs text-ink/75">{monthShort(m.month)}</span>
+                      <span className="font-mono tabular-nums">{formatCents(m.cents)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {!desktop && selected && (
+              <Sheet title={selectedName} onClose={() => setPicked(null)}>
+                <HistoryPanel houseId={houseId} month={month} categoryId={selected} categories={cats} hideTitle />
+              </Sheet>
+            )}
           </>
         )}
       </main>

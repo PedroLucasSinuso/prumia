@@ -59,7 +59,9 @@ type Service struct {
 }
 
 // NewService recebe `today` como função (e não um valor) para que cada chamada veja o dia corrente; nos testes, um relógio fixo.
-func NewService(db *gorm.DB, today func() caldate.Date) *Service { return &Service{db: db, today: today} }
+func NewService(db *gorm.DB, today func() caldate.Date) *Service {
+	return &Service{db: db, today: today}
+}
 
 // Linhas cruas das consultas agregadas (os SUM saem como bigint; ver ::bigint nas consultas).
 type incomeRow struct {
