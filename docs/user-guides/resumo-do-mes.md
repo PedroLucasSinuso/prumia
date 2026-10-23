@@ -1,40 +1,76 @@
 # Resumo do mês
 
-Como ler o resumo para responder: **sobrou ou faltou dinheiro neste mês, e para onde ele foi?** Use no fim do mês, ou sempre que
-quiser conferir como as coisas estão.
+Como ler o resumo para responder: **no fim do mês, vai sobrar ou faltar dinheiro, e para onde ele vai?** Use quando quiser conferir
+como as coisas estão, não só no fim do mês.
 
 ## Abrir
 
-Toque em **resumo** (no menu). Use ‹ e › para trocar de mês; o mês que você estava vendo acompanha ao trocar de tela.
+Selecione **resumo** no menu. Use ‹ e › para trocar de mês; o mês que você estava vendo acompanha ao trocar de tela.
 
-## As carteiras: sobra ou falta
+## Os destaques
+
+A primeira linha tem quatro números:
+
+- **Saldo projetado**: tudo o que está **previsto para entrar** no mês menos o que **já foi pago** e o que **falta pagar**. É o
+  número principal. Diz **deve sobrar** ou, se vai faltar, **vai faltar** com o marcador `[ ✖ ]`.
+- **A pagar**: o que ainda não foi pago (inclui as atrasadas).
+- **Atrasado**: quanto já venceu sem pagar e em quantas contas. O marcador `[ ✖ ]` só aparece se houver alguma.
+- **Pago**: o que já saiu, pelo valor efetivamente pago (com juros ou desconto).
+
+Por que projetado? Se hoje é dia 22 e o salário cai dia 30, você ainda não marcou o salário como recebido. O app **não** acusa
+"falta" por isso: o salário previsto já conta no projetado.
+
+## As carteiras
 
 Há um bloco para cada carteira: **livre** (salário e outras receitas) e **benefício** (VR).
 
-- O destaque é o **saldo**, com a palavra **sobra** ou, se você gastou mais do que recebeu, **falta** (com o marcador `[ ✖ ]`).
-- A barra mostra quanto **do que entrou** já foi **gasto**.
-- Abaixo: **previsto para entrar**, **já recebido** e **já pago**.
+- O destaque é o **saldo projetado** da carteira, com **deve sobrar** ou **vai faltar**.
+- Logo abaixo, **hoje**: o que já foi recebido menos o que já foi pago (o "realizado"). Pode estar negativo sem ser problema, se o
+  salário ainda vai cair.
+- A barra mostra quanto **do previsto** já foi pago.
+- Por fim: **previsto para entrar**, **já recebido**, **já pago** e **a pagar (estimado)**.
 
-O saldo é **recebido − pago** no mês. Receitas só **previstas** ainda não entram. É uma estimativa, não o saldo do banco. Veja
-[carteiras.md](carteiras.md).
-
-## Contas do mês
-
-Mostra o total **já pago** e o que **ainda falta pagar** (inclui as atrasadas), com uma barra que divide os dois.
+"A pagar (estimado)": a carteira de uma conta só é conhecida quando você paga. Até lá, o app usa a carteira sugerida da
+categoria (ex.: Mercado → benefício; veja [categorias-e-ajustes.md](categorias-e-ajustes.md)). Sem sugestão, conta na livre. O
+saldo projetado **da casa** (nos destaques) não depende dessa estimativa. Veja também [carteiras.md](carteiras.md).
 
 ## Para onde vai o dinheiro
 
 Cada categoria aparece com o total do mês e uma barra: a parte **escura** é o que já foi pago e a **azul** é o que ainda falta pagar.
-As categorias vêm ordenadas da maior para a menor. Uma categoria que você arquivou continua aparecendo se tiver contas no mês.
+As categorias vêm da maior para a menor; a categoria principal soma as subcategorias, detalhadas embaixo.
+
+### Histórico de uma categoria (gráfico)
+
+1. Selecione uma categoria (ou uma subcategoria) na lista.
+2. No **celular**, o histórico abre num painel que sobe da base; feche com **×** ou tocando fora. No **computador**, ele aparece ao
+   lado da lista (de início, o da categoria que mais pesa no mês).
+3. Cada barra é um mês, terminando no mês do resumo. Use **6 meses** ou **12 meses** para mudar o período.
+4. Numa categoria principal, as barras empilham as **subcategorias**, uma cor por subcategoria (veja a legenda). Numa subcategoria
+   ou categoria sem subcategorias, é uma barra só.
+5. Parte **sólida** = já pago; parte **listrada** = a pagar.
+6. Para ver o valor exato de um mês, passe o mouse sobre a barra; no teclado, selecione o gráfico com Tab e use ← e →.
+
+Em cima do gráfico: a **média por mês** do período e a **variação** do mês do resumo contra o anterior (ex.: `+R$ 10,00 (+7%)`).
+
+### Gasto por mês (computador)
+
+No computador, ao lado das carteiras, o gráfico **Gasto por mês** mostra o total da casa nos últimos 6 meses (ou 12).
+
+## Compromissos futuros
+
+Se você tem compras parceladas ou contas fixas, aparece quanto delas já está programado para os **próximos 3 meses**, mês a mês.
+Selecione **ver parcelas e fixas** para abrir a tela de parcelas. Sem parcelas nem contas fixas, a seção não aparece.
 
 ## Tudo por competência
 
-O resumo agrupa pelo **mês de competência** das contas e das receitas, não pela data em que o dinheiro se mexeu. A conta de luz de
-setembro paga em outubro entra em **setembro**.
+O resumo e os gráficos agrupam pelo **mês de competência** das contas e das receitas, não pela data em que o dinheiro se mexeu. A
+conta de luz de setembro paga em outubro entra em **setembro**.
 
 ## E se...
 
 - **Aparece "Ainda não há receitas neste mês".** Cadastre o salário em **receitas**; o app prevê os próximos meses (veja
-  [salario-e-previsao.md](salario-e-previsao.md)).
-- **O saldo não bate com o meu banco.** É esperado: o resumo usa só o que foi marcado como recebido e como pago, sem saldo anterior.
+  [salario-e-previsao.md](salario-e-previsao.md)). Sem receitas, o projetado mostra só o que sai.
+- **O saldo não bate com o meu banco.** É esperado: o resumo é do mês, sem saldo anterior.
+- **A carteira de benefício diz "vai faltar", mas paguei o mercado com a livre.** A estimativa usa a carteira sugerida da categoria
+  até você pagar; depois de marcar como paga, vale a carteira escolhida.
 - **Falta um pagamento.** Confira se a conta foi marcada como **paga** em **mês**.
