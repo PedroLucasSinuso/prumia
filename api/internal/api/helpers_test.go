@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
+	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
@@ -42,6 +43,10 @@ type opts struct {
 	openRegistration bool
 	secureCookie     bool
 	now              func() time.Time
+	// company simula a BrasilAPI nos testes (nil = sem consulta).
+	company CNPJLooker
+	// extractor troca o leitor de boleto (nil = testExtractor).
+	extractor *boleto.Extractor
 }
 
 func newApp(t *testing.T, o opts) *app {
@@ -74,12 +79,13 @@ func newApp(t *testing.T, o opts) *app {
 		&Households{Svc: hs, Log: log},
 		&Categories{Svc: category.NewService(gdb), Log: log},
 		&Payees{Svc: payeeSvc, Log: log},
+		NewCNPJLookups(o.company, log),
 		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},
 		&Recurrences{Svc: recSvc, Log: log},
 		&Incomes{Svc: incSvc, Log: log},
 		&Summaries{Svc: sumSvc, Log: log, Horizons: []HorizonEnsurer{incSvc, recSvc}},
-		NewBoletos(testExtractor(), invSvc, payeeSvc, log),
+		NewBoletos(o.extractorOrDefault(), invSvc, payeeSvc, o.company, log),
 	), auth.Middleware(svc, hs, cookie, log))
 	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
 }
@@ -148,4 +154,11 @@ func (a *app) register(name, email, house string) (*http.Cookie, string) {
 	}
 	r.json(&me)
 	return r.sessionCookie(), me.Households[0].Id
+}
+
+func (o opts) extractorOrDefault() *boleto.Extractor {
+	if o.extractor != nil {
+		return o.extractor
+	}
+	return testExtractor()
 }

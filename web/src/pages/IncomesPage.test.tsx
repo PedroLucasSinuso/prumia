@@ -1,9 +1,12 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api/client'
 import { fail, income, mockApi, ok, me, renderAt, source, viewerMe } from '../test/utils'
+
+// A tela é carregada sob demanda (lazy): com a máquina carregada (ou o CI), o primeiro render pode passar de 1 s.
+configure({ asyncUtilTimeout: 5000 })
 
 const salario = income({
   id: 'r1', description: 'Salário Pedro', grossAmountCents: 500000, netAmountCents: 405000, expectedDate: '2026-10-05',

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Category, Payee, PayeeInput, PayeePatch } from '../api/types'
+import { lookupCnpj } from '../api/queries'
+import type { Category, CnpjInfo, Payee, PayeeInput, PayeePatch } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { cnpjDigits, formatCnpj } from '../lib/cnpj'
 import { Button } from './Button'
@@ -35,6 +36,8 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
   const [error, setError] = useState<string>()
   const [fields, setFields] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  // Empresa achada pelo CNPJ digitado (BrasilAPI): preenche a razão social e mostra o selo. Falha = silêncio.
+  const [found, setFound] = useState<CnpjInfo>()
 
   const clear = (f: string) => setFields(({ [f]: _removed, ...rest }) => rest)
 
@@ -87,7 +90,26 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
         onChange={(e) => { setName(e.target.value); clear('name') }} />
       <Field label="CNPJ (opcional)" inputMode="numeric" autoComplete="off" value={cnpj} disabled={!canWrite} placeholder="00.000.000/0000-00"
         hint="Com o CNPJ, o prumia reconhece este favorecido nos boletos." error={fields.cnpj}
-        onChange={(e) => { setCnpj(formatCnpj(e.target.value)); clear('cnpj') }} />
+        onChange={(e) => {
+          const masked = formatCnpj(e.target.value)
+          setCnpj(masked)
+          clear('cnpj')
+          setFound(undefined)
+          const digits = cnpjDigits(masked)
+          if (digits.length === 14 && digits !== payee?.cnpj) {
+            void lookupCnpj(digits).then((info) => {
+              if (!info) return
+              setFound(info)
+              setLegalName((current) => current || info.legalName)
+            })
+          }
+        }} />
+      {found && (
+        <p className="-mt-2 text-xs text-graphite/75" aria-live="polite">
+          <span aria-hidden="true" className="font-mono text-cobalt">[ ▪ ]</span> CNPJ conferido: {found.legalName}
+          {found.tradeName ? ` (${found.tradeName})` : ''}
+        </p>
+      )}
       <Field label="Razão social (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="CEG RIO S/A" error={fields.legalName}
         onChange={(e) => { setLegalName(e.target.value); clear('legalName') }} />
 
