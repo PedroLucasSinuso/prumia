@@ -11,8 +11,8 @@ const SEGMENTS = 10
 /** Medidor segmentado, direto do manual da marca: `[ ▪ ▪ ▪ ▫ ▫ ]`. Cada segmento vale 10% do valor do mês. */
 export function PaidGauge({ fraction, tone = 'light', className = '' }: Props) {
   const filled = Math.round(Math.min(1, Math.max(0, fraction)) * SEGMENTS)
-  const on = tone === 'dark' ? 'bg-ivory border-ivory' : 'bg-teal border-teal'
-  const off = tone === 'dark' ? 'border-ivory/55' : 'border-graphite/35'
+  const on = tone === 'dark' ? 'bg-on-structure border-on-structure' : 'bg-structure border-structure'
+  const off = tone === 'dark' ? 'border-on-structure/55' : 'border-ink/35'
   return (
     <div role="img" aria-label={`${Math.round(fraction * 100)}% do valor do mês já foi pago`} className={`flex gap-1 ${className}`}>
       {Array.from({ length: SEGMENTS }, (_, i) => (

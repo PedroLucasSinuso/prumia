@@ -12,7 +12,7 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
   const { house, houses, selectHouse } = useActiveHouse()
   const [open, setOpen] = useState(false)
   const inverse = tone === 'inverse'
-  const caption = inverse ? 'text-ivory/75' : 'text-graphite/70'
+  const caption = inverse ? 'text-on-structure/75' : 'text-ink/70'
 
   // Barra lateral: uma linha compacta "papel · casa". Topo do celular: rótulo "casa" e o nome em destaque.
   const text = inverse ? (
@@ -36,14 +36,14 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
         aria-haspopup="dialog"
         aria-label={`Casa ativa: ${house?.name}. Trocar de casa`}
         onClick={() => setOpen(true)}
-        className={`flex min-h-11 min-w-0 items-center gap-2 rounded-md px-1 ${inverse ? 'hover:bg-ivory/8' : 'hover:bg-graphite/5'}`}
+        className={`flex min-h-11 min-w-0 items-center gap-2 rounded-md px-1 ${inverse ? 'hover:bg-on-structure/8' : 'hover:bg-ink/5'}`}
       >
         {text}
         <span aria-hidden="true" className={`font-mono text-xs ${caption}`}>▾</span>
       </button>
       {open && (
-        // text-graphite: na barra lateral (teal) o texto herdado seria marfim sobre o painel marfim
-        <div className="text-graphite">
+        // text-ink: na barra lateral (teal) o texto herdado seria marfim sobre o painel marfim
+        <div className="text-ink">
         <Sheet title="Trocar de casa" onClose={() => setOpen(false)}>
           <ul className="flex flex-col gap-2">
             {houses.map((h) => {
@@ -57,14 +57,14 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
                       if (!active) selectHouse(h.id)
                       setOpen(false)
                     }}
-                    className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left ${active ? 'border-teal bg-teal/8' : 'border-graphite/15 hover:bg-graphite/5'}`}
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left ${active ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
                   >
-                    <span aria-hidden="true" className={`font-mono text-xs ${active ? 'text-teal' : 'text-graphite/60'}`}>
+                    <span aria-hidden="true" className={`font-mono text-xs ${active ? 'text-structure' : 'text-ink/60'}`}>
                       {active ? '[ ▪ ]' : '[ ▫ ]'}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-semibold text-graphite">{h.name}</span>
-                      <span className="block text-sm text-graphite/75">{roleLabel[h.role]}</span>
+                      <span className="block truncate text-base font-semibold text-ink">{h.name}</span>
+                      <span className="block text-sm text-ink/75">{roleLabel[h.role]}</span>
                     </span>
                   </button>
                 </li>

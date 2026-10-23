@@ -36,7 +36,7 @@ export function HistoryPanel({ houseId, month, categoryId, categories, hideTitle
     <section aria-label={categoryId ? `Histórico de ${name}` : 'Gasto por mês'} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!hideTitle && <h2 className="font-display text-lg font-semibold font-stretch-condensed text-structure">{title}</h2>}
-        <div role="group" aria-label="Período" className="ml-auto flex rounded-sm border border-ink/15 text-xs">
+        <div role="group" aria-label="Período" className="ml-auto flex rounded-sm border border-line text-xs">
           {([6, 12] as const).map((n) => (
             <button
               key={n}

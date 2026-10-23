@@ -4,7 +4,7 @@ import { PaidGauge } from './PaidGauge'
 
 type Props = { title: string; hint: string; balance: WalletBalance; tone?: 'free' | 'benefit' }
 
-const row = 'flex items-baseline justify-between gap-3 border-t border-ink/10 py-2 text-[13px] md:py-1.5'
+const row = 'flex items-baseline justify-between gap-3 border-t border-line py-2 text-[13px] md:py-1.5'
 
 /**
  * Uma carteira no mês. O número principal é o SALDO PROJETADO (previsto para entrar − pago − a pagar): só fica coral, com
@@ -18,7 +18,7 @@ export function WalletCard({ title, hint, balance, tone = 'free' }: Props) {
   const paidFraction = balance.expectedIncomeCents > 0 ? balance.paidCents / balance.expectedIncomeCents : balance.paidCents > 0 ? 1 : 0
   const soft = dark ? 'text-on-structure/75' : 'text-ink/70'
   return (
-    <section aria-label={title} className={`rounded-md p-4 ${dark ? 'bg-structure text-on-structure' : 'border border-ink/20'}`}>
+    <section aria-label={title} className={`rounded-md p-4 ${dark ? 'bg-structure text-on-structure' : 'border border-line'}`}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 className={`text-xs font-medium uppercase tracking-wider ${dark ? 'text-on-structure/85' : 'text-ink/80'}`}>{title}</h2>
         <span className={`text-[11px] ${soft}`}>{hint}</span>

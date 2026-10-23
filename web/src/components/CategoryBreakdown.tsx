@@ -5,7 +5,7 @@ import { formatCents } from '../lib/money'
 
 /**
  * Lista "por categoria": uma barra por categoria principal (a soma das filhas incluída) e, embaixo, o detalhe das filhas em
- * texto pequeno. `split` mostra pago (teal) e a pagar (cobalt) na mesma barra; sem ele, uma barra só.
+ * texto pequeno. `split` mostra pago (structure) e a pagar (accent) na mesma barra; sem ele, uma barra só.
  * `onSelect` torna cada categoria (e cada filha) clicável: o resumo abre o histórico dela. `selectedId` marca a escolhida.
  */
 export function CategoryBreakdown({
@@ -36,21 +36,21 @@ export function CategoryBreakdown({
             <span className="font-medium">{r.name}</span>
             <span className="font-mono tabular-nums">{formatCents(r.totalCents)}</span>
           </span>
-          <span className="mt-1 flex h-2 rounded-xs bg-graphite/10" aria-hidden="true">
+          <span className="mt-1 flex h-2 rounded-xs bg-ink/10" aria-hidden="true">
             {split ? (
               <>
-                <span className="h-2 rounded-l-xs bg-teal" style={{ width: `${(r.paidCents / max) * 100}%` }} />
-                <span className="h-2 bg-cobalt" style={{ width: `${((r.totalCents - r.paidCents) / max) * 100}%` }} />
+                <span className="h-2 rounded-l-xs bg-structure" style={{ width: `${(r.paidCents / max) * 100}%` }} />
+                <span className="h-2 bg-accent" style={{ width: `${((r.totalCents - r.paidCents) / max) * 100}%` }} />
               </>
             ) : (
-              <span className="block h-2 rounded-xs bg-cobalt" style={{ width: `${Math.round((r.totalCents / max) * 100)}%` }} />
+              <span className="block h-2 rounded-xs bg-accent" style={{ width: `${Math.round((r.totalCents / max) * 100)}%` }} />
             )}
           </span>
           </>)}
           {r.children.length > 0 && (
-            <ul aria-label={`Detalhe de ${r.name}`} className="mt-1 flex flex-col gap-0.5 border-l-2 border-graphite/15 pl-2.5">
+            <ul aria-label={`Detalhe de ${r.name}`} className="mt-1 flex flex-col gap-0.5 border-l-2 border-line pl-2.5">
               {r.children.map((c) => (
-                <li key={c.id} className="text-xs text-graphite/80">
+                <li key={c.id} className="text-xs text-ink/80">
                   {pick(c.id, c.name, <span className="flex justify-between gap-3">
                     <span>{c.name}</span>
                     <span className="font-mono tabular-nums">{formatCents(c.totalCents)}</span>

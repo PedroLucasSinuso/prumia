@@ -15,15 +15,24 @@ export function monthShort(month: string): string {
 /** Uma fatia de uma barra: pago (sólido) e a pagar (tracejado) de uma categoria num mês. */
 export type Part = { key: string; paidCents: number; pendingCents: number }
 export type Bar = { month: string; parts: Part[]; totalCents: number; paidCents: number }
-export type Segment = { key: string; name: string; tone: string }
+/** Classes literais (o Tailwind só gera classes que aparecem escritas no código): preenchimento e contorno da mesma cor. */
+export type Tone = { fill: string; stroke: string }
+export type Segment = { key: string; name: string; tone: Tone }
 export type Stack = { segments: Segment[]; bars: Bar[] }
 
 /**
- * Cores das fatias, só com os tokens da marca e opacidade (classe de `color`; o SVG usa currentColor). Ordem FIXA: a fatia
- * N tem sempre a mesma cor, independente do valor. Acima de 4 filhas, o resto é somado em "outras" (a última cor).
+ * Cores das fatias, só com os tokens da marca e opacidade, via `fill-*`/`stroke-*` (não `text-*`: no tema Grafite o
+ * `text-accent` vira marfim para passar contraste de texto, e as fatias se confundiriam). Ordem FIXA: a fatia N tem sempre
+ * a mesma cor, independente do valor. Alternam escuro/claro para separar vizinhas em qualquer tema. Acima de 4 filhas, o
+ * resto é somado em "outras".
  */
-export const TONES = ['text-accent', 'text-structure', 'text-ink/60', 'text-accent/45'] as const
-const OTHER_TONE = 'text-ink/30'
+export const TONES: readonly Tone[] = [
+  { fill: 'fill-accent', stroke: 'stroke-accent' },
+  { fill: 'fill-structure', stroke: 'stroke-structure' },
+  { fill: 'fill-accent/45', stroke: 'stroke-accent/45' },
+  { fill: 'fill-ink/45', stroke: 'stroke-ink/45' },
+]
+const OTHER_TONE: Tone = { fill: 'fill-ink/20', stroke: 'stroke-ink/30' }
 const MAX_SEGMENTS = TONES.length
 
 type Point = CategoryHistory['series'][number]['points'][number]
@@ -63,7 +72,7 @@ export function categoryStack(history: CategoryHistory, categories: Category[], 
   if (childIds.size === 0) {
     const name = self?.name ?? 'Sem categoria'
     for (const s of series) addPoints(bars, categoryId, s.points)
-    return { segments: [{ key: categoryId, name, tone: TONES[0] }], bars }
+    return { segments: [{ key: categoryId, name, tone: TONES[0]! }], bars }
   }
   const ranked = [...series].sort((a, b) => sumOf(b.points) - sumOf(a.points) || a.categoryId.localeCompare(b.categoryId))
   const shown = ranked.length > MAX_SEGMENTS ? ranked.slice(0, MAX_SEGMENTS - 1) : ranked
@@ -85,7 +94,7 @@ export function categoryStack(history: CategoryHistory, categories: Category[], 
 export function householdStack(history: CategoryHistory): Stack {
   const bars = emptyBars(history.months)
   for (const s of history.series) addPoints(bars, 'casa', s.points)
-  return { segments: [{ key: 'casa', name: 'gasto da casa', tone: TONES[0] }], bars }
+  return { segments: [{ key: 'casa', name: 'gasto da casa', tone: TONES[0]! }], bars }
 }
 
 /** Média por mês do período (arredondada para centavos inteiros). */

@@ -1,17 +1,35 @@
 @import 'tailwindcss';
 
 /*
- * Tokens da marca prumia (docs/brand/manual-identidade-prumia.md, seção 3).
- * Só estas cores existem no produto; não adicione tons fora da paleta.
- * Proporção 60-30-10: ivory domina; teal/graphite estruturam; cobalt e signal são acentos raros.
+ * Cores da prumia: tokens SEMÂNTICOS (papel), não nomes de cor (docs/brand/design-direction.md, seção Sistema).
+ * Só existem as 5 cores da marca (manual, seção 3). Um tema não cria cor: só troca qual cor faz qual papel.
+ *
+ *   Paleta da marca:  ivory #F3EBDD · teal #203D40 · graphite #313638 · cobalt #416A91 · signal #F06B4F
+ *
+ *   Mapeamento das classes antigas (Marfim):
+ *     bg-ivory (fundo)          → bg-surface        text-ivory sobre teal → text-on-structure
+ *     graphite (texto, bordas)  → ink               teal (títulos, botão, painel) → structure
+ *     cobalt (dado ativo, link) → accent            signal (só alerta) → alert
+ *
+ * `@theme inline` faz o Tailwind escrever `var(--prumia-*)` direto na classe (ex.: `.bg-ink/15` vira
+ * `color-mix(in oklab, var(--prumia-ink) 15%, transparent)`), então trocar `data-theme` no <html> troca tudo em tempo
+ * de execução, com opacidade funcionando em qualquer tema.
  */
-@theme {
-  --color-ivory: #f3ebdd;
-  --color-teal: #203d40;
-  --color-graphite: #313638;
-  --color-cobalt: #416a91;
-  --color-signal: #f06b4f;
+@theme inline {
+  --color-surface: var(--prumia-surface);
+  --color-ink: var(--prumia-ink);
+  --color-structure: var(--prumia-structure);
+  --color-on-structure: var(--prumia-on-structure);
+  --color-accent: var(--prumia-accent);
+  --color-alert: var(--prumia-alert);
+  /* Borda padrão (= ink/15 no Marfim; mais forte no Contraste). Prefira `border-line` a `border-ink/15`. */
+  --color-line: var(--prumia-line);
+  /* Só para TEXTO: `text-accent` pode usar outra cor da paleta quando o cobalto não passa 4,5:1 (tema Grafite).
+     Fundo, borda e preenchimento (`bg-accent`, `border-accent`, `fill-accent`) continuam em --prumia-accent. */
+  --text-color-accent: var(--prumia-accent-text);
+}
 
+@theme {
   /* Cantos suavizados de 4-6px; nada de pílula (sem rounded-full) nem cantos totalmente retos. */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -22,10 +40,62 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
+/* Temas (atributo data-theme no <html>, aplicado por public/theme-init.js e lib/theme.ts). */
 @layer base {
+  /* Marfim (padrão): o visual original. */
+  :root {
+    --prumia-surface: #f3ebdd;
+    --prumia-ink: #313638;
+    --prumia-structure: #203d40;
+    --prumia-on-structure: #f3ebdd;
+    --prumia-accent: #416a91;
+    --prumia-accent-text: #416a91;
+    --prumia-alert: #f06b4f;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    --prumia-focus: 2px;
+    color-scheme: light;
+  }
+
+  /* Grafite (escuro): fundo graphite, texto ivory. O teal sobre graphite quase não se vê (1,05:1), então o papel de
+     `structure` (títulos, botão primário, painéis) passa ao ivory e o texto sobre ele fica teal. O cobalto continua
+     nos fundos/barras; como texto (2,2:1) ele não passa, e os links (já sublinhados) usam ivory. */
+  :root[data-theme='grafite'] {
+    --prumia-surface: #313638;
+    --prumia-ink: #f3ebdd;
+    --prumia-structure: #f3ebdd;
+    --prumia-on-structure: #203d40;
+    --prumia-accent: #416a91;
+    --prumia-accent-text: #f3ebdd;
+    --prumia-alert: #f06b4f;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    color-scheme: dark;
+  }
+
+  /* Contraste (alto contraste): Marfim com bordas mais fortes, texto de link em teal (9,8:1) e foco mais grosso. */
+  :root[data-theme='contraste'] {
+    --prumia-accent-text: #203d40;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 55%, transparent);
+    --prumia-focus: 3px;
+  }
+
+  /* Sistema: Marfim de dia, Grafite quando o sistema operacional está no modo escuro. */
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme='sistema'] {
+      --prumia-surface: #313638;
+      --prumia-ink: #f3ebdd;
+      --prumia-structure: #f3ebdd;
+      --prumia-on-structure: #203d40;
+      --prumia-accent: #416a91;
+      --prumia-accent-text: #f3ebdd;
+      --prumia-alert: #f06b4f;
+      --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+      color-scheme: dark;
+    }
+  }
+
   html {
-    background-color: var(--color-ivory);
-    color: var(--color-graphite);
+    background-color: var(--prumia-surface);
+    color: var(--prumia-ink);
     font-family: var(--font-sans);
     /* numerais tabulares: colunas de dinheiro alinham na vertical */
     font-variant-numeric: tabular-nums;
@@ -35,7 +105,7 @@
     min-height: 100dvh;
   }
   :focus-visible {
-    outline: 2px solid var(--color-cobalt);
+    outline: var(--prumia-focus) solid var(--prumia-accent-text);
     outline-offset: 2px;
   }
 }

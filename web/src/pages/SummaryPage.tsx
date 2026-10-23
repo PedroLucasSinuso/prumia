@@ -17,12 +17,12 @@ import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
 
 const label = 'text-xs font-medium uppercase tracking-wider text-ink/80'
-const card = 'rounded-md border border-ink/20 p-4'
+const card = 'rounded-md border border-line p-4'
 
 /** Um destaque da linha do topo: rótulo, valor em mono e uma nota curta. */
 function Tile({ title, value, note, strong = false }: { title: string; value: string; note?: ReactNode; strong?: boolean }) {
   return (
-    <div className={`rounded-md p-3 md:p-4 ${strong ? 'border-2 border-structure' : 'border border-ink/20'}`}>
+    <div className={`rounded-md p-3 md:p-4 ${strong ? 'border-2 border-structure' : 'border border-line'}`}>
       <p className={label}>{title}</p>
       <p className={`mt-1 font-mono text-xl font-semibold tabular-nums md:text-2xl ${strong ? 'text-structure' : 'text-ink'}`}>{value}</p>
       {note && <p className="mt-0.5 text-xs text-ink/75">{note}</p>}
@@ -80,7 +80,7 @@ export default function SummaryPage() {
         {s && (
           <>
             {noIncome && (
-              <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/80">
+              <p className="rounded-md border border-dashed border-line p-4 text-sm text-ink/80">
                 Ainda não há receitas neste mês, então o saldo mostra só o que sai. Cadastre o salário e o vale em{' '}
                 <Link to="/receitas" className="font-semibold text-accent underline underline-offset-2">
                   receitas
@@ -176,7 +176,7 @@ export default function SummaryPage() {
                 <p className="text-xs text-ink/75">em parcelas e contas fixas nos próximos 3 meses</p>
                 <ul className="mt-3 grid grid-cols-3 gap-3 text-sm">
                   {ahead.map((m) => (
-                    <li key={m.month} className="border-t border-ink/10 pt-2">
+                    <li key={m.month} className="border-t border-line pt-2">
                       <span className="block text-xs text-ink/75">{monthShort(m.month)}</span>
                       <span className="font-mono tabular-nums">{formatCents(m.cents)}</span>
                     </li>

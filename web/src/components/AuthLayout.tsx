@@ -9,7 +9,7 @@ import { Logo } from './Logo'
 export function AuthLayout({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
-      <aside className="flex items-center gap-3 bg-teal px-4 py-4 text-ivory md:w-[44%] md:flex-col md:items-start md:justify-between md:gap-0 md:p-12">
+      <aside className="flex items-center gap-3 bg-structure px-4 py-4 text-on-structure md:w-[44%] md:flex-col md:items-start md:justify-between md:gap-0 md:p-12">
         <div className="flex items-center gap-3">
           <Logo size={40} tone="inverse" />
           <span className="font-display text-3xl font-semibold tracking-tight">prumia</span>
@@ -20,8 +20,8 @@ export function AuthLayout({ title, children }: { title: string; children: React
       </aside>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-12">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-teal font-stretch-condensed">{title}</h1>
-          <p className="mt-1 text-sm text-graphite/75 md:hidden">Clareza para construir o futuro.</p>
+          <h1 className="font-display text-4xl font-bold tracking-tight text-structure font-stretch-condensed">{title}</h1>
+          <p className="mt-1 text-sm text-ink/75 md:hidden">Clareza para construir o futuro.</p>
         </div>
         {children}
       </main>

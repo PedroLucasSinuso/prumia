@@ -131,21 +131,21 @@ export default function IncomesPage() {
 
         {/* Números */}
         <section aria-label="Resumo das receitas" className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-md px-1 md:bg-teal md:px-4 md:py-4 md:text-ivory">
-            <div className={`flex justify-between ${label} text-graphite/80 md:text-ivory/85`}>
+          <div className="rounded-md px-1 md:bg-structure md:px-4 md:py-4 md:text-on-structure">
+            <div className={`flex justify-between ${label} text-ink/80 md:text-on-structure/85`}>
               <span>recebido neste mês</span>
               <span className="font-mono">{Math.round(fraction * 100)}% do previsto</span>
             </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-teal md:text-ivory">{formatCents(totals.received)}</p>
+            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-structure md:text-on-structure">{formatCents(totals.received)}</p>
             <PaidGauge fraction={fraction} tone={desktop ? 'dark' : 'light'} className="mt-2" />
           </div>
-          <div className="rounded-md border border-graphite/20 p-4">
-            <p className={`${label} text-graphite/80`}>previsto</p>
+          <div className="rounded-md border border-ink/20 p-4">
+            <p className={`${label} text-ink/80`}>previsto</p>
             <p className="font-mono text-[30px] font-semibold leading-tight tabular-nums md:text-[38px]">{formatCents(totals.expected)}</p>
-            <p className="mt-1 text-[13px] text-graphite/80">falta receber {formatCents(totals.pending)}</p>
+            <p className="mt-1 text-[13px] text-ink/80">falta receber {formatCents(totals.pending)}</p>
           </div>
-          <div className="rounded-md border border-graphite/20 p-4">
-            <p className={`${label} text-graphite/80`}>por carteira (recebido)</p>
+          <div className="rounded-md border border-ink/20 p-4">
+            <p className={`${label} text-ink/80`}>por carteira (recebido)</p>
             <dl className="mt-1 font-mono text-[15px] tabular-nums">
               <div className="flex justify-between"><dt className="font-sans text-[13px]">livre</dt><dd>{formatCents(byWallet.free)}</dd></div>
               <div className="flex justify-between"><dt className="font-sans text-[13px]">benefício</dt><dd>{formatCents(byWallet.benefit)}</dd></div>
@@ -153,10 +153,10 @@ export default function IncomesPage() {
           </div>
         </section>
 
-        {incomes.isPending && <p role="status" className="text-sm text-graphite/70">carregando…</p>}
+        {incomes.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
         {incomes.isError && (
-          <p role="alert" className="rounded-md border border-signal/60 bg-signal/10 px-3 py-2 text-sm">
-            <span className="font-mono text-signal">[ ✖ ]</span> Não foi possível carregar as receitas.{' '}
+          <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
+            <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar as receitas.{' '}
             <button className="font-semibold underline" onClick={() => void incomes.refetch()}>Tentar de novo</button>
           </p>
         )}
@@ -164,10 +164,10 @@ export default function IncomesPage() {
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-6">
             <section aria-label="Receitas do mês">
-              <h2 className="mb-1 hidden font-display text-[26px] font-bold text-teal font-stretch-condensed md:block">Receitas do mês</h2>
+              <h2 className="mb-1 hidden font-display text-[26px] font-bold text-structure font-stretch-condensed md:block">Receitas do mês</h2>
               {empty && !hasSources && canWrite && (
-                <div className="rounded-md border border-dashed border-graphite/25 p-4">
-                  <p className="text-sm text-graphite/85">
+                <div className="rounded-md border border-dashed border-ink/25 p-4">
+                  <p className="text-sm text-ink/85">
                     Cadastre o seu salário <strong>uma vez</strong> e o app prevê os próximos meses, já com os descontos. Você só ajusta o que mudar.
                   </p>
                   <Button className="mt-3" onClick={() => setEditing({ kind: 'source-new', sourceKind: 'salary' })}>
@@ -176,7 +176,7 @@ export default function IncomesPage() {
                 </div>
               )}
               {empty && (hasSources || !canWrite) && (
-                <p className="rounded-md border border-dashed border-graphite/25 p-4 text-sm text-graphite/75">Nenhuma receita neste mês.</p>
+                <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">Nenhuma receita neste mês.</p>
               )}
               <IncomeList
                 incomes={list}
@@ -189,30 +189,30 @@ export default function IncomesPage() {
               />
             </section>
 
-            <section aria-label="Fontes de receita" className="rounded-md border border-graphite/20 p-4">
+            <section aria-label="Fontes de receita" className="rounded-md border border-ink/20 p-4">
               <div className="flex items-baseline justify-between gap-3">
-                <h2 className={`${label} text-graphite/80`}>previsão mensal · fontes</h2>
+                <h2 className={`${label} text-ink/80`}>previsão mensal · fontes</h2>
                 {canWrite && (
-                  <button onClick={() => setEditing({ kind: 'source-new', sourceKind: hasSources ? 'benefit' : 'salary' })} className="h-11 text-sm font-semibold text-cobalt underline underline-offset-4">
+                  <button onClick={() => setEditing({ kind: 'source-new', sourceKind: hasSources ? 'benefit' : 'salary' })} className="h-11 text-sm font-semibold text-accent underline underline-offset-4">
                     + Nova fonte
                   </button>
                 )}
               </div>
-              {sources.isSuccess && !hasSources && <p className="mt-1 text-sm text-graphite/75">Nenhuma fonte ainda. Uma fonte gera a previsão do salário (ou do vale) todo mês.</p>}
+              {sources.isSuccess && !hasSources && <p className="mt-1 text-sm text-ink/75">Nenhuma fonte ainda. Uma fonte gera a previsão do salário (ou do vale) todo mês.</p>}
               <ul className="mt-2 flex flex-col">
                 {(sources.data ?? []).map((s: IncomeSource) => (
-                  <li key={s.id} className="border-t border-graphite/10 first:border-t-0">
+                  <li key={s.id} className="border-t border-ink/10 first:border-t-0">
                     <button aria-label={`Editar fonte ${s.name}`} onClick={() => setEditing({ kind: 'source', id: s.id })} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
                       <span className="min-w-0">
                         <span className="block truncate text-[15px] font-medium">{s.name}</span>
-                        <span className="block truncate text-xs text-graphite/80">
+                        <span className="block truncate text-xs text-ink/80">
                           {personName(s.userId)} · {kindLabel[s.kind]} · todo dia {s.dayOfMonth}
                           {s.generatedThrough ? ` · previsto até ${s.generatedThrough.slice(5, 7)}/${s.generatedThrough.slice(0, 4)}` : ''}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block font-mono text-[15px] font-semibold tabular-nums">{formatCents(netOf(s.grossAmountCents, s.deductions))}</span>
-                        <span className="block text-[11px] text-graphite/75">líquido{sumDeductions(s.deductions) > 0 ? ` (bruto ${formatCents(s.grossAmountCents)})` : ''}</span>
+                        <span className="block text-[11px] text-ink/75">líquido{sumDeductions(s.deductions) > 0 ? ` (bruto ${formatCents(s.grossAmountCents)})` : ''}</span>
                       </span>
                     </button>
                   </li>
@@ -224,15 +224,15 @@ export default function IncomesPage() {
           {desktop && (
             <aside className="w-full shrink-0 md:sticky md:top-6 md:w-[380px] lg:w-[420px]">
               {form ? (
-                <section aria-label="Detalhes" className="rounded-md border-2 border-teal bg-white/30 p-4">
+                <section aria-label="Detalhes" className="rounded-md border-2 border-structure bg-white/30 p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <h2 className="font-display text-[22px] font-bold text-teal font-stretch-condensed">{panelTitle}</h2>
-                    <button aria-label="Fechar detalhes" onClick={close} className="flex size-9 items-center justify-center rounded-md text-xl hover:bg-graphite/5">×</button>
+                    <h2 className="font-display text-[22px] font-bold text-structure font-stretch-condensed">{panelTitle}</h2>
+                    <button aria-label="Fechar detalhes" onClick={close} className="flex size-9 items-center justify-center rounded-md text-xl hover:bg-ink/5">×</button>
                   </div>
                   {form}
                 </section>
               ) : (
-                <p className="rounded-md border border-dashed border-graphite/25 p-4 text-sm text-graphite/75">
+                <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
                   Toque numa receita para ver ou ajustar o mês{canWrite ? ', ou em Nova receita para lançar uma avulsa' : ''}.
                 </p>
               )}
@@ -245,7 +245,7 @@ export default function IncomesPage() {
         <button
           aria-label="Nova receita"
           onClick={() => setEditing({ kind: 'income-new' })}
-          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-teal text-3xl leading-none text-ivory shadow-[0_2px_0_var(--color-graphite)] hover:bg-teal/90"
+          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-structure text-3xl leading-none text-on-structure shadow-[0_2px_0_var(--color-ink)] hover:bg-structure/90"
         >
           +
         </button>

@@ -24,24 +24,24 @@ export function BoletoBox({ boleto, method }: { boleto: Boleto; method?: Method 
   return (
     <div className="flex flex-col gap-2">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-graphite/70">Linha digitável</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-ink/70">Linha digitável</p>
         <p className="mt-1 select-all break-words font-mono text-sm leading-relaxed tabular-nums">
           {formatDigitableLine(boleto.digitableLine)}
         </p>
       </div>
       {boleto.beneficiaryName && (
         <p className="text-sm">
-          <span className="text-graphite/70">Beneficiário:</span> {boleto.beneficiaryName}
+          <span className="text-ink/70">Beneficiário:</span> {boleto.beneficiaryName}
           {boleto.beneficiaryVerified && (
-            <span className="ml-1 text-xs text-graphite/75">
-              <span aria-hidden="true" className="font-mono text-cobalt">[ ▪ ]</span> conferido pelo CNPJ
+            <span className="ml-1 text-xs text-ink/75">
+              <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> conferido pelo CNPJ
             </span>
           )}
         </p>
       )}
       {method && (
-        <p className={`text-xs ${method === 'ocr' ? 'font-semibold text-graphite' : 'text-graphite/75'}`}>
-          <span aria-hidden="true" className={`font-mono ${method === 'ocr' ? 'text-signal' : 'text-cobalt'}`}>
+        <p className={`text-xs ${method === 'ocr' ? 'font-semibold text-ink' : 'text-ink/75'}`}>
+          <span aria-hidden="true" className={`font-mono ${method === 'ocr' ? 'text-alert' : 'text-accent'}`}>
             {method === 'ocr' ? '[ ✖ ]' : '[ ▪ ]'}
           </span>{' '}
           {methodText[method]}

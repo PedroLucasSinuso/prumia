@@ -30,7 +30,7 @@ type Props = {
 
 const kinds: IncomeKind[] = ['salary', 'benefit', 'other']
 const chip = (on: boolean) =>
-  `flex min-h-11 items-center justify-center rounded-md border px-3 text-[13px] ${on ? 'border-teal bg-teal font-semibold text-ivory' : 'border-graphite/30 font-medium hover:bg-graphite/5'}`
+  `flex min-h-11 items-center justify-center rounded-md border px-3 text-[13px] ${on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium hover:bg-ink/5'}`
 
 /**
  * Receita do mês: criar uma avulsa ou ajustar a prevista/recebida (ex.: a coparticipação varia a cada mês).
@@ -91,7 +91,7 @@ export function IncomeForm({ month, members, defaultUserId, income, canWrite, on
       {!editing ? (
         <>
           <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
-            <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-graphite/80">Tipo</legend>
+            <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">Tipo</legend>
             <div className="grid grid-cols-3 gap-2">
               {kinds.map((k) => (
                 <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={chip(kind === k)}>
@@ -99,22 +99,22 @@ export function IncomeForm({ month, members, defaultUserId, income, canWrite, on
                 </button>
               ))}
             </div>
-            <p className="text-xs text-graphite/75">{kind === 'benefit' ? 'Entra na carteira de benefício.' : 'Entra na carteira livre.'}</p>
+            <p className="text-xs text-ink/75">{kind === 'benefit' ? 'Entra na carteira de benefício.' : 'Entra na carteira livre.'}</p>
           </fieldset>
           <div className="flex flex-col gap-1">
-            <label htmlFor="pessoa" className="text-xs font-medium uppercase tracking-wider text-graphite/80">De quem é</label>
-            <select id="pessoa" value={userId} disabled={!canWrite} onChange={(e) => setUserId(e.target.value)} className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base">
+            <label htmlFor="pessoa" className="text-xs font-medium uppercase tracking-wider text-ink/80">De quem é</label>
+            <select id="pessoa" value={userId} disabled={!canWrite} onChange={(e) => setUserId(e.target.value)} className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base">
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.name}
                 </option>
               ))}
             </select>
-            {fields.userId && <p className="text-xs text-signal">{fields.userId}</p>}
+            {fields.userId && <p className="text-xs text-alert">{fields.userId}</p>}
           </div>
         </>
       ) : (
-        <p className="text-sm text-graphite/85">
+        <p className="text-sm text-ink/85">
           {kindLabel[income.kind]} de <strong>{personName(income.userId)}</strong> · carteira {income.wallet === 'free' ? 'livre' : 'de benefício'}
           {income.sourceId ? ' · gerada por uma fonte (editar aqui muda só este mês)' : ''}
         </p>
@@ -130,17 +130,17 @@ export function IncomeForm({ month, members, defaultUserId, income, canWrite, on
 
       <DeductionsEditor value={deductions} onChange={(d) => { setDeductions(d); clear('deductions') }} errors={fields} disabled={!canWrite} />
 
-      <div className={`rounded-md border-2 px-3 py-2.5 ${net < 0 ? 'border-signal' : 'border-teal'}`}>
-        <p className="text-xs font-medium uppercase tracking-wider text-graphite/80">líquido (bruto − descontos)</p>
-        <p className="font-mono text-[34px] font-semibold leading-tight tabular-nums text-teal">{formatCents(net)}</p>
-        {net < 0 && <p className="text-xs text-signal">Os descontos passam do valor bruto.</p>}
+      <div className={`rounded-md border-2 px-3 py-2.5 ${net < 0 ? 'border-alert' : 'border-structure'}`}>
+        <p className="text-xs font-medium uppercase tracking-wider text-ink/80">líquido (bruto − descontos)</p>
+        <p className="font-mono text-[34px] font-semibold leading-tight tabular-nums text-structure">{formatCents(net)}</p>
+        {net < 0 && <p className="text-xs text-alert">Os descontos passam do valor bruto.</p>}
       </div>
 
       <Field label="Observação" name="notes" autoComplete="off" value={notes} disabled={!canWrite} onChange={(e) => setNotes(e.target.value)} error={fields.notes} />
 
       {editing && income.received && income.receivedAt && (
-        <p className="rounded-md border border-graphite/15 px-3 py-2 text-sm">
-          <span className="font-mono text-cobalt">[ ▪ ]</span> Recebida em {fullDate(income.receivedAt)}
+        <p className="rounded-md border border-line px-3 py-2 text-sm">
+          <span className="font-mono text-accent">[ ▪ ]</span> Recebida em {fullDate(income.receivedAt)}
         </p>
       )}
 

@@ -76,9 +76,9 @@ export function BarChart({ stack, label, height = 200 }: Props) {
           <defs>
             {segments.map((s) => (
               // Padrão "a pagar": listras finas a 45° na cor da fatia, sobre um véu leve da mesma cor.
-              <pattern key={s.key} id={`p-${uid}-${s.key}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)" className={s.tone}>
-                <rect width="5" height="5" fill="currentColor" opacity="0.15" />
-                <line x1="0" y1="0" x2="0" y2="5" stroke="currentColor" strokeWidth="2" />
+              <pattern key={s.key} id={`p-${uid}-${s.key}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="5" height="5" className={s.tone.fill} opacity="0.15" />
+                <line x1="0" y1="0" x2="0" y2="5" className={s.tone.stroke} strokeWidth="2" />
               </pattern>
             ))}
           </defs>
@@ -95,17 +95,17 @@ export function BarChart({ stack, label, height = 200 }: Props) {
             let base = PAD.top + plotH
             const rects = []
             for (const p of b.parts) {
-              const t = tone.get(p.key) ?? 'text-ink/30'
+              const t = tone.get(p.key) ?? { fill: 'fill-ink/20', stroke: 'stroke-ink/30' }
               if (p.paidCents > 0) {
                 const h = y(p.paidCents)
                 base -= h
-                rects.push(<rect key={`${p.key}-p`} x={cx - barW / 2} y={base} width={barW} height={Math.max(0, h - 1)} fill="currentColor" className={t} />)
+                rects.push(<rect key={`${p.key}-p`} x={cx - barW / 2} y={base} width={barW} height={Math.max(0, h - 1)} className={t.fill} />)
               }
               if (p.pendingCents > 0) {
                 const h = y(p.pendingCents)
                 base -= h
                 rects.push(
-                  <rect key={`${p.key}-a`} x={cx - barW / 2 + 0.5} y={base + 0.5} width={barW - 1} height={Math.max(0, h - 2)} fill={`url(#p-${uid}-${p.key})`} stroke="currentColor" strokeWidth="1" className={t} />,
+                  <rect key={`${p.key}-a`} x={cx - barW / 2 + 0.5} y={base + 0.5} width={barW - 1} height={Math.max(0, h - 2)} fill={`url(#p-${uid}-${p.key})`} strokeWidth="1" className={t.stroke} />,
                 )
               }
             }
@@ -153,8 +153,8 @@ export function BarChart({ stack, label, height = 200 }: Props) {
         {segments.length > 1 &&
           segments.map((s) => (
             <li key={s.key} className="flex items-center gap-1.5">
-              <svg aria-hidden="true" width="10" height="10" className={s.tone}>
-                <rect width="10" height="10" rx="2" fill="currentColor" />
+              <svg aria-hidden="true" width="10" height="10">
+                <rect width="10" height="10" rx="2" className={s.tone.fill} />
               </svg>
               {s.name}
             </li>

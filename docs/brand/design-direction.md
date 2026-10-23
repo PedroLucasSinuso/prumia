@@ -40,6 +40,27 @@ trocar quando houver o SVG final.
   Rótulos: 11 px, caixa alta, espaçamento aberto; nenhum texto abaixo de 11 px.
 - **Cores**: as cinco da marca, e só elas. Variações de tom vêm de **opacidade**, nunca de um hex novo.
   Marfim = fundo (≈60%); Petroleum e Grafite = estrutura e texto; Cobalto = dado ativo e links; Coral = só alerta.
+- **Tokens semânticos**: o código não fala o nome da cor, fala o **papel**. `surface` (fundo), `ink` (texto e bordas por
+  opacidade), `structure` (títulos, botão primário, painéis, barra lateral), `on-structure` (texto/ícone sobre `structure`),
+  `accent` (dado ativo, links, seleção), `alert` (só alerta) e `line` (borda padrão, = `ink/15`).
+- **Temas = troca de papel, nunca cor nova.** Só as cinco cores; cada tema decide qual cor faz qual papel:
+
+  | Papel | Marfim (padrão) | Grafite (escuro) | Contraste |
+  |---|---|---|---|
+  | `surface` | marfim | grafite | marfim |
+  | `ink` | grafite | marfim | grafite |
+  | `structure` | petroleum | marfim | petroleum |
+  | `on-structure` | marfim | petroleum | marfim |
+  | `accent` (fundo/barra) | cobalto | cobalto | cobalto |
+  | `accent` (texto) | cobalto | marfim (links já sublinhados) | petroleum |
+  | `alert` | coral | coral | coral |
+  | `line` | grafite 15% | marfim 15% | grafite 55% |
+
+  No Grafite o petroleum sobre grafite some (1,05:1), por isso `structure` vira marfim (botão e painéis claros, texto
+  petroleum) e o cobalto, que como texto dá 2,2:1, só aparece em fundos e barras. O Contraste também engrossa o foco (3 px).
+  **Sistema** segue o modo claro/escuro do aparelho (Marfim ou Grafite).
+  Contraste medido (WCAG): texto principal 10,3:1 em todos; títulos 9,8–10,3:1; texto sobre `structure` 9,8:1;
+  links 4,8:1 (Marfim), 10,3:1 (Grafite), 9,8:1 (Contraste).
 - **Contraste**: o coral `#F06B4F` sobre marfim **não** passa em 4,5:1 para texto. Por isso o coral aparece em marcas, nós e linhas;
   o texto de atraso fica em grafite (o estado já é dito pela marca e pelo texto "atrasada").
 - **Estados do nó**: oco = a vencer; preenchido teal com marca interna = paga; preenchido coral = atrasada; losango coral = hoje.

@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (computador) */}
-      <aside className="hidden w-61 shrink-0 flex-col bg-teal px-4 py-6 text-ivory md:sticky md:top-0 md:flex md:h-dvh">
+      <aside className="hidden w-61 shrink-0 flex-col bg-structure px-4 py-6 text-on-structure md:sticky md:top-0 md:flex md:h-dvh">
         <div className="flex items-center gap-3 px-2 pb-8">
           <Logo size={40} tone="inverse" />
           <span className="font-display text-3xl font-semibold tracking-tight">prumia</span>
@@ -54,7 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={{ pathname: d.to, search }}
               end
               className={({ isActive }) =>
-                `flex h-11 items-center gap-3 rounded-md px-3 text-base ${isActive ? 'bg-ivory/12 font-semibold' : 'text-ivory/85 hover:bg-ivory/8'}`
+                `flex h-11 items-center gap-3 rounded-md px-3 text-base ${isActive ? 'bg-on-structure/12 font-semibold' : 'text-on-structure/85 hover:bg-on-structure/8'}`
               }
             >
               {({ isActive }) => (
@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto border-t border-ivory/20 px-1 pt-4">
+        <div className="mt-auto border-t border-on-structure/20 px-1 pt-4">
           <HouseSwitcher tone="inverse" />
         </div>
         <div className="mt-3 flex items-center justify-between gap-2 px-2">
@@ -92,19 +92,19 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {/* Navegação inferior (celular) */}
-      <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-20 grid h-18 grid-flow-col auto-cols-fr border-t border-graphite/20 bg-ivory md:hidden">
+      <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-20 grid h-18 grid-flow-col auto-cols-fr border-t border-ink/20 bg-surface md:hidden">
         {destinations.map((d) => (
           <NavLink
             key={d.to}
             to={{ pathname: d.to, search }}
             end
             className={({ isActive }) =>
-              `relative flex flex-col items-center justify-center gap-1 text-[11px] tracking-wide ${isActive ? 'font-semibold text-teal' : 'font-medium text-graphite/80'}`
+              `relative flex flex-col items-center justify-center gap-1 text-[11px] tracking-wide ${isActive ? 'font-semibold text-structure' : 'font-medium text-ink/80'}`
             }
           >
             {({ isActive }) => (
               <>
-                {isActive && <span aria-hidden="true" className="absolute inset-x-[22%] -top-px h-[3px] bg-teal" />}
+                {isActive && <span aria-hidden="true" className="absolute inset-x-[22%] -top-px h-[3px] bg-structure" />}
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
                   <path d={d.icon} />
                 </svg>

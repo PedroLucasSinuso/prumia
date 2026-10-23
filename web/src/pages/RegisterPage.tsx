@@ -94,9 +94,9 @@ export default function RegisterPage() {
           {busy ? 'Criando…' : 'Criar conta'}
         </Button>
       </form>
-      <p className="text-sm text-graphite/80">
+      <p className="text-sm text-ink/80">
         Já tem conta?{' '}
-        <Link to="/entrar" className="font-semibold text-cobalt underline underline-offset-2">
+        <Link to="/entrar" className="font-semibold text-accent underline underline-offset-2">
           Entrar
         </Link>
       </p>
