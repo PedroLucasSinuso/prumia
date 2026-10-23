@@ -1,3 +1,4 @@
+import { ArrowDownToLine, CalendarDays, ChartColumn, House, Layers, Settings, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink, useSearchParams } from 'react-router-dom'
 
@@ -6,24 +7,15 @@ import { HouseSwitcher } from './HouseSwitcher'
 import { Logo } from './Logo'
 import { UserMenu } from './UserMenu'
 
-// Ícones de traço quadrado (mesma família dos nós e do medidor): calendário, entrada, barras, casa, controles deslizantes.
-const icons = {
-  mes: 'M4 6 H20 V20 H4 Z M4 10 H20 M8 3 V7 M16 3 V7',
-  receitas: 'M12 3 V15 M6 10 L12 16 L18 10 M4 20 H20',
-  resumo: 'M5 20 V12 M12 20 V5 M19 20 V9',
-  parcelas: 'M4 5 H20 M4 12 H20 M4 19 H20 M8 3 V7 M15 10 V14 M10 17 V21',
-  casa: 'M4 11 L12 4 L20 11 M6 10 V20 H18 V10',
-  ajustes: 'M4 7 H20 M4 17 H20 M9 4 V10 M15 14 V20',
-} as const
-
 // Destinos do app. Só entra aqui o que já existe: a navegação cresce junto com as telas.
-const destinations = [
-  { to: '/', label: 'mês', icon: icons.mes },
-  { to: '/receitas', label: 'receitas', icon: icons.receitas },
-  { to: '/resumo', label: 'resumo', icon: icons.resumo },
-  { to: '/parcelas', label: 'parcelas', icon: icons.parcelas },
-  { to: '/casa', label: 'casa', icon: icons.casa },
-  { to: '/configuracoes', label: 'ajustes', icon: icons.ajustes },
+// Ícones lucide (traço fino, herdam a cor do texto); os marcadores [ ▪ ] continuam sendo o status do item ativo.
+const destinations: { to: string; label: string; Icon: LucideIcon }[] = [
+  { to: '/', label: 'mês', Icon: CalendarDays },
+  { to: '/receitas', label: 'receitas', Icon: ArrowDownToLine },
+  { to: '/resumo', label: 'resumo', Icon: ChartColumn },
+  { to: '/parcelas', label: 'parcelas', Icon: Layers },
+  { to: '/casa', label: 'casa', Icon: House },
+  { to: '/configuracoes', label: 'ajustes', Icon: Settings },
 ]
 
 /**
@@ -59,10 +51,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               {({ isActive }) => (
                 <>
-                  <span className="font-mono text-xs" aria-hidden="true">
-                    {isActive ? '[ ▪ ]' : '[ ▫ ]'}
-                  </span>
+                  <d.Icon size={18} strokeWidth={1.5} aria-hidden="true" />
                   {d.label}
+                  {isActive && (
+                    <span className="ml-auto font-mono text-[10px]" aria-hidden="true">
+                      [ ▪ ]
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -105,9 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {({ isActive }) => (
               <>
                 {isActive && <span aria-hidden="true" className="absolute inset-x-[22%] -top-px h-[3px] bg-structure" />}
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
-                  <path d={d.icon} />
-                </svg>
+                <d.Icon size={22} strokeWidth={1.5} aria-hidden="true" />
                 {d.label}
               </>
             )}

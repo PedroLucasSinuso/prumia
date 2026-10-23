@@ -439,7 +439,7 @@ describe('computador: detalhe ao lado da lista', () => {
     mockDesktop()
     withInvoices()
     renderAt(mes)
-    expect(await screen.findByText(/Toque numa conta para ver os detalhes/)).toBeInTheDocument()
+    expect(await screen.findByText(/Selecione uma conta para ver os detalhes/)).toBeInTheDocument()
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Luz' }))
     const painel = await screen.findByRole('region', { name: 'Detalhes da conta' })
     expect(within(painel).getByLabelText('Descrição')).toHaveValue('Luz')
