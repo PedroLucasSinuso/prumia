@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/cnpj"
 )
 
 // Method diz como o boleto foi lido (é mostrado ao usuário: OCR merece mais atenção na revisão).
@@ -194,6 +196,7 @@ func enrich(b *Boleto, text string, ref time.Time) {
 		b.DueDate = findDueDate(text)
 	}
 	b.Competence = findCompetence(text)
+	b.BeneficiaryCNPJ = findCNPJ(text)
 }
 
 var (
@@ -298,3 +301,27 @@ func toInt(s string) int {
 	}
 	return n
 }
+
+// cnpjRe aceita as máscaras que aparecem em PDF e OCR, inclusive a torta "11.222-333/0001-81". Exige a barra: sem ela,
+// um CPF (11 dígitos) ou qualquer número longo não vira candidato.
+var cnpjRe = regexp.MustCompile(`\d{2}[. ]?\d{3}[.\- ]?\d{3}\s?/\s?\d{4}\s?-?\s?\d{2}`)
+
+// findCNPJ devolve o CNPJ (só dígitos) de quem recebe. Só vale o que passa nos dígitos verificadores. Com rótulo
+// ("Razão social", "Beneficiário", "Cedente"), prefere o primeiro CNPJ a partir dele, porque o documento também pode
+// trazer o CNPJ do pagador; sem rótulo, o primeiro válido.
+func findCNPJ(text string) string {
+	start := 0
+	if loc := labelRe.FindStringIndex(text); loc != nil {
+		start = loc[0]
+	}
+	for _, from := range []int{start, 0} {
+		for _, m := range cnpjRe.FindAllString(text[from:], -1) {
+			if cnpj.Valid(m) {
+				return cnpj.Digits(m)
+			}
+		}
+	}
+	return ""
+}
+
+var labelRe = regexp.MustCompile(`(?i)raz[aã]o social|benefici[aá]rio|cedente`)

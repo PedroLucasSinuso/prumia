@@ -313,3 +313,17 @@ func TestDatasImpossiveisSaoIgnoradas(t *testing.T) {
 		t.Errorf("mês inválido aceito: %v", d)
 	}
 }
+
+func TestFindCNPJ(t *testing.T) {
+	for name, tc := range map[string]struct{ text, want string }{
+		"máscara torta da Gasco":      {"GASCO DISTRIBUIDORA S/A − Rua X CNPJ: 11.222-333/0001-81. Inscrição", "11222333000181"},
+		"com rótulo de razão":       {"RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nCNPJ: 45.678.901/0001-75\nCNPJ/CPF: 123.456.789-09", "45678901000175"},
+		"prefere o do beneficiário": {"Pagador CNPJ 11.222.333/0001-81\nBeneficiário: LOJA\nCNPJ 45.678.901/0001-75", "45678901000175"},
+		"dígito errado é ignorado":  {"CNPJ: 45.678.901/0001-76", ""},
+		"CPF não é CNPJ":            {"CPF 123.456.789-09", ""},
+	} {
+		if got := findCNPJ(tc.text); got != tc.want {
+			t.Errorf("%s: %q, quer %q", name, got, tc.want)
+		}
+	}
+}

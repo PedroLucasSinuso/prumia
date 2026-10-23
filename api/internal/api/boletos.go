@@ -14,6 +14,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
+	"github.com/PedroLucasSinuso/prumia/api/internal/payee"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/ratelimit"
@@ -32,10 +33,16 @@ type DuplicateFinder interface {
 	FindDuplicate(ctx context.Context, householdID uuid.UUID, line string) (*uuid.UUID, error)
 }
 
+// PayeeFinder acha o favorecido da casa pelo CNPJ lido do boleto (interface mínima, definida onde é usada).
+type PayeeFinder interface {
+	FindByCNPJ(ctx context.Context, householdID uuid.UUID, cnpj string) (payee.Payee, error)
+}
+
 // Boletos implementa POST /households/{id}/boletos/extract. O arquivo vive só na memória desta requisição.
 type Boletos struct {
 	Extractor *boleto.Extractor
 	Dup       DuplicateFinder
+	Payees    PayeeFinder
 	Log       *slog.Logger
 	// Limite por usuário: a leitura (PDF/OCR) é a operação mais cara do servidor.
 	limiter *ratelimit.Limiter
@@ -47,8 +54,8 @@ type Boletos struct {
 // maxConcurrentExtractions: leituras simultâneas. As demais esperam a vez (até o tempo da requisição acabar).
 const maxConcurrentExtractions = 2
 
-func NewBoletos(ex *boleto.Extractor, dup DuplicateFinder, log *slog.Logger) *Boletos {
-	return &Boletos{Extractor: ex, Dup: dup, Log: log, limiter: ratelimit.New(6*time.Second, 10),
+func NewBoletos(ex *boleto.Extractor, dup DuplicateFinder, payees PayeeFinder, log *slog.Logger) *Boletos {
+	return &Boletos{Extractor: ex, Dup: dup, Payees: payees, Log: log, limiter: ratelimit.New(6*time.Second, 10),
 		slots: make(chan struct{}, maxConcurrentExtractions)}
 }
 
@@ -170,6 +177,21 @@ func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
 	if !res.Competence.IsZero() {
 		m := caldate.FromTime(res.Competence)
 		out.Boleto.DocumentCompetenceMonth = &m
+	}
+	if res.BeneficiaryCNPJ != "" {
+		out.Boleto.BeneficiaryCnpj = &res.BeneficiaryCNPJ
+		// Favorecido já conhecido da casa (arquivado não conta: a pessoa o tirou de uso). Sem achar, a tela oferece cadastrar.
+		if h.Payees != nil {
+			switch p, err := h.Payees.FindByCNPJ(ctx, householdId, res.BeneficiaryCNPJ); {
+			case err == nil && !p.Archived():
+				gp := toGenPayee(p)
+				out.Payee = &gp
+			case err != nil && !errors.Is(err, payee.ErrNotFound):
+				h.Log.Error("erro ao buscar favorecido pelo CNPJ do boleto", "erro", err)
+				httpx.Internal(c)
+				return
+			}
+		}
 	}
 	if res.Beneficiary != "" {
 		out.Boleto.BeneficiaryName = &res.Beneficiary

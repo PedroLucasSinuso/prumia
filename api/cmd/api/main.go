@@ -88,6 +88,7 @@ func run(args []string) error {
 
 	summaries := summary.NewService(gdb)
 	households := household.NewService(gdb)
+	payeeSvc := payee.NewService(gdb)
 	households.MaxPerUser = cfg.MaxHouseholdsPerUser
 	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration, SessionMaxAge: cfg.SessionMaxAge})
 	if err != nil {
@@ -100,13 +101,13 @@ func run(args []string) error {
 		auth.NewHandler(authSvc, cookie, log),
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
-		&api.Payees{Svc: payee.NewService(gdb), Log: log},
+		&api.Payees{Svc: payeeSvc, Log: log},
 		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},
 		&api.Recurrences{Svc: recurrences, Log: log},
 		&api.Incomes{Svc: incomes, Log: log},
 		&api.Summaries{Svc: summaries, Log: log, Horizons: []api.HorizonEnsurer{incomes, recurrences}},
-		api.NewBoletos(boleto.NewExtractor(), invoices, log),
+		api.NewBoletos(boleto.NewExtractor(), invoices, payeeSvc, log),
 	)
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 

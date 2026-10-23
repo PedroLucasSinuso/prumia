@@ -253,7 +253,7 @@ func TestBoletoSoMembroEscreve(t *testing.T) {
 
 // No máximo maxConcurrentExtractions leituras ao mesmo tempo no servidor; a próxima espera e, se o tempo acabar, desiste.
 func TestBoletoLeiturasSimultaneasLimitadas(t *testing.T) {
-	h := NewBoletos(testExtractor(), nil, nil)
+	h := NewBoletos(testExtractor(), nil, nil, nil)
 	for i := 0; i < maxConcurrentExtractions; i++ {
 		if !h.acquire(context.Background()) {
 			t.Fatal("deveria haver lugar livre")
@@ -278,5 +278,116 @@ func TestBoletoLimiteDeRequisicoes(t *testing.T) {
 	}
 	if last != http.StatusTooManyRequests {
 		t.Errorf("a 12ª leitura seguida deveria ser barrada, veio %d", last)
+	}
+}
+
+func TestBoletoReconheceFavoritoPeloCNPJ(t *testing.T) {
+	a, c, house, catID := casa(t)
+	text := "RAZÃO SOCIAL: LOJA EXEMPLO LTDA\nCNPJ: 45.678.901/0001-75\n" + lineMasked
+
+	// Sem favorecido cadastrado: devolve o CNPJ e nenhum favorecido (a tela oferece cadastrar).
+	var ex struct {
+		Boleto struct {
+			BeneficiaryCnpj *string `json:"beneficiaryCnpj"`
+		} `json:"boleto"`
+		Payee *payeeOut `json:"payee"`
+	}
+	a.upload(house, c, fakePDF(text), "").json(&ex)
+	if ex.Boleto.BeneficiaryCnpj == nil || *ex.Boleto.BeneficiaryCnpj != "45678901000175" || ex.Payee != nil {
+		t.Fatalf("antes de cadastrar: %+v", ex)
+	}
+
+	// Cria o favorecido junto com a conta, a partir do boleto: nasce com CNPJ, razão social e a categoria da conta.
+	created, r := a.newInvoice(c, house, catID, map[string]any{
+		"description": "Internet", "amountCents": 100,
+		"newPayee": map[string]any{"name": "Internet"},
+		"boleto":   map[string]any{"digitableLine": lineDigits, "beneficiaryName": "LOJA EXEMPLO LTDA", "beneficiaryCnpj": "45678901000175"},
+	})
+	if r.Code != http.StatusCreated {
+		t.Fatalf("criar com newPayee: %d %s", r.Code, r.Body)
+	}
+	var list []payeeOut
+	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
+	if len(list) != 1 || list[0].Name != "Internet" || list[0].CNPJ == nil || *list[0].CNPJ != "45678901000175" ||
+		list[0].LegalName == nil || *list[0].LegalName != "LOJA EXEMPLO LTDA" || list[0].DefaultCategoryID == nil || *list[0].DefaultCategoryID != catID {
+		t.Fatalf("favorecido criado = %+v", list)
+	}
+	var inv struct {
+		PayeeID *string `json:"payeeId"`
+	}
+	a.do("GET", "/api/households/"+house+"/invoices/"+created.ID, nil, c).json(&inv)
+	if inv.PayeeID == nil || *inv.PayeeID != list[0].ID {
+		t.Fatalf("a conta deveria apontar para o favorecido: %v", inv.PayeeID)
+	}
+
+	// Próximo boleto do mesmo CNPJ: reconhecido.
+	a.upload(house, c, fakePDF(text), "").json(&ex)
+	if ex.Payee == nil || ex.Payee.Name != "Internet" {
+		t.Fatalf("depois de cadastrar: %+v", ex.Payee)
+	}
+
+	// Arquivado deixa de ser reconhecido.
+	a.do("PATCH", "/api/households/"+house+"/payees/"+list[0].ID, map[string]any{"archived": true}, c)
+	ex.Payee = nil
+	a.upload(house, c, fakePDF(text), "").json(&ex)
+	if ex.Payee != nil {
+		t.Fatalf("arquivado reconhecido: %+v", ex.Payee)
+	}
+}
+
+// Favorecido escolhido à mão, sem CNPJ, ganha o CNPJ do boleto no primeiro lançamento (e não perde o que já tinha).
+func TestBoletoComFavoritoExistenteAdotaOCNPJ(t *testing.T) {
+	a, c, house, catID := casa(t)
+	var p payeeOut
+	a.do("POST", "/api/households/"+house+"/payees", map[string]any{"name": "Gás"}, c).json(&p)
+	_, r := a.newInvoice(c, house, catID, map[string]any{
+		"description": "Gás", "amountCents": 100, "payeeId": p.ID,
+		"boleto": map[string]any{"digitableLine": lineDigits, "beneficiaryName": "GASCO DISTRIBUIDORA S/A", "beneficiaryCnpj": "11222333000181"},
+	})
+	if r.Code != http.StatusCreated {
+		t.Fatalf("criar: %d %s", r.Code, r.Body)
+	}
+	var list []payeeOut
+	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
+	if list[0].CNPJ == nil || *list[0].CNPJ != "11222333000181" || list[0].LegalName == nil || *list[0].LegalName != "GASCO DISTRIBUIDORA S/A" {
+		t.Fatalf("não adotou o CNPJ: %+v", list[0])
+	}
+
+	// Um segundo favorecido sem CNPJ escolhido com o mesmo boleto NÃO rouba o CNPJ (já é do Gás).
+	var q payeeOut
+	a.do("POST", "/api/households/"+house+"/payees", map[string]any{"name": "Outro"}, c).json(&q)
+	a.newInvoice(c, house, catID, map[string]any{
+		"description": "x", "amountCents": 100, "payeeId": q.ID,
+		"boleto": map[string]any{"digitableLine": lineDigits, "beneficiaryCnpj": "11222333000181"},
+	})
+	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
+	for _, x := range list {
+		if x.ID == q.ID && x.CNPJ != nil {
+			t.Fatalf("CNPJ duplicado entre favorecidos: %+v", x)
+		}
+	}
+}
+
+func TestNewPayeeRegras(t *testing.T) {
+	a, c, house, catID := casa(t)
+	var p payeeOut
+	a.do("POST", "/api/households/"+house+"/payees", map[string]any{"name": "Gás"}, c).json(&p)
+
+	// os dois juntos: 400
+	_, r := a.newInvoice(c, house, catID, map[string]any{"description": "x", "amountCents": 100, "payeeId": p.ID, "newPayee": map[string]any{"name": "Novo"}})
+	assertField(t, r, 400, "newPayee")
+	// nome repetido: 409 e a conta NÃO é gravada (mesma transação)
+	var before, after int64
+	a.db.Raw("SELECT count(*) FROM invoices").Scan(&before)
+	_, r = a.newInvoice(c, house, catID, map[string]any{"description": "x", "amountCents": 100, "newPayee": map[string]any{"name": "gás"}})
+	assertCode(t, r, 409, "payee_exists")
+	a.db.Raw("SELECT count(*) FROM invoices").Scan(&after)
+	if before != after {
+		t.Errorf("a conta foi gravada apesar do erro no favorecido (%d -> %d)", before, after)
+	}
+	// só com nome (sem boleto): vale
+	_, r = a.newInvoice(c, house, catID, map[string]any{"description": "x", "amountCents": 100, "newPayee": map[string]any{"name": "Padaria"}})
+	if r.Code != 201 {
+		t.Fatalf("newPayee sem boleto: %d %s", r.Code, r.Body)
 	}
 }

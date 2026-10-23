@@ -16,6 +16,7 @@ import (
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
+	"github.com/PedroLucasSinuso/prumia/api/internal/payee"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
@@ -209,19 +210,26 @@ type CreateInput struct {
 	CategoryID        uuid.UUID
 	ResponsibleUserID *uuid.UUID
 	PayeeID           *uuid.UUID
-	Description       string
-	AmountCents       money.Cents
-	DueDate           caldate.Date
-	CompetenceMonth   *caldate.Date // nil = mês do vencimento
-	Notes             *string
+	// NewPayee cria o favorecido na mesma transação da conta. Não combina com PayeeID.
+	NewPayee        *NewPayeeInput
+	Description     string
+	AmountCents     money.Cents
+	DueDate         caldate.Date
+	CompetenceMonth *caldate.Date // nil = mês do vencimento
+	Notes           *string
 	// Boleto opcional: a linha digitável é validada pelos dígitos verificadores; valor e vencimento do boleto vêm dela.
 	Boleto *BoletoInput
 }
+
+// NewPayeeInput: nome (apelido) do favorecido a criar junto com a conta.
+type NewPayeeInput struct{ Name string }
 
 // BoletoInput é o que o cliente envia sobre o boleto. Só a linha é confiável (validada); o resto é descritivo.
 type BoletoInput struct {
 	DigitableLine   string
 	BeneficiaryName *string
+	// BeneficiaryCNPJ é descritivo (validado pelos dígitos verificadores): vira o CNPJ do favorecido criado ou escolhido.
+	BeneficiaryCNPJ *string
 }
 
 func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in CreateInput) (View, error) {
@@ -243,6 +251,9 @@ func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in 
 	if err := s.checkPayee(ctx, householdID, in.PayeeID, &v); err != nil {
 		return View{}, err
 	}
+	if in.NewPayee != nil && in.PayeeID != nil {
+		v.Add("newPayee", "escolha um favorecido existente ou crie um novo, não os dois")
+	}
 	if err := v.Err(); err != nil {
 		return View{}, err
 	}
@@ -260,7 +271,26 @@ func (s *Service) Create(ctx context.Context, householdID, userID uuid.UUID, in 
 		}
 		bol = boletoRow(parsed, in.Boleto.BeneficiaryName)
 	}
+	// CNPJ e razão social vêm do boleto lido; sem boleto (ou sem CNPJ válido) o favorecido nasce só com o nome.
+	var boletoCNPJ, boletoName *string
+	if in.Boleto != nil {
+		boletoCNPJ, boletoName = in.Boleto.BeneficiaryCNPJ, in.Boleto.BeneficiaryName
+	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		payees := payee.NewService(tx) // com o tx: o favorecido só existe se a conta for gravada
+		if in.NewPayee != nil {
+			created, err := payees.Create(ctx, householdID, payee.CreateInput{
+				Name: in.NewPayee.Name, CNPJ: boletoCNPJ, LegalName: boletoName, DefaultCategoryID: &in.CategoryID,
+			})
+			if err != nil {
+				return err
+			}
+			inv.PayeeID = &created.ID
+		} else if in.PayeeID != nil && boletoCNPJ != nil {
+			if _, err := payees.AdoptCNPJ(ctx, householdID, *in.PayeeID, *boletoCNPJ, boletoName); err != nil {
+				return err
+			}
+		}
 		if err := tx.Create(&inv).Error; err != nil {
 			return fmt.Errorf("criando invoice: %w", err)
 		}
