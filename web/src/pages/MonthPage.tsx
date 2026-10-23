@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { getInvoice, useCategories, useExtractBoleto, useInvoiceActions, useInvoices, usePayees } from '../api/queries'
+import { Link } from 'react-router-dom'
+import { getInvoice, useCategories, extractDocument, useInvoiceActions, useInvoices, usePayees } from '../api/queries'
 import type { Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
@@ -45,7 +46,6 @@ export default function MonthPage() {
   const payees = usePayees(houseId)
   const invoices = useInvoices(houseId, month)
   const actions = useInvoiceActions(houseId)
-  const extractBoleto = useExtractBoleto(houseId)
 
   const categoryById = useMemo(() => new Map((categories.data ?? []).map((c) => [c.id, c])), [categories.data])
   const list = useMemo(() => invoices.data ?? [], [invoices.data])
@@ -153,7 +153,7 @@ export default function MonthPage() {
       if (!desktop) setEditing(null)
     },
     // reset() limpa as variáveis da mutação (arquivo e senha) assim que a resposta chega.
-    onExtractBoleto: (file: File, password?: string) => extractBoleto.mutateAsync({ file, password }).finally(() => extractBoleto.reset()),
+    onExtractBoleto: (file: File, password?: string) => extractDocument(houseId, file, password),
     onOpenInvoice: (id: string) => void openInvoice(id),
   }
   const formReady = categories.isSuccess && (editing?.kind === 'new' || editingInvoice !== undefined)
@@ -167,9 +167,14 @@ export default function MonthPage() {
         <header className="flex flex-wrap items-end justify-between gap-4">
           <MonthSelector month={month} onChange={setMonth} />
           {desktop && canWrite && (
-            <Button onClick={() => setEditing({ kind: 'new' })} className="flex items-center gap-2">
-              <span aria-hidden="true" className="text-xl leading-none">+</span> Nova conta
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/importar" className="flex h-11 items-center rounded-md border border-line px-4 text-sm font-semibold hover:bg-ink/5">
+                Importar
+              </Link>
+              <Button onClick={() => setEditing({ kind: 'new' })} className="flex items-center gap-2">
+                <span aria-hidden="true" className="text-xl leading-none">+</span> Nova conta
+              </Button>
+            </div>
           )}
         </header>
 

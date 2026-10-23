@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -191,42 +191,22 @@ export async function lookupCnpj(cnpj: string): Promise<CnpjInfo | null> {
 const extractStatusCode: Record<number, string> = { 413: 'file_too_large', 422: 'boleto_not_found', 429: 'too_many_requests', 503: 'busy' }
 
 /**
- * Lê um boleto (PDF/PNG/JPG). Nada é salvo no servidor; a pessoa revisa antes de criar a conta.
- * Envia multipart/form-data: o `bodySerializer` monta o FormData e o openapi-fetch deixa o navegador pôr o boundary.
- * Falha vira ApiError com `problem.code` sempre preenchido (`password_required`, `file_too_large`...).
+ * Lê um documento (PDF/PNG/JPG): um boleto, uma conta sem boleto ou uma lista de contas. Nada é salvo no servidor; a pessoa
+ * revisa antes de criar. Envia multipart/form-data: o `bodySerializer` monta o FormData e o openapi-fetch deixa o navegador
+ * pôr o boundary. Falha vira ApiError com `problem.code` sempre preenchido (`password_required`, `file_too_large`...).
  *
- * A senha do PDF só passa pela requisição: `gcTime: 0` tira a mutação (e suas variáveis) do cache assim que ninguém a observa,
- * e quem chama dá `reset()` ao terminar.
+ * Função solta (não mutação do TanStack Query): a senha do PDF só passa por esta chamada e não fica em cache nenhum; e a
+ * tela "Importar" lê vários arquivos em sequência, com espera entre eles.
+ * (O endpoint antigo `/boletos/extract` continua no servidor por compatibilidade; o app não o usa mais.)
  */
-export function useExtractBoleto(houseId: string) {
-  return useMutation({
-    gcTime: 0,
-    mutationFn: ({ file, password }: { file: File; password?: string }): Promise<BoletoExtraction> =>
-      extractFile('/households/{householdId}/boletos/extract', houseId, file, password),
-  })
-}
-
-/**
- * Lê um documento (boleto, conta sem boleto ou lista de contas). Mesmas regras de upload e senha do useExtractBoleto.
- * Função solta (não hook) porque a tela "Importar" lê vários arquivos em sequência, com espera entre eles.
- */
-export function extractDocument(houseId: string, file: File, password?: string): Promise<DocumentExtraction> {
-  return extractFile('/households/{householdId}/documents/extract', houseId, file, password)
-}
-
-type ExtractPath = '/households/{householdId}/boletos/extract' | '/households/{householdId}/documents/extract'
-
-// Sobrecargas: cada rota devolve o seu tipo (o corpo multipart é igual nas duas).
-async function extractFile(path: '/households/{householdId}/boletos/extract', houseId: string, file: File, password?: string): Promise<BoletoExtraction>
-async function extractFile(path: '/households/{householdId}/documents/extract', houseId: string, file: File, password?: string): Promise<DocumentExtraction>
-async function extractFile(path: ExtractPath, houseId: string, file: File, password?: string): Promise<BoletoExtraction | DocumentExtraction> {
-  let result: { data?: BoletoExtraction | DocumentExtraction; error?: unknown; response?: Response }
+export async function extractDocument(houseId: string, file: File, password?: string): Promise<DocumentExtraction> {
+  let result
   try {
-    result = await api.POST(path as '/households/{householdId}/documents/extract', {
+    result = await api.POST('/households/{householdId}/documents/extract', {
       params: { path: { householdId: houseId } },
       // O tipo gerado diz `string` para campos binários; em runtime é o File.
       body: { file: file as unknown as string, ...(password ? { password } : {}) },
-      bodySerializer: (body: { file: string; password?: string }) => {
+      bodySerializer: (body) => {
         const form = new FormData()
         form.append('file', body.file as unknown as Blob)
         if (body.password) form.append('password', body.password)

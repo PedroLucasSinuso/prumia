@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 
 import App from '../App'
 import { api } from '../api/client'
-import type { Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem } from '../api/types'
+import type { BoletoExtraction, Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { addMonths } from '../lib/dates'
 import { ToastProvider } from '../components/Toast'
@@ -116,6 +116,22 @@ type Routes = {
   invoiceDetail?: Reply
 }
 
+/** Converte a resposta do /boletos/extract (formato antigo) no DocumentExtraction equivalente. */
+function asDocument(reply: Reply): Reply {
+  const d = reply.data as BoletoExtraction | undefined
+  if (!d || !('boleto' in d)) return reply
+  const b = d.boleto
+  const opt = <T,>(v: T | null | undefined) => v ?? undefined
+  return ok({
+    kind: 'boleto', method: d.method,
+    items: [{
+      description: opt(b.beneficiaryName), amountCents: opt(b.documentAmountCents), dueDate: opt(b.documentDueDate),
+      competenceMonth: opt(b.documentCompetenceMonth), beneficiaryName: opt(b.beneficiaryName), beneficiaryCnpj: opt(b.beneficiaryCnpj),
+      beneficiaryVerified: b.beneficiaryVerified, boleto: b, duplicateOfInvoiceId: opt(d.duplicateOfInvoiceId), payee: opt(d.payee),
+    }],
+  })
+}
+
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
 export function mockApi(r: Routes = {}) {
   const unauth = fail(401, 'unauthenticated')
@@ -151,7 +167,10 @@ export function mockApi(r: Routes = {}) {
     }
     if (url === '/households/{householdId}/documents/extract') {
       const body = init?.body as { file: File; password?: string }
-      return (typeof r.extractDocument === 'function' ? r.extractDocument(body) : r.extractDocument) ?? fail(422, 'boleto_not_found')
+      if (r.extractDocument) return typeof r.extractDocument === 'function' ? r.extractDocument(body) : r.extractDocument
+      // `extract` no formato antigo (BoletoExtraction) também serve: vira um documento do tipo boleto.
+      const legacy = typeof r.extract === 'function' ? r.extract(body) : r.extract
+      return legacy ? asDocument(legacy) : fail(422, 'boleto_not_found')
     }
     if (url === '/households/{householdId}/invoices/batch') {
       const body = init?.body as { items: unknown[] }

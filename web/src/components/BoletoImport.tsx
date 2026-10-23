@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../api/errors'
 import type { DocumentExtraction, DocumentItem } from '../api/types'
@@ -121,7 +121,12 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
           <Button type="button" variant="ghost" onClick={pick}>
             Importar boleto
           </Button>
-          <p className="text-xs text-ink/70">PDF, foto ou print do boleto (até 5 MB). Você confere tudo antes de salvar.</p>
+          <p className="text-xs text-ink/70">
+            PDF, foto ou print do boleto ou da conta (até 5 MB). Você confere tudo antes de salvar. Várias contas ou arquivos?{' '}
+            <Link to="/importar" className="font-semibold text-accent underline underline-offset-2">
+              Importar várias
+            </Link>
+          </p>
         </>
       )}
 
