@@ -989,10 +989,12 @@ components:
         newPayee:
           type: object
           nullable: true
-          description: "Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida."
+          description: "Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; sem boleto, os de `cnpj`/`legalName` (conta sem boleto lida na importação). A categoria da conta vira a sugerida."
           required: [name]
           properties:
             name: { type: string, minLength: 1, maxLength: 60 }
+            cnpj: { type: string, pattern: '^[0-9]{14}$', description: "Só sem boleto (com boleto vale o do boleto)" }
+            legalName: { type: string, maxLength: 120, description: "Só sem boleto" }
     InvoicePatch:
       type: object
       properties:

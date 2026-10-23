@@ -712,9 +712,14 @@ type InvoiceInput struct {
 	Description     string       `json:"description"`
 	DueDate         caldate.Date `json:"dueDate"`
 
-	// NewPayee Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida.
+	// NewPayee Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; sem boleto, os de `cnpj`/`legalName` (conta sem boleto lida na importação). A categoria da conta vira a sugerida.
 	NewPayee *struct {
-		Name string `json:"name"`
+		// Cnpj Só sem boleto (com boleto vale o do boleto)
+		Cnpj *string `json:"cnpj,omitempty"`
+
+		// LegalName Só sem boleto
+		LegalName *string `json:"legalName,omitempty"`
+		Name      string  `json:"name"`
 	} `json:"newPayee,omitempty"`
 	Notes             *string             `json:"notes,omitempty"`
 	PayeeId           *openapi_types.UUID `json:"payeeId,omitempty"`

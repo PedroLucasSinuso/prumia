@@ -288,10 +288,12 @@ func boletoInput(b *gen.Boleto) *invoice.BoletoInput {
 }
 
 func newPayeeInput(n *struct {
-	Name string `json:"name"`
+	Cnpj      *string `json:"cnpj,omitempty"`
+	LegalName *string `json:"legalName,omitempty"`
+	Name      string  `json:"name"`
 }) *invoice.NewPayeeInput {
 	if n == nil {
 		return nil
 	}
-	return &invoice.NewPayeeInput{Name: n.Name}
+	return &invoice.NewPayeeInput{Name: n.Name, CNPJ: n.Cnpj, LegalName: n.LegalName}
 }

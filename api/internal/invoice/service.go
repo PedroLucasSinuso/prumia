@@ -221,8 +221,13 @@ type CreateInput struct {
 	Boleto *BoletoInput
 }
 
-// NewPayeeInput: nome (apelido) do favorecido a criar junto com a conta.
-type NewPayeeInput struct{ Name string }
+// NewPayeeInput: nome (apelido) do favorecido a criar junto com a conta. CNPJ e razão social só valem sem boleto
+// (conta sem boleto lida na importação); com boleto, valem os do boleto.
+type NewPayeeInput struct {
+	Name      string
+	CNPJ      *string
+	LegalName *string
+}
 
 // BoletoInput é o que o cliente envia sobre o boleto. Só a linha é confiável (validada); o resto é descritivo.
 type BoletoInput struct {
@@ -375,6 +380,8 @@ func (p *prepared) write(ctx context.Context, tx *gorm.DB, householdID uuid.UUID
 	var boletoCNPJ, boletoName *string
 	if in.Boleto != nil {
 		boletoCNPJ, boletoName = in.Boleto.BeneficiaryCNPJ, in.Boleto.BeneficiaryName
+	} else if in.NewPayee != nil {
+		boletoCNPJ, boletoName = in.NewPayee.CNPJ, in.NewPayee.LegalName
 	}
 	payees := payee.NewService(tx) // com o tx: o favorecido só existe se a conta for gravada
 	switch {

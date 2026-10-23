@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { BoletoExtraction, DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -160,7 +160,14 @@ export function useInvoiceActions(houseId: string) {
     onSettled: refresh,
   })
 
-  return { create, update, remove, restore, pay, unpay, createPurchase, createRecurrence }
+  // Várias contas de uma vez (tela "Importar"): tudo ou nada no servidor.
+  const createBatch = useMutation({
+    mutationFn: (items: InvoiceInput[]) =>
+      unwrap(api.POST('/households/{householdId}/invoices/batch', { params: { path: { householdId: houseId } }, body: { items } })),
+    onSettled: refresh,
+  })
+
+  return { create, update, remove, restore, pay, unpay, createPurchase, createRecurrence, createBatch }
 }
 
 /** Detalhe de uma invoice (inclui o boleto). Usado para abrir uma conta que pode estar em outro mês. */
@@ -194,30 +201,46 @@ const extractStatusCode: Record<number, string> = { 413: 'file_too_large', 422: 
 export function useExtractBoleto(houseId: string) {
   return useMutation({
     gcTime: 0,
-    mutationFn: async ({ file, password }: { file: File; password?: string }): Promise<BoletoExtraction> => {
-      let result
-      try {
-        result = await api.POST('/households/{householdId}/boletos/extract', {
-          params: { path: { householdId: houseId } },
-          // O tipo gerado diz `string` para campos binários; em runtime é o File.
-          body: { file: file as unknown as string, ...(password ? { password } : {}) },
-          bodySerializer: (body) => {
-            const form = new FormData()
-            form.append('file', body.file as unknown as Blob)
-            if (body.password) form.append('password', body.password)
-            return form
-          },
-        })
-      } catch {
-        throw new ApiError(undefined, true)
-      }
-      if (result.data) return result.data
-      const problem = typeof result.error === 'object' && result.error !== null ? (result.error as Problem) : undefined
-      const status = problem?.status ?? result.response?.status ?? 0
-      const code = problem?.code ?? extractStatusCode[status] ?? 'boleto_not_found'
-      throw new ApiError({ title: code, ...problem, status, code })
-    },
+    mutationFn: ({ file, password }: { file: File; password?: string }): Promise<BoletoExtraction> =>
+      extractFile('/households/{householdId}/boletos/extract', houseId, file, password),
   })
+}
+
+/**
+ * Lê um documento (boleto, conta sem boleto ou lista de contas). Mesmas regras de upload e senha do useExtractBoleto.
+ * Função solta (não hook) porque a tela "Importar" lê vários arquivos em sequência, com espera entre eles.
+ */
+export function extractDocument(houseId: string, file: File, password?: string): Promise<DocumentExtraction> {
+  return extractFile('/households/{householdId}/documents/extract', houseId, file, password)
+}
+
+type ExtractPath = '/households/{householdId}/boletos/extract' | '/households/{householdId}/documents/extract'
+
+// Sobrecargas: cada rota devolve o seu tipo (o corpo multipart é igual nas duas).
+async function extractFile(path: '/households/{householdId}/boletos/extract', houseId: string, file: File, password?: string): Promise<BoletoExtraction>
+async function extractFile(path: '/households/{householdId}/documents/extract', houseId: string, file: File, password?: string): Promise<DocumentExtraction>
+async function extractFile(path: ExtractPath, houseId: string, file: File, password?: string): Promise<BoletoExtraction | DocumentExtraction> {
+  let result: { data?: BoletoExtraction | DocumentExtraction; error?: unknown; response?: Response }
+  try {
+    result = await api.POST(path as '/households/{householdId}/documents/extract', {
+      params: { path: { householdId: houseId } },
+      // O tipo gerado diz `string` para campos binários; em runtime é o File.
+      body: { file: file as unknown as string, ...(password ? { password } : {}) },
+      bodySerializer: (body: { file: string; password?: string }) => {
+        const form = new FormData()
+        form.append('file', body.file as unknown as Blob)
+        if (body.password) form.append('password', body.password)
+        return form
+      },
+    })
+  } catch {
+    throw new ApiError(undefined, true)
+  }
+  if (result.data) return result.data
+  const problem = typeof result.error === 'object' && result.error !== null ? (result.error as Problem) : undefined
+  const status = problem?.status ?? result.response?.status ?? 0
+  const code = problem?.code ?? extractStatusCode[status] ?? 'boleto_not_found'
+  throw new ApiError({ title: code, ...problem, status, code })
 }
 
 export function useMembers(houseId: string) {

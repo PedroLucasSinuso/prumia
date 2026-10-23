@@ -160,3 +160,24 @@ func TestLoteCorpoGrande(t *testing.T) {
 		t.Fatalf("lote de 50: %d %s", r.Code, r.Body)
 	}
 }
+
+// Conta sem boleto lida na importação: o favorecido novo leva o CNPJ e a razão social do newPayee.
+func TestLoteFavorecidoNovoSemBoletoLevaCNPJ(t *testing.T) {
+	a, c, house, catID := casa(t)
+	r := a.batch(house, c, batchItem(catID, "Gás", 13043, map[string]any{
+		"newPayee": map[string]any{"name": "Gás", "cnpj": "11222333000181", "legalName": "Gasco Distribuidora SA"},
+	}))
+	if r.Code != http.StatusCreated {
+		t.Fatalf("lote: %d %s", r.Code, r.Body)
+	}
+	var list []payeeOut
+	a.do("GET", "/api/households/"+house+"/payees", nil, c).json(&list)
+	if len(list) != 1 || str(list[0].CNPJ) != "11222333000181" || str(list[0].LegalName) != "Gasco Distribuidora SA" {
+		t.Fatalf("favorecido: %+v", list)
+	}
+	// CNPJ inválido é recusado apontando o item
+	r = a.batch(house, c, batchItem(catID, "X", 100, map[string]any{"newPayee": map[string]any{"name": "Outro", "cnpj": "11222333000180"}}))
+	if r.Code != http.StatusBadRequest || !strings.Contains(r.Body.String(), "items.0.newPayee") {
+		t.Fatalf("cnpj inválido: %d %s", r.Code, r.Body)
+	}
+}

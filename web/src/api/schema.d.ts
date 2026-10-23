@@ -970,9 +970,13 @@ export interface components {
             competenceMonth?: components["schemas"]["Month"];
             notes?: string | null;
             boleto?: components["schemas"]["Boleto"] | null;
-            /** @description Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; a categoria da conta vira a sugerida. */
+            /** @description Cria o favorecido junto com a conta (uma só operação). Não combina com payeeId. Com boleto, leva o CNPJ e a razão social do boleto; sem boleto, os de `cnpj`/`legalName` (conta sem boleto lida na importação). A categoria da conta vira a sugerida. */
             newPayee?: {
                 name: string;
+                /** @description Só sem boleto (com boleto vale o do boleto) */
+                cnpj?: string;
+                /** @description Só sem boleto */
+                legalName?: string;
             } | null;
         };
         InvoicePatch: {
