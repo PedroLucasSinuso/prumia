@@ -28,6 +28,7 @@ func TestDesempenhoComVolumeRealista(t *testing.T) {
 		t.Skip("defina PRUMIA_PERF=1 para medir")
 	}
 	a := newApp(t, opts{openRegistration: true, now: func() time.Time { return today }})
+	a.hs.MaxPerUser = 20 // o teste cria 9 casas extras; o limite padrão (5) as recusaria
 	c, house := a.register("Ana", "ana@x.com", "Casa medida")
 	cat := mustCat(a, c, house)
 	ana := a.uid("ana@x.com")

@@ -48,9 +48,13 @@ Em aberto (decidir antes de desenhar):
 
 Pontos de atenção: manter o fluxo de pagar em poucos toques; casas existentes migram sem ação do usuário.
 
+## Feito: redesign de navegação, Ajustes, Mês e Importação (#34 a #39)
+
+Tokens e temas (Marfim, Grafite, Contraste), Resumo com saldo projetado e gráficos, navegação Mês · Receitas · Resumo · Ajustes (+ Importar), painel de **Ajustes** unificado (Casa e pessoas, Categorias com arrastar, Favorecidos, Aparência com tema na conta, Minha conta com troca de senha, Dados com exportação CSV, Sobre), Mês redesenhado para computador e importação inteligente de documentos.
+
 ## Melhorias de curto prazo
 
-- Mais ajustes na página de configurações (identidade da casa: categorias, favorecidos, preferências).
+- Ajustes: novas preferências da casa entram como novas seções (o painel já comporta).
 - Segurança: token de convite/reset no fragmento (`#`) em vez da query; limite de login atrás do Tailscale vira balde único (avaliar chave por usuário/e-mail).
 - Boleto: mais layouts reais para calibrar as regras de nome, vencimento e competência (cada boleto novo que falhar vira caso de teste, sempre com dados sintéticos).
 - [feito: tela Importar, lote e conta sem boleto/lista] Importação de vários boletos de uma vez (duplicidade pela linha digitável; aviso suave de "parece duplicada" para segunda via com outra linha: mesmo favorecido, competência e valor).
