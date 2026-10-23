@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../api/errors'
-import type { BoletoExtraction } from '../api/types'
+import type { DocumentExtraction, DocumentItem } from '../api/types'
 import { boletoErrorMessage, networkErrorMessage } from '../auth/errors'
 import { MAX_BOLETO_BYTES } from '../lib/boleto'
+import { formatCents } from '../lib/money'
 import { BoletoBox } from './BoletoBox'
 import { Button } from './Button'
 import { Field } from './Field'
@@ -14,13 +16,13 @@ type Step =
   | { kind: 'reading' }
   | { kind: 'password'; wrong: boolean }
   | { kind: 'error'; message: string }
-  | { kind: 'done'; extraction: BoletoExtraction }
+  | { kind: 'done'; extraction: DocumentExtraction; fileName: string }
 
 type Props = {
-  /** Envia o arquivo (e a senha, se houver) para o servidor ler. Rejeita com ApiError. */
-  onExtract: (file: File, password?: string) => Promise<BoletoExtraction>
-  /** Leitura deu certo: o formulário se pré-preenche com o que veio. */
-  onExtracted: (extraction: BoletoExtraction) => void
+  /** Envia o arquivo (e a senha, se houver) para o servidor ler (POST /documents/extract). Rejeita com ApiError. */
+  onExtract: (file: File, password?: string) => Promise<DocumentExtraction>
+  /** Leitura de UMA conta (boleto ou conta sem boleto): o formulário se pré-preenche com o item. Lista não chama. */
+  onExtracted: (item: DocumentItem) => void
   /** Começou outra leitura ou desistiu: o boleto anterior não vale mais (os campos já preenchidos ficam). */
   onDiscard: () => void
   /** A pessoa desistiu da leitura e vai digitar. */
@@ -37,6 +39,7 @@ const link = 'flex min-h-11 items-center text-sm font-semibold text-accent under
  * reenviado (senha, falha de rede); a senha nunca vai para o estado do React: é lida do campo no envio e o campo é limpo.
  */
 export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOpenInvoice }: Props) {
+  const navigate = useNavigate()
   const [step, setStep] = useState<Step>({ kind: 'idle' })
   const [showDuplicate, setShowDuplicate] = useState(true)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -53,8 +56,9 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
       const extraction = await onExtract(current, password)
       file.current = null
       setShowDuplicate(true)
-      setStep({ kind: 'done', extraction })
-      onExtracted(extraction)
+      setStep({ kind: 'done', extraction, fileName: current.name })
+      // Lista (várias contas): não cabe num formulário de uma conta; a revisão oferece abrir em "Importar".
+      if (extraction.kind !== 'list') onExtracted(extraction.items[0])
     } catch (err) {
       const api = err instanceof ApiError ? err : undefined
       const code = api?.problem?.code
@@ -93,7 +97,8 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
     onManual()
   }
 
-  const duplicateId = step.kind === 'done' ? step.extraction.duplicateOfInvoiceId : undefined
+  const first = step.kind === 'done' ? step.extraction.items[0] : undefined
+  const duplicateId = first?.duplicateOfInvoiceId ?? undefined
 
   return (
     <div className="flex flex-col gap-2">
@@ -169,11 +174,38 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
         </div>
       )}
 
-      {step.kind === 'done' && (
+      {step.kind === 'done' && step.extraction.kind === 'list' && (
+        <section aria-label="Várias contas no arquivo" className="flex flex-col gap-3 rounded-md border-2 border-accent p-3">
+          <div>
+            <h3 className="text-sm font-semibold">Encontrei {step.extraction.items.length} contas neste arquivo</h3>
+            <p className="text-xs text-ink/75">Para criar todas de uma vez, abra em Importar e confira cada uma.</p>
+          </div>
+          <ul className="flex flex-col gap-1 text-sm">
+            {step.extraction.items.map((it, i) => (
+              <li key={i} className="flex justify-between gap-3">
+                <span className="min-w-0 truncate">{it.description ?? 'sem descrição'}</span>
+                <span className="font-mono tabular-nums">{formatCents(it.amountCents ?? 0)}</span>
+              </li>
+            ))}
+          </ul>
+          <Button type="button" onClick={() => navigate('/importar', { state: { extraction: step.extraction, fileName: step.fileName } })}>
+            Abrir em Importar
+          </Button>
+          <button type="button" className={link} onClick={pick}>
+            Importar outro arquivo
+          </button>
+        </section>
+      )}
+
+      {step.kind === 'done' && step.extraction.kind !== 'list' && first && (
         <section aria-label="Conferir antes de salvar" className="flex flex-col gap-3 rounded-md border-2 border-accent p-3">
           <div>
             <h3 className="text-sm font-semibold">Conferir antes de salvar</h3>
-            <p className="text-xs text-ink/75">Valor, vencimento e descrição vieram do boleto. Confira e corrija se precisar.</p>
+            <p className="text-xs text-ink/75">
+              {first.boleto
+                ? 'Valor, vencimento e descrição vieram do boleto. Confira e corrija se precisar.'
+                : 'Conta sem código de barras: valor e vencimento vieram do documento. Confira e corrija se precisar.'}
+            </p>
           </div>
           {duplicateId && showDuplicate && (
             <div role="alert" className="flex flex-col gap-1 rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
@@ -192,9 +224,22 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
               </div>
             </div>
           )}
-          <BoletoBox boleto={step.extraction.boleto} method={step.extraction.method} />
+          {first.boleto ? (
+            <BoletoBox
+              boleto={{ ...first.boleto, beneficiaryName: first.beneficiaryName, beneficiaryVerified: first.beneficiaryVerified }}
+              method={step.extraction.method}
+            />
+          ) : (
+            <p className="text-xs">
+              <span aria-hidden="true" className={`font-mono ${step.extraction.method === 'ocr' ? 'text-alert' : 'text-accent'}`}>
+                {step.extraction.method === 'ocr' ? '[ ✖ ]' : '[ ▪ ]'}
+              </span>{' '}
+              {step.extraction.method === 'ocr' ? 'conta lida por OCR: confira os números' : 'conta lida do texto do PDF'}
+              {first.beneficiaryName && <> · {first.beneficiaryName}</>}
+            </p>
+          )}
           <button type="button" className={link} onClick={pick}>
-            Importar outro boleto
+            Importar outro arquivo
           </button>
         </section>
       )}
