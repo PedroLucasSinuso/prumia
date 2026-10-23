@@ -33,6 +33,7 @@ func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
 	got := assemble(oct,
 		[]incomeRow{{Wallet: "free", Expected: 600000, Received: 400000}, {Wallet: "benefit", Expected: 80000, Received: 80000}},
 		[]paidRow{{Wallet: "free", Paid: 150000}, {Wallet: "benefit", Paid: 90000}},
+		[]pendingRow{{Wallet: "free", Pending: 90000, Overdue: 40000, OverdueCount: 1}, {Wallet: "benefit", Pending: 50000, Overdue: 50000, OverdueCount: 2}},
 		[]categoryRow{
 			{CategoryID: b, Total: 50000, Paid: 50000},
 			{CategoryID: a, Total: 240000, Paid: 150000, Pending: 90000},
@@ -47,6 +48,13 @@ func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
 	if got.TotalPaid != 200000 || got.TotalPending != 140000 {
 		t.Errorf("totais: pago %d pendente %d", got.TotalPaid, got.TotalPending)
 	}
+	// projetado = previsto - pago - a pagar (estimado por carteira)
+	if got.Free.Pending != 90000 || got.Free.Projected() != 360000 || got.Benefit.Projected() != -60000 {
+		t.Errorf("projetado: livre %+v benefício %+v", got.Free, got.Benefit)
+	}
+	if got.Overdue != 90000 || got.OverdueCount != 3 {
+		t.Errorf("atraso: %d em %d contas", got.Overdue, got.OverdueCount)
+	}
 	order := []uuid.UUID{a, b, c}
 	for i, id := range order {
 		if got.ByCategory[i].CategoryID != id {
@@ -56,7 +64,7 @@ func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
 }
 
 func TestAssembleMesVazio(t *testing.T) {
-	got := assemble(oct, nil, nil, nil)
+	got := assemble(oct, nil, nil, nil, nil)
 	if got.ByCategory == nil || len(got.ByCategory) != 0 || got.Free.Balance() != 0 || got.TotalPaid != 0 {
 		t.Errorf("mês vazio: %+v", got)
 	}
@@ -71,5 +79,16 @@ func TestMesPrecisaSerDia1(t *testing.T) {
 	}
 	if err := checkMonth(oct); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestProjetadoIgnoraSeAReceitaJaFoiMarcada(t *testing.T) {
+	// dia 22: salário previsto ainda não marcado como recebido. O realizado fica negativo, o projetado não.
+	w := WalletBalance{Expected: 600000, Received: 0, Paid: 252681, Pending: 100000}
+	if w.Balance() >= 0 {
+		t.Fatalf("realizado deveria ser negativo: %d", w.Balance())
+	}
+	if w.Projected() != 247319 {
+		t.Errorf("projetado: %d", w.Projected())
 	}
 }

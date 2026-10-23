@@ -21,6 +21,7 @@ type Summaries struct {
 func toGenWallet(w summary.WalletBalance) gen.WalletBalance {
 	return gen.WalletBalance{
 		ExpectedIncomeCents: w.Expected, ReceivedIncomeCents: w.Received, PaidCents: w.Paid, BalanceCents: w.Balance(),
+		PendingCents: w.Pending, ProjectedCents: w.Projected(),
 	}
 }
 
@@ -38,12 +39,46 @@ func (h *Summaries) GetMonthlySummary(c *gin.Context, householdId gen.HouseholdI
 		writeDomainError(c, h.Log, err)
 		return
 	}
-	out := gen.MonthlySummary{Month: s.Month, TotalPaidCents: s.TotalPaid, TotalPendingCents: s.TotalPending}
+	out := gen.MonthlySummary{
+		Month: s.Month, TotalPaidCents: s.TotalPaid, TotalPendingCents: s.TotalPending,
+		OverdueCents: s.Overdue, OverdueCount: s.OverdueCount,
+	}
 	out.Wallets.Free = toGenWallet(s.Free)
 	out.Wallets.Benefit = toGenWallet(s.Benefit)
 	out.ByCategory = make([]gen.CategoryTotal, len(s.ByCategory))
 	for i, cat := range s.ByCategory {
 		out.ByCategory[i] = gen.CategoryTotal{CategoryId: cat.CategoryID, TotalCents: cat.Total, PaidCents: cat.Paid}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// GetCategoryHistory: GET /households/{householdId}/summary/categories?from=&to=
+// Valida o intervalo ANTES de estender o horizonte (um pedido inválido não grava nada) e estende até `to`, para que um
+// intervalo com meses futuros já mostre as contas fixas daqueles meses.
+func (h *Summaries) GetCategoryHistory(c *gin.Context, householdId gen.HouseholdId, params gen.GetCategoryHistoryParams) {
+	ctx := c.Request.Context()
+	from, to, err := h.Svc.HistoryRange(params.From, params.To)
+	if err != nil {
+		writeDomainError(c, h.Log, err)
+		return
+	}
+	for _, e := range h.Horizons {
+		if err := e.EnsureHorizon(ctx, householdId, to); err != nil {
+			h.Log.Warn("não foi possível estender o horizonte para o histórico", "erro", err)
+		}
+	}
+	hist, err := h.Svc.CategoryHistory(ctx, householdId, &from, &to)
+	if err != nil {
+		writeDomainError(c, h.Log, err)
+		return
+	}
+	out := gen.CategoryHistory{Months: hist.Months, Series: make([]gen.CategorySeries, len(hist.Series))}
+	for i, cs := range hist.Series {
+		pts := make([]gen.CategoryPoint, len(cs.Points))
+		for j, p := range cs.Points {
+			pts[j] = gen.CategoryPoint{Month: p.Month, TotalCents: p.Total, PaidCents: p.Paid, SeriesCents: p.Series}
+		}
+		out.Series[i] = gen.CategorySeries{CategoryId: cs.CategoryID, Points: pts}
 	}
 	c.JSON(http.StatusOK, out)
 }
