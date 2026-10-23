@@ -14,7 +14,7 @@ O arquivo é lido na hora e **não fica guardado**. Você sempre confere os dado
    este arquivo e não fica guardada.
 5. Confira o quadro **Conferir antes de salvar**: a linha digitável, o beneficiário e de onde ela foi lida. Se aparecer
    **lido por OCR: confira os números**, compare a linha com o papel com mais cuidado.
-6. O **Valor**, o vencimento (nas contas de consumo, lido do texto da fatura), o mês de competência (em **Mais opções**) e **O que é** (o nome do beneficiário, se o campo estava vazio) já vêm preenchidos. Corrija se precisar
+6. O **Valor**, o vencimento (nas contas de consumo, lido do texto da fatura), o mês de competência (em **Mais opções**) e **Descrição** (o nome do beneficiário, se o campo estava vazio) já vêm preenchidos. Corrija se precisar
    e escolha a **Categoria**.
 7. Toque em **Adicionar conta**. A linha digitável fica salva junto com a conta.
 

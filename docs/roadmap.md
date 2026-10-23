@@ -6,7 +6,7 @@ Legenda de risco: **alto** = migration, auth, séries, boleto ou deploy (branch 
 
 ## Estado atual
 
-MVP completo no `main` (PRs #1–#28): cadastro e login, casas e convites, contas avulsas/parceladas/fixas, receitas, resumo mensal, categorias e ajustes, leitura de boleto (linha digitável, valor, vencimento, beneficiário e competência), backup/restore, CI, Tailscale com HTTPS, PWA e seletor de casa.
+MVP completo no `main` (PRs #1–#31): cadastro e login, casas e convites, contas avulsas/parceladas/fixas, receitas, resumo mensal, categorias e ajustes, leitura de boleto (linha digitável, valor, vencimento, beneficiário e competência), backup/restore, CI, Tailscale com HTTPS, PWA e seletor de casa.
 
 ## Pendências do dono (testes que só rodam no mundo real)
 
@@ -17,23 +17,45 @@ MVP completo no `main` (PRs #1–#28): cadastro e login, casas e convites, conta
 - [ ] Trocar os ícones provisórios do PWA pelo símbolo oficial (`scripts/pwa-icons.py`).
 - [ ] Cópia fora da máquina de `docs/product/` (não vai para o GitHub).
 
-## Próximo: favorecidos (apelido + CNPJ)
+## Princípio de produto
 
-Motivação: o nome oficial da empresa no boleto (razão social) quase nunca é como a casa a chama ("Gás", "Internet"). Risco: **alto** (migration). Em 3 PRs, nesta ordem:
+**O uso tem que ser simples**, hoje para um casal e amanhã para mais gente. Toda funcionalidade nova segue: (1) quem não usa não vê (progressivo: nada novo na tela até a pessoa pedir); (2) lançar e pagar continuam em poucos toques; (3) nenhuma regra que trave o fluxo ("não pode arquivar…") quando dá para desfazer; (4) sem configuração obrigatória para começar.
 
-1. **Favorecidos** (feito, #29): tabela `payees` (`household_id`, `name` apelido, `cnpj` opcional único por casa, `legal_name`, `default_category_id`, `deleted_at`) e `invoices.payee_id` nullable, ambos com FK composta. Sem backfill. Endpoints no OpenAPI, bloco "Favorecidos" em Ajustes, testes de isolamento entre casas.
-2. **Boleto reconhece o favorecido** (PR aberto): extrair e validar o CNPJ (dígitos verificadores; aceitar máscaras fora do padrão) do texto; se já cadastrado, preencher "O que é" com o apelido e a categoria padrão; se novo, perguntar "lembrar como…?" depois de salvar.
-3. **BrasilAPI** (PR aberto): consulta de CNPJ chamada pela API, para conferir o nome lido do boleto (OCR erra, a API não) e para o cadastro manual, chamada pela API (nunca pelo navegador), timeout curto, cache por CNPJ, falha silenciosa. Exige saída de rede para o container `api`.
+## Feito: favorecidos (apelido + CNPJ) (#29, #30, #31)
 
-Decisão aberta: favorecido opcional em toda invoice (sugerido) ou sempre perguntado na conta avulsa.
+O favorecido é opcional e só serve para reconhecer boletos (CNPJ) e sugerir categoria; a **duplicidade** de boleto é pela linha digitável, não pelo CNPJ. Tem apelido (editável a qualquer hora) e nome oficial (razão social, informativo, vem da BrasilAPI). Rótulos: "Descrição" (texto livre da conta), "Apelido" e "Nome oficial".
+
+## Próximo: subcategorias e gráficos por categoria
+
+Quer ver o gasto de "Gás" **e** o de "Moradia" (que soma gás, luz, internet…). Hierarquia de **dois níveis**, não tag. Risco: **alto** (migration). Em PRs separados:
+
+1. **Subcategorias**: `categories.parent_id` opcional (FK composta por casa; filha não tem filha; nome único por mãe). Aditiva, sem backfill: o que existe continua no topo. Fluxo: quem não usa não vê diferença; ao lançar, tocar numa mãe com filhas abre uma 2ª linha de botões (geral · Gás · Luz…). Arquivar a mãe esconde as filhas junto e restaurar a traz de volta. A soma da mãe é feita no front (o resumo continua por categoria folha).
+2. **Gráficos**: em "Por categoria" (resumo), tocar numa categoria abre o histórico dela (6 meses; mãe = filhas empilhadas; pendentes tracejados). Endpoint de série mensal por categoria (competência). SVG próprio com a paleta da marca, sem biblioteca.
+3. Criar categoria na hora de lançar (sem ir a Ajustes) e "mover para dentro de…".
+
+## Planejamento: carteiras configuráveis (a desenhar conversando; NÃO implementar ainda)
+
+Hoje são 2 valores fixos (`free`/`benefit`) e o saldo é "recebido − pago" **sem** carregar de um mês para o outro. A ideia é carteira = **conta** (ex.: bancos diferentes, benefício, dinheiro vivo), com saldo real. Risco: **muito alto** (migration **com migração de dados**: `paid_wallet`/`wallet` em texto viram referência a uma carteira).
+
+Decidido:
+- O saldo **continua de um mês para o outro** (conta de verdade), com algum feedback visual. Isso é a base para acompanhar o que sobra e para o pós-MVP de investimentos.
+
+Em aberto (decidir antes de desenhar):
+- Carteiras **da casa** (todos veem) ou também **pessoais** (só o dono vê o saldo)? Há quem prefira sigilo do próprio dinheiro; isso mexe em autorização e no resumo.
+- Carteira **padrão** ao pagar (por pessoa? uma "carteira geral da casa" criada automaticamente na 1ª vez?): o app deve induzir uma carteira geral da casa sem exigir configuração.
+- **Transferência** entre carteiras; saldo inicial; o que fazer com o histórico (backfill das duas carteiras atuais).
+- Salário não unificado: receitas por pessoa caindo em carteiras diferentes.
+
+Pontos de atenção: manter o fluxo de pagar em poucos toques; casas existentes migram sem ação do usuário.
 
 ## Melhorias de curto prazo
 
-- Sugerir categoria a partir do favorecido/nome do boleto (depende dos favorecidos).
 - Mais ajustes na página de configurações (identidade da casa: categorias, favorecidos, preferências).
 - Segurança: token de convite/reset no fragmento (`#`) em vez da query; limite de login atrás do Tailscale vira balde único (avaliar chave por usuário/e-mail).
-- Boleto: mais layouts reais para calibrar as regras de beneficiário, vencimento e competência (cada boleto novo que falhar vira caso de teste).
-- Nomes de favorecido/empresa: normalizar caixa ("GASCO DISTRIBUIDORA S/A" → "Gasco Distribuidora S/A") só na sugestão.
+- Boleto: mais layouts reais para calibrar as regras de nome, vencimento e competência (cada boleto novo que falhar vira caso de teste, sempre com dados sintéticos).
+- Importação de vários boletos de uma vez (duplicidade pela linha digitável; aviso suave de "parece duplicada" para segunda via com outra linha: mesmo favorecido, competência e valor).
+- Nomes de favorecido/empresa: normalizar caixa só na sugestão.
+- CI mais rápido (dívida): o job `api` leva ~10 min; cache dos pacotes do sistema e testes de integração em paralelo.
 
 ## Pós-MVP: investimentos e reserva de emergência
 

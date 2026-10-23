@@ -52,7 +52,7 @@ export function RecurrenceForm({ recurrence, canWrite, onSave, onDone }: Props) 
     <form onSubmit={save} className="flex flex-col gap-4" noValidate>
       <FormError message={error} />
       <MoneyInput label="Valor" value={amount} onChange={setAmount} error={fields.amountCents} />
-      <Field label="O que é" value={description} disabled={!canWrite} onChange={(e) => setDescription(e.target.value)} error={fields.description} />
+      <Field label="Descrição" value={description} disabled={!canWrite} onChange={(e) => setDescription(e.target.value)} error={fields.description} />
       <Field label="Dia do vencimento" type="number" inputMode="numeric" min={1} max={31} value={day} disabled={!canWrite} onChange={(e) => setDay(e.target.value)} error={fields.dayOfMonth} />
       <Field
         label="Termina em"
