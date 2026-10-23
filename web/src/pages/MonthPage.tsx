@@ -175,51 +175,51 @@ export default function MonthPage() {
 
         {/* Números */}
         <section aria-label="Resumo do mês" className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-md px-1 md:bg-teal md:px-4 md:py-4 md:text-ivory">
-            <div className={`flex justify-between ${label} text-graphite/80 md:text-ivory/85`}>
+          <div className="rounded-md px-1 md:bg-structure md:px-4 md:py-4 md:text-on-structure">
+            <div className={`flex justify-between ${label} text-ink/80 md:text-on-structure/85`}>
               <span>a pagar neste mês</span>
               <span className="font-mono">{Math.round(fraction * 100)}% pago</span>
             </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-teal md:text-ivory">{formatCents(toPay)}</p>
+            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-structure md:text-on-structure">{formatCents(toPay)}</p>
             <PaidGauge fraction={fraction} tone={desktop ? 'dark' : 'light'} className="mt-2" />
-            <p className="mt-1.5 flex justify-between text-xs text-graphite/80 md:hidden">
+            <p className="mt-1.5 flex justify-between text-xs text-ink/80 md:hidden">
               <span>{counts.paid} de {counts.all} contas pagas</span>
               <span className="font-mono">de {formatCents(total)}</span>
             </p>
           </div>
-          <div className="hidden rounded-md border border-graphite/20 p-4 md:block">
-            <p className={`${label} text-graphite/80`}>pago</p>
-            <p className="font-mono text-[38px] font-semibold leading-tight tracking-tight tabular-nums text-cobalt">{formatCents(paidTotal)}</p>
-            <p className="mt-2.5 text-[13px] text-graphite/80">{counts.paid} de {counts.all} contas</p>
+          <div className="hidden rounded-md border border-ink/20 p-4 md:block">
+            <p className={`${label} text-ink/80`}>pago</p>
+            <p className="font-mono text-[38px] font-semibold leading-tight tracking-tight tabular-nums text-accent">{formatCents(paidTotal)}</p>
+            <p className="mt-2.5 text-[13px] text-ink/80">{counts.paid} de {counts.all} contas</p>
           </div>
-          <div className="hidden rounded-md border border-graphite/20 p-4 md:block">
-            <p className={`${label} text-graphite/80`}>total do mês</p>
+          <div className="hidden rounded-md border border-ink/20 p-4 md:block">
+            <p className={`${label} text-ink/80`}>total do mês</p>
             <p className="font-mono text-[38px] font-semibold leading-tight tracking-tight tabular-nums">{formatCents(total)}</p>
-            <p className="mt-2.5 flex items-center gap-2 text-[13px] text-graphite/80">
-              <span aria-hidden="true" className="size-2.5 rounded-xs bg-signal" />
+            <p className="mt-2.5 flex items-center gap-2 text-[13px] text-ink/80">
+              <span aria-hidden="true" className="size-2.5 rounded-xs bg-alert" />
               {overdueCount === 0 ? 'nenhuma conta atrasada' : `${overdueCount} ${overdueCount === 1 ? 'conta atrasada' : 'contas atrasadas'}`}
             </p>
           </div>
         </section>
 
         {/* Régua do mês */}
-        <section aria-label="Régua do mês" className="rounded-md border border-graphite/15 px-2.5 pb-1.5 pt-2.5 md:border-graphite/20 md:px-4 md:pb-3 md:pt-4">
+        <section aria-label="Régua do mês" className="rounded-md border border-line px-2.5 pb-1.5 pt-2.5 md:border-ink/20 md:px-4 md:pb-3 md:pt-4">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className={`${label} text-graphite/80`}>régua do mês</h2>
-            <p className="hidden items-center gap-4 text-xs text-graphite/85 md:flex">
-              <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-teal" />paga</span>
-              <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-cobalt" />a vencer</span>
-              <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-signal" />atrasada</span>
+            <h2 className={`${label} text-ink/80`}>régua do mês</h2>
+            <p className="hidden items-center gap-4 text-xs text-ink/85 md:flex">
+              <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-structure" />paga</span>
+              <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-accent" />a vencer</span>
+              <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-alert" />atrasada</span>
             </p>
-            <p className="text-[11px] text-graphite/75 md:hidden">cada barra é um dia</p>
+            <p className="text-[11px] text-ink/75 md:hidden">cada barra é um dia</p>
           </div>
           <MonthRuler invoices={list} month={month} todayDay={isCurrent ? Number(today.slice(8, 10)) : undefined} barArea={desktop ? 112 : 52} />
         </section>
 
-        {invoices.isPending && <p role="status" className="text-sm text-graphite/70">carregando…</p>}
+        {invoices.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
         {invoices.isError && (
-          <p role="alert" className="rounded-md border border-signal/60 bg-signal/10 px-3 py-2 text-sm">
-            <span className="font-mono text-signal">[ ✖ ]</span> Não foi possível carregar as contas.{' '}
+          <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
+            <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar as contas.{' '}
             <button className="font-semibold underline" onClick={() => void invoices.refetch()}>
               Tentar de novo
             </button>
@@ -229,14 +229,14 @@ export default function MonthPage() {
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
           <section aria-label="Contas do mês" className="min-w-0 flex-1">
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="hidden font-display text-[26px] font-bold text-teal font-stretch-condensed md:block">Contas do mês</h2>
+              <h2 className="hidden font-display text-[26px] font-bold text-structure font-stretch-condensed md:block">Contas do mês</h2>
               <div role="group" aria-label="Filtrar contas" className="flex gap-2">
                 {filters.map(([key, text]) => (
                   <button
                     key={key}
                     aria-pressed={filter === key}
                     onClick={() => setFilter(key)}
-                    className={`h-10 rounded-md border px-3.5 text-[13px] ${filter === key ? 'border-teal bg-teal font-semibold text-ivory' : 'border-graphite/30 font-medium'}`}
+                    className={`h-10 rounded-md border px-3.5 text-[13px] ${filter === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium'}`}
                   >
                     {text} <span className="font-mono opacity-85">{counts[key]}</span>
                   </button>
@@ -244,7 +244,7 @@ export default function MonthPage() {
               </div>
             </div>
             {empty && (
-              <p className="mt-2 rounded-md border border-dashed border-graphite/25 p-4 text-sm text-graphite/70">
+              <p className="mt-2 rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/70">
                 Nenhuma conta neste mês.{canWrite ? ' Toque em + para adicionar a primeira.' : ''}
               </p>
             )}
@@ -263,25 +263,25 @@ export default function MonthPage() {
           {desktop && (
             <aside className="flex w-full shrink-0 flex-col gap-4 md:sticky md:top-6 md:w-[360px] lg:w-[400px]">
               {formReady ? (
-                <section aria-label="Detalhes da conta" className="rounded-md border-2 border-teal bg-white/30 p-4">
+                <section aria-label="Detalhes da conta" className="rounded-md border-2 border-structure bg-white/30 p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <h2 className="font-display text-[22px] font-bold text-teal font-stretch-condensed">
+                    <h2 className="font-display text-[22px] font-bold text-structure font-stretch-condensed">
                       {editingInvoice ? editingInvoice.description : 'Nova conta'}
                     </h2>
-                    <button aria-label="Fechar detalhes" onClick={() => setEditing(null)} className="flex size-9 items-center justify-center rounded-md text-xl hover:bg-graphite/5">
+                    <button aria-label="Fechar detalhes" onClick={() => setEditing(null)} className="flex size-9 items-center justify-center rounded-md text-xl hover:bg-ink/5">
                       ×
                     </button>
                   </div>
                   <InvoiceForm key={editingInvoice ? editingInvoice.id : 'nova'} {...formProps} />
                 </section>
               ) : (
-                <p className="rounded-md border border-dashed border-graphite/25 p-4 text-sm text-graphite/75">
+                <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
                   Toque numa conta para ver os detalhes{canWrite ? ', ou em Nova conta para lançar uma' : ''}.
                 </p>
               )}
               {byCategory.length > 0 && (
-                <section aria-label="Por categoria" className="rounded-md border border-graphite/20 p-4">
-                  <h2 className={`${label} mb-3 text-graphite/80`}>por categoria</h2>
+                <section aria-label="Por categoria" className="rounded-md border border-ink/20 p-4">
+                  <h2 className={`${label} mb-3 text-ink/80`}>por categoria</h2>
                   <CategoryBreakdown rows={byCategory} gap="gap-2.5" />
                 </section>
               )}
@@ -294,7 +294,7 @@ export default function MonthPage() {
         <button
           aria-label="Nova conta"
           onClick={() => setEditing({ kind: 'new' })}
-          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-teal text-3xl leading-none text-ivory shadow-[0_2px_0_var(--color-graphite)] hover:bg-teal/90"
+          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-structure text-3xl leading-none text-on-structure shadow-[0_2px_0_var(--color-ink)] hover:bg-structure/90"
         >
           +
         </button>

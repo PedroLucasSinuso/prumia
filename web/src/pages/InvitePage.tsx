@@ -61,13 +61,13 @@ export default function InvitePage() {
     })
   }
 
-  if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-graphite/70">carregando…</p>
+  if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-ink/70">carregando…</p>
 
   if (!token) {
     return (
       <AuthLayout title="Convite">
-        <p className="text-sm text-graphite/85">Este link está incompleto. Peça a quem administra a casa para gerar um novo convite.</p>
-        <Link to="/entrar" className="text-sm font-semibold text-cobalt underline underline-offset-2">Ir para o login</Link>
+        <p className="text-sm text-ink/85">Este link está incompleto. Peça a quem administra a casa para gerar um novo convite.</p>
+        <Link to="/entrar" className="text-sm font-semibold text-accent underline underline-offset-2">Ir para o login</Link>
       </AuthLayout>
     )
   }
@@ -75,23 +75,23 @@ export default function InvitePage() {
   if (session.status === 'authenticated') {
     return (
       <AuthLayout title="Convite">
-        <p className="text-sm text-graphite/85">
+        <p className="text-sm text-ink/85">
           Você está logado como <strong>{session.me.name}</strong>. Aceite para entrar na casa de quem convidou; as suas outras casas
           continuam com você, e você troca de casa pelo topo da tela.
         </p>
         <FormError message={error} />
         <div className="flex flex-wrap items-center gap-4">
           <Button onClick={onAccept} disabled={accept.isPending}>{accept.isPending ? 'Entrando…' : 'Entrar na casa'}</Button>
-          <Link to="/" className="text-sm font-semibold text-cobalt underline underline-offset-2">Voltar ao app</Link>
+          <Link to="/" className="text-sm font-semibold text-accent underline underline-offset-2">Voltar ao app</Link>
         </div>
-        <p className="text-sm text-graphite/75">O convite é para outra pessoa? Saia da sua conta antes de abrir o link.</p>
+        <p className="text-sm text-ink/75">O convite é para outra pessoa? Saia da sua conta antes de abrir o link.</p>
       </AuthLayout>
     )
   }
 
   return (
     <AuthLayout title="Você foi convidado">
-      <p className="text-sm text-graphite/85">Crie a sua conta para entrar na casa. Suas contas e receitas ficam junto com as de quem convidou.</p>
+      <p className="text-sm text-ink/85">Crie a sua conta para entrar na casa. Suas contas e receitas ficam junto com as de quem convidou.</p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <FormError message={error} />
         <Field label="Seu nome" name="name" autoComplete="name" required value={name} onChange={(e) => { setName(e.target.value); edited('name') }} error={fields.name} />
@@ -105,12 +105,12 @@ export default function InvitePage() {
         />
         <Button type="submit" disabled={busy || !name || !email || !password}>{busy ? 'Entrando…' : 'Criar conta e entrar'}</Button>
       </form>
-      <p className="text-sm text-graphite/80">
+      <p className="text-sm text-ink/80">
         Já tem conta?{' '}
         <Link
           to="/entrar"
           state={{ from: `/convite?token=${encodeURIComponent(token)}` }}
-          className="font-semibold text-cobalt underline underline-offset-2"
+          className="font-semibold text-accent underline underline-offset-2"
         >
           Entrar e aceitar o convite
         </Link>

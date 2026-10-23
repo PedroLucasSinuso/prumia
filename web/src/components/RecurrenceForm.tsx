@@ -63,7 +63,7 @@ export function RecurrenceForm({ recurrence, canWrite, onSave, onDone }: Props) 
         hint={recurrence.endMonth ? 'Só dá para antecipar o fim.' : 'Em branco: continua todo mês.'}
         error={fields.endMonth}
       />
-      <p className="text-xs text-graphite/75">As mudanças valem para as próximas contas ainda não pagas. As pagas e as passadas ficam como estão.</p>
+      <p className="text-xs text-ink/75">As mudanças valem para as próximas contas ainda não pagas. As pagas e as passadas ficam como estão.</p>
       {canWrite && (
         <Button type="submit" disabled={busy || !description || amount <= 0 || !(Number(day) >= 1)}>
           {busy ? 'Salvando…' : 'Salvar'}

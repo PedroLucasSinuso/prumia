@@ -6,7 +6,7 @@ import { useAuth } from './context'
 export function RequireAuth() {
   const { session } = useAuth()
   const location = useLocation()
-  if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-graphite/70">carregando…</p>
+  if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-ink/70">carregando…</p>
   if (session.status === 'anonymous') return <Navigate to="/entrar" replace state={{ from: location.pathname }} />
   return <Outlet />
 }
@@ -19,7 +19,7 @@ export function RedirectIfAuthenticated() {
   const { session } = useAuth()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from
-  if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-graphite/70">carregando…</p>
+  if (session.status === 'loading') return <p role="status" className="p-6 text-sm text-ink/70">carregando…</p>
   if (session.status === 'authenticated') return <Navigate to={from?.startsWith('/') ? from : '/'} replace />
   return <Outlet />
 }
