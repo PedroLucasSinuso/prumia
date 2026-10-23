@@ -302,7 +302,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Exclui categoria sem uso. Em uso, responde 409 (arquive em vez disso). */
+        /** Exclui categoria sem uso e sem subcategorias. Em uso ou com subcategorias, responde 409. */
         delete: operations["deleteCategory"];
         options?: never;
         head?: never;
@@ -800,12 +800,22 @@ export interface components {
             isEssential: boolean;
             sortOrder: number;
             archived: boolean;
+            /**
+             * Format: uuid
+             * @description Categoria principal (só dois níveis); null = de topo
+             */
+            parentId?: string | null;
         };
         CategoryInput: {
             name: string;
             defaultWallet?: (string & components["schemas"]["Wallet"]) | null;
             /** @default false */
             isEssential: boolean;
+            /**
+             * Format: uuid
+             * @description Cria dentro desta categoria principal
+             */
+            parentId?: string | null;
         };
         CategoryPatch: {
             name?: string;
@@ -813,6 +823,11 @@ export interface components {
             isEssential?: boolean;
             sortOrder?: number;
             archived?: boolean;
+            /**
+             * Format: uuid
+             * @description Move para dentro de uma categoria principal; null = volta ao topo
+             */
+            parentId?: string | null;
         };
         CnpjInfo: {
             cnpj: string;

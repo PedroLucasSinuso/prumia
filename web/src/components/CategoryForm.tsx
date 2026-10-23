@@ -10,6 +10,10 @@ import { FormError } from './FormError'
 type Props = {
   /** Sem categoria = criar uma nova. */
   category?: Category
+  /** Todas as categorias (para escolher a categoria principal). */
+  all: Category[]
+  /** Ao criar: já nasce dentro desta categoria (botão "+ subcategoria"). */
+  defaultParentId?: string
   canWrite: boolean
   onCreate: (body: CategoryInput) => Promise<unknown>
   onUpdate: (id: string, body: CategoryPatch) => Promise<unknown>
@@ -33,10 +37,14 @@ const wallets: { value: Wallet | null; text: string }[] = [
  * Criar ou editar uma categoria: nome, carteira sugerida ao pagar e se é gasto essencial.
  * Arquivar/restaurar ficam aqui também. Quem só lê (viewer) vê os dados, sem botões de escrita.
  */
-export function CategoryForm({ category, canWrite, onCreate, onUpdate, onDone }: Props) {
+export function CategoryForm({ category, all, defaultParentId, canWrite, onCreate, onUpdate, onDone }: Props) {
   const [name, setName] = useState(category?.name ?? '')
-  const [wallet, setWallet] = useState<Wallet | null>(category?.defaultWallet ?? null)
-  const [essential, setEssential] = useState(category?.isEssential ?? false)
+  // Subcategoria nasce com a carteira e o "essencial" da mãe (a pessoa pode mudar): menos coisa para preencher.
+  const initialParent = category?.parentId ?? defaultParentId ?? ''
+  const parentOf = (id: string) => all.find((c) => c.id === id)
+  const [parentId, setParentId] = useState(initialParent)
+  const [wallet, setWallet] = useState<Wallet | null>(category ? (category.defaultWallet ?? null) : (parentOf(initialParent)?.defaultWallet ?? null))
+  const [essential, setEssential] = useState(category ? category.isEssential : (parentOf(initialParent)?.isEssential ?? false))
   const [error, setError] = useState<string>()
   const [nameError, setNameError] = useState<string>()
   const [busy, setBusy] = useState(false)
@@ -71,13 +79,18 @@ export function CategoryForm({ category, canWrite, onCreate, onUpdate, onDone }:
       return
     }
     if (category) {
-      void run(() => onUpdate(category.id, { name: clean, defaultWallet: wallet, isEssential: essential }), `${clean} salva.`)
+      // parentId só vai se mudou (ausente = não mexe; null = volta ao topo)
+      const moved = parentId !== (category.parentId ?? '') ? { parentId: parentId || null } : {}
+      void run(() => onUpdate(category.id, { name: clean, defaultWallet: wallet, isEssential: essential, ...moved }), `${clean} salva.`)
     } else {
-      void run(() => onCreate({ name: clean, defaultWallet: wallet, isEssential: essential }), `${clean} criada.`)
+      void run(() => onCreate({ name: clean, defaultWallet: wallet, isEssential: essential, ...(parentId ? { parentId } : {}) }), `${clean} criada.`)
     }
   }
 
   const archived = category?.archived ?? false
+  const hasChildren = category ? all.some((c) => c.parentId === category.id) : false
+  // Mães possíveis: categorias de topo, ativas, que não sejam ela mesma (só dois níveis).
+  const parents = all.filter((c) => !c.parentId && !c.archived && c.id !== category?.id)
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -93,6 +106,32 @@ export function CategoryForm({ category, canWrite, onCreate, onUpdate, onDone }:
           setNameError(undefined)
         }}
       />
+
+      {hasChildren ? (
+        <p className="text-sm text-graphite/80">Esta categoria tem subcategorias, então é uma categoria principal.</p>
+      ) : (
+        parents.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="category-parent" className={label}>dentro de</label>
+            <select
+              id="category-parent"
+              value={parentId}
+              disabled={!canWrite}
+              onChange={(e) => {
+                const next = e.target.value
+                setParentId(next)
+                const mother = parentOf(next)
+                if (!category && mother) { setWallet(mother.defaultWallet ?? null); setEssential(mother.isEssential) }
+              }}
+              className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base text-graphite"
+            >
+              <option value="">nenhuma (categoria principal)</option>
+              {parents.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <p className="text-xs text-graphite/70">Ex.: Gás dentro de Moradia. O gráfico de Moradia soma o gás.</p>
+          </div>
+        )
+      )}
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
         <legend className={label}>carteira padrão</legend>
@@ -135,6 +174,7 @@ export function CategoryForm({ category, canWrite, onCreate, onUpdate, onDone }:
               <p className="text-sm text-graphite/80">
                 Arquivar tira a categoria da lista ao lançar contas novas. As contas que já usam ela continuam com o mesmo nome. Por isso uma
                 categoria em uso nunca é apagada, só arquivada.
+                {hasChildren && ' As subcategorias são arquivadas junto e voltam quando você restaurar esta.'}
               </p>
               <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(category.id, { archived: true }), `${category.name} arquivada.`)}>
                 Arquivar categoria

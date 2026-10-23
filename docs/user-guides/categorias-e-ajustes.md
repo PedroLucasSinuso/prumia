@@ -33,6 +33,16 @@ Por isso uma categoria em uso nunca é apagada: ela é arquivada.
 1. Toque na categoria e depois em **Arquivar categoria**.
 2. Para trazer de volta: abra **arquivadas** (no fim da lista), toque na categoria e em **Restaurar categoria**.
 
+## Subcategorias (opcional)
+
+Quer ver o gasto de **Gás** e também o de **Moradia** (que soma gás, luz, internet)? Crie subcategorias:
+
+1. Em **Ajustes**, toque em **+ sub** ao lado da categoria principal (ex.: Moradia) e dê o nome (ex.: Gás). Ela já nasce com a carteira e o "essencial" da principal. Também dá para mover uma categoria existente em **dentro de**.
+2. Ao lançar uma conta, toque na categoria principal: aparece uma segunda linha com **geral** e as subcategorias. Escolha **Gás** para detalhar, ou **geral** para lançar só em Moradia.
+3. No resumo e no mês, **Moradia mostra a soma** e, embaixo, o detalhe de cada subcategoria.
+
+Quem não cria subcategorias não vê nada diferente. Só dois níveis (uma subcategoria não tem subcategorias). Arquivar a categoria principal arquiva as subcategorias junto, e restaurar traz todas de volta.
+
 ## Favorecidos
 
 Favorecido é quem recebe o pagamento, com o **nome que vocês usam**: a distribuidora pode ser o "Gás" e o provedor, a "Internet".

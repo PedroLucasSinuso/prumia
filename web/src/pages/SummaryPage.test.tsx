@@ -46,6 +46,29 @@ describe('resumo do mês', () => {
     expect(within(livre).getByText('R$ 3.200,00')).toBeInTheDocument()
   })
 
+  it('a categoria principal soma as subcategorias e detalha cada uma', async () => {
+    const cats = [
+      { id: 'c1', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
+      { id: 'c5', name: 'Gás', isEssential: true, sortOrder: 0, archived: false, parentId: 'c1' },
+      { id: 'c6', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
+    ]
+    mockApi({
+      me: ok(me), categories: ok(cats),
+      summary: ok({ ...summary, byCategory: [
+        { categoryId: 'c5', totalCents: 15000, paidCents: 15000 },
+        { categoryId: 'c6', totalCents: 9000, paidCents: 0 },
+        { categoryId: 'c1', totalCents: 100000, paidCents: 100000 },
+      ] }),
+    })
+    renderAt('/resumo?mes=2026-10')
+    const region = await screen.findByRole('region', { name: 'Por categoria' })
+    expect(await within(region).findByText('R$ 1.240,00')).toBeInTheDocument() // 150 + 90 + 1000
+    const detalhe = within(region).getByRole('list', { name: 'Detalhe de Moradia' })
+    expect(within(detalhe).getByText('Moradia (geral)')).toBeInTheDocument()
+    expect(within(detalhe).getByText('Gás')).toBeInTheDocument()
+    expect(within(detalhe).getByText('R$ 150,00')).toBeInTheDocument()
+  })
+
   it('mostra o que foi pago e o que falta pagar, e o total por categoria', async () => {
     mockApi({ me: ok(me), summary: ok(summary) })
     renderAt('/resumo?mes=2026-10')

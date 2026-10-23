@@ -207,6 +207,69 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  describe('subcategorias', () => {
+    const subcats = [
+      { id: 'c1', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
+      { id: 'c2', name: 'Mercado', defaultWallet: 'benefit' as const, isEssential: true, sortOrder: 1, archived: false },
+      { id: 'g1', name: 'Gás', isEssential: true, sortOrder: 0, archived: false, parentId: 'c1' },
+      { id: 'l1', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
+    ]
+
+    it('sem subcategorias nada muda: uma linha só de botões', async () => {
+      mockApi({ me: ok(me) })
+      renderAt('/?mes=2026-05')
+      await abrir()
+      expect(screen.queryByRole('group', { name: /Detalhe de/ })).not.toBeInTheDocument()
+    })
+
+    it('tocar numa categoria com filhas abre a 2ª linha; escolher a filha manda a filha; "geral" volta para a mãe', async () => {
+      mockApi({ me: ok(me), categories: ok(subcats), create: ok(invoice({ id: 'novo', description: 'Gás' })) })
+      renderAt('/?mes=2026-05')
+      await abrir()
+      // abre já com a 1ª categoria (Moradia): a 2ª linha aparece com geral · Gás · Luz
+      const detalhe = screen.getByRole('group', { name: 'Detalhe de Moradia' })
+      expect(within(detalhe).getByRole('button', { name: 'geral' })).toHaveAttribute('aria-pressed', 'true')
+      await userEvent.click(within(detalhe).getByRole('button', { name: 'Gás' }))
+      expect(within(detalhe).getByRole('button', { name: 'Gás' })).toHaveAttribute('aria-pressed', 'true')
+      // a mãe continua marcada na 1ª linha
+      expect(screen.getByRole('button', { name: 'Moradia' })).toHaveAttribute('aria-pressed', 'true')
+      await userEvent.type(screen.getByRole('textbox', { name: /O que é|Descrição/ }), 'Gás')
+      await userEvent.type(screen.getByLabelText('Valor'), '15000')
+      await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
+      await waitFor(() =>
+        expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.objectContaining({ body: expect.objectContaining({ categoryId: 'g1' }) })),
+      )
+    })
+
+    it('trocar para outra categoria esconde a 2ª linha', async () => {
+      mockApi({ me: ok(me), categories: ok(subcats) })
+      renderAt('/?mes=2026-05')
+      await abrir()
+      await userEvent.click(screen.getByRole('button', { name: /Mercado/ }))
+      expect(screen.queryByRole('group', { name: /Detalhe de/ })).not.toBeInTheDocument()
+    })
+
+    it('ao editar, a conta numa subcategoria mostra mãe e filha marcadas', async () => {
+      const gas = invoice({ id: 'ig', description: 'Gás', amountCents: 15000, categoryId: 'g1', dueDate: '2026-10-12', status: 'pending' })
+      mockApi({ me: ok(me), categories: ok(subcats), invoices: ok({ items: [gas] }) })
+      renderAt(mes)
+      await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Gás' }))
+      const detalhe = await screen.findByRole('group', { name: 'Detalhe de Moradia' })
+      expect(within(detalhe).getByRole('button', { name: 'Gás' })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('"Por categoria" soma as filhas na mãe', async () => {
+      mockDesktop()
+      const gas = invoice({ id: 'ig', description: 'Gás', amountCents: 15000, categoryId: 'g1', dueDate: '2026-10-12', status: 'pending' })
+      const luz2 = invoice({ id: 'il', description: 'Luz', amountCents: 9000, categoryId: 'l1', dueDate: '2026-10-15', status: 'pending' })
+      mockApi({ me: ok(me), categories: ok(subcats), invoices: ok({ items: [gas, luz2] }) })
+      renderAt(mes)
+      const bloco = await screen.findByRole('region', { name: 'Por categoria' })
+      expect(await within(bloco).findByText('R$ 240,00')).toBeInTheDocument()
+      expect(within(bloco).getByRole('list', { name: 'Detalhe de Moradia' })).toBeInTheDocument()
+    })
+  })
+
   it('escolher o favorecido preenche o nome e a categoria sugerida e vai junto ao salvar', async () => {
     const payees = [
       { id: 'p1', name: 'Gás', defaultCategoryId: 'c2', archived: false },
