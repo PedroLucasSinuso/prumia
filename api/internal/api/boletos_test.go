@@ -45,6 +45,11 @@ func fakePDF(text string) []byte { return []byte("%PDF-" + text) }
 
 func (a *app) upload(house string, c *http.Cookie, file []byte, password string) resp {
 	a.t.Helper()
+	return a.uploadTo("/api/households/"+house+"/boletos/extract", c, file, password)
+}
+
+func (a *app) uploadTo(path string, c *http.Cookie, file []byte, password string) resp {
+	a.t.Helper()
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
 	if file != nil {
@@ -55,7 +60,7 @@ func (a *app) upload(house string, c *http.Cookie, file []byte, password string)
 		mw.WriteField("password", password)
 	}
 	mw.Close()
-	req := httptest.NewRequest("POST", "/api/households/"+house+"/boletos/extract", &body)
+	req := httptest.NewRequest("POST", path, &body)
 	req.RemoteAddr = "203.0.113.7:1234"
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	if c != nil {

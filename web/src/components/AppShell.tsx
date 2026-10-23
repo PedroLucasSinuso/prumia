@@ -1,4 +1,4 @@
-import { ArrowDownToLine, CalendarDays, ChartColumn, House, Layers, Settings, type LucideIcon } from 'lucide-react'
+import { ArrowDownToLine, CalendarDays, ChartColumn, House, Layers, ScanLine, Settings, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink, useSearchParams } from 'react-router-dom'
 
@@ -9,11 +9,13 @@ import { UserMenu } from './UserMenu'
 
 // Destinos do app. Só entra aqui o que já existe: a navegação cresce junto com as telas.
 // Ícones lucide (traço fino, herdam a cor do texto); os marcadores [ ▪ ] continuam sendo o status do item ativo.
-const destinations: { to: string; label: string; Icon: LucideIcon }[] = [
+const destinations: { to: string; label: string; Icon: LucideIcon; desktopOnly?: boolean }[] = [
   { to: '/', label: 'mês', Icon: CalendarDays },
   { to: '/receitas', label: 'receitas', Icon: ArrowDownToLine },
   { to: '/resumo', label: 'resumo', Icon: ChartColumn },
   { to: '/parcelas', label: 'parcelas', Icon: Layers },
+  // No celular o acesso é o botão "Importar" do mês (a barra inferior já tem 6 destinos).
+  { to: '/importar', label: 'importar', Icon: ScanLine, desktopOnly: true },
   { to: '/casa', label: 'casa', Icon: House },
   { to: '/configuracoes', label: 'ajustes', Icon: Settings },
 ]
@@ -88,7 +90,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Navegação inferior (celular) */}
       <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-20 grid h-18 grid-flow-col auto-cols-fr border-t border-ink/20 bg-surface md:hidden">
-        {destinations.map((d) => (
+        {destinations
+          .filter((d) => !d.desktopOnly)
+          .map((d) => (
           <NavLink
             key={d.to}
             to={{ pathname: d.to, search }}

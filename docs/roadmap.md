@@ -53,7 +53,7 @@ Pontos de atenção: manter o fluxo de pagar em poucos toques; casas existentes 
 - Mais ajustes na página de configurações (identidade da casa: categorias, favorecidos, preferências).
 - Segurança: token de convite/reset no fragmento (`#`) em vez da query; limite de login atrás do Tailscale vira balde único (avaliar chave por usuário/e-mail).
 - Boleto: mais layouts reais para calibrar as regras de nome, vencimento e competência (cada boleto novo que falhar vira caso de teste, sempre com dados sintéticos).
-- Importação de vários boletos de uma vez (duplicidade pela linha digitável; aviso suave de "parece duplicada" para segunda via com outra linha: mesmo favorecido, competência e valor).
+- [feito: tela Importar, lote e conta sem boleto/lista] Importação de vários boletos de uma vez (duplicidade pela linha digitável; aviso suave de "parece duplicada" para segunda via com outra linha: mesmo favorecido, competência e valor).
 - Nomes de favorecido/empresa: normalizar caixa só na sugestão.
 - CI mais rápido (dívida): o job `api` leva ~10 min; cache dos pacotes do sistema e testes de integração em paralelo.
 

@@ -1,4 +1,23 @@
-# Importar boleto
+# Importar contas (boleto, conta sem boleto, lista)
+
+## Tela Importar (vários arquivos de uma vez)
+
+Use quando chegaram várias contas juntas, ou uma foto de lista.
+
+1. No computador, escolha **importar** na barra lateral. No celular, toque em **Importar** no alto do mês.
+2. Solte os arquivos na área indicada (computador) ou escolha da câmera, da galeria ou dos arquivos (celular). Vale PDF, PNG ou JPG de até 5 MB cada.
+3. Acompanhe o progresso (`[ ▪ ▪ ▫ ▫ ] LENDO 2 DE 4`). Se o servidor pedir uma pausa, a tela mostra **aguardando…** e segue sozinha.
+4. Confira a tabela de revisão: uma linha por conta, com descrição, valor, vencimento, categoria sugerida e competência. O selo mostra a origem:
+   **[ ▪ ] boleto**, **[ ▪ ] conta** (sem linha digitável) ou **[ ▪ ] lista**; **[ ✖ ] OCR: confira** pede atenção extra.
+5. Corrija o que precisar, remova linhas que não quer e, nas marcadas como duplicadas, escolha **pular**.
+6. Toque em **Criar N contas**. Ou todas entram, ou nenhuma (se algo falhar, a tela indica a linha).
+
+Fotos de lista ("Gás R$ 157,82", "Mercado R$ 568,99", uma por linha) viram uma conta por linha. Contas de consumo sem código de barras
+(só "total a pagar" e vencimento) viram uma conta sem linha digitável. Quando o documento traz o CNPJ, a linha oferece cadastrar o favorecido.
+
+No formulário de conta, o botão de importar também aceita conta sem boleto; se o arquivo for uma lista, aparece **Abrir em Importar**.
+
+## Importar boleto (no formulário de conta)
 
 Como cadastrar uma conta a partir do PDF, da foto ou do print de um boleto, sem digitar a linha toda. Use quando a conta chegou como boleto.
 

@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Boleto, BoletoExtraction, Category, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
+import type { Boleto, DocumentExtraction, DocumentItem, Category, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { addDays, dayMonth, fullDate, monthOf, todayISO } from '../lib/dates'
 import { buildTree } from '../lib/categories'
@@ -31,7 +31,7 @@ type Props = {
   onUnpay: (invoice: Invoice) => void
   onPay: (invoice: Invoice) => void
   /** Lê um boleto (só na criação). Sem ela, o botão "Importar boleto" não aparece. */
-  onExtractBoleto?: (file: File, password?: string) => Promise<BoletoExtraction>
+  onExtractBoleto?: (file: File, password?: string) => Promise<DocumentExtraction>
   /** Abre outra conta (aviso de boleto duplicado). */
   onOpenInvoice?: (id: string) => void
 }
@@ -102,20 +102,24 @@ export function InvoiceForm({ month, categories, payees = [], invoice, canWrite,
 
   // Pré-preenche com o que o boleto diz; a descrição só se ainda estiver vazia. A pessoa sempre revisa antes de salvar.
   // Ao salvar vão só a linha e o beneficiário: o servidor recalcula valor e vencimento do documento a partir da linha.
-  function applyBoleto({ boleto: b, payee }: BoletoExtraction) {
-    setBoleto({ digitableLine: b.digitableLine, beneficiaryName: b.beneficiaryName, beneficiaryCnpj: b.beneficiaryCnpj })
+  // Conta sem boleto ("bill") preenche só valor, vencimento, competência e descrição.
+  function applyBoleto(it: DocumentItem) {
+    const payee = it.payee
+    const b = { beneficiaryName: it.beneficiaryName, beneficiaryCnpj: it.beneficiaryCnpj }
+    setBoleto(it.boleto ? { digitableLine: it.boleto.digitableLine, ...b } : undefined)
     setNewPayeeName('')
     setMatchedPayee(payee ?? undefined)
     // Sem favorecido reconhecido e com algum já cadastrado: abre "Mais opções" para a pessoa poder escolher um existente.
-    if (b.beneficiaryCnpj && !payee && payees.length > 0) setCompetenceImported(true)
+    if (it.boleto && b.beneficiaryCnpj && !payee && payees.length > 0) setCompetenceImported(true)
     if (payee) {
       setPayeeId(payee.id)
       if (payee.defaultCategoryId && categories.some((c) => c.id === payee.defaultCategoryId)) setCategoryId(payee.defaultCategoryId)
     }
-    if (b.documentAmountCents) { setAmount(b.documentAmountCents); clear('amount') }
-    if (b.documentDueDate) { setDueDate(b.documentDueDate); setOtherDate(true); clear('dueDate') }
-    if (b.documentCompetenceMonth) { setCompetence(b.documentCompetenceMonth.slice(0, 7)); setCompetenceImported(true); clear('competence') }
-    if (!description.trim() && (payee?.name ?? b.beneficiaryName)) { setDescription(payee?.name ?? b.beneficiaryName ?? ''); clear('description') }
+    if (it.amountCents) { setAmount(it.amountCents); clear('amount') }
+    if (it.dueDate) { setDueDate(it.dueDate); setOtherDate(true); clear('dueDate') }
+    if (it.competenceMonth) { setCompetence(it.competenceMonth.slice(0, 7)); setCompetenceImported(true); clear('competence') }
+    const suggested = payee?.name ?? it.description ?? b.beneficiaryName
+    if (!description.trim() && suggested) { setDescription(suggested); clear('description') }
   }
 
   // Escolher o favorecido ajuda a preencher: nome (se ainda vazio) e categoria sugerida (só ao criar).

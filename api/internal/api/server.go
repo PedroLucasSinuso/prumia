@@ -56,20 +56,33 @@ var _ gen.ServerInterface = Server{}
 // observação) não passa de poucos KB; o nginx aceita até 6 MB só por causa do upload de boleto.
 const maxJSONBody = 64 << 10
 
-// boletoRoute tem limite próprio (5 MB, conferido em readUpload).
-const boletoRoute = "/api/households/:householdId/boletos/extract"
+// As rotas de upload têm limite próprio (5 MB, conferido em readUpload).
+var uploadRoutes = map[string]bool{
+	"/api/households/:householdId/boletos/extract":   true,
+	"/api/households/:householdId/documents/extract": true,
+}
+
+// O lote de invoices (até 50 itens, cada um com observação de até 500 caracteres) passa dos 64 KB.
+const (
+	batchRoute   = "/api/households/:householdId/invoices/batch"
+	maxBatchBody = 512 << 10
+)
 
 // limitBody recusa corpo grande demais antes de qualquer outra coisa (inclusive antes do argon2 do login):
 // 413 se o Content-Length já denuncia; sem Content-Length, o MaxBytesReader corta a leitura no limite.
 func limitBody(c *gin.Context) {
-	if c.FullPath() == boletoRoute || c.Request.Body == nil {
+	if uploadRoutes[c.FullPath()] || c.Request.Body == nil {
 		return
 	}
-	if c.Request.ContentLength > maxJSONBody {
+	limit := int64(maxJSONBody)
+	if c.FullPath() == batchRoute {
+		limit = maxBatchBody
+	}
+	if c.Request.ContentLength > limit {
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusRequestEntityTooLarge, Code: "body_too_large"})
 		return
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxJSONBody)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
 }
 
 // Mount registra todas as rotas do contrato sob /api.

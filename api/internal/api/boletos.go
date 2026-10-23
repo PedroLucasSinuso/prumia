@@ -126,35 +126,48 @@ func readLimited(r io.Reader, limit int) ([]byte, error) {
 	return b, nil
 }
 
-// ExtractBoleto: POST /households/{householdId}/boletos/extract
-func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
+// upload aplica o limite por usuário e lê o arquivo (e a senha) da requisição. false = a resposta de erro já foi escrita.
+func (h *Boletos) upload(c *gin.Context) (file []byte, password string, ok bool) {
 	if !h.limiter.Allow(auth.CurrentUser(c).ID.String()) {
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusTooManyRequests, Code: "too_many_requests"})
-		return
+		return nil, "", false
 	}
 	file, password, err := readUpload(c)
 	switch {
 	case errors.Is(err, errTooLarge):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusRequestEntityTooLarge, Code: "file_too_large", Detail: "o arquivo passa de 5 MB"})
-		return
+		return nil, "", false
 	case err != nil:
 		var mbe *http.MaxBytesError
 		if errors.As(err, &mbe) {
 			httpx.WriteProblem(c, httpx.Problem{Status: http.StatusRequestEntityTooLarge, Code: "file_too_large", Detail: "o arquivo passa de 5 MB"})
-			return
+			return nil, "", false
 		}
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "bad_request", Detail: "envie o arquivo no campo \"file\" (multipart)"})
-		return
+		return nil, "", false
 	case len(file) == 0:
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "bad_request", Detail: "envie o arquivo no campo \"file\""})
+		return nil, "", false
+	}
+	return file, password, true
+}
+
+// busy responde 503 quando a vez de ler não chegou a tempo (ver acquire).
+func busy(c *gin.Context) {
+	c.Header("Retry-After", "30")
+	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusServiceUnavailable, Code: "busy", Detail: "muitas leituras de boleto agora; tente de novo"})
+}
+
+// ExtractBoleto: POST /households/{householdId}/boletos/extract
+func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
+	file, password, ok := h.upload(c)
+	if !ok {
 		return
 	}
-
 	ctx, cancel := context.WithTimeout(c.Request.Context(), extractTimeout)
 	defer cancel()
 	if !h.acquire(ctx) {
-		c.Header("Retry-After", "30")
-		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusServiceUnavailable, Code: "busy", Detail: "muitas leituras de boleto agora; tente de novo"})
+		busy(c)
 		return
 	}
 	defer h.release()
@@ -172,53 +185,84 @@ func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
 		httpx.Internal(c)
 		return
 	}
-	out := gen.BoletoExtraction{Boleto: gen.Boleto{DigitableLine: res.DigitableLine, Barcode: &res.Barcode}, Method: gen.BoletoExtractionMethod(res.Method), DuplicateOfInvoiceId: dup}
-	if res.AmountCents > 0 {
-		amount := gen.Cents(res.AmountCents)
-		out.Boleto.DocumentAmountCents = &amount
+	out := gen.BoletoExtraction{Boleto: genBoleto(res.Boleto), Method: gen.BoletoExtractionMethod(res.Method), DuplicateOfInvoiceId: dup}
+	who, err := h.whoReceives(ctx, householdId, res.Beneficiary, res.BeneficiaryCNPJ, res.Method)
+	if err != nil {
+		httpx.Internal(c)
+		return
 	}
-	if !res.DueDate.IsZero() {
-		d := caldate.FromTime(res.DueDate)
-		out.Boleto.DocumentDueDate = &d
+	who.applyTo(&out.Boleto)
+	out.Payee = who.payee
+	c.JSON(http.StatusOK, out)
+}
+
+// genBoleto converte o boleto lido no tipo do contrato (sem o beneficiário, que passa por whoReceives).
+func genBoleto(b boleto.Boleto) gen.Boleto {
+	out := gen.Boleto{DigitableLine: b.DigitableLine, Barcode: &b.Barcode}
+	if b.AmountCents > 0 {
+		amount := gen.Cents(b.AmountCents)
+		out.DocumentAmountCents = &amount
 	}
-	if !res.Competence.IsZero() {
-		m := caldate.FromTime(res.Competence)
-		out.Boleto.DocumentCompetenceMonth = &m
+	if !b.DueDate.IsZero() {
+		d := caldate.FromTime(b.DueDate)
+		out.DocumentDueDate = &d
 	}
-	name := res.Beneficiary
-	cnpjDigits := res.BeneficiaryCNPJ
-	if cnpjDigits != "" && h.Company != nil {
-		// O nome lido do boleto (principalmente por OCR) pode estar errado; o cadastro do CNPJ é a fonte confiável.
-		switch co, err := h.Company.Lookup(ctx, cnpjDigits); {
+	if !b.Competence.IsZero() {
+		m := caldate.FromTime(b.Competence)
+		out.DocumentCompetenceMonth = &m
+	}
+	return out
+}
+
+// receiver é quem recebe, já conferido: nome (o do cadastro do CNPJ, se a BrasilAPI respondeu), CNPJ (vazio se
+// descartado) e o favorecido da casa com esse CNPJ.
+type receiver struct {
+	name, cnpj string
+	verified   bool
+	payee      *gen.Payee
+}
+
+func (r receiver) applyTo(b *gen.Boleto) {
+	if r.cnpj != "" {
+		cnpj := r.cnpj
+		b.BeneficiaryCnpj = &cnpj
+	}
+	if r.verified {
+		v := true
+		b.BeneficiaryVerified = &v
+	}
+	if r.name != "" {
+		name := r.name
+		b.BeneficiaryName = &name
+	}
+}
+
+// whoReceives confere o CNPJ lido na BrasilAPI e procura o favorecido da casa. Erro só quando o banco falha (já logado).
+func (h *Boletos) whoReceives(ctx context.Context, householdID uuid.UUID, name, cnpjDigits string, method boleto.Method) (receiver, error) {
+	r := receiver{name: name, cnpj: cnpjDigits}
+	if r.cnpj != "" && h.Company != nil {
+		// O nome lido (principalmente por OCR) pode estar errado; o cadastro do CNPJ é a fonte confiável.
+		switch co, err := h.Company.Lookup(ctx, r.cnpj); {
 		case err == nil:
-			name = co.LegalName
-			verified := true
-			out.Boleto.BeneficiaryVerified = &verified
-		case errors.Is(err, brasilapi.ErrNotFound) && res.Method == boleto.MethodOCR:
+			r.name, r.verified = co.LegalName, true
+		case errors.Is(err, brasilapi.ErrNotFound) && method == boleto.MethodOCR:
 			// CNPJ com dígitos válidos mas inexistente, vindo de OCR: quase certamente número lido errado. Não oferece cadastrar.
-			cnpjDigits = ""
+			r.cnpj = ""
 		}
 		// qualquer outra falha (API fora do ar, prazo): segue com o que o documento trouxe
 	}
-	if cnpjDigits != "" {
-		out.Boleto.BeneficiaryCnpj = &cnpjDigits
+	if r.cnpj != "" && h.Payees != nil {
 		// Favorecido já conhecido da casa (arquivado não conta: a pessoa o tirou de uso). Sem achar, a tela oferece cadastrar.
-		if h.Payees != nil {
-			switch p, err := h.Payees.FindByCNPJ(ctx, householdId, cnpjDigits); {
-			case err == nil && !p.Archived():
-				gp := toGenPayee(p)
-				out.Payee = &gp
-			case err != nil && !errors.Is(err, payee.ErrNotFound):
-				h.Log.Error("erro ao buscar favorecido pelo CNPJ do boleto", "erro", err)
-				httpx.Internal(c)
-				return
-			}
+		switch p, err := h.Payees.FindByCNPJ(ctx, householdID, r.cnpj); {
+		case err == nil && !p.Archived():
+			gp := toGenPayee(p)
+			r.payee = &gp
+		case err != nil && !errors.Is(err, payee.ErrNotFound):
+			h.Log.Error("erro ao buscar favorecido pelo CNPJ do boleto", "erro", err)
+			return receiver{}, err
 		}
 	}
-	if name != "" {
-		out.Boleto.BeneficiaryName = &name
-	}
-	c.JSON(http.StatusOK, out)
+	return r, nil
 }
 
 func (h *Boletos) writeError(c *gin.Context, err error) {
