@@ -516,10 +516,12 @@ describe('lista: filtro e busca', () => {
     })
     mockDesktop()
     renderAt(mes)
-    await screen.findByText('Botijão')
+    await screen.findByRole('region', { name: 'Contas do mês' })
+    await screen.findAllByText('Botijão')
     await userEvent.selectOptions(screen.getByLabelText('Filtrar por categoria'), 'c1')
-    expect(screen.getByText('Botijão')).toBeInTheDocument()
-    expect(screen.queryByText('Feira')).not.toBeInTheDocument()
+    const lista = screen.getByRole('region', { name: 'Contas do mês' })
+    expect(within(lista).getByText('Botijão')).toBeInTheDocument()
+    expect(within(lista).queryByText('Feira')).not.toBeInTheDocument()
   })
 
   it('filtro sem resultado oferece limpar', async () => {
@@ -542,7 +544,7 @@ describe('lista: filtro e busca', () => {
   it('mês vazio oferece lançar a primeira conta e importar', async () => {
     mockApi({ me: ok(me) })
     renderAt(mes)
-    expect(await screen.findByRole('link', { name: 'Importar' })).toHaveAttribute('href', '/importar')
+    expect(await screen.findByRole('link', { name: 'Importar' })).toHaveAttribute('href', `/importar?mes=2026-10`)
     await userEvent.click(screen.getByRole('button', { name: 'Lançar a primeira conta' }))
     expect(screen.getByRole('dialog', { name: 'Nova conta' })).toBeInTheDocument()
   })
@@ -559,7 +561,7 @@ describe('computador', () => {
     renderAt(mes)
     // sem conta aberta, o painel mostra os próximos vencimentos (as atrasadas primeiro), não um aviso vazio
     const resumo = await screen.findByRole('region', { name: 'Próximos vencimentos' })
-    expect(within(resumo).getByText('Aluguel')).toBeInTheDocument()
+    expect(await within(resumo).findByText('Aluguel')).toBeInTheDocument()
     expect(within(resumo).getByText('Luz')).toBeInTheDocument()
     expect(screen.queryByText(/Toque/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Detalhes de Luz' }))
@@ -613,8 +615,9 @@ describe('computador', () => {
     expect(screen.queryByText('Feira')).not.toBeInTheDocument()
     unmount()
     renderAt(mes)
-    expect(await screen.findByText('Aluguel')).toBeInTheDocument()
-    expect(screen.queryByText('Feira')).not.toBeInTheDocument()
+    const lista = await screen.findByRole('region', { name: 'Contas do mês' })
+    expect(await within(lista).findByText('Aluguel')).toBeInTheDocument()
+    expect(within(lista).queryByText('Feira')).not.toBeInTheDocument()
   })
 
   it('pagar várias: marca, Shift+clique marca o intervalo, paga todas e Desfazer desfaz todas', async () => {

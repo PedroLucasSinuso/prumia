@@ -68,6 +68,12 @@ converte a resposta do cliente tipado em promessa que rejeita com `ApiError` (qu
   o **valor efetivamente pago** (pode diferir do valor da conta).
 - **Pagar com um toque**: `togglePaid` usa a carteira sugerida pela categoria (`defaultWallet`) ou a livre, mostra um aviso com
   **Desfazer** (`ToastProvider`/`useToast`) e não pergunta nada.
+- **Mês no computador** (`MonthPage`): destaques, régua + "por categoria", lista e painel fixo (`xl`, `useHasSidePanel`). Abaixo de `xl`,
+  o detalhe usa `SlideOver` (painel lateral de altura total, foco preso, Esc/clique fora fecham), como "Nova conta" em qualquer
+  computador (decisão: o formulário precisa de altura total; o painel fixo fica para leitura). `MonthSections` (seções recolhíveis;
+  estado em `localStorage` via `lib/storage.usePref`, protegido por try/catch), `InvoiceDetail` (leitura), `ShortcutsHelp`.
+  Regras puras de filtro/seções/próximos vencimentos em `lib/monthList.ts` (testadas à parte). Atalhos: um único ouvinte em
+  `document`, ignorado ao digitar ou com `role="dialog"` aberto. Seleção múltipla paga uma a uma; o Desfazer reverte as que passaram.
 - **`InvoiceSheet`**: painel de criar/editar (`Sheet` acessível: `role="dialog"`, Esc e toque fora fecham). Erros por campo da API
   são mapeados para o campo certo (`amountCents` -> Valor). No PATCH, observação vazia vai como `null` para limpar.
 - **`MoneyInput`**: o valor se forma da direita para a esquerda (digitar `9990` mostra `R$ 99,90`) e guarda **centavos inteiros**.

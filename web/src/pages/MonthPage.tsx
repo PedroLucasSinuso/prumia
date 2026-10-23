@@ -628,12 +628,9 @@ export default function MonthPage() {
                   onOpen={(inv) => setPanel({ id: inv.id, mode: 'view' })}
                   actions={
                     canWrite && (
-                      <div className="flex flex-col gap-2">
-                        <Button onClick={openNew} className="flex items-center justify-center gap-2 md:h-10">
-                          <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova conta
-                        </Button>
-                        <p className="text-xs text-ink/75">Selecione uma conta para ver os detalhes. Atalhos: tecla <kbd className="font-mono">?</kbd></p>
-                      </div>
+                      <p className="text-xs text-ink/75">
+                        Selecione uma conta para ver os detalhes. Nova conta: tecla <kbd className="font-mono">N</kbd>; todos os atalhos: <kbd className="font-mono">?</kbd>
+                      </p>
                     )
                   }
                 />
