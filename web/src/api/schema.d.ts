@@ -391,6 +391,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/invoices/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cria várias invoices avulsas de uma vez (member+), tudo ou nada
+         * @description Usado pela tela "Importar". Cada item segue as regras do `createInvoice` (inclusive `boleto`, `payeeId` e `newPayee`).
+         *     Tudo numa transação: se um item falhar, nenhum é gravado. Erros de validação vêm em `fields` com o índice do item
+         *     (`items.3.amountCents`). A mesma linha digitável em dois itens do lote é recusada (`items.N.boleto.digitableLine`).
+         *     `newPayee` com o mesmo nome em mais de um item cria um só favorecido. Corpo até 512 KB.
+         */
+        post: operations["createInvoiceBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/invoices/{invoiceId}": {
         parameters: {
             query?: never;
@@ -707,6 +732,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/documents/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lê contas de um arquivo (boleto, conta sem boleto ou lista). Nada é salvo; o usuário revisa antes de criar.
+         * @description Mesmo upload, limites e regras de memória do `extractBoleto`. Ordem de decisão: (1) linha digitável válida =
+         *     `boleto` (1 item com `boleto`); (2) valor com rótulo forte ("total a pagar", "valor a pagar", "valor do documento")
+         *     ou com vencimento = `bill` (1 item sem boleto); (3) duas ou mais linhas "descrição R$ valor" = `list` (N itens);
+         *     (4) um único valor (rótulo "total" ou o maior "R$ x") = `bill`. Nada disso = 422 `boleto_not_found`.
+         */
+        post: operations["extractDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -989,6 +1039,45 @@ export interface components {
             duplicateOfInvoiceId?: string | null;
             /** @description Favorecido da casa com o CNPJ lido do boleto (não arquivado) */
             payee?: components["schemas"]["Payee"] | null;
+        };
+        InvoiceBatchInput: {
+            items: components["schemas"]["InvoiceInput"][];
+        };
+        InvoiceBatchResult: {
+            items: components["schemas"]["Invoice"][];
+        };
+        /** @description Uma conta encontrada no arquivo. Tudo é sugestão para revisar; campos ausentes não foram lidos. */
+        DocumentItem: {
+            /** @description Descrição sugerida (item da lista ou nome de quem cobra) */
+            description?: string;
+            amountCents?: components["schemas"]["Cents"];
+            /** Format: date */
+            dueDate?: string;
+            competenceMonth?: components["schemas"]["Month"];
+            beneficiaryName?: string;
+            beneficiaryCnpj?: string;
+            /** @description Nome conferido pelo CNPJ na BrasilAPI */
+            beneficiaryVerified?: boolean;
+            boleto?: components["schemas"]["Boleto"];
+            /**
+             * Format: uuid
+             * @description Já existe invoice com esta linha digitável
+             */
+            duplicateOfInvoiceId?: string;
+            payee?: components["schemas"]["Payee"];
+        };
+        DocumentExtraction: {
+            /**
+             * @description Como foi lido
+             * @enum {string}
+             */
+            method: "pdf_text" | "barcode_image" | "ocr";
+            /**
+             * @description `boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)
+             * @enum {string}
+             */
+            kind: "boleto" | "bill" | "list";
+            items: components["schemas"]["DocumentItem"][];
         };
         Purchase: {
             /** Format: uuid */
@@ -2019,6 +2108,34 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    createInvoiceBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceBatchInput"];
+            };
+        };
+        responses: {
+            /** @description Criadas, na ordem dos itens */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceBatchResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     getInvoice: {
         parameters: {
             query?: never;
@@ -2647,6 +2764,65 @@ export interface operations {
                 };
             };
             /** @description Não foi possível extrair ou senha necessária */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+            /** @description Servidor ocupado com outras leituras (`code=busy`); tente de novo */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    extractDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** Format: password */
+                    password?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Lido */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentExtraction"];
+                };
+            };
+            /** @description Arquivo maior que 5 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Não foi possível ler ou senha necessária */
             422: {
                 headers: {
                     [name: string]: unknown;

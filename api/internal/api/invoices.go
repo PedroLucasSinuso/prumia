@@ -127,16 +127,43 @@ func (h *Invoices) CreateInvoice(c *gin.Context, householdId gen.HouseholdId) {
 		badJSON(c)
 		return
 	}
-	v, err := h.Svc.Create(c.Request.Context(), householdId, auth.CurrentUser(c).ID, invoice.CreateInput{
-		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, PayeeID: body.PayeeId, NewPayee: newPayeeInput(body.NewPayee), Description: body.Description,
-		AmountCents: body.AmountCents, DueDate: body.DueDate, CompetenceMonth: body.CompetenceMonth, Notes: body.Notes,
-		Boleto: boletoInput(body.Boleto),
-	})
+	v, err := h.Svc.Create(c.Request.Context(), householdId, auth.CurrentUser(c).ID, createInput(body))
 	if err != nil {
 		writeDomainError(c, h.Log, err)
 		return
 	}
 	c.JSON(http.StatusCreated, toGenInvoice(v))
+}
+
+func createInput(body gen.InvoiceInput) invoice.CreateInput {
+	return invoice.CreateInput{
+		CategoryID: body.CategoryId, ResponsibleUserID: body.ResponsibleUserId, PayeeID: body.PayeeId, NewPayee: newPayeeInput(body.NewPayee), Description: body.Description,
+		AmountCents: body.AmountCents, DueDate: body.DueDate, CompetenceMonth: body.CompetenceMonth, Notes: body.Notes,
+		Boleto: boletoInput(body.Boleto),
+	}
+}
+
+// CreateInvoiceBatch: POST /households/{householdId}/invoices/batch (tudo ou nada; ver invoice.Service.CreateBatch)
+func (h *Invoices) CreateInvoiceBatch(c *gin.Context, householdId gen.HouseholdId) {
+	var body gen.InvoiceBatchInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		badJSON(c)
+		return
+	}
+	items := make([]invoice.CreateInput, len(body.Items))
+	for i, it := range body.Items {
+		items[i] = createInput(it)
+	}
+	vs, err := h.Svc.CreateBatch(c.Request.Context(), householdId, auth.CurrentUser(c).ID, items)
+	if err != nil {
+		writeDomainError(c, h.Log, err)
+		return
+	}
+	out := gen.InvoiceBatchResult{Items: make([]gen.Invoice, len(vs))}
+	for i, v := range vs {
+		out.Items[i] = toGenInvoice(v)
+	}
+	c.JSON(http.StatusCreated, out)
 }
 
 // GetInvoice: GET /households/{householdId}/invoices/{invoiceId}
