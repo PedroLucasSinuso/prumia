@@ -106,6 +106,10 @@ type Routes = {
   removeMember?: Reply
   /** Leitura de boleto: resposta fixa ou calculada pelo corpo (ex.: pedir senha só se ela não veio). */
   extract?: Reply | ((body: { file: File; password?: string }) => Reply)
+  /** Leitura de documento (tela Importar e formulário): fixa ou calculada pelo corpo (nome do arquivo, senha). */
+  extractDocument?: Reply | ((body: { file: File; password?: string }) => Reply)
+  /** POST /invoices/batch: fixa ou calculada pelos itens enviados. */
+  createBatch?: Reply | ((body: { items: unknown[] }) => Reply)
   invoiceDetail?: Reply
 }
 
@@ -136,6 +140,15 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/boletos/extract') {
       const body = init?.body as { file: File; password?: string }
       return (typeof r.extract === 'function' ? r.extract(body) : r.extract) ?? fail(422, 'boleto_not_found')
+    }
+    if (url === '/households/{householdId}/documents/extract') {
+      const body = init?.body as { file: File; password?: string }
+      return (typeof r.extractDocument === 'function' ? r.extractDocument(body) : r.extractDocument) ?? fail(422, 'boleto_not_found')
+    }
+    if (url === '/households/{householdId}/invoices/batch') {
+      const body = init?.body as { items: unknown[] }
+      if (typeof r.createBatch === 'function') return r.createBatch(body)
+      return r.createBatch ?? ok({ items: body.items.map((_, i) => ({ id: `b${i}` })) })
     }
     const pick: Record<string, Reply | Error | undefined> = {
       '/auth/login': r.login, '/auth/register': r.register, '/auth/logout': r.logout,

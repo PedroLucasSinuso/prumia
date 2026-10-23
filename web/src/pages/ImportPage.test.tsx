@@ -1,0 +1,157 @@
+import { configure, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { api } from '../api/client'
+import type { DocumentExtraction } from '../api/types'
+import { RETRY_DELAYS_MS } from '../lib/importing'
+import { fail, me, mockApi, ok, renderAt, viewerMe } from '../test/utils'
+
+configure({ asyncUtilTimeout: 5000 })
+
+// Dados sintéticos (empresa e CNPJ inventados).
+const list: DocumentExtraction = {
+  kind: 'list', method: 'ocr',
+  items: [
+    { description: 'Gás', amountCents: 15782 },
+    { description: 'Mercado', amountCents: 56899 },
+    { description: 'Ração gatos', amountCents: 19999 },
+  ],
+}
+const bill: DocumentExtraction = {
+  kind: 'bill', method: 'pdf_text',
+  items: [{ description: 'Gasco Distribuidora SA', amountCents: 13043, dueDate: '2026-07-17', competenceMonth: '2026-06-01', beneficiaryName: 'Gasco Distribuidora SA', beneficiaryCnpj: '11222333000181' }],
+}
+const line = '0'.repeat(47)
+const dupBoleto: DocumentExtraction = {
+  kind: 'boleto', method: 'pdf_text',
+  items: [{ description: 'Loja', amountCents: 100, boleto: { digitableLine: line }, duplicateOfInvoiceId: 'i9' }],
+}
+
+const png = (name: string) => new File(['\x89PNG'], name, { type: 'image/png' })
+const pdf = (name: string) => new File(['%PDF-1.4'], name, { type: 'application/pdf' })
+const batchCalls = () =>
+  (vi.mocked(api.POST).mock.calls as unknown as Array<[string, { body: { items: Record<string, unknown>[] } }]>).filter(([url]) => url === '/households/{householdId}/invoices/batch')
+const extractCalls = () =>
+  (vi.mocked(api.POST).mock.calls as unknown as Array<[string, { body: { file: File; password?: string } }]>).filter(([url]) => url === '/households/{householdId}/documents/extract')
+
+const saved = [...RETRY_DELAYS_MS]
+beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 9, 22, 12))
+  RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, 5, 5, 5)
+})
+afterEach(() => {
+  vi.useRealTimers()
+  RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, ...saved)
+})
+
+async function pick(user: ReturnType<typeof userEvent.setup>, ...files: File[]) {
+  const input = await screen.findByLabelText('Arquivos para importar')
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Escolher arquivos' })).toBeEnabled())
+  await user.upload(input, files)
+}
+
+describe('importar contas', () => {
+  it('lê vários arquivos em sequência, sugere categoria e cria tudo num lote', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), extractDocument: ({ file }) => ok(file.name === 'lista.png' ? list : bill) })
+    renderAt('/importar')
+    await pick(user, png('lista.png'), pdf('luz.pdf'))
+
+    expect(await screen.findByText(/2 arquivos lidos · 4 contas/i)).toBeInTheDocument()
+    expect(extractCalls().map(([, init]) => init.body.file.name)).toEqual(['lista.png', 'luz.pdf'])
+
+    const rows = screen.getAllByRole('listitem', { name: /^Conta \d/ })
+    expect(rows).toHaveLength(4)
+    // item da lista lido por OCR: selo pede conferência; categoria casada pelo nome
+    expect(within(rows[1]).getByText(/OCR: confira/)).toBeInTheDocument()
+    expect(within(rows[1]).getByLabelText('Categoria (sugerida)')).toHaveValue('c2')
+    expect(within(rows[0]).getByLabelText('Vencimento')).toHaveValue('2026-10-22')
+    // conta sem boleto: vencimento e competência do documento; oferece cadastrar o favorecido do CNPJ
+    expect(within(rows[3]).getByText('conta')).toBeInTheDocument()
+    expect(within(rows[3]).getByLabelText('Vencimento')).toHaveValue('2026-07-17')
+    expect(within(rows[3]).getByLabelText('Competência')).toHaveValue('2026-06')
+    await user.type(within(rows[3]).getByLabelText(/Apelido do favorecido/), 'Gás')
+
+    // tira uma linha do lote e corrige a descrição de outra
+    await user.click(within(rows[2]).getByRole('checkbox', { name: 'criar' }))
+    const desc = within(rows[0]).getByLabelText('Descrição')
+    await user.clear(desc)
+    await user.type(desc, 'Gás de cozinha')
+
+    await user.click(screen.getByRole('button', { name: 'Criar 3 contas' }))
+    await waitFor(() => expect(batchCalls()).toHaveLength(1))
+    const items = batchCalls()[0][1].body.items
+    expect(items).toEqual([
+      { categoryId: 'c1', description: 'Gás de cozinha', amountCents: 15782, dueDate: '2026-10-22', competenceMonth: '2026-10-01' },
+      { categoryId: 'c2', description: 'Mercado', amountCents: 56899, dueDate: '2026-10-22', competenceMonth: '2026-10-01' },
+      {
+        categoryId: 'c1', description: 'Gasco Distribuidora SA', amountCents: 13043, dueDate: '2026-07-17', competenceMonth: '2026-06-01',
+        newPayee: { name: 'Gás', cnpj: '11222333000181', legalName: 'Gasco Distribuidora SA' },
+      },
+    ])
+    // volta ao mês da primeira conta, com aviso e "Desfazer"
+    expect(await screen.findByText('3 contas criadas.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument()
+  })
+
+  it('espera e tenta de novo quando o servidor pede calma (429)', async () => {
+    const user = userEvent.setup()
+    let n = 0
+    mockApi({ me: ok(me), extractDocument: () => (++n === 1 ? fail(429, 'too_many_requests') : ok(bill)) })
+    renderAt('/importar')
+    await pick(user, pdf('luz.pdf'))
+    expect(await screen.findByText(/1 arquivo lido · 1 conta/i)).toBeInTheDocument()
+    expect(extractCalls()).toHaveLength(2)
+  })
+
+  it('pede a senha do PDF sem travar os outros arquivos', async () => {
+    const user = userEvent.setup()
+    mockApi({
+      me: ok(me),
+      extractDocument: ({ file, password }) =>
+        file.name === 'fatura.pdf' ? (password === 'segredo' ? ok(bill) : fail(422, password ? 'wrong_password' : 'password_required')) : ok(list),
+    })
+    renderAt('/importar')
+    await pick(user, pdf('fatura.pdf'), png('lista.png'))
+    expect(await screen.findByText(/2 arquivos lidos · 3 contas/i)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Senha do PDF'), 'segredo')
+    await user.click(screen.getByRole('button', { name: 'Abrir' }))
+    expect(await screen.findByText(/2 arquivos lidos · 4 contas/i)).toBeInTheDocument()
+    expect(extractCalls().at(-1)?.[1].body.password).toBe('segredo')
+  })
+
+  it('arquivo sem conta mostra o motivo; boleto já lançado fica de fora até pedir', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), extractDocument: ({ file }) => (file.name === 'foto.jpg' ? fail(422, 'boleto_not_found') : ok(dupBoleto)) })
+    renderAt('/importar')
+    await pick(user, new File(['\xff\xd8\xff'], 'foto.jpg', { type: 'image/jpeg' }), pdf('boleto.pdf'))
+    expect(await screen.findByText(/Não encontrei boleto nem valor/)).toBeInTheDocument()
+    expect(await screen.findByText(/Já existe uma conta com este boleto/)).toBeInTheDocument()
+    const create = screen.getByRole('button', { name: 'Criar 0 contas' })
+    expect(create).toBeDisabled()
+    await user.click(screen.getByRole('checkbox', { name: 'criar' }))
+    expect(screen.getByRole('button', { name: 'Criar 1 conta' })).toBeEnabled()
+  })
+
+  it('erro de um item do lote aparece na linha certa', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), extractDocument: ok(list), createBatch: fail(400, 'validation_error', { 'items.1.categoryId': 'categoria inválida ou arquivada' }) })
+    renderAt('/importar')
+    await pick(user, png('lista.png'))
+    await user.click(await screen.findByRole('button', { name: 'Criar 3 contas' }))
+    const rows = screen.getAllByRole('listitem', { name: /^Conta \d/ })
+    expect(await within(rows[1]).findByText('categoria inválida ou arquivada')).toBeInTheDocument()
+    expect(screen.getByText('Confira as contas marcadas.')).toBeInTheDocument()
+  })
+
+  it('papel de leitura não importa', async () => {
+    mockApi({ me: ok(viewerMe) })
+    renderAt('/importar')
+    expect(await screen.findByText(/somente leitura/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Arquivos para importar')).not.toBeInTheDocument()
+  })
+})
