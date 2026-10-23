@@ -5,6 +5,7 @@ import type { Category } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
+import { AppearanceSection } from '../components/AppearanceSection'
 import { CategoryForm } from '../components/CategoryForm'
 import { PayeesSection } from '../components/PayeesSection'
 import { Sheet } from '../components/Sheet'
@@ -163,7 +164,7 @@ function SettingsView() {
                 </section>
               ) : (
                 <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
-                  Toque numa categoria para {canWrite ? 'editar, arquivar ou restaurar' : 'ver os detalhes'}.
+                  Selecione uma categoria para {canWrite ? 'editar, arquivar ou restaurar' : 'ver os detalhes'}.
                 </p>
               )}
             </aside>
@@ -171,6 +172,8 @@ function SettingsView() {
         </div>
 
         <PayeesSection houseId={houseId} categories={all} canWrite={canWrite} />
+
+        <AppearanceSection />
 
         <p className={`${label} text-ink/60`}>em breve: mais ajustes para a casa</p>
       </main>
