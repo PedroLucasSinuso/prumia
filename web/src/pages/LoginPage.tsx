@@ -77,9 +77,9 @@ export default function LoginPage() {
           {busy ? 'Entrando…' : 'Entrar'}
         </Button>
       </form>
-      <p className="text-sm text-graphite/80">
+      <p className="text-sm text-ink/80">
         Primeiro acesso?{' '}
-        <Link to="/cadastro" className="font-semibold text-cobalt underline underline-offset-2">
+        <Link to="/cadastro" className="font-semibold text-accent underline underline-offset-2">
           Criar conta
         </Link>
       </p>

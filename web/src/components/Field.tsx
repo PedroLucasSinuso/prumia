@@ -13,7 +13,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
   const describedBy = [error ? `${fieldId}-erro` : null, hint ? `${fieldId}-dica` : null].filter(Boolean).join(' ')
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={fieldId} className="text-xs font-medium uppercase tracking-wider text-graphite/70">
+      <label htmlFor={fieldId} className="text-xs font-medium uppercase tracking-wider text-ink/70">
         {label}
       </label>
       <input
@@ -21,18 +21,18 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className={`h-11 rounded-md border bg-white/40 px-3 text-base text-graphite placeholder:text-graphite/40 ${
-          error ? 'border-signal' : 'border-graphite/25'
+        className={`h-11 rounded-md border bg-white/40 px-3 text-base text-ink placeholder:text-ink/40 ${
+          error ? 'border-alert' : 'border-ink/25'
         }`}
         {...input}
       />
       {hint && !error && (
-        <p id={`${fieldId}-dica`} className="text-xs text-graphite/60">
+        <p id={`${fieldId}-dica`} className="text-xs text-ink/60">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${fieldId}-erro`} className="text-xs text-signal">
+        <p id={`${fieldId}-erro`} className="text-xs text-alert">
           {error}
         </p>
       )}

@@ -151,20 +151,20 @@ function HouseView({ me, house }: { me: Me; house: House }) {
     <AppShell>
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
         <header>
-          <h1 className="font-display text-[32px] font-bold leading-none text-teal font-stretch-condensed">{house.name}</h1>
-          <p className="mt-1 text-sm text-graphite/80">Você é <strong>{roleLabel[house.role]}</strong> desta casa.</p>
+          <h1 className="font-display text-[32px] font-bold leading-none text-structure font-stretch-condensed">{house.name}</h1>
+          <p className="mt-1 text-sm text-ink/80">Você é <strong>{roleLabel[house.role]}</strong> desta casa.</p>
         </header>
 
         {error && (
-          <p role="alert" className="rounded-md border border-signal/60 bg-signal/10 px-3 py-2 text-sm">
-            <span className="font-mono text-signal">[ ✖ ]</span> {error}
+          <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
+            <span className="font-mono text-alert">[ ✖ ]</span> {error}
           </p>
         )}
 
         <div className="grid gap-6 md:grid-cols-2 md:items-start">
-          <section aria-label="Pessoas" className="rounded-md border border-graphite/20 p-4">
-            <h2 className={`${label} text-graphite/80`}>pessoas da casa</h2>
-            {members.isPending && <p role="status" className="mt-2 text-sm text-graphite/70">carregando…</p>}
+          <section aria-label="Pessoas" className="rounded-md border border-ink/20 p-4">
+            <h2 className={`${label} text-ink/80`}>pessoas da casa</h2>
+            {members.isPending && <p role="status" className="mt-2 text-sm text-ink/70">carregando…</p>}
             {members.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as pessoas.</p>}
             {members.isSuccess && (
               <MembersList members={members.data} meId={me.id} isAdmin={isAdmin} busy={busy} onRole={onRole} onRemove={onRemove} onResetLink={onResetLink} />
@@ -182,21 +182,21 @@ function HouseView({ me, house }: { me: Me; house: House }) {
 
           <div className="flex flex-col gap-6">
             {isAdmin ? (
-              <section aria-label="Convidar" className="rounded-md border border-graphite/20 p-4">
-                <h2 className={`${label} text-graphite/80`}>convidar alguém</h2>
-                <p className="mt-1 text-sm text-graphite/80">Gere um link e mande para a pessoa. Ela cria a conta (ou entra) e já cai na casa.</p>
+              <section aria-label="Convidar" className="rounded-md border border-ink/20 p-4">
+                <h2 className={`${label} text-ink/80`}>convidar alguém</h2>
+                <p className="mt-1 text-sm text-ink/80">Gere um link e mande para a pessoa. Ela cria a conta (ou entra) e já cai na casa.</p>
                 <form onSubmit={onInvite} className="mt-3 flex flex-col gap-3">
                   <label className="flex flex-col gap-1">
-                    <span className={`${label} text-graphite/70`}>papel</span>
-                    <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base">
+                    <span className={`${label} text-ink/70`}>papel</span>
+                    <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base">
                       <option value="member">membro — lança e paga contas</option>
                       <option value="viewer">leitura — só vê</option>
                       <option value="admin">admin — gerencia a casa</option>
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className={`${label} text-graphite/70`}>vale por</span>
-                    <select value={hours} onChange={(e) => setHours(Number(e.target.value))} className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base">
+                    <span className={`${label} text-ink/70`}>vale por</span>
+                    <select value={hours} onChange={(e) => setHours(Number(e.target.value))} className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base">
                       <option value={24}>1 dia</option>
                       <option value={48}>2 dias</option>
                       <option value={168}>7 dias</option>
@@ -215,12 +215,12 @@ function HouseView({ me, house }: { me: Me; house: House }) {
                 )}
               </section>
             ) : (
-              <p className="rounded-md border border-dashed border-graphite/25 p-4 text-sm text-graphite/75">Só quem administra a casa pode convidar pessoas.</p>
+              <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">Só quem administra a casa pode convidar pessoas.</p>
             )}
 
             {isAdmin && (
-              <section aria-label="Nome da casa" className="rounded-md border border-graphite/20 p-4">
-                <h2 className={`${label} text-graphite/80`}>nome da casa</h2>
+              <section aria-label="Nome da casa" className="rounded-md border border-ink/20 p-4">
+                <h2 className={`${label} text-ink/80`}>nome da casa</h2>
                 <form onSubmit={onRename} className="mt-2 flex flex-col gap-3">
                   <Field label="Nome" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
                   <Button type="submit" variant="ghost" disabled={actions.rename.isPending || !name.trim() || name.trim() === house.name}>Salvar nome</Button>
@@ -228,9 +228,9 @@ function HouseView({ me, house }: { me: Me; house: House }) {
               </section>
             )}
 
-            <section aria-label="Outra casa" className="rounded-md border border-graphite/20 p-4">
-              <h2 className={`${label} text-graphite/80`}>outra casa</h2>
-              <p className="mt-1 text-sm text-graphite/80">Uma casa separada, com contas e pessoas próprias. Você troca de casa pelo topo da tela.</p>
+            <section aria-label="Outra casa" className="rounded-md border border-ink/20 p-4">
+              <h2 className={`${label} text-ink/80`}>outra casa</h2>
+              <p className="mt-1 text-sm text-ink/80">Uma casa separada, com contas e pessoas próprias. Você troca de casa pelo topo da tela.</p>
               {creating ? (
                 <form onSubmit={onCreate} className="mt-3 flex flex-col gap-3">
                   <Field label="Nome da nova casa" value={newName} maxLength={80} onChange={(e) => setNewName(e.target.value)} />
@@ -245,9 +245,9 @@ function HouseView({ me, house }: { me: Me; house: House }) {
             </section>
 
             {isAdmin && (
-              <section aria-label="Excluir casa" className="rounded-md border border-signal/50 p-4">
-                <h2 className={`${label} text-graphite/80`}>excluir a casa</h2>
-                <p className="mt-1 text-sm text-graphite/80">Remove a casa e tira o acesso de todas as pessoas. Os dados ficam guardados no servidor, mas o app deixa de mostrá-los.</p>
+              <section aria-label="Excluir casa" className="rounded-md border border-alert/50 p-4">
+                <h2 className={`${label} text-ink/80`}>excluir a casa</h2>
+                <p className="mt-1 text-sm text-ink/80">Remove a casa e tira o acesso de todas as pessoas. Os dados ficam guardados no servidor, mas o app deixa de mostrá-los.</p>
                 {confirmDelete ? (
                   <div className="mt-3 flex items-center gap-3">
                     <Button variant="ghost" onClick={onDelete} disabled={actions.remove.isPending}>Sim, excluir a casa</Button>

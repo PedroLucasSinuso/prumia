@@ -83,7 +83,8 @@ e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear al
 ## UI / marca (resumo; detalhes no manual)
 - Paleta **exata**: Ivory `#F3EBDD`, Petroleum Teal `#203D40`, Graphite `#313638`, Cobalt `#416A91`, Signal `#F06B4F` (≤10%, nunca inundar).
 - **Estilo só com classes do Tailwind 4**: sem CSS escrito à mão para componentes e sem cores fora do `@theme` (`src/index.css`).
-  Cores e raios da marca já viram classes (`bg-teal`, `text-signal`, `rounded-md`).
+  Cores são tokens semânticos (`bg-surface`, `text-ink`, `border-line`, `bg-structure text-on-structure`, `text-accent`,
+  `text-alert`) e raios viram classes (`rounded-md`). Temas (Marfim, Grafite, Contraste, Sistema) só trocam o papel das 5 cores.
 - Sem gradientes, neon, glassmorphism, `rounded-full`; raio 4–6px; grade 8/16px; borda `1px rgba(49,54,56,.15)`.
 - Fontes: Archivo (títulos, `font-display` + `font-stretch-condensed`), IBM Plex Sans (interface) e IBM Plex Mono (valores: `font-mono`).
 - Números com `tabular-nums`/mono. Marca sempre minúscula: `prumia`. Textos da UI em pt-BR.

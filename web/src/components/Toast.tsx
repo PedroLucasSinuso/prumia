@@ -25,7 +25,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toast && (
           <div
             role="status"
-            className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-md bg-graphite px-4 py-3 text-sm text-ivory"
+            className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-md bg-ink px-4 py-3 text-sm text-surface"
           >
             <span>{toast.message}</span>
             {toast.actionLabel && (

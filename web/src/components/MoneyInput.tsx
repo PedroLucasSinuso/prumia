@@ -22,7 +22,7 @@ export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel 
   const auto = useId()
   const fieldId = id ?? auto
   const label_ = (
-    <label htmlFor={fieldId} className={hideLabel ? 'sr-only' : 'text-xs font-medium uppercase tracking-wider text-graphite/80'}>
+    <label htmlFor={fieldId} className={hideLabel ? 'sr-only' : 'text-xs font-medium uppercase tracking-wider text-ink/80'}>
       {label}
     </label>
   )
@@ -35,24 +35,24 @@ export function MoneyInput({ label, value, onChange, error, id, hero, hideLabel 
       aria-describedby={error ? `${fieldId}-erro` : undefined}
       className={
         hero
-          ? 'w-full border-0 bg-transparent p-0 font-mono text-[40px] font-semibold leading-tight tabular-nums text-teal outline-none'
-          : `h-11 rounded-md border bg-white/40 px-3 font-mono text-base tabular-nums text-graphite ${error ? 'border-signal' : 'border-graphite/25'}`
+          ? 'w-full border-0 bg-transparent p-0 font-mono text-[40px] font-semibold leading-tight tabular-nums text-structure outline-none'
+          : `h-11 rounded-md border bg-white/40 px-3 font-mono text-base tabular-nums text-ink ${error ? 'border-alert' : 'border-ink/25'}`
       }
       value={formatCents(value)}
       onChange={(e) => onChange(digitsToCents(e.target.value))}
     />
   )
   const err = error && (
-    <p id={`${fieldId}-erro`} className="text-xs text-signal">
+    <p id={`${fieldId}-erro`} className="text-xs text-alert">
       {error}
     </p>
   )
   if (hero) {
     return (
-      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-white/35 px-3 py-2.5 focus-within:border-cobalt ${error ? 'border-signal' : 'border-teal'}`}>
+      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-white/35 px-3 py-2.5 focus-within:border-accent ${error ? 'border-alert' : 'border-structure'}`}>
         {label_}
         {input}
-        <p className="text-xs text-graphite/75">digite só os números: 18735 vira R$ 187,35</p>
+        <p className="text-xs text-ink/75">digite só os números: 18735 vira R$ 187,35</p>
         {err}
       </div>
     )

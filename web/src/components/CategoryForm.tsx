@@ -21,10 +21,10 @@ type Props = {
   onDone: (message: string) => void
 }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-graphite/70'
+const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
 const chip = (on: boolean) =>
   `flex min-h-11 flex-1 items-center justify-center rounded-md border px-3 text-[13px] ${
-    on ? 'border-teal bg-teal font-semibold text-ivory' : 'border-graphite/30 font-medium text-graphite hover:bg-graphite/5'
+    on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium text-ink hover:bg-ink/5'
   }`
 
 const wallets: { value: Wallet | null; text: string }[] = [
@@ -108,7 +108,7 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
       />
 
       {hasChildren ? (
-        <p className="text-sm text-graphite/80">Esta categoria tem subcategorias, então é uma categoria principal.</p>
+        <p className="text-sm text-ink/80">Esta categoria tem subcategorias, então é uma categoria principal.</p>
       ) : (
         parents.length > 0 && (
           <div className="flex flex-col gap-1">
@@ -123,12 +123,12 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
                 const mother = parentOf(next)
                 if (!category && mother) { setWallet(mother.defaultWallet ?? null); setEssential(mother.isEssential) }
               }}
-              className="h-11 rounded-md border border-graphite/25 bg-white/40 px-3 text-base text-graphite"
+              className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink"
             >
               <option value="">nenhuma (categoria principal)</option>
               {parents.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <p className="text-xs text-graphite/70">Ex.: Gás dentro de Moradia. O gráfico de Moradia soma o gás.</p>
+            <p className="text-xs text-ink/70">Ex.: Gás dentro de Moradia. O gráfico de Moradia soma o gás.</p>
           </div>
         )
       )}
@@ -142,7 +142,7 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
             </button>
           ))}
         </div>
-        <p className="text-xs text-graphite/70">Ao pagar uma conta desta categoria, o app já sugere esta carteira.</p>
+        <p className="text-xs text-ink/70">Ao pagar uma conta desta categoria, o app já sugere esta carteira.</p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
@@ -151,7 +151,7 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
           <button type="button" aria-pressed={essential} onClick={() => setEssential(true)} className={chip(essential)}>sim</button>
           <button type="button" aria-pressed={!essential} onClick={() => setEssential(false)} className={chip(!essential)}>não</button>
         </div>
-        <p className="text-xs text-graphite/70">Essencial é o que não dá para cortar: moradia, mercado, saúde.</p>
+        <p className="text-xs text-ink/70">Essencial é o que não dá para cortar: moradia, mercado, saúde.</p>
       </fieldset>
 
       {canWrite && (
@@ -161,17 +161,17 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
       )}
 
       {category && canWrite && (
-        <div className="flex flex-col gap-2 border-t border-graphite/15 pt-4">
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
           {archived ? (
             <>
-              <p className="text-sm text-graphite/80">Arquivada: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
+              <p className="text-sm text-ink/80">Arquivada: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
               <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(category.id, { archived: false }), `${category.name} restaurada.`)}>
                 Restaurar categoria
               </Button>
             </>
           ) : (
             <>
-              <p className="text-sm text-graphite/80">
+              <p className="text-sm text-ink/80">
                 Arquivar tira a categoria da lista ao lançar contas novas. As contas que já usam ela continuam com o mesmo nome. Por isso uma
                 categoria em uso nunca é apagada, só arquivada.
                 {hasChildren && ' As subcategorias são arquivadas junto e voltam quando você restaurar esta.'}
