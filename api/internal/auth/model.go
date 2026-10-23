@@ -14,7 +14,10 @@ type User struct {
 	Email        string
 	Name         string
 	PasswordHash string
-	DeletedAt    gorm.DeletedAt
+	// Theme é o tema de cor escolhido em Ajustes > Aparência (sistema, marfim, grafite ou contraste).
+	// `default:sistema`: ao criar um usuário com o campo vazio, o GORM grava o padrão em vez de "" (que o CHECK recusa).
+	Theme     string `gorm:"default:sistema"`
+	DeletedAt gorm.DeletedAt
 }
 
 func (User) TableName() string { return "users" }

@@ -207,6 +207,30 @@ func (e SeriesRefKind) Valid() bool {
 	}
 }
 
+// Defines values for Theme.
+const (
+	Contraste Theme = "contraste"
+	Grafite   Theme = "grafite"
+	Marfim    Theme = "marfim"
+	Sistema   Theme = "sistema"
+)
+
+// Valid indicates whether the value is a known member of the Theme enum.
+func (e Theme) Valid() bool {
+	switch e {
+	case Contraste:
+		return true
+	case Grafite:
+		return true
+	case Marfim:
+		return true
+	case Sistema:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Wallet.
 const (
 	WalletBenefit Wallet = "benefit"
@@ -662,6 +686,17 @@ type Me struct {
 	Households []HouseholdRef     `json:"households"`
 	Id         openapi_types.UUID `json:"id"`
 	Name       string             `json:"name"`
+
+	// Theme Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+	Theme Theme `json:"theme"`
+}
+
+// MePatch Só os campos presentes mudam.
+type MePatch struct {
+	Name *string `json:"name,omitempty"`
+
+	// Theme Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+	Theme *Theme `json:"theme,omitempty"`
 }
 
 // Member defines model for Member.
@@ -883,6 +918,9 @@ type SeriesRef struct {
 // SeriesRefKind defines model for SeriesRef.Kind.
 type SeriesRefKind string
 
+// Theme Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+type Theme string
+
 // Wallet defines model for Wallet.
 type Wallet string
 
@@ -937,6 +975,12 @@ type TooManyRequests = Problem
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Problem
 
+// ChangePasswordJSONBody defines parameters for ChangePassword.
+type ChangePasswordJSONBody struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
 // ResetPasswordJSONBody defines parameters for ResetPassword.
 type ResetPasswordJSONBody struct {
 	NewPassword string `json:"newPassword"`
@@ -965,6 +1009,15 @@ type ExtractBoletoMultipartBody struct {
 // ListCategoriesParams defines parameters for ListCategories.
 type ListCategoriesParams struct {
 	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
+// ExportInvoicesCsvParams defines parameters for ExportInvoicesCsv.
+type ExportInvoicesCsvParams struct {
+	// From Vencimento a partir de (inclusive)
+	From *caldate.Date `form:"from,omitempty" json:"from,omitempty"`
+
+	// To Vencimento até (inclusive)
+	To *caldate.Date `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // UpdateIncomeSourceParams defines parameters for UpdateIncomeSource.
@@ -1078,6 +1131,12 @@ type AcceptInviteJSONBody struct {
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
+// UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
+type UpdateMeJSONRequestBody = MePatch
+
+// ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
+type ChangePasswordJSONRequestBody ChangePasswordJSONBody
+
 // ResetPasswordJSONRequestBody defines body for ResetPassword for application/json ContentType.
 type ResetPasswordJSONRequestBody ResetPasswordJSONBody
 
@@ -1158,12 +1217,21 @@ type ServerInterface interface {
 	// GetMe Usuário atual e suas casas
 	// (GET /auth/me)
 	GetMe(c *gin.Context)
+	// UpdateMe Atualiza o próprio nome e/ou o tema de cor (preferência da conta, vale em todos os aparelhos)
+	// (PATCH /auth/me)
+	UpdateMe(c *gin.Context)
+	// ChangePassword Troca a própria senha (confere a atual) e encerra as OUTRAS sessões do usuário
+	// (POST /auth/password)
+	ChangePassword(c *gin.Context)
 	// ResetPassword Redefine a senha com o link gerado por um admin
 	// (POST /auth/password-reset)
 	ResetPassword(c *gin.Context)
 	// Register Cria usuário a partir de um convite ou cria uma nova casa
 	// (POST /auth/register)
 	Register(c *gin.Context)
+	// EndOtherSessions Sai de todos os outros aparelhos (encerra as sessões do usuário, menos a atual)
+	// (DELETE /auth/sessions/others)
+	EndOtherSessions(c *gin.Context)
 	// LookupCnpj Consulta razão social e nome fantasia de um CNPJ na BrasilAPI (cache e prazo curto)
 	// (GET /cnpj/{cnpj})
 	LookupCnpj(c *gin.Context, cnpj string)
@@ -1197,6 +1265,9 @@ type ServerInterface interface {
 	// UpdateCategory Edita ou arquiva categoria
 	// (PATCH /households/{householdId}/categories/{categoryId})
 	UpdateCategory(c *gin.Context, householdId HouseholdId, categoryId openapi_types.UUID)
+	// ExportInvoicesCsv Exporta as contas da casa em CSV (planilha). Todos os membros, inclusive leitura, podem exportar.
+	// (GET /households/{householdId}/export/invoices.csv)
+	ExportInvoicesCsv(c *gin.Context, householdId HouseholdId, params ExportInvoicesCsvParams)
 	// ListIncomeSources Fontes recorrentes (previsão de salário e benefício)
 	// (GET /households/{householdId}/income-sources)
 	ListIncomeSources(c *gin.Context, householdId HouseholdId)
@@ -1352,6 +1423,32 @@ func (siw *ServerInterfaceWrapper) GetMe(c *gin.Context) {
 	siw.Handler.GetMe(c)
 }
 
+// UpdateMe operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMe(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateMe(c)
+}
+
+// ChangePassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangePassword(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ChangePassword(c)
+}
+
 // ResetPassword operation middleware
 func (siw *ServerInterfaceWrapper) ResetPassword(c *gin.Context) {
 
@@ -1376,6 +1473,19 @@ func (siw *ServerInterfaceWrapper) Register(c *gin.Context) {
 	}
 
 	siw.Handler.Register(c)
+}
+
+// EndOtherSessions operation middleware
+func (siw *ServerInterfaceWrapper) EndOtherSessions(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.EndOtherSessions(c)
 }
 
 // LookupCnpj operation middleware
@@ -1656,6 +1766,50 @@ func (siw *ServerInterfaceWrapper) UpdateCategory(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateCategory(c, householdId, categoryId)
+}
+
+// ExportInvoicesCsv operation middleware
+func (siw *ServerInterfaceWrapper) ExportInvoicesCsv(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExportInvoicesCsvParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExportInvoicesCsv(c, householdId, params)
 }
 
 // ListIncomeSources operation middleware
@@ -2895,6 +3049,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login)
 	router.POST(options.BaseURL+"/auth/logout", wrapper.Logout)
 	router.GET(options.BaseURL+"/auth/me", wrapper.GetMe)
+	router.PATCH(options.BaseURL+"/auth/me", wrapper.UpdateMe)
+	router.POST(options.BaseURL+"/auth/password", wrapper.ChangePassword)
+	router.DELETE(options.BaseURL+"/auth/sessions/others", wrapper.EndOtherSessions)
 	router.POST(options.BaseURL+"/auth/password-reset", wrapper.ResetPassword)
 	router.POST(options.BaseURL+"/households", wrapper.CreateHousehold)
 	router.DELETE(options.BaseURL+"/households/:householdId", wrapper.DeleteHousehold)
@@ -2939,6 +3096,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/households/:householdId/income-sources", wrapper.ListIncomeSources)
 	router.POST(options.BaseURL+"/households/:householdId/income-sources", wrapper.CreateIncomeSource)
 	router.PATCH(options.BaseURL+"/households/:householdId/income-sources/:sourceId", wrapper.UpdateIncomeSource)
+	router.GET(options.BaseURL+"/households/:householdId/export/invoices.csv", wrapper.ExportInvoicesCsv)
 	router.GET(options.BaseURL+"/households/:householdId/summary", wrapper.GetMonthlySummary)
 	router.POST(options.BaseURL+"/households/:householdId/boletos/extract", wrapper.ExtractBoleto)
 }

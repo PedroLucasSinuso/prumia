@@ -23,6 +23,8 @@ type Handler struct {
 
 	// Limites contra força bruta: por IP e por e-mail (o do e-mail impede varrer uma conta de vários IPs).
 	loginIP, loginEmail, registerIP, resetIP *ratelimit.Limiter
+	// Troca de senha: limite por usuário (quem roubou a sessão não pode testar senhas à vontade) e por IP.
+	passwordUser, passwordIP *ratelimit.Limiter
 }
 
 func NewHandler(svc *Service, cookie CookieConfig, log *slog.Logger) *Handler {
@@ -32,6 +34,9 @@ func NewHandler(svc *Service, cookie CookieConfig, log *slog.Logger) *Handler {
 		loginEmail: ratelimit.New(12*time.Second, 5), // 5 seguidas, depois 5/min
 		registerIP: ratelimit.New(12*time.Second, 5),
 		resetIP:    ratelimit.New(12*time.Second, 5),
+		// mesmos limites do login
+		passwordUser: ratelimit.New(12*time.Second, 5),
+		passwordIP:   ratelimit.New(6*time.Second, 10),
 	}
 }
 
@@ -75,7 +80,7 @@ func (h *Handler) me(c *gin.Context, user User) (gen.Me, error) {
 	if err != nil {
 		return gen.Me{}, err
 	}
-	out := gen.Me{Id: user.ID, Name: user.Name, Email: user.Email, Households: make([]gen.HouseholdRef, len(refs))}
+	out := gen.Me{Id: user.ID, Name: user.Name, Email: user.Email, Theme: gen.Theme(user.Theme), Households: make([]gen.HouseholdRef, len(refs))}
 	for i, r := range refs {
 		out.Households[i] = gen.HouseholdRef{Id: r.ID, Name: r.Name, Role: gen.Role(r.Role)}
 	}

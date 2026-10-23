@@ -91,6 +91,45 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Atualiza o próprio nome e/ou o tema de cor (preferência da conta, vale em todos os aparelhos) */
+        patch: operations["updateMe"];
+        trace?: never;
+    };
+    "/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Troca a própria senha (confere a atual) e encerra as OUTRAS sessões do usuário
+         * @description A sessão atual continua válida. Senha atual errada responde 400 com `fields.currentPassword`.
+         *     Tem limite de tentativas como o login (429 `too_many_requests`).
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions/others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sai de todos os outros aparelhos (encerra as sessões do usuário, menos a atual) */
+        delete: operations["endOtherSessions"];
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -662,6 +701,31 @@ export interface paths {
         patch: operations["updateIncomeSource"];
         trace?: never;
     };
+    "/households/{householdId}/export/invoices.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Exporta as contas da casa em CSV (planilha). Todos os membros, inclusive leitura, podem exportar.
+         * @description Filtra pelo **vencimento** (`from` e `to` inclusivos; ambos opcionais). Contas excluídas ficam de fora.
+         *     Formato pensado para o Excel em português: UTF-8 com BOM, separador `;`, valores em reais com vírgula
+         *     (`1234,56`) e datas `dd/mm/aaaa`. Colunas: vencimento, competência, descrição, categoria (`Mãe › Filha`),
+         *     favorecido, valor, status (pendente, atrasada, paga), pago em, carteira, valor pago.
+         */
+        get: operations["exportInvoicesCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/summary": {
         parameters: {
             query?: never;
@@ -758,7 +822,18 @@ export interface components {
             name: string;
             /** Format: email */
             email: string;
+            theme: components["schemas"]["Theme"];
             households: components["schemas"]["HouseholdRef"][];
+        };
+        /**
+         * @description Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+         * @enum {string}
+         */
+        Theme: "sistema" | "marfim" | "grafite" | "contraste";
+        /** @description Só os campos presentes mudam. */
+        MePatch: {
+            name?: string;
+            theme?: components["schemas"]["Theme"];
         };
         HouseholdRef: {
             /** Format: uuid */
@@ -1396,6 +1471,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: password */
+                    currentPassword: string;
+                    /** Format: password */
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Senha trocada */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    endOtherSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sessões encerradas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Quantas sessões foram encerradas */
+                        ended: number;
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -2582,6 +2737,34 @@ export interface operations {
                     "application/json": components["schemas"]["IncomeSource"];
                 };
             };
+        };
+    };
+    exportInvoicesCsv: {
+        parameters: {
+            query?: {
+                /** @description Vencimento a partir de (inclusive) */
+                from?: string;
+                /** @description Vencimento até (inclusive) */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Arquivo CSV (Content-Disposition: attachment) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
     };
     getMonthlySummary: {
