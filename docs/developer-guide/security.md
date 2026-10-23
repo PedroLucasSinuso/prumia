@@ -97,6 +97,14 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 - **HSTS** ativo de forma condicional: só sai quando a requisição chega com `X-Forwarded-Proto: https` (o `tailscale serve`
   manda); acesso http local não recebe. Detalhes em [deployment.md](deployment.md#hsts-condicional).
 
+## Saída de rede: consulta de CNPJ
+
+A API faz uma única chamada de saída: `GET` na BrasilAPI (`CNPJ_LOOKUP_URL`; `off` desliga). Só o CNPJ (dado público, já validado
+pelos dígitos verificadores e reduzido a 14 dígitos, então nada de texto livre na URL) sai do servidor; nunca o boleto, a linha
+digitável, valores ou dados da casa. Prazo de 4 s, resposta limitada a 1 MB, cache de 24 h (10 min para "não existe"; falhas não
+entram no cache), a resposta precisa trazer o mesmo CNPJ pedido e `GET /cnpj/{cnpj}` tem limite por usuário. O app nunca depende
+dela: sem a consulta, tudo funciona, só sem conferir o nome.
+
 ## Checklist de produção
 
 1. `make env` (senha do Postgres aleatória); conferir que o `.env` não está no git.

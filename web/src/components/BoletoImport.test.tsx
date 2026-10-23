@@ -100,6 +100,17 @@ describe('importar boleto', () => {
       )
     })
 
+    it('mostra o selo quando o nome foi conferido pelo CNPJ', async () => {
+      const user = userEvent.setup()
+      const ex = comCnpj()
+      ex.boleto.beneficiaryVerified = true
+      mockApi({ me: ok(me), extract: ok(ex) })
+      const dialog = await openNew(user)
+      await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
+      const review = await within(dialog).findByRole('region', { name: 'Conferir antes de salvar' })
+      expect(within(review).getByText(/conferido pelo CNPJ/)).toBeInTheDocument()
+    })
+
     it('apelido em branco: nada é cadastrado', async () => {
       const user = userEvent.setup()
       mockApi({ me: ok(me), extract: ok(comCnpj()), create: ok(invoice({ id: 'n1', description: 'GASCO DISTRIBUIDORA S/A' })) })

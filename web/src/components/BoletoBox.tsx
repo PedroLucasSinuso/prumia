@@ -32,6 +32,11 @@ export function BoletoBox({ boleto, method }: { boleto: Boleto; method?: Method 
       {boleto.beneficiaryName && (
         <p className="text-sm">
           <span className="text-graphite/70">Beneficiário:</span> {boleto.beneficiaryName}
+          {boleto.beneficiaryVerified && (
+            <span className="ml-1 text-xs text-graphite/75">
+              <span aria-hidden="true" className="font-mono text-cobalt">[ ▪ ]</span> conferido pelo CNPJ
+            </span>
+          )}
         </p>
       )}
       {method && (

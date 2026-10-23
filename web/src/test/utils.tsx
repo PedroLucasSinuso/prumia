@@ -79,6 +79,8 @@ type Routes = {
   invoices?: Reply
   categories?: Reply
   payees?: Reply
+  /** GET /cnpj/{cnpj} (BrasilAPI). Padrão: 503, a consulta fora do ar. */
+  cnpj?: Reply
   createPayee?: Reply
   updatePayee?: Reply
   createCategory?: Reply
@@ -118,6 +120,7 @@ export function mockApi(r: Routes = {}) {
       if (init?.params?.query?.includeArchived || !Array.isArray(reply.data)) return reply
       return { ...reply, data: (reply.data as Category[]).filter((c) => !c.archived) }
     }
+    if (url === '/cnpj/{cnpj}') return r.cnpj ?? fail(503, 'lookup_unavailable')
     if (url === '/households/{householdId}/payees') return r.payees ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)

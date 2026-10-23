@@ -157,6 +157,38 @@ describe('ajustes · favorecidos', () => {
     expect(await screen.findByText('Gás criado.')).toBeInTheDocument()
   })
 
+  it('ao completar o CNPJ, busca a razão social e preenche (sem sobrescrever o que já foi digitado)', async () => {
+    mockApi({ me: ok(me), categories: ok(cats), cnpj: ok({ cnpj: '11222333000181', legalName: 'GASCO DISTRIBUIDORA S/A', tradeName: 'GASCO' }) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
+    expect(await within(dialog).findByText(/CNPJ conferido: GASCO DISTRIBUIDORA S\/A \(GASCO\)/)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Razão social (opcional)')).toHaveValue('GASCO DISTRIBUIDORA S/A')
+    expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', { params: { path: { cnpj: '11222333000181' } } })
+
+    // a razão social editada à mão não é sobrescrita por uma nova consulta
+    const razao = within(dialog).getByLabelText('Razão social (opcional)')
+    await userEvent.clear(razao)
+    await userEvent.type(razao, 'Nome meu')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '{Backspace}3')
+    expect(razao).toHaveValue('Nome meu')
+  })
+
+  it('consulta fora do ar não atrapalha: nenhum aviso e o cadastro segue normal', async () => {
+    mockApi({ me: ok(me), categories: ok(cats), createPayee: ok({ ...gas, id: 'p3' }) })
+    renderAt('/configuracoes')
+    await userEvent.click(await screen.findByRole('button', { name: /Novo favorecido/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo favorecido' })
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Gás')
+    await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
+    await waitFor(() => expect(api.GET).toHaveBeenCalledWith('/cnpj/{cnpj}', expect.anything()))
+    expect(within(dialog).queryByText(/CNPJ conferido/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
+    await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/payees', expect.anything()))
+  })
+
   it('CNPJ incompleto é recusado antes de enviar e CNPJ repetido mostra o aviso do servidor', async () => {
     mockApi({ me: ok(me), categories: ok(cats), createPayee: fail(409, 'payee_cnpj_exists') })
     renderAt('/configuracoes')

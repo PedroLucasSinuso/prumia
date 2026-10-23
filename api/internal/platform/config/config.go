@@ -25,6 +25,8 @@ type Config struct {
 	MaxHouseholdsPerUser int
 	// SessionMaxAge é a validade absoluta da sessão (SESSION_MAX_AGE_DAYS, padrão 90 dias).
 	SessionMaxAge time.Duration
+	// CNPJLookupURL é a base da consulta de CNPJ (CNPJ_LOOKUP_URL; padrão BrasilAPI). "off" desliga a consulta externa.
+	CNPJLookupURL string
 }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
@@ -44,6 +46,7 @@ func load(get func(string) string) (Config, error) {
 		DatabaseURL:      get("DATABASE_URL"),
 		AutoMigrate:      get("AUTO_MIGRATE") == "true",
 		OpenRegistration: get("OPEN_REGISTRATION") == "true",
+		CNPJLookupURL:    valueOr(get("CNPJ_LOOKUP_URL"), "https://brasilapi.com.br/api/cnpj/v1"),
 	}
 
 	var problems []error

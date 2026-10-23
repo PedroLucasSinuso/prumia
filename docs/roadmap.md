@@ -23,7 +23,7 @@ Motivação: "Gasco" é "Gasco" ou "Gás" para a casa. Risco: **alto** (migratio
 
 1. **Favorecidos** (feito, #29): tabela `payees` (`household_id`, `name` apelido, `cnpj` opcional único por casa, `legal_name`, `default_category_id`, `deleted_at`) e `invoices.payee_id` nullable, ambos com FK composta. Sem backfill. Endpoints no OpenAPI, bloco "Favorecidos" em Ajustes, testes de isolamento entre casas.
 2. **Boleto reconhece o favorecido** (PR aberto): extrair e validar o CNPJ (dígitos verificadores; aceitar máscara torta) do texto; se já cadastrado, preencher "O que é" com o apelido e a categoria padrão; se novo, perguntar "lembrar como…?" depois de salvar.
-3. **BrasilAPI**: consulta de CNPJ chamada pela API, para conferir o nome lido do boleto (OCR erra, a API não) e para o cadastro manual, chamada pela API (nunca pelo navegador), timeout curto, cache por CNPJ, falha silenciosa. Exige saída de rede para o container `api`.
+3. **BrasilAPI** (PR aberto): consulta de CNPJ chamada pela API, para conferir o nome lido do boleto (OCR erra, a API não) e para o cadastro manual, chamada pela API (nunca pelo navegador), timeout curto, cache por CNPJ, falha silenciosa. Exige saída de rede para o container `api`.
 
 Decisão aberta: favorecido opcional em toda invoice (sugerido) ou sempre perguntado na conta avulsa.
 

@@ -25,6 +25,12 @@ O arquivo é lido na hora e **não fica guardado**. Você sempre confere os dado
 
 Um aviso confirma a cópia. A linha é copiada só com os números, do jeito que o app do banco aceita colar.
 
+## Conferência do nome pelo CNPJ
+
+Quando o boleto traz o CNPJ, o prumia confere o nome de quem recebe no cadastro público de empresas (BrasilAPI). Se achar, usa o
+nome do cadastro (mais seguro que o texto do boleto, que pode sair errado na leitura) e mostra **[ ▪ ] conferido pelo CNPJ**.
+Se a consulta estiver fora do ar, tudo segue normal com o nome lido do boleto. Só o CNPJ, que é público, é consultado.
+
 ## Dar um nome a quem recebe (favorecido)
 
 Quando o boleto traz o CNPJ de quem recebe, o quadro mostra **Como vocês chamam GASCO DISTRIBUIDORA S/A?**. Digite o seu nome ("Gás") e salve:

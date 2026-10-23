@@ -14,6 +14,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
+	"github.com/PedroLucasSinuso/prumia/api/internal/brasilapi"
 	"github.com/PedroLucasSinuso/prumia/api/internal/payee"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -38,11 +39,17 @@ type PayeeFinder interface {
 	FindByCNPJ(ctx context.Context, householdID uuid.UUID, cnpj string) (payee.Payee, error)
 }
 
+// CNPJLooker consulta a empresa de um CNPJ (interface mínima; a implementação real é o cliente da BrasilAPI).
+type CNPJLooker interface {
+	Lookup(ctx context.Context, cnpj string) (brasilapi.Company, error)
+}
+
 // Boletos implementa POST /households/{id}/boletos/extract. O arquivo vive só na memória desta requisição.
 type Boletos struct {
 	Extractor *boleto.Extractor
 	Dup       DuplicateFinder
 	Payees    PayeeFinder
+	Company   CNPJLooker // opcional (nil = não confere o nome pelo CNPJ)
 	Log       *slog.Logger
 	// Limite por usuário: a leitura (PDF/OCR) é a operação mais cara do servidor.
 	limiter *ratelimit.Limiter
@@ -54,8 +61,8 @@ type Boletos struct {
 // maxConcurrentExtractions: leituras simultâneas. As demais esperam a vez (até o tempo da requisição acabar).
 const maxConcurrentExtractions = 2
 
-func NewBoletos(ex *boleto.Extractor, dup DuplicateFinder, payees PayeeFinder, log *slog.Logger) *Boletos {
-	return &Boletos{Extractor: ex, Dup: dup, Payees: payees, Log: log, limiter: ratelimit.New(6*time.Second, 10),
+func NewBoletos(ex *boleto.Extractor, dup DuplicateFinder, payees PayeeFinder, company CNPJLooker, log *slog.Logger) *Boletos {
+	return &Boletos{Extractor: ex, Dup: dup, Payees: payees, Company: company, Log: log, limiter: ratelimit.New(6*time.Second, 10),
 		slots: make(chan struct{}, maxConcurrentExtractions)}
 }
 
@@ -178,11 +185,26 @@ func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
 		m := caldate.FromTime(res.Competence)
 		out.Boleto.DocumentCompetenceMonth = &m
 	}
-	if res.BeneficiaryCNPJ != "" {
-		out.Boleto.BeneficiaryCnpj = &res.BeneficiaryCNPJ
+	name := res.Beneficiary
+	cnpjDigits := res.BeneficiaryCNPJ
+	if cnpjDigits != "" && h.Company != nil {
+		// O nome lido do boleto (principalmente por OCR) pode estar errado; o cadastro do CNPJ é a fonte confiável.
+		switch co, err := h.Company.Lookup(ctx, cnpjDigits); {
+		case err == nil:
+			name = co.LegalName
+			verified := true
+			out.Boleto.BeneficiaryVerified = &verified
+		case errors.Is(err, brasilapi.ErrNotFound) && res.Method == boleto.MethodOCR:
+			// CNPJ com dígitos válidos mas inexistente, vindo de OCR: quase certamente número lido errado. Não oferece cadastrar.
+			cnpjDigits = ""
+		}
+		// qualquer outra falha (API fora do ar, prazo): segue com o que o documento trouxe
+	}
+	if cnpjDigits != "" {
+		out.Boleto.BeneficiaryCnpj = &cnpjDigits
 		// Favorecido já conhecido da casa (arquivado não conta: a pessoa o tirou de uso). Sem achar, a tela oferece cadastrar.
 		if h.Payees != nil {
-			switch p, err := h.Payees.FindByCNPJ(ctx, householdId, res.BeneficiaryCNPJ); {
+			switch p, err := h.Payees.FindByCNPJ(ctx, householdId, cnpjDigits); {
 			case err == nil && !p.Archived():
 				gp := toGenPayee(p)
 				out.Payee = &gp
@@ -193,8 +215,8 @@ func (h *Boletos) ExtractBoleto(c *gin.Context, householdId gen.HouseholdId) {
 			}
 		}
 	}
-	if res.Beneficiary != "" {
-		out.Boleto.BeneficiaryName = &res.Beneficiary
+	if name != "" {
+		out.Boleto.BeneficiaryName = &name
 	}
 	c.JSON(http.StatusOK, out)
 }
