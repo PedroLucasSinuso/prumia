@@ -40,10 +40,17 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
-/* Temas (atributo data-theme no <html>, aplicado por public/theme-init.js e lib/theme.ts). */
+/* Temas (atributo data-theme no <html>, aplicado por public/theme-init.js e lib/theme.ts).
+   Os seletores são de ATRIBUTO (e não `:root[...]`) para que um contêiner com data-theme mostre outro tema dentro da
+   página: é assim que Ajustes > Aparência desenha a miniatura de cada tema. Todos têm a mesma especificidade, então
+   vale a ordem: base (Marfim) primeiro, depois Grafite, Contraste e Sistema-escuro. */
 @layer base {
-  /* Marfim (padrão): o visual original. */
-  :root {
+  /* Marfim (padrão): o visual original. Contraste e Sistema partem dele (um contêiner dentro do Grafite herdaria o
+     Grafite se não redeclarasse tudo). */
+  :root,
+  [data-theme='marfim'],
+  [data-theme='contraste'],
+  [data-theme='sistema'] {
     --prumia-surface: #f3ebdd;
     --prumia-ink: #313638;
     --prumia-structure: #203d40;
@@ -59,7 +66,7 @@
   /* Grafite (escuro): fundo graphite, texto ivory. O teal sobre graphite quase não se vê (1,05:1), então o papel de
      `structure` (títulos, botão primário, painéis) passa ao ivory e o texto sobre ele fica teal. O cobalto continua
      nos fundos/barras; como texto (2,2:1) ele não passa, e os links (já sublinhados) usam ivory. */
-  :root[data-theme='grafite'] {
+  [data-theme='grafite'] {
     --prumia-surface: #313638;
     --prumia-ink: #f3ebdd;
     --prumia-structure: #f3ebdd;
@@ -72,7 +79,7 @@
   }
 
   /* Contraste (alto contraste): Marfim com bordas mais fortes, texto de link em teal (9,8:1) e foco mais grosso. */
-  :root[data-theme='contraste'] {
+  [data-theme='contraste'] {
     --prumia-accent-text: #203d40;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 55%, transparent);
     --prumia-focus: 3px;
@@ -80,7 +87,7 @@
 
   /* Sistema: Marfim de dia, Grafite quando o sistema operacional está no modo escuro. */
   @media (prefers-color-scheme: dark) {
-    :root[data-theme='sistema'] {
+    [data-theme='sistema'] {
       --prumia-surface: #313638;
       --prumia-ink: #f3ebdd;
       --prumia-structure: #f3ebdd;
