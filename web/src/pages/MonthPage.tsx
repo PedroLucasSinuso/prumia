@@ -196,7 +196,7 @@ export default function MonthPage() {
             <p className={`${label} text-ink/80`}>total do mês</p>
             <p className="font-mono text-[38px] font-semibold leading-tight tracking-tight tabular-nums">{formatCents(total)}</p>
             <p className="mt-2.5 flex items-center gap-2 text-[13px] text-ink/80">
-              <span aria-hidden="true" className="size-2.5 rounded-xs bg-alert" />
+              {overdueCount > 0 && <span aria-hidden="true" className="size-2.5 rounded-xs bg-alert" />}
               {overdueCount === 0 ? 'nenhuma conta atrasada' : `${overdueCount} ${overdueCount === 1 ? 'conta atrasada' : 'contas atrasadas'}`}
             </p>
           </div>
@@ -245,7 +245,7 @@ export default function MonthPage() {
             </div>
             {empty && (
               <p className="mt-2 rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/70">
-                Nenhuma conta neste mês.{canWrite ? ' Toque em + para adicionar a primeira.' : ''}
+                Nenhuma conta neste mês.{canWrite ? ' Use Nova conta para adicionar a primeira.' : ''}
               </p>
             )}
             <Timeline
@@ -276,7 +276,7 @@ export default function MonthPage() {
                 </section>
               ) : (
                 <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
-                  Toque numa conta para ver os detalhes{canWrite ? ', ou em Nova conta para lançar uma' : ''}.
+                  Selecione uma conta para ver os detalhes{canWrite ? ', ou use Nova conta para lançar uma' : ''}.
                 </p>
               )}
               {byCategory.length > 0 && (

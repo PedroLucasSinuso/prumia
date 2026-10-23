@@ -233,7 +233,7 @@ export default function IncomesPage() {
                 </section>
               ) : (
                 <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
-                  Toque numa receita para ver ou ajustar o mês{canWrite ? ', ou em Nova receita para lançar uma avulsa' : ''}.
+                  Selecione uma receita para ver ou ajustar o mês{canWrite ? ', ou use Nova receita para lançar uma avulsa' : ''}.
                 </p>
               )}
             </aside>
