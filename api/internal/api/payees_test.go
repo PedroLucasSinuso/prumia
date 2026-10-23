@@ -20,7 +20,7 @@ func TestFavorecidoCriarListarEditar(t *testing.T) {
 	base := "/api/households/" + house + "/payees"
 	cat := mustCat(a, ana, house)
 
-	// CNPJ com a máscara torta do PDF da Gasco; o servidor guarda só dígitos.
+	// CNPJ com a máscara fora do padrão, como aparece em PDFs; o servidor guarda só dígitos.
 	r := a.do("POST", base, map[string]any{"name": "  Gás ", "cnpj": "11.222-333/0001-81", "legalName": "GASCO DISTRIBUIDORA S/A", "defaultCategoryId": cat}, ana)
 	if r.Code != http.StatusCreated {
 		t.Fatalf("criar: %d %s", r.Code, r.Body)

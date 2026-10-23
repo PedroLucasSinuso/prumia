@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { BoletoExtraction, Payee, PayeeInput, PayeePatch, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { BoletoExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -166,6 +166,18 @@ export function useInvoiceActions(houseId: string) {
 /** Detalhe de uma invoice (inclui o boleto). Usado para abrir uma conta que pode estar em outro mês. */
 export function getInvoice(houseId: string, invoiceId: string): Promise<Invoice> {
   return unwrap(api.GET('/households/{householdId}/invoices/{invoiceId}', { params: { path: { householdId: houseId, invoiceId } } }))
+}
+
+/**
+ * Razão social e nome fantasia de um CNPJ (só dígitos). Devolve null quando não achou OU a consulta está fora do ar:
+ * é só uma ajuda de preenchimento, então falhar nunca atrapalha o cadastro.
+ */
+export async function lookupCnpj(cnpj: string): Promise<CnpjInfo | null> {
+  try {
+    return await unwrap(api.GET('/cnpj/{cnpj}', { params: { path: { cnpj } } }))
+  } catch {
+    return null
+  }
 }
 
 // Status HTTP -> código estável, para quando a resposta não traz `code` (ex.: 413 devolvido pelo nginx, em HTML).

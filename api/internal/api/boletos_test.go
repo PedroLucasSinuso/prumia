@@ -253,7 +253,7 @@ func TestBoletoSoMembroEscreve(t *testing.T) {
 
 // No máximo maxConcurrentExtractions leituras ao mesmo tempo no servidor; a próxima espera e, se o tempo acabar, desiste.
 func TestBoletoLeiturasSimultaneasLimitadas(t *testing.T) {
-	h := NewBoletos(testExtractor(), nil, nil, nil)
+	h := NewBoletos(testExtractor(), nil, nil, nil, nil)
 	for i := 0; i < maxConcurrentExtractions; i++ {
 		if !h.acquire(context.Background()) {
 			t.Fatal("deveria haver lugar livre")

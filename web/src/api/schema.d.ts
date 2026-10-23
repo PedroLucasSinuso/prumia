@@ -310,6 +310,26 @@ export interface paths {
         patch: operations["updateCategory"];
         trace?: never;
     };
+    "/cnpj/{cnpj}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 14 dígitos */
+                cnpj: string;
+            };
+            cookie?: never;
+        };
+        /** Consulta razão social e nome fantasia de um CNPJ na BrasilAPI (cache e prazo curto) */
+        get: operations["lookupCnpj"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/payees": {
         parameters: {
             query?: never;
@@ -794,6 +814,11 @@ export interface components {
             sortOrder?: number;
             archived?: boolean;
         };
+        CnpjInfo: {
+            cnpj: string;
+            legalName: string;
+            tradeName?: string | null;
+        };
         Payee: {
             /** Format: uuid */
             id: string;
@@ -922,6 +947,8 @@ export interface components {
             digitableLine: string;
             barcode?: string | null;
             beneficiaryName?: string | null;
+            /** @description Verdadeiro quando o nome de quem recebe foi conferido pelo CNPJ na BrasilAPI (resposta da extração; ignorado ao salvar) */
+            beneficiaryVerified?: boolean;
             /** @description CNPJ de quem recebe, lido do texto e validado pelos dígitos verificadores */
             beneficiaryCnpj?: string | null;
             documentAmountCents?: (number & components["schemas"]["Cents"]) | null;
@@ -1773,6 +1800,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Category"];
+                };
+            };
+        };
+    };
+    lookupCnpj: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 14 dígitos */
+                cnpj: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Empresa */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnpjInfo"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            /** @description Consulta indisponível (a BrasilAPI caiu ou está desligada); o app segue sem ela */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

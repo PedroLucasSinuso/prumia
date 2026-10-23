@@ -329,6 +329,20 @@ paths:
         '204': { description: "Excluída" }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  # ------------------------------------------------------------------ cnpj
+  /cnpj/{cnpj}:
+    parameters:
+      - { name: cnpj, in: path, required: true, description: "14 dígitos", schema: { type: string, maxLength: 30 } }
+    get:
+      tags: [payees]
+      operationId: lookupCnpj
+      summary: Consulta razão social e nome fantasia de um CNPJ na BrasilAPI (cache e prazo curto)
+      responses:
+        '200': { description: "Empresa", content: { application/json: { schema: { $ref: '#/components/schemas/CnpjInfo' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { description: "Consulta indisponível (a BrasilAPI caiu ou está desligada); o app segue sem ela", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
   # ---------------------------------------------------------------- payees
   /households/{householdId}/payees:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
@@ -830,6 +844,13 @@ components:
         sortOrder: { type: integer }
         archived: { type: boolean }
 
+    CnpjInfo:
+      type: object
+      required: [cnpj, legalName]
+      properties:
+        cnpj: { type: string, pattern: '^[0-9]{14}$' }
+        legalName: { type: string }
+        tradeName: { type: string, nullable: true }
     Payee:
       type: object
       required: [id, name, archived]
@@ -964,6 +985,7 @@ components:
         digitableLine: { type: string, pattern: '^[0-9]{47,48}$' }
         barcode: { type: string, pattern: '^[0-9]{44}$', nullable: true }
         beneficiaryName: { type: string, nullable: true }
+        beneficiaryVerified: { type: boolean, description: "Verdadeiro quando o nome de quem recebe foi conferido pelo CNPJ na BrasilAPI (resposta da extração; ignorado ao salvar)" }
         beneficiaryCnpj: { type: string, pattern: '^[0-9]{14}$', nullable: true, description: "CNPJ de quem recebe, lido do texto e validado pelos dígitos verificadores" }
         documentAmountCents: { type: integer, allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
         documentDueDate: { type: string, format: date, nullable: true }

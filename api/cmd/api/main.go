@@ -20,6 +20,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/api"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
+	"github.com/PedroLucasSinuso/prumia/api/internal/brasilapi"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
@@ -89,6 +90,7 @@ func run(args []string) error {
 	summaries := summary.NewService(gdb)
 	households := household.NewService(gdb)
 	payeeSvc := payee.NewService(gdb)
+	cnpjClient := brasilapi.New(cfg.CNPJLookupURL) // nil se CNPJ_LOOKUP_URL=off
 	households.MaxPerUser = cfg.MaxHouseholdsPerUser
 	authSvc, err := auth.NewService(gdb, households, auth.Config{OpenRegistration: cfg.OpenRegistration, SessionMaxAge: cfg.SessionMaxAge})
 	if err != nil {
@@ -102,12 +104,13 @@ func run(args []string) error {
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
 		&api.Payees{Svc: payeeSvc, Log: log},
+		api.NewCNPJLookups(cnpjClient, log),
 		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},
 		&api.Recurrences{Svc: recurrences, Log: log},
 		&api.Incomes{Svc: incomes, Log: log},
 		&api.Summaries{Svc: summaries, Log: log, Horizons: []api.HorizonEnsurer{incomes, recurrences}},
-		api.NewBoletos(boleto.NewExtractor(), invoices, payeeSvc, log),
+		api.NewBoletos(boleto.NewExtractor(), invoices, payeeSvc, cnpjClient, log),
 	)
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 

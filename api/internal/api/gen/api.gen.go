@@ -338,10 +338,13 @@ type Boleto struct {
 	Barcode *string `json:"barcode,omitempty"`
 
 	// BeneficiaryCnpj CNPJ de quem recebe, lido do texto e validado pelos dígitos verificadores
-	BeneficiaryCnpj     *string `json:"beneficiaryCnpj,omitempty"`
-	BeneficiaryName     *string `json:"beneficiaryName,omitempty"`
-	DigitableLine       string  `json:"digitableLine"`
-	DocumentAmountCents *Cents  `json:"documentAmountCents,omitempty"`
+	BeneficiaryCnpj *string `json:"beneficiaryCnpj,omitempty"`
+	BeneficiaryName *string `json:"beneficiaryName,omitempty"`
+
+	// BeneficiaryVerified Verdadeiro quando o nome de quem recebe foi conferido pelo CNPJ na BrasilAPI (resposta da extração; ignorado ao salvar)
+	BeneficiaryVerified *bool  `json:"beneficiaryVerified,omitempty"`
+	DigitableLine       string `json:"digitableLine"`
+	DocumentAmountCents *Cents `json:"documentAmountCents,omitempty"`
 
 	// DocumentCompetenceMonth Mês de referência lido do texto (dia 1), quando o documento informa
 	DocumentCompetenceMonth *caldate.Date `json:"documentCompetenceMonth,omitempty"`
@@ -404,6 +407,13 @@ type CategoryTotal struct {
 
 // Cents Valor em centavos (BRL)
 type Cents = money.Cents
+
+// CnpjInfo defines model for CnpjInfo.
+type CnpjInfo struct {
+	Cnpj      string  `json:"cnpj"`
+	LegalName string  `json:"legalName"`
+	TradeName *string `json:"tradeName,omitempty"`
+}
 
 // Deduction defines model for Deduction.
 type Deduction struct {
@@ -1145,6 +1155,9 @@ type ServerInterface interface {
 	// Register Cria usuário a partir de um convite ou cria uma nova casa
 	// (POST /auth/register)
 	Register(c *gin.Context)
+	// LookupCnpj Consulta razão social e nome fantasia de um CNPJ na BrasilAPI (cache e prazo curto)
+	// (GET /cnpj/{cnpj})
+	LookupCnpj(c *gin.Context, cnpj string)
 	// GetHealth Verifica se a API e o banco estão respondendo
 	// (GET /healthz)
 	GetHealth(c *gin.Context)
@@ -1354,6 +1367,31 @@ func (siw *ServerInterfaceWrapper) Register(c *gin.Context) {
 	}
 
 	siw.Handler.Register(c)
+}
+
+// LookupCnpj operation middleware
+func (siw *ServerInterfaceWrapper) LookupCnpj(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "cnpj" -------------
+	var cnpj string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "cnpj", c.Param("cnpj"), &cnpj, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cnpj: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.LookupCnpj(c, cnpj)
 }
 
 // GetHealth operation middleware
@@ -2864,6 +2902,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/categories", wrapper.CreateCategory)
 	router.DELETE(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.DeleteCategory)
 	router.PATCH(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.UpdateCategory)
+	router.GET(options.BaseURL+"/cnpj/:cnpj", wrapper.LookupCnpj)
 	router.GET(options.BaseURL+"/households/:householdId/payees", wrapper.ListPayees)
 	router.POST(options.BaseURL+"/households/:householdId/payees", wrapper.CreatePayee)
 	router.DELETE(options.BaseURL+"/households/:householdId/payees/:payeeId", wrapper.DeletePayee)

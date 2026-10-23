@@ -62,6 +62,12 @@ Backend: `internal/<domínio>/` com `handler`, `service`, `repository`. Domínio
    enviar ao dono um **guia de teste manual** (passos numerados, resultado esperado, o que reportar). Colocar no corpo do PR
    e resumir na resposta. Não marcar a tarefa como concluída no `docs/product/plan.md` antes do retorno do dono.
 
+5. **Dados pessoais do dono nunca vão para o Git nem para o GitHub** (commits, PRs, issues, comentários, testes, docs, nomes de
+   arquivo): boletos e faturas reais, nomes de empresas/provedores que a casa usa, CNPJ/CPF/número de cliente, linhas digitáveis,
+   valores e datas reais, nomes de arquivos de teste. Os testes manuais do dono usam boletos reais: ao relatar, diga só "o primeiro
+   boleto de teste" / "o boleto de gás". Fixtures são **sintéticos** (CNPJs fictícios com dígitos verificadores válidos, linhas
+   digitáveis geradas, empresas inventadas). Antes de abrir PR, releia o corpo e o diff procurando por isso.
+
 Hooks do projeto (`.claude/settings.json`, scripts em `.claude/hooks/`) fazem valer isto: `git_guard.py` bloqueia commit fora de
 `tag: texto` (uma linha, até 72 caracteres), trailers de atribuição, `--no-verify` e force push; `format.sh` roda `gofmt` em `.go`
 e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear algo legítimo, corrija o hook, não o contorne. Testes do guard: `make hooks-test` (acrescente o caso que falhou antes de corrigir).

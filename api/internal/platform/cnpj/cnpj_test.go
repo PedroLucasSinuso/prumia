@@ -4,8 +4,8 @@ import "testing"
 
 func TestValid(t *testing.T) {
 	for in, want := range map[string]bool{
-		"45.678.901/0001-75": true, // Netlink
-		"11.222-333/0001-81": true, // Gasco (máscara torta, como vem no PDF)
+		"45.678.901/0001-75": true, // empresa A
+		"11.222-333/0001-81": true, // máscara fora do padrão, como aparece em PDFs
 		"45678901000175":     true,
 		"45.678.901/0001-76": false, // DV errado
 		"00000000000000":     false, // repetido

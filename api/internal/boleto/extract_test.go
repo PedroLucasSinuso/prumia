@@ -297,7 +297,7 @@ func TestFindInTextMetadados(t *testing.T) {
 		t.Fatal("linha de 47 dígitos não encontrada")
 	}
 	if b.Beneficiary != "NETLINK PROVEDOR LTDA" || b.Competence.Format("2006-01") != "2026-10" {
-		t.Errorf("netlink: %q %v", b.Beneficiary, b.Competence)
+		t.Errorf("provedor: %q %v", b.Beneficiary, b.Competence)
 	}
 	// O vencimento do código de barras prevalece sobre o texto.
 	if got := b.DueDate.Format("2006-01-02"); got != "2026-10-10" {
@@ -316,7 +316,7 @@ func TestDatasImpossiveisSaoIgnoradas(t *testing.T) {
 
 func TestFindCNPJ(t *testing.T) {
 	for name, tc := range map[string]struct{ text, want string }{
-		"máscara torta da Gasco":      {"GASCO DISTRIBUIDORA S/A − Rua X CNPJ: 11.222-333/0001-81. Inscrição", "11222333000181"},
+		"máscara fora do padrão":    {"GASCO DISTRIBUIDORA S/A − Rua X CNPJ: 11.222-333/0001-81. Inscrição", "11222333000181"},
 		"com rótulo de razão":       {"RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nCNPJ: 45.678.901/0001-75\nCNPJ/CPF: 123.456.789-09", "45678901000175"},
 		"prefere o do beneficiário": {"Pagador CNPJ 11.222.333/0001-81\nBeneficiário: LOJA\nCNPJ 45.678.901/0001-75", "45678901000175"},
 		"dígito errado é ignorado":  {"CNPJ: 45.678.901/0001-76", ""},
