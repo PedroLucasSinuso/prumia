@@ -36,6 +36,11 @@ export function monthLabel(month: string): string {
   return `${monthNames[m] ?? '?'} de ${month.slice(0, 4)}`
 }
 
+/** "2026-10-01" -> "outubro" (só o nome, sem o ano). */
+export function monthName(month: string): string {
+  return monthNames[Number(month.slice(5, 7)) - 1] ?? '?'
+}
+
 /** "2026-10-20" -> "20/10". */
 export function dayMonth(iso: string): string {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`

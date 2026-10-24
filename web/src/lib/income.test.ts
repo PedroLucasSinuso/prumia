@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { income, members } from '../test/utils'
-import { incomeSections, incomeTotals, monthSurplus, netOf, personTotals, ruleText, stateOf, stateText, sumDeductions, unitText, untilText } from './income'
+import { offsetSentence, incomeSections, incomeTotals, monthSurplus, netOf, personTotals, ruleText, stateOf, stateText, sumDeductions, unitText, untilText } from './income'
 
 const d = (amountCents: number) => ({ kind: 'inss' as const, name: 'INSS', amountCents })
 
@@ -39,6 +39,16 @@ describe('estado derivado e textos', () => {
     expect(ruleText({ rule: 'day_of_month', n: 28, weekendAdjust: 'backward' })).toBe('dia 28, ou o dia útil anterior')
     expect(ruleText({ rule: 'day_of_month', n: 28, weekendAdjust: 'none' })).toBe('dia 28, mesmo em fim de semana ou feriado')
     expect(ruleText(null)).toBe('data escolhida')
+    expect(ruleText({ rule: 'last_business_day', monthOffset: -1 })).toBe('último dia útil do mês anterior')
+    expect(ruleText({ rule: 'nth_business_day', n: 2, monthOffset: -1 })).toBe('2º dia útil do mês anterior')
+    expect(ruleText({ rule: 'day_of_month', n: 28, weekendAdjust: 'forward', monthOffset: -1 })).toBe('dia 28 do mês anterior, ou o próximo dia útil')
+    expect(ruleText({ rule: 'last_business_day', monthOffset: 0 })).toBe('último dia útil')
+  })
+  it('frase do "mês em que cai"', () => {
+    expect(offsetSentence('benefit', '2026-10-01', { rule: 'last_business_day' }, -1)).toBe('O vale de outubro cai no último dia útil de setembro.')
+    expect(offsetSentence('benefit', '2026-10-01', { rule: 'last_business_day' }, 0)).toBe('O vale de outubro cai no último dia útil de outubro.')
+    expect(offsetSentence('salary', '2027-01-01', { rule: 'nth_business_day', n: 2 }, -1)).toBe('O salário de janeiro cai no 2º dia útil de dezembro.')
+    expect(offsetSentence('other', '2026-03-01', { rule: 'day_of_month', n: 28 }, -1)).toBe('A receita de março cai no dia 28 de fevereiro.')
   })
   it('valor por unidade e fim da repetição', () => {
     expect(unitText({ quantity: 21, unitPriceCents: 6500, unitLabel: 'dia trabalhado' })).toBe('21 × R$ 65,00 · dia trabalhado')

@@ -4,8 +4,8 @@ import { ApiError } from '../api/errors'
 import { estimateTax, useIncomeDatePreview, useWallets } from '../api/queries'
 import type { AmountMode, DateRule, Deduction, Income, IncomeInput, IncomeKind, IncomePatch, Member, SeriesScope, WeekendAdjust } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { dayMonth, monthLabel, monthOf, todayISO, weekdayShort } from '../lib/dates'
-import { deductionLabel, kindLabel, netOf, PREVIEW_FETCH, sumDeductions, upcomingDates } from '../lib/income'
+import { dayMonth, monthLabel, monthName, monthOf, todayISO, weekdayShort } from '../lib/dates'
+import { deductionLabel, kindLabel, netOf, offsetOf, offsetSentence, PREVIEW_FETCH, sumDeductions, upcomingDates, type MonthOffset } from '../lib/income'
 import { formatCents } from '../lib/money'
 import { suggestWalletId } from '../lib/wallets'
 import { Button } from './Button'
@@ -86,6 +86,10 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
   const [ruleN, setRuleN] = useState(String(income?.dateRule?.n ?? 5))
   const [adjust, setAdjust] = useState<WeekendAdjust>(income?.dateRule?.weekendAdjust ?? 'forward')
   const [exact, setExact] = useState(income?.expectedDate ?? '')
+  // Mês em que a regra cai: 0 = o da competência; -1 = o anterior (o vale de outubro cai em setembro). Vale novo já vem
+  // em "mês anterior" (ver o tipo, abaixo) até a pessoa mexer no campo.
+  const [offset, setOffset] = useState<MonthOffset>(offsetOf(income?.dateRule))
+  const offsetTouched = useRef(false)
 
   const [repeats, setRepeats] = useState(!editing)
   const repeatsTouched = useRef(false)
@@ -98,13 +102,25 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
   const [notes, setNotes] = useState(income?.notes ?? '')
   const [competenceInput, setCompetenceInput] = useState(competence.slice(0, 7))
 
-  const canAskScope = editing && income.repeats && !income.received
-  const [scope, setScope] = useState<SeriesScope>(canAskScope ? (startScope ?? 'this') : 'this')
+  // Receita que se repete: mudar vale para este e os seguintes por padrão (o mês já recebido não muda em lote).
+  const canAskScope = editing && income.repeats
+  const [scope, setScope] = useState<SeriesScope>(canAskScope ? (startScope ?? 'following') : 'this')
+  const [scopeNote, setScopeNote] = useState<string>()
   const following = scope === 'following'
-  // "Uma data específica" só existe para um mês: em lote, volta para a regra que a receita já tinha.
+  // Campos que só existem em UM mês (competência, data específica, quantidade): ao mexer neles, o escopo volta sozinho para
+  // "Só este mês" e a tela explica (em lote o servidor recusaria com 400).
+  const forceThis = (what: string) => {
+    if (!canAskScope || scope === 'this') return
+    setScope('this')
+    setScopeNote(`Você mudou ${what}, que vale só para um mês: o escopo voltou para "Só este mês".`)
+  }
+  // Voltar para "este e os seguintes" descarta o que era de um mês só.
   const chooseFollowing = () => {
     setScope('following')
+    setScopeNote(undefined)
     if (rule === 'date') setRule(income?.dateRule?.rule ?? 'day_of_month')
+    setQuantity(income?.quantity != null ? String(income.quantity) : '')
+    setCompetenceInput(competence.slice(0, 7))
   }
 
   const [error, setError] = useState<string>()
@@ -120,7 +136,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
   const nNumber = Number(ruleN)
   const nValid = rule === 'day_of_month' ? Number.isInteger(nNumber) && nNumber >= 1 && nNumber <= 31 : rule === 'nth_business_day' ? Number.isInteger(nNumber) && nNumber >= 1 && nNumber <= 23 : true
   const currentRule: DateRule | undefined =
-    rule === 'date' || !nValid ? undefined : { rule, ...(rule === 'last_business_day' ? {} : { n: nNumber }), ...(rule === 'day_of_month' ? { weekendAdjust: adjust } : {}) }
+    rule === 'date' || !nValid ? undefined : { rule, ...(rule === 'last_business_day' ? {} : { n: nNumber }), ...(rule === 'day_of_month' ? { weekendAdjust: adjust } : {}), ...(offset === -1 ? { monthOffset: -1 as const } : {}) }
   // A prévia também serve para sugerir a quantidade (dias úteis do mês): sem regra válida usa o último dia útil só para contar.
   const previewRule: DateRule = currentRule ?? { rule: 'last_business_day' }
   // Dias úteis do mês da receita (sugestão de quantidade).
@@ -193,7 +209,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       (mode === 'fixed' ? gross !== orig.grossAmountCents : price !== orig.unitPriceCents || unitLabel.trim() !== (orig.unitLabel ?? '') || (!following && qty !== orig.quantity))
     if (amountChanged) Object.assign(patch, amountFields())
     const o = orig.dateRule
-    if (currentRule && (currentRule.rule !== o?.rule || (currentRule.n ?? null) !== (o?.n ?? null) || (currentRule.weekendAdjust ?? 'forward') !== (o?.weekendAdjust ?? 'forward'))) {
+    if (currentRule && (currentRule.rule !== o?.rule || (currentRule.n ?? null) !== (o?.n ?? null) || (currentRule.weekendAdjust ?? 'forward') !== (o?.weekendAdjust ?? 'forward') || offsetOf(currentRule) !== offsetOf(o))) {
       patch.dateRule = currentRule
     } else if (rule === 'date' && !following && exact !== orig.expectedDate) {
       patch.expectedDate = exact
@@ -253,6 +269,8 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           label="Tipo" value={kind}
           onChange={(k) => {
             setKind(k)
+            // Vale novo cai no mês anterior (o VR do mês é pago no fim do anterior); mexer no campo antes impede a troca.
+            if (!editing && !offsetTouched.current) setOffset(k === 'benefit' ? -1 : 0)
             // INSS e IRRF só valem para salário: ao trocar o tipo, saem da lista.
             if (k !== 'salary') setDeductions((ds) => ds.filter((d) => d.kind !== 'inss' && d.kind !== 'irrf'))
             if (!repeatsTouched.current && !editing) setRepeats(k !== 'other')
@@ -284,9 +302,8 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
               <Field label="Unidade" name="unitLabel" autoComplete="off" value={unitLabel} placeholder="dia trabalhado, hora, plantão"
                 onChange={(e) => { setUnitLabel(e.target.value); clear('unitLabel') }} error={fields.unitLabel} />
               <Field label="Quantidade" name="quantity" type="number" inputMode="numeric" min={1} max={999} value={quantity}
-                disabled={following}
-                hint={following ? 'Cada mês tem a sua quantidade.' : businessDays != null ? `Sugerida: ${businessDays} dias úteis em ${monthLabel(competence)}.` : undefined}
-                onChange={(e) => { qtyTouched.current = true; setQuantity(e.target.value); clear('quantity') }} error={fields.quantity} />
+                hint={following ? 'Cada mês tem a sua quantidade; mudar aqui vale só para este mês.' : businessDays != null ? `Sugerida: ${businessDays} dias úteis em ${monthLabel(competence)}.` : undefined}
+                onChange={(e) => { qtyTouched.current = true; setQuantity(e.target.value); clear('quantity'); if (e.target.value !== String(income?.quantity ?? '')) forceThis('a quantidade') }} error={fields.quantity} />
             </div>
             <p className="font-mono text-sm tabular-nums text-ink/85" aria-live="polite">
               {qtyValid ? `${qty} × ${formatCents(price)} = ${formatCents(total)}` : 'Informe a quantidade.'}
@@ -302,12 +319,12 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
         <legend className={legend}>Quando cai</legend>
         <Segmented
           label="Regra da data" wrap value={rule}
-          onChange={(r) => { setRule(r); clear('dateRule.rule'); clear('dateRule.n') }}
+          onChange={(r) => { setRule(r); clear('dateRule.rule'); clear('dateRule.n'); if (r === 'date') forceThis('uma data específica') }}
           options={[
             { value: 'day_of_month', label: 'Dia do mês' },
             { value: 'nth_business_day', label: 'N-ésimo dia útil' },
             { value: 'last_business_day', label: 'Último dia útil' },
-            ...((!repeats || editing) && !following ? [{ value: 'date' as const, label: 'Data específica' }] : []),
+            ...(!repeats || editing ? [{ value: 'date' as const, label: 'Data específica' }] : []),
           ]}
         />
         {(rule === 'day_of_month' || rule === 'nth_business_day') && (
@@ -321,6 +338,19 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
         {rule === 'day_of_month' && (
           <Segmented label="Se cair em fim de semana ou feriado" wrap value={adjust} onChange={setAdjust} options={adjustOptions} />
         )}
+        {rule !== 'date' && (
+          <div className="flex flex-col gap-1.5">
+            <Segmented
+              label="Mês em que cai" wrap value={String(offset)}
+              onChange={(v) => { offsetTouched.current = true; setOffset(v === '-1' ? -1 : 0); clear('dateRule.monthOffset') }}
+              options={[{ value: '0', label: 'No mês da competência' }, { value: '-1', label: 'No mês anterior' }]}
+            />
+            <p className="text-xs text-ink/75" aria-live="polite">
+              {offsetSentence(kind, competence, { rule, n: nValid ? nNumber : undefined }, offset)}
+              {offset === -1 ? ' A quantidade e o resumo continuam sendo os de ' + monthName(competence) + '.' : ''}
+            </p>
+          </div>
+        )}
         {rule === 'date' && (
           <DatePicker label="Data" name="expectedDate" required value={exact} onChange={(d) => { setExact(d); clear('expectedDate') }} error={fields.expectedDate} />
         )}
@@ -332,14 +362,14 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
             </span>
             {dates.passedThisMonth && (
               <span className="mt-1 block text-xs text-ink/70">
-                Este mês: {dayMonth(dates.passedThisMonth)} ({weekdayShort(dates.passedThisMonth)}), já passou: conta como recebida.
+                {offset === -1 ? `Competência de ${monthName(monthOf(today))}` : 'Este mês'}: {dayMonth(dates.passedThisMonth)} ({weekdayShort(dates.passedThisMonth)}), já passou: conta como recebida.
               </span>
             )}
           </div>
         )}
-        {editing && !following && (
+        {editing && (
           <MonthPicker label="Mês de competência" value={competenceInput}
-            hint="Mude só se a receita pertence a outro mês." onChange={(m) => { setCompetenceInput(m); clear('competenceMonth') }} error={fields.competenceMonth} />
+            hint="Mude só se a receita pertence a outro mês." onChange={(m) => { setCompetenceInput(m); clear('competenceMonth'); if (m !== competence.slice(0, 7)) forceThis('o mês de competência') }} error={fields.competenceMonth} />
         )}
       </fieldset>
       </div>
@@ -402,7 +432,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
         <p className="text-xs text-ink/75">
           {kindLabel[income.kind]} de <strong>{personName(income.userId)}</strong>
           {income.repeats ? ' · repete todo mês' : ''}
-          {income.repeats && income.received ? ' · já recebida: a edição vale só para este mês' : ''}
+          {income.received ? ' · já recebida' : ''}
         </p>
       )}
 
@@ -414,7 +444,11 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
             options={[{ value: 'this', label: 'Só este mês' }, { value: 'following', label: 'Este e os seguintes' }]}
           />
           <p className="text-xs text-ink/75">
-            {following ? 'Vale para os próximos meses que ainda não foram recebidos. Ajustes feitos neles são sobrescritos.' : 'Os outros meses não mudam.'}
+            {following
+              ? income.received
+                ? 'Este mês já foi recebido e não muda; os próximos sim.'
+                : 'Vale para os próximos meses que ainda não foram recebidos. Ajustes feitos neles são sobrescritos.'
+              : (scopeNote ?? 'Os outros meses não mudam.')}
           </p>
         </div>
       )}
