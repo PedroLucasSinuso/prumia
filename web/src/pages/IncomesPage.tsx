@@ -135,6 +135,21 @@ export default function IncomesPage() {
     )
   }
 
+  // Excluir a repetição inteira: previstos somem (logicamente), recebidos ficam. O Desfazer restaura o lote.
+  function deleteRepetition(sourceId: string, name: string) {
+    sourceActions.remove.mutate(sourceId, {
+      onSuccess: () => {
+        setPanel(null)
+        toast({
+          message: `${name}: repetição excluída. Os meses já recebidos ficam.`,
+          actionLabel: 'Desfazer',
+          onAction: () => sourceActions.restore.mutate(sourceId, { onError: () => toast({ message: 'Não foi possível desfazer. A repetição mudou depois da exclusão.' }) }),
+        })
+      },
+      onError: () => toast({ message: 'Não foi possível excluir a repetição.' }),
+    })
+  }
+
   const openNew = () => {
     setPanel(null)
     setCreating(true)
@@ -207,6 +222,7 @@ export default function IncomesPage() {
       onHold={hold}
       onEdit={() => setPanel({ id: panelIncome.id, mode: 'edit' })}
       onDelete={remove}
+      onDeleteRepetition={(inc) => inc.sourceId && deleteRepetition(inc.sourceId, inc.description)}
     />
   )
   const editForm = panelIncome && ready && (
@@ -377,9 +393,10 @@ export default function IncomesPage() {
               month={month}
               incomeOf={incomeOfSource}
               canWrite={canWrite}
-              busy={sourceActions.update.isPending}
+              busy={sourceActions.update.isPending || sourceActions.remove.isPending}
               onEdit={(inc) => { setCreating(false); setPanel({ id: inc.id, mode: 'edit', scope: 'following' }) }}
               onEnd={endRepetition}
+              onDelete={(src) => deleteRepetition(src.id, src.name)}
             />
           </div>
 

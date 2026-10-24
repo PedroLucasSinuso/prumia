@@ -124,3 +124,23 @@ export function incomeSections(list: Income[], mode: GroupBy, members: Member[])
   }
   return [make('pending', 'A receber', list.filter((i) => !i.received)), make('received', 'Recebidas', list.filter((i) => i.received))].filter((s) => s.items.length > 0)
 }
+
+/** Um item da prévia de datas (`GET /income-dates`): só o que a seleção abaixo usa. */
+export type DatePreviewItem = { month: string; expectedDate: string }
+
+/** Quantos meses pedir à prévia para sobrarem 3 datas futuras mesmo se a do mês atual já passou. */
+export const PREVIEW_FETCH = 4
+
+/**
+ * O que a prévia "Próximas datas" mostra, a partir de "hoje" (injetado: testes fixam o relógio).
+ * - `upcoming`: até 3 datas que ainda não passaram (hoje conta: o recebimento automático só vale depois do dia).
+ * - `passedThisMonth`: a ocorrência do MÊS ATUAL quando já passou (aí ela conta como recebida), para a tela explicar em vez de
+ *   mostrar uma data antiga como se fosse "próxima". Meses anteriores ao atual nunca entram.
+ * A lista deve começar em `max(competência, mês atual)`; se a pessoa escolheu um mês futuro, tudo parte dele.
+ */
+export function upcomingDates(items: DatePreviewItem[], today: string): { upcoming: string[]; passedThisMonth?: string } {
+  const thisMonth = today.slice(0, 7) + '-01'
+  const upcoming = items.filter((i) => i.expectedDate >= today).slice(0, 3).map((i) => i.expectedDate)
+  const cur = items.find((i) => i.month === thisMonth)
+  return { upcoming, passedThisMonth: cur && cur.expectedDate < today ? cur.expectedDate : undefined }
+}

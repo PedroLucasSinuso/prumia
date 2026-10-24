@@ -244,7 +244,8 @@ describe('formulário: criar', () => {
     await userEvent.type(within(form).getByLabelText('Descrição'), 'Salário Pedro')
     await userEvent.type(within(form).getByLabelText('Valor bruto'), '500000')
     expect(within(form).getByLabelText('Repete todo mês')).toBeChecked()
-    expect(await within(form).findByText(/05\/10 \(seg\) · 05\/11 \(qui\) · 07\/12 \(seg\)/)).toBeInTheDocument()
+    expect(await within(form).findByText(/05\/11 \(qui\) · 07\/12 \(seg\)/)).toBeInTheDocument() // só futuras a partir de hoje (20/10)
+    expect(within(form).getByText(/Este mês: 05\/10 \(seg\), já passou/)).toBeInTheDocument()
     expect(within(form).getByRole('radio', { name: 'Próximo dia útil' })).toBeChecked()
     await userEvent.click(within(form).getByRole('button', { name: 'Adicionar receita' }))
     await waitFor(() =>
@@ -433,6 +434,61 @@ describe('sugestão de INSS e IRRF (opcional)', () => {
     expect(await within(form).findByText(/tabela de 2026 \(tabela de 2026, a mais recente que temos\)|tabela de 2026 \(a mais recente/)).toBeInTheDocument()
     expect(within(form).queryByLabelText('Valor do desconto 2')).not.toBeInTheDocument() // IRRF zero não vira linha
   })
+
+  it('IRRF zero é explicado como isenção e a nota mostra o que foi preenchido', async () => {
+    mockApi({ me: ok(me), taxEstimate: ok({ inssCents: 50151, irrfCents: 0, tableYear: 2026, sources: [], checkedOn: '2026-10-23', approximate: true }) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
+    const form = await screen.findByRole('dialog', { name: 'Nova receita' })
+    await userEvent.type(within(form).getByLabelText('Valor bruto'), '500000')
+    await userEvent.click(within(form).getByRole('button', { name: 'Sugerir INSS e IRRF' }))
+    expect(await within(form).findByText(/INSS R\$\s501,51 · IRRF R\$ 0,00 \(isento nesta faixa: até R\$ 5\.000 pela Lei 15\.270\/2025\)/)).toBeInTheDocument()
+    expect(within(form).getByLabelText('Valor do desconto 1')).toHaveValue('R$ 501,51')
+  })
+
+  it('substitui só INSS e IRRF digitados e avisa', async () => {
+    mockApi({ me: ok(me) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
+    const form = await screen.findByRole('dialog', { name: 'Nova receita' })
+    await userEvent.type(within(form).getByLabelText('Valor bruto'), '600000')
+    await userEvent.click(within(form).getByRole('button', { name: 'Sugerir INSS e IRRF' }))
+    await within(form).findByText(/confira no seu holerite/)
+    await userEvent.click(within(form).getByRole('button', { name: 'Sugerir INSS e IRRF' }))
+    expect(await within(form).findByText(/Substituiu o INSS e o IRRF/)).toBeInTheDocument()
+    expect(within(form).queryByLabelText('Valor do desconto 3')).not.toBeInTheDocument()
+  })
+
+  it('mostra a causa quando a estimativa falha (status da API e rede)', async () => {
+    mockApi({ me: ok(me), taxEstimate: fail(503, 'unavailable') })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
+    const form = await screen.findByRole('dialog', { name: 'Nova receita' })
+    await userEvent.type(within(form).getByLabelText('Valor bruto'), '500000')
+    await userEvent.click(within(form).getByRole('button', { name: 'Sugerir INSS e IRRF' }))
+    expect(await within(form).findByText(/Não foi possível calcular agora: .*\(erro 503\)\. Digite os valores do holerite\./)).toBeInTheDocument()
+  })
+})
+
+describe('prévia "Próximas datas" parte de hoje', () => {
+  it('não mostra a data do mês que já passou entre as próximas e explica à parte', async () => {
+    mockApi({
+      me: ok(me),
+      // 'dia 5': a API devolve a partir do mês pedido; hoje = 20/10/2026
+      incomeDates: (q) => ok([0, 1, 2, 3].map((i) => {
+        const [y, m] = q.month.split('-').map(Number)
+        const t = y * 12 + (m - 1) + i
+        const month = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-01`
+        return { month, expectedDate: month.slice(0, 8) + '05', businessDays: 21 }
+      })),
+    })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
+    const form = await screen.findByRole('dialog', { name: 'Nova receita' })
+    await userEvent.click(within(form).getByRole('radio', { name: /Dia do mês/ }))
+    expect(await within(form).findByText(/Este mês: 05\/10 \(seg\), já passou: conta como recebida/)).toBeInTheDocument()
+    expect(within(form).getByText(/05\/11 \(qui\) · 05\/12 \(sáb\) · 05\/01 \(ter\)/)).toBeInTheDocument()
+  })
 })
 
 describe('formulário: editar com escopo', () => {
@@ -574,6 +630,78 @@ describe('receitas que se repetem', () => {
         expect.objectContaining({ params: { path: { householdId: 'h1', sourceId: 's1' }, query: {} }, body: { endMonth: '2026-10-01' } }),
       ),
     )
+  })
+})
+
+describe('painel do formulário de receita: rolagem', () => {
+  it('só o corpo rola, o rodapé sticky não é fixed e a página fica travada enquanto aberto', async () => {
+    mockApi({ me: ok(me) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nova receita' })
+    const body = dialog.querySelector('[data-panel-body]')!
+    expect(body.className).toMatch(/overflow-y-auto/)
+    expect(body.className).toMatch(/overscroll-contain/)
+    const submit = within(dialog).getByRole('button', { name: 'Adicionar receita' })
+    const footer = submit.closest('div.sticky')!
+    expect(body.contains(footer)).toBe(true)
+    expect(footer.className).toMatch(/bottom-0/)
+    expect(footer.className).not.toMatch(/\bfixed\b/)
+    expect(footer.className).toMatch(/bg-surface/)
+    expect(document.body.style.overflow).toBe('hidden')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(document.body.style.overflow).toBe(''))
+  })
+})
+
+describe('excluir uma repetição', () => {
+  const fontes = [source({ id: 's2', name: 'VR (por dia)', kind: 'benefit', amountMode: 'per_unit', unitPriceCents: 6500, unitLabel: 'dia trabalhado', dateRule: { rule: 'day_of_month', n: 28, weekendAdjust: 'forward' }, startMonth: '2026-01-01' })]
+
+  it('pede confirmação clara, exclui e oferece Desfazer que restaura o lote', async () => {
+    withIncomes({ sources: ok(fontes) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: /Receitas que se repetem/ }))
+    const lista = screen.getByRole('region', { name: 'Receitas que se repetem' })
+    await userEvent.click(within(lista).getByRole('button', { name: 'Excluir VR (por dia)' }))
+    expect(within(lista).getByText(/Excluir "VR \(por dia\)"\? Os meses já recebidos ficam; os próximos somem\./)).toBeInTheDocument()
+    expect(api.DELETE).not.toHaveBeenCalledWith('/households/{householdId}/income-sources/{sourceId}', expect.anything())
+    await userEvent.click(within(lista).getByRole('button', { name: 'Excluir a repetição' }))
+    await waitFor(() =>
+      expect(api.DELETE).toHaveBeenCalledWith('/households/{householdId}/income-sources/{sourceId}', { params: { path: { householdId: 'h1', sourceId: 's2' } } }),
+    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Desfazer' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/income-sources/{sourceId}/restore', { params: { path: { householdId: 'h1', sourceId: 's2' } } }),
+    )
+  })
+
+  it('Cancelar não exclui nada', async () => {
+    withIncomes({ sources: ok(fontes) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: /Receitas que se repetem/ }))
+    const lista = screen.getByRole('region', { name: 'Receitas que se repetem' })
+    await userEvent.click(within(lista).getByRole('button', { name: 'Excluir VR (por dia)' }))
+    await userEvent.click(within(lista).getByRole('button', { name: 'Cancelar' }))
+    expect(api.DELETE).not.toHaveBeenCalled()
+  })
+
+  it('o detalhe de uma receita que repete também tem "Excluir esta repetição"', async () => {
+    withIncomes({ sources: ok(fontes) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Vale-refeição' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir esta repetição' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir a repetição' }))
+    await waitFor(() =>
+      expect(api.DELETE).toHaveBeenCalledWith('/households/{householdId}/income-sources/{sourceId}', { params: { path: { householdId: 'h1', sourceId: 's2' } } }),
+    )
+  })
+
+  it('viewer não vê o botão Excluir', async () => {
+    mockApi({ me: ok(viewerMe), incomes: ok([salarioPedro, vrPedro, salarioAna]), summary: ok(summaryWith()), sources: ok(fontes) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: /Receitas que se repetem/ }))
+    const lista = screen.getByRole('region', { name: 'Receitas que se repetem' })
+    expect(within(lista).queryByRole('button', { name: /Excluir/ })).not.toBeInTheDocument()
   })
 })
 
