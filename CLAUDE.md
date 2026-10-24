@@ -36,7 +36,7 @@ docs/           product/ (spec, plan; LOCAL, fora do git), developer-guide/, use
 ```
 Documentação: cada fase atualiza `developer-guide/` e `user-guides/` (ver `docs/README.md`).
 Backend: `internal/<domínio>/` com `handler`, `service`, `repository`. Domínios: `household`, `auth`, `invoice`, `series` (parcelas e recorrências), `income`,
-`category`, `boleto`, `summary`. Dependências sempre apontam handler → service → repository.
+`category`, `boleto`, `summary`, além de `calendar` (dias úteis e feriados nacionais) e `tax` (estimativa de INSS/IRRF). Dependências sempre apontam handler → service → repository.
 
 ## Regras inegociáveis
 1. **Isolamento por casa**: todo repository filtra por `household_id`; o `household_id` vem da sessão/rota autorizada,

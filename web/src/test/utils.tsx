@@ -53,12 +53,15 @@ export const emptySummary: MonthlySummary = {
 export function income(over: Partial<Income> & Pick<Income, 'id' | 'description'>): Income {
   return {
     userId: 'u1', kind: 'salary', wallet: 'free', competenceMonth: '2026-10-01', expectedDate: '2026-10-05',
-    grossAmountCents: 500000, deductions: [], netAmountCents: 500000, received: false, ...over,
+    amountMode: 'fixed', grossAmountCents: 500000, deductions: [], netAmountCents: 500000, received: false, held: false, repeats: false, ...over,
   }
 }
 
 export function source(over: Partial<IncomeSource> & Pick<IncomeSource, 'id' | 'name'>): IncomeSource {
-  return { userId: 'u1', kind: 'salary', wallet: 'free', grossAmountCents: 500000, dayOfMonth: 5, startMonth: '2026-01-01', deductions: [], ...over }
+  return {
+    userId: 'u1', kind: 'salary', wallet: 'free', amountMode: 'fixed', grossAmountCents: 500000, dayOfMonth: 5,
+    dateRule: { rule: 'day_of_month', n: 5, weekendAdjust: 'none' }, startMonth: '2026-01-01', deductions: [], ...over,
+  }
 }
 
 type Routes = {
@@ -74,6 +77,11 @@ type Routes = {
   receive?: Reply
   unreceive?: Reply
   createSource?: Reply
+  restoreIncome?: Reply
+  /** GET /income-dates (prévia da regra de data): fixa ou calculada pela consulta. Padrão: dia 5 de cada mês, 21 dias úteis. */
+  incomeDates?: Reply | ((q: { month: string; rule: string; n?: number; weekendAdjust?: string; count?: number }) => Reply)
+  /** GET /tax/estimate (INSS e IRRF sugeridos). */
+  taxEstimate?: Reply | ((q: { grossCents: number; dependents?: number }) => Reply)
   updateSource?: Reply
   /** /auth/me: resposta fixa ou calculada a cada chamada (ex.: o Me muda depois de aceitar um convite). */
   me?: Reply | (() => Reply)
@@ -142,7 +150,7 @@ function asDocument(reply: Reply): Reply {
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
 export function mockApi(r: Routes = {}) {
   const unauth = fail(401, 'unauthenticated')
-  vi.spyOn(api, 'GET').mockImplementation((async (url: string, init?: { params?: { query?: { includeArchived?: boolean } } }) => {
+  vi.spyOn(api, 'GET').mockImplementation((async (url: string, init?: { params?: { query?: Record<string, unknown> } }) => {
     if (url === '/auth/me') return (typeof r.me === 'function' ? r.me() : r.me) ?? unauth
     if (url === '/households/{householdId}/categories') {
       // como a API: sem includeArchived=true, as arquivadas ficam de fora
@@ -156,6 +164,20 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
     if (url === '/households/{householdId}/income-sources') return r.sources ?? ok([])
+    if (url === '/households/{householdId}/income-dates') {
+      const q = (init?.params?.query ?? {}) as { month: string; rule: string; n?: number; weekendAdjust?: string; count?: number }
+      if (typeof r.incomeDates === 'function') return r.incomeDates(q)
+      if (r.incomeDates) return r.incomeDates
+      return ok(monthsBetween(q.month, addMonths(q.month, (q.count ?? 3) - 1)).map((m) => ({ month: m, expectedDate: m.slice(0, 8) + '05', businessDays: 21 })))
+    }
+    if (url === '/households/{householdId}/tax/estimate') {
+      const q = (init?.params?.query ?? {}) as { grossCents: number; dependents?: number }
+      if (typeof r.taxEstimate === 'function') return r.taxEstimate(q)
+      return (
+        r.taxEstimate ??
+        ok({ inssCents: 64151, irrfCents: 38510, tableYear: 2026, sources: ['https://www.gov.br/receitafederal'], checkedOn: '2026-10-23', approximate: true })
+      )
+    }
     if (url === '/households/{householdId}/purchases') return r.purchases ?? ok({ items: [] })
     if (url === '/households/{householdId}/recurrences') return r.recurrences ?? ok([])
     if (url === '/households/{householdId}/summary') return r.summary ?? ok(emptySummary)
@@ -196,6 +218,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/invoices/{invoiceId}/restore': r.restore,
       '/households/{householdId}/incomes': r.createIncome,
       '/households/{householdId}/incomes/{incomeId}/receive': r.receive,
+      '/households/{householdId}/incomes/{incomeId}/restore': r.restoreIncome,
       '/households/{householdId}/income-sources': r.createSource,
       '/households/{householdId}/purchases': r.createPurchase,
       '/households/{householdId}/recurrences': r.createRecurrence,

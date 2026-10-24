@@ -112,7 +112,7 @@ func (m *mundo) url(route, house string) (method, path string, otherIDs bool) {
 	if strings.Contains(path, ":") {
 		panic("parâmetro de rota sem id no cenário: " + path)
 	}
-	return method, path + "?month=2026-10-01&applyFrom=2026-10-01", otherIDs
+	return method, path + "?month=2026-10-01&applyFrom=2026-10-01&rule=day_of_month&n=5&grossCents=500000", otherIDs
 }
 
 // corpo genérico e plausível: o suficiente para a requisição chegar ao serviço em vez de parar no JSON.

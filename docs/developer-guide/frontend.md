@@ -98,10 +98,23 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   `accent`, `structure`, `accent/45`, `ink/45`, `ink/20`; nunca `text-accent`, que em alguns temas escuros muda de cor e confundiria as fatias), **pago sólido e a pagar tracejado** (`<pattern>` a 45° + contorno, mesma cor da fatia). Eixo em mono com valor curto (`R$ 1,5 mil`), rótulo `out/26`, largura medida por `ResizeObserver`. Acessível:
   `role="img"` com resumo dos valores, grupo focável (setas/Home/End mostram o valor exato numa dica `aria-live`) e tabela `sr-only`.
   Média do período e variação do último mês contra o anterior em números simples. As funções de `lib/history.ts` são puras e testadas.
-- **`pages/IncomesPage`**: receitas do mês numa linha de prumo de entradas (`IncomeList`: nó cobalto, oco = previsto, cheio = recebido;
-  um toque recebe, com Desfazer), números do mês, e o bloco de **fontes** (o molde mensal do salário/VR).
-  `IncomeForm` ajusta o mês (líquido ao vivo); `SourceForm` cria/edita a fonte, com **reaplicar aos meses previstos** (`applyFrom`) e o aviso
-  de que ajustes manuais são sobrescritos. `DeductionsEditor` edita os descontos itemizados (INSS, IRRF, plano, coparticipação, outro).
+- **`pages/IncomesPage`** (receitas v2): lista única. Topo: **Recebido** (número grande, com medidor) e **a receber** (pequeno), **por pessoa**
+  (tabela recebido + a receber, `lib/income.personTotals`) e **sobra do mês** (`monthSurplus` com os números de `/summary`: receitas −
+  despesas; coral só se negativa; link para o Resumo). O recebimento é **automático** (derivado no servidor); a exceção é **Não caiu** / **Caiu**
+  (`useIncomeActions.unreceive` / `.receive`). Estados com os marcadores `[ ▪ ]` / `[ ▫ ]` / `[ ✖ ]` (`lib/income.stateOf`).
+  Computador: `IncomeSections` (seções recolhíveis "A receber" e "Recebidas", ou uma por pessoa; estado em `usePref`), colunas data ·
+  descrição (selos `repete`, `por unidade`) · pessoa · tipo · estado · líquido por container query, ação rápida "caiu / não caiu" ao passar o
+  mouse, ↑/↓ + Enter, `N` nova, `Esc` fecha. Detalhe em leitura (`IncomeDetail`) num painel fixo `xl` (abaixo, `SlideOver`); formulário
+  sempre num `SlideOver` de altura total (computador) ou `Sheet` (celular). Celular: `IncomeList` simples. Fim da página: acordeão
+  `RepeatingIncomes` ("Receitas que se repetem": ver a regra, **Editar** abre o formulário já em "este e os seguintes", **Encerrar** manda
+  `endMonth` do mês exibido).
+  `IncomeForm` (um só): pessoa (`Combobox`), tipo, valor (`Segmented`: cheio ou por unidade; por unidade sugere os **dias úteis** do mês
+  vindos da prévia), **quando cai** (`Segmented` de regra + ajuste de fim de semana + `DatePicker` para data específica) com a **prévia das
+  próximas 3 datas** (`useIncomeDatePreview`, `GET /income-dates`), repete todo mês (`MonthPicker` "até"), descontos (`DeductionsEditor`) com
+  **Sugerir INSS e IRRF** (`estimateTax`; preenche e avisa "estimativa pela tabela de 2026"), e, em receita que se repete e ainda não caiu, o
+  escopo "Só este mês / Este e os seguintes". Na edição manda só o que mudou (`buildPatch`), então "este e os seguintes" não sobrescreve o que a
+  pessoa não tocou. Excluir com escopo mostra o toast **Desfazer** (`restore` com o mesmo `scope`). Regras puras e textos em linguagem natural
+  (`ruleText`: "2º dia útil", "dia 28, ou o próximo dia útil") em `lib/income.ts`.
 - **`pages/SettingsPage`** (`/ajustes/:secao`; `/casa` -> `/ajustes/casa` e `/configuracoes` -> `/ajustes` por `<Navigate>`): painel único.
   Seções em `components/settings/`: `HouseSection` (pessoas na linha de prumo com `MembersList`, convite com `LinkBox` que mostra o
   link **uma vez**, renomear, criar outra casa, zona de perigo; o próprio papel não se troca; `household_limit` vira aviso; sair/excluir
@@ -165,7 +178,7 @@ Primitivas em `src/components/ui/` (cada arquivo tem um comentário de uso no to
 com alvos de 44 px e computador com 32-36 px (`md:`). Estilos de campo e chip compartilhados em `ui/styles.ts`
 (`labelCls`, `controlCls(erro)`, `chipCls(ligado)`): use-os em vez de repetir classes. Atualmente `Button`, `Field`, `MoneyInput`,
 `Sheet`, `SlideOver`, `Toast` e `MonthSelector` já usam as primitivas; `IncomesPage`/`IncomeForm`/`SourceForm`/`DeductionsEditor`
-podem adotá-las do mesmo jeito.
+podem adotá-las do mesmo jeito (o `IncomeForm` já as usa).
 
 **Decisão: calendário feito à mão** (sem `react-day-picker`/`date-fns`). Datas do app são strings `AAAA-MM-DD` sem fuso e o
 calendário precisa de pouco (grade do mês, navegação, limites); fazer sobre `lib/dates` evita `Date` e fuso, não pesa o pacote

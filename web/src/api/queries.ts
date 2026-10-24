@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -287,22 +287,37 @@ export function useIncomes(houseId: string, month: string) {
   })
 }
 
+/**
+ * Ações sobre receitas. `scope` vale para receitas que se repetem: `this` (só este mês) ou `following` (este e os seguintes
+ * que ainda não contam como recebidos). `receive` = "caiu" e `unreceive` = "não caiu" (o recebimento em si é automático).
+ */
 export function useIncomeActions(houseId: string) {
   const qc = useQueryClient()
-  // Receita muda o saldo do resumo: invalida as duas listas.
-  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: keys.allIncomes(houseId) }), qc.invalidateQueries({ queryKey: keys.summary(houseId) })])
+  // Receita muda o saldo do resumo e a lista de repetições: invalida tudo isso.
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: keys.allIncomes(houseId) }),
+      qc.invalidateQueries({ queryKey: keys.sources(houseId) }),
+      qc.invalidateQueries({ queryKey: keys.summary(houseId) }),
+    ])
   const path = (incomeId: string) => ({ params: { path: { householdId: houseId, incomeId } } })
+  const withScope = (incomeId: string, scope: SeriesScope = 'this') => ({ params: { path: { householdId: houseId, incomeId }, query: { scope } } })
 
   const create = useMutation({
     mutationFn: (body: IncomeInput) => unwrap(api.POST('/households/{householdId}/incomes', { params: { path: { householdId: houseId } }, body })),
     onSettled: refresh,
   })
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: IncomePatch }) => unwrap(api.PATCH('/households/{householdId}/incomes/{incomeId}', { ...path(id), body })),
+    mutationFn: ({ id, body, scope }: { id: string; body: IncomePatch; scope?: SeriesScope }) =>
+      unwrap(api.PATCH('/households/{householdId}/incomes/{incomeId}', { ...withScope(id, scope), body })),
     onSettled: refresh,
   })
   const remove = useMutation({
-    mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/incomes/{incomeId}', path(id))),
+    mutationFn: ({ id, scope }: { id: string; scope?: SeriesScope }) => unwrap(api.DELETE('/households/{householdId}/incomes/{incomeId}', withScope(id, scope))),
+    onSettled: refresh,
+  })
+  const restore = useMutation({
+    mutationFn: ({ id, scope }: { id: string; scope?: SeriesScope }) => unwrap(api.POST('/households/{householdId}/incomes/{incomeId}/restore', withScope(id, scope))),
     onSettled: refresh,
   })
   const receive = useMutation({
@@ -313,7 +328,32 @@ export function useIncomeActions(houseId: string) {
     mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/incomes/{incomeId}/receive', path(id))),
     onSettled: refresh,
   })
-  return { create, update, remove, receive, unreceive }
+  return { create, update, remove, restore, receive, unreceive }
+}
+
+/** Prévia das datas de uma regra de data (próximos meses) e os dias úteis de cada mês. Não grava nada. */
+export function useIncomeDatePreview(houseId: string, rule: DateRule | undefined, month: string, count = 3) {
+  return useQuery({
+    queryKey: ['income-dates', houseId, month, rule?.rule, rule?.n ?? null, rule?.weekendAdjust ?? null, count] as const,
+    enabled: houseId !== '' && rule !== undefined,
+    staleTime: 5 * 60_000,
+    queryFn: (): Promise<IncomeDatePreview[]> =>
+      unwrap(
+        api.GET('/households/{householdId}/income-dates', {
+          params: {
+            path: { householdId: houseId },
+            query: { month, rule: rule!.rule, ...(rule!.n != null ? { n: rule!.n } : {}), ...(rule!.weekendAdjust ? { weekendAdjust: rule!.weekendAdjust } : {}), count },
+          },
+        }),
+      ),
+  })
+}
+
+/** Estimativa de INSS e IRRF de um salário (sugestão para preencher os descontos). Chamada sob demanda, não é uma consulta em cache. */
+export function estimateTax(houseId: string, month: string, grossCents: number, dependents: number): Promise<TaxEstimate> {
+  return unwrap(
+    api.GET('/households/{householdId}/tax/estimate', { params: { path: { householdId: houseId }, query: { month, grossCents, dependents } } }),
+  )
 }
 
 /** Fontes de receita: o "molde" mensal (salário, VR) que gera a previsão dos meses seguintes. */

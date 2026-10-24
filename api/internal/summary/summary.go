@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/income"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
@@ -97,14 +98,15 @@ func checkMonth(month caldate.Date) error {
 	return nil
 }
 
-// incomesByWallet: líquido (bruto - descontos) por carteira. Os descontos entram por subconsulta correlacionada
+// incomesByWallet: líquido (bruto - descontos) por carteira. "Recebida" é o estado derivado de income.ReceivedSQL
+// (a data esperada chegou e ninguém disse "não caiu"), então o parâmetro é o "hoje". Os descontos entram por subconsulta correlacionada
 // (usa o índice de income_deductions por income_id), tudo numa consulta só. Exclui lançamentos apagados.
 func (s *Service) incomesByWallet(ctx context.Context, householdID uuid.UUID, month caldate.Date) ([]incomeRow, error) {
 	var rows []incomeRow
 	err := s.db.WithContext(ctx).Raw(`
 		SELECT i.wallet AS wallet,
 		       COALESCE(SUM(net.v), 0)::bigint AS expected,
-		       COALESCE(SUM(CASE WHEN i.received_at IS NOT NULL THEN net.v ELSE 0 END), 0)::bigint AS received
+		       COALESCE(SUM(CASE WHEN `+income.ReceivedSQL("i")+` THEN net.v ELSE 0 END), 0)::bigint AS received
 		FROM incomes i
 		CROSS JOIN LATERAL (
 			SELECT i.gross_amount_cents - COALESCE((
@@ -112,7 +114,7 @@ func (s *Service) incomesByWallet(ctx context.Context, householdID uuid.UUID, mo
 				WHERE d.household_id = i.household_id AND d.income_id = i.id), 0) AS v
 		) net
 		WHERE i.household_id = ? AND i.competence_month = ? AND i.deleted_at IS NULL
-		GROUP BY i.wallet`, householdID, month).Scan(&rows).Error
+		GROUP BY i.wallet`, s.today(), householdID, month).Scan(&rows).Error
 	return rows, err
 }
 

@@ -100,6 +100,12 @@ documento). Nunca o arquivo. Duplicidade de linha digitável é verificada no se
 - `CHECK ((kind='benefit') = (wallet='benefit'))`: VR só existe na carteira de benefício e vice-versa.
 - O app **não calcula impostos**.
 
+Migration `00007` (receitas v2, aditiva): `income_sources` ganha `amount_mode` (`fixed`|`per_unit`), `unit_label`, `unit_price_cents`,
+`date_rule` (`day_of_month`|`nth_business_day`|`last_business_day`), `date_rule_n` e `weekend_adjust` (`forward`|`backward`|`none`);
+`incomes` ganha `held_at` ("não caiu"), `quantity`, `unit_price_cents`, `unit_label` e a cópia da regra de data; nova tabela
+`income_source_cuts` (Desfazer em lote). `received_at` continua existindo (recebido de propósito, antes da data); o estado "recebida" é
+**derivado**. Detalhes em [incomes-and-wallets.md](incomes-and-wallets.md).
+
 ## 5. Carteiras
 
 Não existe tabela de carteira: são dois valores (`free`, `benefit`) por casa.

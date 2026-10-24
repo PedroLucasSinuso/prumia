@@ -3,7 +3,8 @@ import { Keyboard, X } from 'lucide-react'
 import { Tooltip } from './ui/Tooltip'
 
 /** Atalhos de teclado da tela do mês (computador). A mesma lista serve para a ajuda "?" e para a documentação. */
-const MONTH_SHORTCUTS: Array<[string, string]> = [
+export type Shortcut = [keys: string, action: string]
+const MONTH_SHORTCUTS: Shortcut[] = [
   ['N', 'nova conta'],
   ['← / →', 'mês anterior / próximo'],
   ['/', 'buscar'],
@@ -18,7 +19,7 @@ const MONTH_SHORTCUTS: Array<[string, string]> = [
 const kbd = 'inline-flex min-w-6 justify-center rounded-sm border border-ink/30 px-1.5 font-mono text-[11px] leading-5'
 
 /** Botão "?" discreto que abre a lista de atalhos (sem janela modal: Esc ou o × fecham). */
-export function ShortcutsHelp({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+export function ShortcutsHelp({ open, onToggle, items = MONTH_SHORTCUTS }: { open: boolean; onToggle: () => void; items?: Shortcut[] }) {
   return (
     <div className="relative">
       <Tooltip label="Atalhos de teclado" shortcut="?">
@@ -40,7 +41,7 @@ export function ShortcutsHelp({ open, onToggle }: { open: boolean; onToggle: () 
             </button>
           </div>
           <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 text-[13px]">
-            {MONTH_SHORTCUTS.map(([k, v]) => (
+            {items.map(([k, v]) => (
               <div key={k} className="contents">
                 <dt><kbd className={kbd}>{k}</kbd></dt>
                 <dd>{v}</dd>

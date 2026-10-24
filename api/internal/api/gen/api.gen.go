@@ -15,6 +15,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AmountMode.
+const (
+	Fixed   AmountMode = "fixed"
+	PerUnit AmountMode = "per_unit"
+)
+
+// Valid indicates whether the value is a known member of the AmountMode enum.
+func (e AmountMode) Valid() bool {
+	switch e {
+	case Fixed:
+		return true
+	case PerUnit:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BoletoExtractionMethod.
 const (
 	BoletoExtractionMethodBarcodeImage BoletoExtractionMethod = "barcode_image"
@@ -30,6 +48,27 @@ func (e BoletoExtractionMethod) Valid() bool {
 	case BoletoExtractionMethodOcr:
 		return true
 	case BoletoExtractionMethodPdfText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DateRuleKind.
+const (
+	DayOfMonth      DateRuleKind = "day_of_month"
+	LastBusinessDay DateRuleKind = "last_business_day"
+	NthBusinessDay  DateRuleKind = "nth_business_day"
+)
+
+// Valid indicates whether the value is a known member of the DateRuleKind enum.
+func (e DateRuleKind) Valid() bool {
+	switch e {
+	case DayOfMonth:
+		return true
+	case LastBusinessDay:
+		return true
+	case NthBusinessDay:
 		return true
 	default:
 		return false
@@ -150,6 +189,27 @@ func (e IncomeInputKind) Valid() bool {
 	}
 }
 
+// Defines values for IncomePatchKind.
+const (
+	IncomePatchKindBenefit IncomePatchKind = "benefit"
+	IncomePatchKindOther   IncomePatchKind = "other"
+	IncomePatchKindSalary  IncomePatchKind = "salary"
+)
+
+// Valid indicates whether the value is a known member of the IncomePatchKind enum.
+func (e IncomePatchKind) Valid() bool {
+	switch e {
+	case IncomePatchKindBenefit:
+		return true
+	case IncomePatchKindOther:
+		return true
+	case IncomePatchKindSalary:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for IncomeSourceKind.
 const (
 	IncomeSourceKindBenefit IncomeSourceKind = "benefit"
@@ -186,6 +246,27 @@ func (e IncomeSourceInputKind) Valid() bool {
 	case IncomeSourceInputKindOther:
 		return true
 	case IncomeSourceInputKindSalary:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IncomeSourcePatchKind.
+const (
+	IncomeSourcePatchKindBenefit IncomeSourcePatchKind = "benefit"
+	IncomeSourcePatchKindOther   IncomeSourcePatchKind = "other"
+	IncomeSourcePatchKindSalary  IncomeSourcePatchKind = "salary"
+)
+
+// Valid indicates whether the value is a known member of the IncomeSourcePatchKind enum.
+func (e IncomeSourcePatchKind) Valid() bool {
+	switch e {
+	case IncomeSourcePatchKindBenefit:
+		return true
+	case IncomeSourcePatchKindOther:
+		return true
+	case IncomeSourcePatchKindSalary:
 		return true
 	default:
 		return false
@@ -309,6 +390,45 @@ func (e Wallet) Valid() bool {
 	}
 }
 
+// Defines values for WeekendAdjust.
+const (
+	Backward WeekendAdjust = "backward"
+	Forward  WeekendAdjust = "forward"
+	None     WeekendAdjust = "none"
+)
+
+// Valid indicates whether the value is a known member of the WeekendAdjust enum.
+func (e WeekendAdjust) Valid() bool {
+	switch e {
+	case Backward:
+		return true
+	case Forward:
+		return true
+	case None:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IncomeScope.
+const (
+	IncomeScopeFollowing IncomeScope = "following"
+	IncomeScopeThis      IncomeScope = "this"
+)
+
+// Valid indicates whether the value is a known member of the IncomeScope enum.
+func (e IncomeScope) Valid() bool {
+	switch e {
+	case IncomeScopeFollowing:
+		return true
+	case IncomeScopeThis:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SeriesScope.
 const (
 	SeriesScopeFollowing SeriesScope = "following"
@@ -336,6 +456,60 @@ const (
 func (e GetHealth200JSONResponseBodyStatus) Valid() bool {
 	switch e {
 	case Ok:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteIncomeParamsScope.
+const (
+	DeleteIncomeParamsScopeFollowing DeleteIncomeParamsScope = "following"
+	DeleteIncomeParamsScopeThis      DeleteIncomeParamsScope = "this"
+)
+
+// Valid indicates whether the value is a known member of the DeleteIncomeParamsScope enum.
+func (e DeleteIncomeParamsScope) Valid() bool {
+	switch e {
+	case DeleteIncomeParamsScopeFollowing:
+		return true
+	case DeleteIncomeParamsScopeThis:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateIncomeParamsScope.
+const (
+	UpdateIncomeParamsScopeFollowing UpdateIncomeParamsScope = "following"
+	UpdateIncomeParamsScopeThis      UpdateIncomeParamsScope = "this"
+)
+
+// Valid indicates whether the value is a known member of the UpdateIncomeParamsScope enum.
+func (e UpdateIncomeParamsScope) Valid() bool {
+	switch e {
+	case UpdateIncomeParamsScopeFollowing:
+		return true
+	case UpdateIncomeParamsScopeThis:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RestoreIncomeParamsScope.
+const (
+	RestoreIncomeParamsScopeFollowing RestoreIncomeParamsScope = "following"
+	RestoreIncomeParamsScopeThis      RestoreIncomeParamsScope = "this"
+)
+
+// Valid indicates whether the value is a known member of the RestoreIncomeParamsScope enum.
+func (e RestoreIncomeParamsScope) Valid() bool {
+	switch e {
+	case RestoreIncomeParamsScopeFollowing:
+		return true
+	case RestoreIncomeParamsScopeThis:
 		return true
 	default:
 		return false
@@ -416,6 +590,9 @@ func (e RestoreInvoiceParamsScope) Valid() bool {
 		return false
 	}
 }
+
+// AmountMode fixed = valor cheio; per_unit = preço por unidade x quantidade
+type AmountMode string
 
 // Boleto defines model for Boleto.
 type Boleto struct {
@@ -538,6 +715,18 @@ type CnpjInfo struct {
 	TradeName *string `json:"tradeName,omitempty"`
 }
 
+// DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
+type DateRule struct {
+	N    *int         `json:"n,omitempty"`
+	Rule DateRuleKind `json:"rule"`
+
+	// WeekendAdjust Padrão forward
+	WeekendAdjust *WeekendAdjust `json:"weekendAdjust,omitempty"`
+}
+
+// DateRuleKind defines model for DateRuleKind.
+type DateRuleKind string
+
 // Deduction defines model for Deduction.
 type Deduction struct {
 	// AmountCents Valor em centavos (BRL)
@@ -605,44 +794,101 @@ type HouseholdRef struct {
 
 // Income defines model for Income.
 type Income struct {
+	// AmountMode fixed = valor cheio; per_unit = preço por unidade x quantidade
+	AmountMode AmountMode `json:"amountMode"`
+
 	// CompetenceMonth Primeiro dia do mês
-	CompetenceMonth Month        `json:"competenceMonth"`
-	Deductions      []Deduction  `json:"deductions"`
-	Description     string       `json:"description"`
-	ExpectedDate    caldate.Date `json:"expectedDate"`
+	CompetenceMonth Month `json:"competenceMonth"`
+
+	// DateRule Regra que calculou a data (nulo = data digitada)
+	DateRule     *DateRule    `json:"dateRule,omitempty"`
+	Deductions   []Deduction  `json:"deductions"`
+	Description  string       `json:"description"`
+	ExpectedDate caldate.Date `json:"expectedDate"`
 
 	// GrossAmountCents Valor em centavos (BRL)
-	GrossAmountCents Cents              `json:"grossAmountCents"`
-	Id               openapi_types.UUID `json:"id"`
-	Kind             IncomeKind         `json:"kind"`
+	GrossAmountCents Cents `json:"grossAmountCents"`
+
+	// Held "Não caiu": o dinheiro previsto ainda não entrou; não conta como recebida até alguém dizer "caiu".
+	Held bool               `json:"held"`
+	Id   openapi_types.UUID `json:"id"`
+	Kind IncomeKind         `json:"kind"`
 
 	// NetAmountCents Calculado = bruto - descontos (somente leitura)
 	NetAmountCents Cents   `json:"netAmountCents"`
 	Notes          *string `json:"notes,omitempty"`
 
-	// Received `false` = previsto
-	Received   bool                `json:"received"`
-	ReceivedAt *caldate.Date       `json:"receivedAt,omitempty"`
-	SourceId   *openapi_types.UUID `json:"sourceId,omitempty"`
-	UserId     openapi_types.UUID  `json:"userId"`
-	Wallet     Wallet              `json:"wallet"`
+	// Quantity Só por unidade. Bruto = preço x quantidade
+	Quantity *int `json:"quantity,omitempty"`
+
+	// Received Derivado: a data esperada chegou (ou foi marcada antes) e não está em `held`. Conta no saldo.
+	Received bool `json:"received"`
+
+	// ReceivedAt Dia em que entrou (a data marcada ou, no recebimento automático, a data esperada). Nulo se não recebida.
+	ReceivedAt *caldate.Date `json:"receivedAt,omitempty"`
+
+	// Repeats A repetição continua depois deste mês
+	Repeats bool `json:"repeats"`
+
+	// RepeatsUntil Último mês da repetição (nulo = sem fim)
+	RepeatsUntil *Month              `json:"repeatsUntil,omitempty"`
+	SourceId     *openapi_types.UUID `json:"sourceId,omitempty"`
+
+	// UnitLabel Só por unidade (ex.: dia trabalhado, hora)
+	UnitLabel *string `json:"unitLabel,omitempty"`
+
+	// UnitPriceCents Só por unidade
+	UnitPriceCents *Cents             `json:"unitPriceCents,omitempty"`
+	UserId         openapi_types.UUID `json:"userId"`
+	Wallet         Wallet             `json:"wallet"`
 }
 
 // IncomeKind defines model for Income.Kind.
 type IncomeKind string
 
+// IncomeDatePreview defines model for IncomeDatePreview.
+type IncomeDatePreview struct {
+	// BusinessDays Dias úteis do mês (sábado, domingo e feriados nacionais não contam)
+	BusinessDays int          `json:"businessDays"`
+	ExpectedDate caldate.Date `json:"expectedDate"`
+
+	// Month Primeiro dia do mês
+	Month Month `json:"month"`
+}
+
 // IncomeInput defines model for IncomeInput.
 type IncomeInput struct {
+	// AmountMode Padrão fixed
+	AmountMode *AmountMode `json:"amountMode,omitempty"`
+
 	// CompetenceMonth Primeiro dia do mês
-	CompetenceMonth Month        `json:"competenceMonth"`
-	Deductions      *[]Deduction `json:"deductions,omitempty"`
-	Description     string       `json:"description"`
-	ExpectedDate    caldate.Date `json:"expectedDate"`
+	CompetenceMonth Month `json:"competenceMonth"`
+
+	// DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
+	DateRule    *DateRule    `json:"dateRule,omitempty"`
+	Deductions  *[]Deduction `json:"deductions,omitempty"`
+	Description string       `json:"description"`
+
+	// ExpectedDate Data digitada. Obrigatória se não houver dateRule; com repeats vale só para o primeiro mês.
+	ExpectedDate *caldate.Date `json:"expectedDate,omitempty"`
 
 	// GrossAmountCents Valor em centavos (BRL)
-	GrossAmountCents Cents           `json:"grossAmountCents"`
+	GrossAmountCents *Cents          `json:"grossAmountCents,omitempty"`
 	Kind             IncomeInputKind `json:"kind"`
 	Notes            *string         `json:"notes,omitempty"`
+
+	// Quantity Por unidade. Padrão: dias úteis do mês
+	Quantity *int `json:"quantity,omitempty"`
+
+	// Repeats Repete todo mês a partir de competenceMonth (exige dateRule)
+	Repeats      *bool  `json:"repeats,omitempty"`
+	RepeatsUntil *Month `json:"repeatsUntil,omitempty"`
+
+	// UnitLabel Por unidade. Padrão: unidade
+	UnitLabel *string `json:"unitLabel,omitempty"`
+
+	// UnitPriceCents Valor em centavos (BRL)
+	UnitPriceCents *Cents `json:"unitPriceCents,omitempty"`
 
 	// UserId Deve ser membro ativo da casa
 	UserId openapi_types.UUID `json:"userId"`
@@ -656,25 +902,50 @@ type IncomeInputKind string
 
 // IncomePatch defines model for IncomePatch.
 type IncomePatch struct {
+	// AmountMode fixed = valor cheio; per_unit = preço por unidade x quantidade
+	AmountMode *AmountMode `json:"amountMode,omitempty"`
+
+	// CompetenceMonth Primeiro dia do mês
+	CompetenceMonth *Month `json:"competenceMonth,omitempty"`
+
+	// DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
+	DateRule     *DateRule     `json:"dateRule,omitempty"`
 	Deductions   *[]Deduction  `json:"deductions,omitempty"`
 	Description  *string       `json:"description,omitempty"`
 	ExpectedDate *caldate.Date `json:"expectedDate,omitempty"`
 
 	// GrossAmountCents Valor em centavos (BRL)
-	GrossAmountCents *Cents  `json:"grossAmountCents,omitempty"`
-	Notes            *string `json:"notes,omitempty"`
+	GrossAmountCents *Cents           `json:"grossAmountCents,omitempty"`
+	Kind             *IncomePatchKind `json:"kind,omitempty"`
+	Notes            *string          `json:"notes,omitempty"`
+	Quantity         *int             `json:"quantity,omitempty"`
+	UnitLabel        *string          `json:"unitLabel,omitempty"`
+
+	// UnitPriceCents Valor em centavos (BRL)
+	UnitPriceCents *Cents              `json:"unitPriceCents,omitempty"`
+	UserId         *openapi_types.UUID `json:"userId,omitempty"`
 }
+
+// IncomePatchKind defines model for IncomePatch.Kind.
+type IncomePatchKind string
 
 // IncomeSource defines model for IncomeSource.
 type IncomeSource struct {
+	// AmountMode fixed = valor cheio; per_unit = preço por unidade x quantidade
+	AmountMode AmountMode `json:"amountMode"`
+
+	// DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
+	DateRule DateRule `json:"dateRule"`
+
+	// DayOfMonth Legado: o dia da regra day_of_month (1 nas demais regras). Use dateRule.
 	DayOfMonth int         `json:"dayOfMonth"`
 	Deductions []Deduction `json:"deductions"`
 	EndMonth   *Month      `json:"endMonth,omitempty"`
 
-	// GeneratedThrough Último mês com lançamento previsto gerado
+	// GeneratedThrough Último mês com lançamento gerado
 	GeneratedThrough *Month `json:"generatedThrough,omitempty"`
 
-	// GrossAmountCents Valor em centavos (BRL)
+	// GrossAmountCents Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade).
 	GrossAmountCents Cents              `json:"grossAmountCents"`
 	Id               openapi_types.UUID `json:"id"`
 	Kind             IncomeSourceKind   `json:"kind"`
@@ -682,9 +953,11 @@ type IncomeSource struct {
 	Notes            *string            `json:"notes,omitempty"`
 
 	// StartMonth Primeiro dia do mês
-	StartMonth Month              `json:"startMonth"`
-	UserId     openapi_types.UUID `json:"userId"`
-	Wallet     Wallet             `json:"wallet"`
+	StartMonth     Month              `json:"startMonth"`
+	UnitLabel      *string            `json:"unitLabel,omitempty"`
+	UnitPriceCents *Cents             `json:"unitPriceCents,omitempty"`
+	UserId         openapi_types.UUID `json:"userId"`
+	Wallet         Wallet             `json:"wallet"`
 }
 
 // IncomeSourceKind defines model for IncomeSource.Kind.
@@ -692,18 +965,32 @@ type IncomeSourceKind string
 
 // IncomeSourceInput defines model for IncomeSourceInput.
 type IncomeSourceInput struct {
-	DayOfMonth int          `json:"dayOfMonth"`
+	// AmountMode fixed = valor cheio; per_unit = preço por unidade x quantidade
+	AmountMode *AmountMode `json:"amountMode,omitempty"`
+
+	// DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
+	DateRule *DateRule `json:"dateRule,omitempty"`
+
+	// DayOfMonth Atalho antigo: equivale a dateRule day_of_month com ajuste forward. Ignorado se dateRule vier.
+	DayOfMonth *int         `json:"dayOfMonth,omitempty"`
 	Deductions *[]Deduction `json:"deductions,omitempty"`
 	EndMonth   *Month       `json:"endMonth,omitempty"`
 
 	// GrossAmountCents Valor em centavos (BRL)
-	GrossAmountCents Cents                 `json:"grossAmountCents"`
+	GrossAmountCents *Cents                `json:"grossAmountCents,omitempty"`
 	Kind             IncomeSourceInputKind `json:"kind"`
 	Name             string                `json:"name"`
 	Notes            *string               `json:"notes,omitempty"`
 
+	// Quantity Por unidade: quantidade do primeiro mês (os demais usam os dias úteis)
+	Quantity *int `json:"quantity,omitempty"`
+
 	// StartMonth Primeiro dia do mês
-	StartMonth Month `json:"startMonth"`
+	StartMonth Month   `json:"startMonth"`
+	UnitLabel  *string `json:"unitLabel,omitempty"`
+
+	// UnitPriceCents Valor em centavos (BRL)
+	UnitPriceCents *Cents `json:"unitPriceCents,omitempty"`
 
 	// UserId Deve ser membro ativo da casa
 	UserId openapi_types.UUID `json:"userId"`
@@ -717,15 +1004,31 @@ type IncomeSourceInputKind string
 
 // IncomeSourcePatch defines model for IncomeSourcePatch.
 type IncomeSourcePatch struct {
+	// AmountMode fixed = valor cheio; per_unit = preço por unidade x quantidade
+	AmountMode *AmountMode `json:"amountMode,omitempty"`
+
+	// DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
+	DateRule *DateRule `json:"dateRule,omitempty"`
+
+	// DayOfMonth Atalho antigo: troca para a regra day_of_month mantendo o ajuste atual
 	DayOfMonth *int         `json:"dayOfMonth,omitempty"`
 	Deductions *[]Deduction `json:"deductions,omitempty"`
 	EndMonth   *Month       `json:"endMonth,omitempty"`
 
 	// GrossAmountCents Valor em centavos (BRL)
-	GrossAmountCents *Cents  `json:"grossAmountCents,omitempty"`
-	Name             *string `json:"name,omitempty"`
-	Notes            *string `json:"notes,omitempty"`
+	GrossAmountCents *Cents                 `json:"grossAmountCents,omitempty"`
+	Kind             *IncomeSourcePatchKind `json:"kind,omitempty"`
+	Name             *string                `json:"name,omitempty"`
+	Notes            *string                `json:"notes,omitempty"`
+	UnitLabel        *string                `json:"unitLabel,omitempty"`
+
+	// UnitPriceCents Valor em centavos (BRL)
+	UnitPriceCents *Cents              `json:"unitPriceCents,omitempty"`
+	UserId         *openapi_types.UUID `json:"userId,omitempty"`
 }
+
+// IncomeSourcePatchKind defines model for IncomeSourcePatch.Kind.
+type IncomeSourcePatchKind string
 
 // InviteCreated defines model for InviteCreated.
 type InviteCreated struct {
@@ -1069,6 +1372,27 @@ type SeriesRef struct {
 // SeriesRefKind defines model for SeriesRef.Kind.
 type SeriesRefKind string
 
+// TaxEstimate defines model for TaxEstimate.
+type TaxEstimate struct {
+	// Approximate Sempre verdadeiro: é uma estimativa
+	Approximate bool `json:"approximate"`
+
+	// CheckedOn Quando as tabelas foram conferidas
+	CheckedOn caldate.Date `json:"checkedOn"`
+
+	// InssCents Valor em centavos (BRL)
+	InssCents Cents `json:"inssCents"`
+
+	// IrrfCents Valor em centavos (BRL)
+	IrrfCents Cents `json:"irrfCents"`
+
+	// Sources URLs oficiais conferidas
+	Sources []string `json:"sources"`
+
+	// TableYear Ano da tabela usada (pode ser diferente do mês pedido, se o ano não tem tabela)
+	TableYear int `json:"tableYear"`
+}
+
 // Theme Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 type Theme string
 
@@ -1080,7 +1404,7 @@ type WalletBalance struct {
 	// BalanceCents Recebido - pago (estimativa, não é saldo bancário)
 	BalanceCents Cents `json:"balanceCents"`
 
-	// ExpectedIncomeCents Líquido de todas as receitas da competência na carteira (previstas + recebidas)
+	// ExpectedIncomeCents Líquido de todas as receitas da competência na carteira (a receber + recebidas)
 	ExpectedIncomeCents Cents `json:"expectedIncomeCents"`
 
 	// PaidCents Valor efetivamente pago das invoices da competência pagas com esta carteira
@@ -1092,15 +1416,21 @@ type WalletBalance struct {
 	// ProjectedCents Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar.
 	ProjectedCents Cents `json:"projectedCents"`
 
-	// ReceivedIncomeCents Líquido das receitas já recebidas
+	// ReceivedIncomeCents Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)
 	ReceivedIncomeCents Cents `json:"receivedIncomeCents"`
 }
+
+// WeekendAdjust Quando a data cai em fim de semana ou feriado nacional: forward = próximo dia útil (padrão), backward = dia útil anterior, none = manter
+type WeekendAdjust string
 
 // Cursor defines model for Cursor.
 type Cursor = string
 
 // HouseholdId defines model for HouseholdId.
 type HouseholdId = openapi_types.UUID
+
+// IncomeScope defines model for IncomeScope.
+type IncomeScope string
 
 // InvoiceId defines model for InvoiceId.
 type InvoiceId = openapi_types.UUID
@@ -1189,9 +1519,20 @@ type ExportInvoicesCsvParams struct {
 	To *caldate.Date `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PreviewIncomeDatesParams defines parameters for PreviewIncomeDates.
+type PreviewIncomeDatesParams struct {
+	Month caldate.Date `form:"month" json:"month"`
+	Rule  DateRuleKind `form:"rule" json:"rule"`
+
+	// N Dia do mês (1 a 31) ou ordem do dia útil (1 a 23). Não se aplica a last_business_day.
+	N             *int           `form:"n,omitempty" json:"n,omitempty"`
+	WeekendAdjust *WeekendAdjust `form:"weekendAdjust,omitempty" json:"weekendAdjust,omitempty"`
+	Count         *int           `form:"count,omitempty" json:"count,omitempty"`
+}
+
 // UpdateIncomeSourceParams defines parameters for UpdateIncomeSource.
 type UpdateIncomeSourceParams struct {
-	// ApplyFrom Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam.
+	// ApplyFrom Mês (dia 1). Reaplica o molde aos lançamentos que ainda NÃO contam como recebidos desse mês em diante; os recebidos nunca mudam.
 	ApplyFrom *caldate.Date `form:"applyFrom,omitempty" json:"applyFrom,omitempty"`
 }
 
@@ -1200,11 +1541,41 @@ type ListIncomesParams struct {
 	Month caldate.Date `form:"month" json:"month"`
 }
 
+// DeleteIncomeParams defines parameters for DeleteIncome.
+type DeleteIncomeParams struct {
+	// Scope Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+	// recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+	Scope *DeleteIncomeParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// DeleteIncomeParamsScope defines parameters for DeleteIncome.
+type DeleteIncomeParamsScope string
+
+// UpdateIncomeParams defines parameters for UpdateIncome.
+type UpdateIncomeParams struct {
+	// Scope Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+	// recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+	Scope *UpdateIncomeParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// UpdateIncomeParamsScope defines parameters for UpdateIncome.
+type UpdateIncomeParamsScope string
+
 // ReceiveIncomeJSONBody defines parameters for ReceiveIncome.
 type ReceiveIncomeJSONBody struct {
-	// ReceivedAt Padrão hoje
+	// ReceivedAt Padrão hoje (só usado se a data esperada ainda não chegou)
 	ReceivedAt *caldate.Date `json:"receivedAt,omitempty"`
 }
+
+// RestoreIncomeParams defines parameters for RestoreIncome.
+type RestoreIncomeParams struct {
+	// Scope Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+	// recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+	Scope *RestoreIncomeParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// RestoreIncomeParamsScope defines parameters for RestoreIncome.
+type RestoreIncomeParamsScope string
 
 // CreateInviteJSONBody defines parameters for CreateInvite.
 type CreateInviteJSONBody struct {
@@ -1299,6 +1670,13 @@ type GetCategoryHistoryParams struct {
 
 	// To Último mês (dia 1). Padrão: o mês atual
 	To *caldate.Date `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// EstimateTaxParams defines parameters for EstimateTax.
+type EstimateTaxParams struct {
+	Month      caldate.Date `form:"month" json:"month"`
+	GrossCents money.Cents  `form:"grossCents" json:"grossCents"`
+	Dependents *int         `form:"dependents,omitempty" json:"dependents,omitempty"`
 }
 
 // AcceptInviteJSONBody defines parameters for AcceptInvite.
@@ -1461,33 +1839,39 @@ type ServerInterface interface {
 	// ExportInvoicesCsv Exporta as contas da casa em CSV (planilha). Todos os membros, inclusive leitura, podem exportar.
 	// (GET /households/{householdId}/export/invoices.csv)
 	ExportInvoicesCsv(c *gin.Context, householdId HouseholdId, params ExportInvoicesCsvParams)
-	// ListIncomeSources Fontes recorrentes (previsão de salário e benefício)
+	// PreviewIncomeDates Prévia das datas de uma regra de data (sem gravar nada)
+	// (GET /households/{householdId}/income-dates)
+	PreviewIncomeDates(c *gin.Context, householdId HouseholdId, params PreviewIncomeDatesParams)
+	// ListIncomeSources Receitas que se repetem (o molde de cada repetição)
 	// (GET /households/{householdId}/income-sources)
 	ListIncomeSources(c *gin.Context, householdId HouseholdId)
-	// CreateIncomeSource Cria fonte e gera os lançamentos previstos até o horizonte
+	// CreateIncomeSource Cria uma repetição e gera os lançamentos até o horizonte
 	// (POST /households/{householdId}/income-sources)
 	CreateIncomeSource(c *gin.Context, householdId HouseholdId)
-	// UpdateIncomeSource Edita a fonte. `applyFrom` reaplica o template aos meses previstos a partir dali.
+	// UpdateIncomeSource Edita o molde. `applyFrom` reaplica o molde aos meses a receber a partir dali.
 	// (PATCH /households/{householdId}/income-sources/{sourceId})
 	UpdateIncomeSource(c *gin.Context, householdId HouseholdId, sourceId openapi_types.UUID, params UpdateIncomeSourceParams)
-	// ListIncomes Lançamentos do mês (previstos e recebidos)
+	// ListIncomes Receitas do mês (recebidas e a receber)
 	// (GET /households/{householdId}/incomes)
 	ListIncomes(c *gin.Context, householdId HouseholdId, params ListIncomesParams)
-	// CreateIncome Lança receita avulsa
+	// CreateIncome Lança uma receita (avulsa ou que se repete todo mês)
 	// (POST /households/{householdId}/incomes)
 	CreateIncome(c *gin.Context, householdId HouseholdId)
-	// DeleteIncome Exclusão lógica
+	// DeleteIncome Exclusão lógica. Se a receita se repete, `scope` define o alcance.
 	// (DELETE /households/{householdId}/incomes/{incomeId})
-	DeleteIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
-	// UpdateIncome Ajusta o lançamento do mês (bruto, descontos, data)
+	DeleteIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID, params DeleteIncomeParams)
+	// UpdateIncome Edita a receita. Se ela se repete, `scope` define o alcance.
 	// (PATCH /households/{householdId}/incomes/{incomeId})
-	UpdateIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
-	// UnreceiveIncome Desfaz o recebimento (volta a previsto). Se não estava recebida, 409 `not_received`.
+	UpdateIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID, params UpdateIncomeParams)
+	// UnreceiveIncome "Não caiu": a receita deixa de contar como recebida e fica fora do saldo. Se não contava, 409 `not_received`.
 	// (DELETE /households/{householdId}/incomes/{incomeId}/receive)
 	UnreceiveIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
-	// ReceiveIncome Marca como recebida (só esta competência). Receber de novo responde 409 `already_received`.
+	// ReceiveIncome "Caiu": desfaz o "não caiu" (ou marca como recebida antes da data). Se já conta como recebida, 409 `already_received`.
 	// (POST /households/{householdId}/incomes/{incomeId}/receive)
 	ReceiveIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID)
+	// RestoreIncome Desfaz a exclusão. `scope=following` desfaz o lote "este e os seguintes".
+	// (POST /households/{householdId}/incomes/{incomeId}/restore)
+	RestoreIncome(c *gin.Context, householdId HouseholdId, incomeId openapi_types.UUID, params RestoreIncomeParams)
 	// CreateInvite Gera convite por link (admin). O token só é devolvido nesta resposta.
 	// (POST /households/{householdId}/invites)
 	CreateInvite(c *gin.Context, householdId HouseholdId)
@@ -1569,6 +1953,9 @@ type ServerInterface interface {
 	// GetCategoryHistory Gasto por categoria mês a mês (histórico para os gráficos), por competência
 	// (GET /households/{householdId}/summary/categories)
 	GetCategoryHistory(c *gin.Context, householdId HouseholdId, params GetCategoryHistoryParams)
+	// EstimateTax Estimativa de INSS e IRRF de um salário mensal (sugestão para preencher descontos)
+	// (GET /households/{householdId}/tax/estimate)
+	EstimateTax(c *gin.Context, householdId HouseholdId, params EstimateTaxParams)
 	// AcceptInvite Usuário logado entra em outra casa com um token de convite
 	// (POST /invites/accept)
 	AcceptInvite(c *gin.Context)
@@ -2061,6 +2448,74 @@ func (siw *ServerInterfaceWrapper) ExportInvoicesCsv(c *gin.Context) {
 	siw.Handler.ExportInvoicesCsv(c, householdId, params)
 }
 
+// PreviewIncomeDates operation middleware
+func (siw *ServerInterfaceWrapper) PreviewIncomeDates(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PreviewIncomeDatesParams
+
+	// ------------- Required query parameter "month" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "month", c.Request.URL.Query(), &params.Month, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter month: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Required query parameter "rule" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "rule", c.Request.URL.Query(), &params.Rule, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter rule: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "n" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "n", c.Request.URL.Query(), &params.N, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter n: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "weekendAdjust" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "weekendAdjust", c.Request.URL.Query(), &params.WeekendAdjust, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter weekendAdjust: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "count" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "count", c.Request.URL.Query(), &params.Count, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter count: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PreviewIncomeDates(c, householdId, params)
+}
+
 // ListIncomeSources operation middleware
 func (siw *ServerInterfaceWrapper) ListIncomeSources(c *gin.Context) {
 
@@ -2241,6 +2696,17 @@ func (siw *ServerInterfaceWrapper) DeleteIncome(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteIncomeParams
+
+	// ------------- Optional query parameter "scope" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "scope", c.Request.URL.Query(), &params.Scope, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter scope: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2248,7 +2714,7 @@ func (siw *ServerInterfaceWrapper) DeleteIncome(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.DeleteIncome(c, householdId, incomeId)
+	siw.Handler.DeleteIncome(c, householdId, incomeId, params)
 }
 
 // UpdateIncome operation middleware
@@ -2275,6 +2741,17 @@ func (siw *ServerInterfaceWrapper) UpdateIncome(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateIncomeParams
+
+	// ------------- Optional query parameter "scope" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "scope", c.Request.URL.Query(), &params.Scope, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter scope: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2282,7 +2759,7 @@ func (siw *ServerInterfaceWrapper) UpdateIncome(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateIncome(c, householdId, incomeId)
+	siw.Handler.UpdateIncome(c, householdId, incomeId, params)
 }
 
 // UnreceiveIncome operation middleware
@@ -2351,6 +2828,51 @@ func (siw *ServerInterfaceWrapper) ReceiveIncome(c *gin.Context) {
 	}
 
 	siw.Handler.ReceiveIncome(c, householdId, incomeId)
+}
+
+// RestoreIncome operation middleware
+func (siw *ServerInterfaceWrapper) RestoreIncome(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "incomeId" -------------
+	var incomeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "incomeId", c.Param("incomeId"), &incomeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter incomeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RestoreIncomeParams
+
+	// ------------- Optional query parameter "scope" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "scope", c.Request.URL.Query(), &params.Scope, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter scope: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RestoreIncome(c, householdId, incomeId, params)
 }
 
 // CreateInvite operation middleware
@@ -3322,6 +3844,58 @@ func (siw *ServerInterfaceWrapper) GetCategoryHistory(c *gin.Context) {
 	siw.Handler.GetCategoryHistory(c, householdId, params)
 }
 
+// EstimateTax operation middleware
+func (siw *ServerInterfaceWrapper) EstimateTax(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params EstimateTaxParams
+
+	// ------------- Required query parameter "month" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "month", c.Request.URL.Query(), &params.Month, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter month: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Required query parameter "grossCents" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "grossCents", c.Request.URL.Query(), &params.GrossCents, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter grossCents: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "dependents" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "dependents", c.Request.URL.Query(), &params.Dependents, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter dependents: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.EstimateTax(c, householdId, params)
+}
+
 // AcceptInvite operation middleware
 func (siw *ServerInterfaceWrapper) AcceptInvite(c *gin.Context) {
 
@@ -3410,8 +3984,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/incomes", wrapper.CreateIncome)
 	router.DELETE(options.BaseURL+"/households/:householdId/incomes/:incomeId", wrapper.DeleteIncome)
 	router.PATCH(options.BaseURL+"/households/:householdId/incomes/:incomeId", wrapper.UpdateIncome)
+	router.POST(options.BaseURL+"/households/:householdId/incomes/:incomeId/restore", wrapper.RestoreIncome)
 	router.DELETE(options.BaseURL+"/households/:householdId/incomes/:incomeId/receive", wrapper.UnreceiveIncome)
 	router.POST(options.BaseURL+"/households/:householdId/incomes/:incomeId/receive", wrapper.ReceiveIncome)
+	router.GET(options.BaseURL+"/households/:householdId/income-dates", wrapper.PreviewIncomeDates)
+	router.GET(options.BaseURL+"/households/:householdId/tax/estimate", wrapper.EstimateTax)
 	router.GET(options.BaseURL+"/households/:householdId/income-sources", wrapper.ListIncomeSources)
 	router.POST(options.BaseURL+"/households/:householdId/income-sources", wrapper.CreateIncomeSource)
 	router.PATCH(options.BaseURL+"/households/:householdId/income-sources/:sourceId", wrapper.UpdateIncomeSource)

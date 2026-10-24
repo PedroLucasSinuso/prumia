@@ -27,6 +27,9 @@ type Config struct {
 	SessionMaxAge time.Duration
 	// CNPJLookupURL é a base da consulta de CNPJ (CNPJ_LOOKUP_URL; padrão BrasilAPI). "off" desliga a consulta externa.
 	CNPJLookupURL string
+	// HolidaysURL é a base da consulta de feriados nacionais (HOLIDAYS_URL; padrão BrasilAPI). "off" desliga a consulta
+	// externa e usa só o cálculo local. Com a consulta de CNPJ, é a única saída de rede da API.
+	HolidaysURL string
 }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
@@ -47,6 +50,7 @@ func load(get func(string) string) (Config, error) {
 		AutoMigrate:      get("AUTO_MIGRATE") == "true",
 		OpenRegistration: get("OPEN_REGISTRATION") == "true",
 		CNPJLookupURL:    valueOr(get("CNPJ_LOOKUP_URL"), "https://brasilapi.com.br/api/cnpj/v1"),
+		HolidaysURL:      valueOr(get("HOLIDAYS_URL"), "https://brasilapi.com.br/api/feriados/v1"),
 	}
 
 	var problems []error

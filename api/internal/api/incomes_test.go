@@ -31,7 +31,28 @@ type incT struct {
 	NetAmountCents   int64   `json:"netAmountCents"`
 	Received         bool    `json:"received"`
 	ReceivedAt       *string `json:"receivedAt"`
+	Held             bool    `json:"held"`
+	Repeats          bool    `json:"repeats"`
+	RepeatsUntil     *string `json:"repeatsUntil"`
+	AmountMode       string  `json:"amountMode"`
+	Quantity         *int    `json:"quantity"`
+	UnitPriceCents   *int64  `json:"unitPriceCents"`
+	UnitLabel        *string `json:"unitLabel"`
+	DateRule         *ruleT  `json:"dateRule"`
 	Notes            *string `json:"notes"`
+}
+
+func (i incT) RepeatsUntilOrEmpty() string {
+	if i.RepeatsUntil == nil {
+		return ""
+	}
+	return *i.RepeatsUntil
+}
+
+type ruleT struct {
+	Rule          string `json:"rule"`
+	N             *int   `json:"n"`
+	WeekendAdjust string `json:"weekendAdjust"`
 }
 
 type srcT struct {
@@ -42,6 +63,8 @@ type srcT struct {
 	Name             string  `json:"name"`
 	GrossAmountCents int64   `json:"grossAmountCents"`
 	DayOfMonth       int     `json:"dayOfMonth"`
+	AmountMode       string  `json:"amountMode"`
+	DateRule         ruleT   `json:"dateRule"`
 	StartMonth       string  `json:"startMonth"`
 	EndMonth         *string `json:"endMonth"`
 	GeneratedThrough string  `json:"generatedThrough"`
@@ -185,7 +208,8 @@ func TestSalarioBrutoComDescontosEPrevisao(t *testing.T) {
 	}
 
 	oct := a.incomeOf(c, house, "2026-10-01")
-	if oct.Received || oct.ReceivedAt != nil || oct.ExpectedDate != "2026-10-05" || oct.Description != "Salário Ana" ||
+	// hoje é 18/10 e o salário cai no dia 5: o recebimento é automático (ninguém marcou nada)
+	if !oct.Received || oct.ReceivedAt == nil || *oct.ReceivedAt != "2026-10-05" || oct.Held || oct.ExpectedDate != "2026-10-05" || oct.Description != "Salário Ana" ||
 		oct.GrossAmountCents != 800000 || oct.NetAmountCents != 608410 || len(oct.Deductions) != 4 ||
 		oct.SourceID == nil || *oct.SourceID != src.ID || oct.UserID != ana {
 		t.Fatalf("lançamento previsto de outubro: %+v", oct)
@@ -223,18 +247,15 @@ func TestSalarioBrutoComDescontosEPrevisao(t *testing.T) {
 		t.Errorf("remover descontos: %+v", upd)
 	}
 
-	// recebe outubro
-	r = a.receive(c, house, oct.ID, nil)
-	var rec incT
-	r.json(&rec)
-	if r.Code != 200 || !rec.Received || rec.ReceivedAt == nil || *rec.ReceivedAt != "2026-10-18" {
-		t.Fatalf("receber (padrão hoje): %d %s", r.Code, r.Body)
+	// outubro já conta como recebido sozinho (a data passou): "caiu" de novo é 409
+	if r := a.receive(c, house, oct.ID, nil); r.Code != 409 {
+		t.Fatalf("receber o que já é automático: %d %s", r.Code, r.Body)
 	}
 
-	// reaplica o template novo a partir de outubro: outubro (recebido) NÃO muda; novembro e dezembro (previstos) mudam
+	// reaplica o template novo a partir de outubro: outubro (recebido) NÃO muda; novembro e dezembro (a receber) mudam
 	newTmpl := []dedT{{"inss", "INSS", 100000}, {"irrf", "IRRF", 70000}}
 	r = a.do("PATCH", base+"/income-sources/"+src.ID+"?applyFrom=2026-10-01",
-		map[string]any{"grossAmountCents": 900000, "dayOfMonth": 10, "deductions": newTmpl}, c)
+		map[string]any{"grossAmountCents": 900000, "dateRule": map[string]any{"rule": "day_of_month", "n": 10, "weekendAdjust": "none"}, "deductions": newTmpl}, c)
 	var s2 srcT
 	r.json(&s2)
 	if r.Code != 200 || s2.GrossAmountCents != 900000 || len(s2.Deductions) != 2 {
@@ -276,7 +297,11 @@ func TestPrevisaoDia31ETravaEmMesCurto(t *testing.T) {
 	a, c, house, _, _ := serie(t)
 	ana := a.uid("ana@x.com")
 	base := "/api/households/" + house
-	src, r := a.newSource(c, house, ana, map[string]any{"dayOfMonth": 31, "startMonth": "2027-01-01"})
+	// ajuste "none": a data é o dia N exato, travado no último dia do mês curto (o padrão forward anda para dia útil)
+	rule := func(n int) map[string]any {
+		return map[string]any{"rule": "day_of_month", "n": n, "weekendAdjust": "none"}
+	}
+	src, r := a.newSource(c, house, ana, map[string]any{"dateRule": rule(31), "startMonth": "2027-01-01"})
 	if r.Code != 201 {
 		t.Fatalf("%d %s", r.Code, r.Body)
 	}
@@ -287,7 +312,7 @@ func TestPrevisaoDia31ETravaEmMesCurto(t *testing.T) {
 		}
 	}
 	// reaplicar com o dia 30: fevereiro continua 28 (trava), março vira 30
-	a.do("PATCH", base+"/income-sources/"+src.ID+"?applyFrom=2027-02-01", map[string]any{"dayOfMonth": 30}, c)
+	a.do("PATCH", base+"/income-sources/"+src.ID+"?applyFrom=2027-02-01", map[string]any{"dateRule": rule(30)}, c)
 	if got := a.incomeOf(c, house, "2027-02-01").ExpectedDate; got != "2027-02-28" {
 		t.Errorf("fevereiro com dia 30: %s", got)
 	}
@@ -492,7 +517,7 @@ func TestCarteiraValidacoesDeEdicao(t *testing.T) {
 func TestReceberDuasVezes(t *testing.T) {
 	a, c, house, _, _ := serie(t)
 	ana := a.uid("ana@x.com")
-	a.newSource(c, house, ana, nil)
+	a.newSource(c, house, ana, map[string]any{"dayOfMonth": 28}) // ainda não chegou: "a receber"
 	inc := a.incomeOf(c, house, "2026-10-01")
 
 	r := a.receive(c, house, inc.ID, map[string]any{"receivedAt": "2026-10-05"})
@@ -508,12 +533,12 @@ func TestReceberDuasVezes(t *testing.T) {
 	if g := a.incomeOf(c, house, "2026-10-01"); g.ReceivedAt == nil || *g.ReceivedAt != "2026-10-05" {
 		t.Errorf("segunda tentativa alterou a data: %+v", g)
 	}
-	// desfazer: volta a previsto; desfazer de novo é 409 not_received
+	// "não caiu": deixa de contar como recebida; repetir é 409 not_received
 	r = a.do("DELETE", "/api/households/"+house+"/incomes/"+inc.ID+"/receive", nil, c)
 	got = incT{} // json.Unmarshal não zera campos ausentes
 	r.json(&got)
-	if r.Code != 200 || got.Received || got.ReceivedAt != nil {
-		t.Fatalf("desfazer: %d %s", r.Code, r.Body)
+	if r.Code != 200 || got.Received || got.ReceivedAt != nil || !got.Held {
+		t.Fatalf("não caiu: %d %s", r.Code, r.Body)
 	}
 	r = a.do("DELETE", "/api/households/"+house+"/incomes/"+inc.ID+"/receive", nil, c)
 	if r.Code != 409 || !strings.Contains(r.Body.String(), `"not_received"`) {
@@ -649,7 +674,7 @@ func TestAvisoDeSaldoDeBeneficioAoPagar(t *testing.T) {
 	var cats []cat
 	a.do("GET", "/api/households/"+house+"/categories", nil, c).json(&cats)
 	mercado := cats[1].ID
-	a.newSource(c, house, ana, map[string]any{"kind": "benefit", "name": "VR", "grossAmountCents": 60000, "deductions": []dedT{}})
+	a.newSource(c, house, ana, map[string]any{"kind": "benefit", "name": "VR", "grossAmountCents": 60000, "deductions": []dedT{}, "dayOfMonth": 28})
 	vr := a.incomeOf(c, house, "2026-10-01")
 
 	i1, _ := a.newInvoice(c, house, mercado, map[string]any{"amountCents": 40000})
@@ -797,7 +822,7 @@ func TestReceitasPapeisEVisibilidade(t *testing.T) {
 			t.Errorf("viewer %s deveria ser 403: %d", name, r.Code)
 		}
 	}
-	if got := a.incomeOf(cA, houseA, "2026-10-01"); got.Received || got.GrossAmountCents != 800000 {
+	if got := a.incomeOf(cA, houseA, "2026-10-01"); got.Held || got.GrossAmountCents != 800000 {
 		t.Errorf("viewer alterou dados: %+v", got)
 	}
 	// member escreve e pode lançar a receita de outro membro (a casa é a unidade de dados)

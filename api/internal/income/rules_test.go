@@ -1,9 +1,11 @@
 package income
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/calendar"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
@@ -116,7 +118,9 @@ func TestCarteiraDerivadaDoTipo(t *testing.T) {
 }
 
 func TestPrevisaoComDia31TravaEmMesCurto(t *testing.T) {
-	got := GenerateOccurrences(d(2027, 1, 1), d(2027, 5, 1), 31)
+	// ajuste none: a data é exatamente o dia N (travado no último dia do mês curto), como era antes das regras de dia útil
+	rule := DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.None}
+	got := GenerateOccurrences(d(2027, 1, 1), d(2027, 5, 1), rule, calendar.NoHolidays)
 	want := []string{"2027-01-31", "2027-02-28", "2027-03-31", "2027-04-30", "2027-05-31"}
 	if len(got) != len(want) {
 		t.Fatalf("%d meses, quer %d", len(got), len(want))
@@ -130,15 +134,158 @@ func TestPrevisaoComDia31TravaEmMesCurto(t *testing.T) {
 		}
 	}
 	// ano bissexto
-	if f := GenerateOccurrences(d(2028, 2, 1), d(2028, 2, 1), 30); f[0].ExpectedDate.String() != "2028-02-29" {
+	leap := DateRule{Rule: RuleDayOfMonth, N: 30, Adjust: calendar.None}
+	if f := GenerateOccurrences(d(2028, 2, 1), d(2028, 2, 1), leap, calendar.NoHolidays); f[0].ExpectedDate.String() != "2028-02-29" {
 		t.Errorf("fevereiro bissexto: %s", f[0].ExpectedDate)
 	}
 	// virada de ano e intervalo vazio
-	if f := GenerateOccurrences(d(2026, 11, 1), d(2027, 2, 1), 5); len(f) != 4 || f[2].Month.String() != "2027-01-01" {
+	five := DateRule{Rule: RuleDayOfMonth, N: 5, Adjust: calendar.None}
+	if f := GenerateOccurrences(d(2026, 11, 1), d(2027, 2, 1), five, calendar.NoHolidays); len(f) != 4 || f[2].Month.String() != "2027-01-01" {
 		t.Errorf("virada de ano: %+v", f)
 	}
-	if f := GenerateOccurrences(d(2026, 5, 1), d(2026, 4, 1), 5); len(f) != 0 {
+	if f := GenerateOccurrences(d(2026, 5, 1), d(2026, 4, 1), five, calendar.NoHolidays); len(f) != 0 {
 		t.Errorf("intervalo invertido deveria ser vazio: %+v", f)
+	}
+}
+
+// Feriados nacionais de 2026 (lista real da BrasilAPI) para os testes das regras de data.
+func holidays2026(day caldate.Date) bool {
+	return calendar.New("off").Func(context.Background())(day)
+}
+
+// As três regras e os três ajustes, em meses reais de 2026 (nov/2026: dia 2 é feriado e dia 28 é sábado).
+func TestRegrasDeData2026(t *testing.T) {
+	h := holidays2026
+	cases := []struct {
+		name  string
+		rule  DateRule
+		month caldate.Date
+		want  string
+	}{
+		{"2º dia útil de outubro", DateRule{Rule: RuleNthBusinessDay, N: 2}, d(2026, 10, 1), "2026-10-02"},
+		{"5º dia útil de outubro (12/10 é feriado, mas vem depois)", DateRule{Rule: RuleNthBusinessDay, N: 5}, d(2026, 10, 1), "2026-10-07"},
+		{"2º dia útil de novembro (feriado em 2/11)", DateRule{Rule: RuleNthBusinessDay, N: 2}, d(2026, 11, 1), "2026-11-04"},
+		{"5º dia útil de novembro", DateRule{Rule: RuleNthBusinessDay, N: 5}, d(2026, 11, 1), "2026-11-09"},
+		{"último dia útil de outubro", DateRule{Rule: RuleLastBusiness}, d(2026, 10, 1), "2026-10-30"},
+		{"último dia útil de fevereiro (Carnaval não atrapalha)", DateRule{Rule: RuleLastBusiness}, d(2026, 2, 1), "2026-02-27"},
+		{"dia 28 em outubro (quarta)", DateRule{Rule: RuleDayOfMonth, N: 28, Adjust: calendar.Forward}, d(2026, 10, 1), "2026-10-28"},
+		{"dia 28 em novembro (sábado) para a frente", DateRule{Rule: RuleDayOfMonth, N: 28, Adjust: calendar.Forward}, d(2026, 11, 1), "2026-11-30"},
+		{"dia 28 em novembro (sábado) para trás", DateRule{Rule: RuleDayOfMonth, N: 28, Adjust: calendar.Backward}, d(2026, 11, 1), "2026-11-27"},
+		{"dia 28 em novembro (sábado) mantido", DateRule{Rule: RuleDayOfMonth, N: 28, Adjust: calendar.None}, d(2026, 11, 1), "2026-11-28"},
+		{"dia 15 de fevereiro: domingo + Carnaval", DateRule{Rule: RuleDayOfMonth, N: 15, Adjust: calendar.Forward}, d(2026, 2, 1), "2026-02-18"},
+		{"dia 31 em fevereiro trava no 28 (sábado) e vai para segunda", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.Forward}, d(2026, 2, 1), "2026-03-02"},
+	}
+	for _, c := range cases {
+		if got := c.rule.ExpectedDate(c.month, h); got.String() != c.want {
+			t.Errorf("%s: %s, quer %s", c.name, got, c.want)
+		}
+	}
+}
+
+func TestCheckDeRegraDeData(t *testing.T) {
+	cases := []struct {
+		name string
+		rule DateRule
+		bad  string // campo com erro ("" = válida)
+	}{
+		{"dia 28", DateRule{Rule: RuleDayOfMonth, N: 28}, ""},
+		{"dia 0", DateRule{Rule: RuleDayOfMonth, N: 0}, "r.n"},
+		{"dia 32", DateRule{Rule: RuleDayOfMonth, N: 32}, "r.n"},
+		{"23º dia útil", DateRule{Rule: RuleNthBusinessDay, N: 23}, ""},
+		{"24º dia útil", DateRule{Rule: RuleNthBusinessDay, N: 24}, "r.n"},
+		{"último dia útil ignora o N", DateRule{Rule: RuleLastBusiness, N: 99}, ""},
+		{"regra desconhecida", DateRule{Rule: "semanal", N: 1}, "r.rule"},
+		{"ajuste desconhecido", DateRule{Rule: RuleDayOfMonth, N: 1, Adjust: "sempre"}, "r.weekendAdjust"},
+	}
+	for _, c := range cases {
+		var v validation.Collector
+		got := c.rule.Check("r", &v)
+		ve, _ := v.Err().(*validation.Error)
+		if (c.bad == "") != (ve == nil) || (ve != nil && ve.Fields[c.bad] == "") {
+			t.Errorf("%s: erro %v, quer campo %q", c.name, v.Err(), c.bad)
+		}
+		if c.bad == "" && got.Adjust != calendar.Forward && c.rule.Adjust == "" {
+			t.Errorf("%s: ajuste vazio deveria virar forward, veio %q", c.name, got.Adjust)
+		}
+	}
+	var v validation.Collector
+	if r := (DateRule{Rule: RuleLastBusiness, N: 99}).Check("r", &v); r.N != 0 || r.nPtr() != nil {
+		t.Errorf("último dia útil não tem N: %+v", r)
+	}
+}
+
+func TestValorPorUnidade(t *testing.T) {
+	cents := func(c int64) *money.Cents { v := money.Cents(c); return &v }
+	i := func(n int) *int { return &n }
+	s := func(x string) *string { return &x }
+	// R$ 65,00 por dia trabalhado x 21 dias úteis
+	var v validation.Collector
+	a := AmountInput{Mode: AmountPerUnit, UnitPriceCents: cents(6500), UnitLabel: s(" dia trabalhado ")}.Resolve(21, &v)
+	if v.Err() != nil || a.GrossCents != 136500 || *a.Quantity != 21 || *a.UnitLabel != "dia trabalhado" || a.Mode != AmountPerUnit {
+		t.Errorf("padrão (dias úteis): %+v %v", a, v.Err())
+	}
+	// quantidade ajustada pela pessoa
+	v = validation.Collector{}
+	a = AmountInput{Mode: AmountPerUnit, UnitPriceCents: cents(6500), Quantity: i(19)}.Resolve(21, &v)
+	if v.Err() != nil || a.GrossCents != 123500 || *a.UnitLabel != DefaultUnitLabel {
+		t.Errorf("quantidade 19: %+v %v", a, v.Err())
+	}
+	// valor fixo
+	v = validation.Collector{}
+	a = AmountInput{GrossCents: cents(800000)}.Resolve(21, &v)
+	if v.Err() != nil || a.Mode != AmountFixed || a.GrossCents != 800000 || a.Quantity != nil || a.UnitPriceCents != nil {
+		t.Errorf("fixo: %+v %v", a, v.Err())
+	}
+	// erros por campo
+	for name, c := range map[string]struct {
+		in  AmountInput
+		bad string
+	}{
+		"fixo sem valor":      {AmountInput{}, "grossAmountCents"},
+		"fixo zero":           {AmountInput{GrossCents: cents(0)}, "grossAmountCents"},
+		"unidade sem preço":   {AmountInput{Mode: AmountPerUnit}, "unitPriceCents"},
+		"quantidade zero":     {AmountInput{Mode: AmountPerUnit, UnitPriceCents: cents(100), Quantity: i(0)}, "quantity"},
+		"quantidade enorme":   {AmountInput{Mode: AmountPerUnit, UnitPriceCents: cents(100), Quantity: i(1000)}, "quantity"},
+		"rótulo vazio":        {AmountInput{Mode: AmountPerUnit, UnitPriceCents: cents(100), UnitLabel: s("  ")}, "unitLabel"},
+		"total acima do teto": {AmountInput{Mode: AmountPerUnit, UnitPriceCents: cents(int64(MaxAmount)), Quantity: i(2)}, "grossAmountCents"},
+		"modo desconhecido":   {AmountInput{Mode: "hora"}, "amountMode"},
+	} {
+		var v validation.Collector
+		c.in.Resolve(21, &v)
+		ve, _ := v.Err().(*validation.Error)
+		if ve == nil || ve.Fields[c.bad] == "" {
+			t.Errorf("%s: erro %v, quer campo %q", name, v.Err(), c.bad)
+		}
+	}
+}
+
+// O estado "recebida" é derivado: a data chegou e ninguém disse "não caiu" (ou foi marcada antes da data).
+func TestEstadoRecebidaDerivado(t *testing.T) {
+	today := d(2026, 10, 18)
+	held := time.Now()
+	cases := []struct {
+		name string
+		in   Income
+		want bool
+	}{
+		{"data futura", Income{ExpectedDate: d(2026, 10, 28)}, false},
+		{"data de hoje", Income{ExpectedDate: today}, true},
+		{"data passada", Income{ExpectedDate: d(2026, 10, 5)}, true},
+		{"data passada mas não caiu", Income{ExpectedDate: d(2026, 10, 5), HeldAt: &held}, false},
+		{"futura marcada como recebida", Income{ExpectedDate: d(2026, 10, 28), ReceivedAt: d(2026, 10, 17)}, true},
+		{"marcada recebida mas depois não caiu", Income{ExpectedDate: d(2026, 10, 28), ReceivedAt: d(2026, 10, 17), HeldAt: &held}, false},
+	}
+	for _, c := range cases {
+		if got := c.in.IsReceived(today); got != c.want {
+			t.Errorf("%s: recebida = %v", c.name, got)
+		}
+	}
+	// no recebimento automático, o dia que entrou é a data esperada; na marcação antecipada, o dia marcado
+	if got := (Income{ExpectedDate: d(2026, 10, 5)}).ReceivedOn(); got.String() != "2026-10-05" {
+		t.Errorf("recebimento automático: %s", got)
+	}
+	if got := (Income{ExpectedDate: d(2026, 10, 28), ReceivedAt: d(2026, 10, 17)}).ReceivedOn(); got.String() != "2026-10-17" {
+		t.Errorf("recebimento antecipado: %s", got)
 	}
 }
 

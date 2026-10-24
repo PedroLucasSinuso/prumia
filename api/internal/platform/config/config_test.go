@@ -54,6 +54,9 @@ func TestLoadLimitesDeCasaESessao(t *testing.T) {
 	if cfg.CNPJLookupURL != "https://brasilapi.com.br/api/cnpj/v1" {
 		t.Errorf("consulta de CNPJ por padrão = %q", cfg.CNPJLookupURL)
 	}
+	if cfg.HolidaysURL != "https://brasilapi.com.br/api/feriados/v1" {
+		t.Errorf("feriados por padrão = %q", cfg.HolidaysURL)
+	}
 	if cfg.MaxHouseholdsPerUser != 5 || cfg.SessionMaxAge != 90*24*time.Hour {
 		t.Errorf("padrões: %d casas, %s", cfg.MaxHouseholdsPerUser, cfg.SessionMaxAge)
 	}

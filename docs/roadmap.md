@@ -72,6 +72,15 @@ Pontos de atenção: manter o fluxo de pagar em poucos toques; casas existentes 
 
 Tokens e 9 temas (Marfim, Solarized, Latte, Alto contraste, Dracula, Nord, Gruvbox, Rosé Pine, Sistema), Resumo com saldo projetado e gráficos, navegação Mês · Receitas · Resumo · Ajustes (+ Importar), painel de **Ajustes** unificado (Casa e pessoas, Categorias com arrastar, Favorecidos, Aparência com tema na conta, Minha conta com troca de senha, Dados com exportação CSV, Sobre), Mês redesenhado para computador e importação inteligente de documentos.
 
+## Feito: receitas v2 (PR `feat/receitas-v2`)
+
+Uma lista só (sem "fonte" x "lançamento" na tela), recebimento **automático** com a exceção "não caiu", regra de data (dia do mês, N-ésimo
+ou último dia útil, com ajuste de fim de semana e feriados nacionais), valor cheio ou **por unidade** (preço x quantidade, com dias úteis
+sugeridos), editar/excluir/restaurar com escopo (este mês ou este e os seguintes, com Desfazer), sugestão opcional de INSS e IRRF pelas
+tabelas de 2026 e tela nova (recebido, a receber, por pessoa, sobra do mês). Calendário em `api/internal/calendar` (BrasilAPI com plano B
+calculado), `HOLIDAYS_URL`. Pendente do dono: teste manual em `docs/user-guides/salario-e-previsao.md`; atualizar as tabelas de impostos
+a cada janeiro (`api/internal/tax/tables.go`).
+
 ## Melhorias de curto prazo
 
 - Ajustes: novas preferências da casa entram como novas seções (o painel já comporta).
