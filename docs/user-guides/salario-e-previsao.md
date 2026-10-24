@@ -15,7 +15,7 @@ e quando algo mudar.
 
 1. Abra **Receitas** no menu e use **Nova receita** (no computador, tecla `N`; no celular, o botão **+**).
 2. **Quem e o quê**: escolha a pessoa, o tipo (**Salário**, **Vale (VR)** ou **Outra**) e uma descrição. O VR entra na carteira de
-   benefício; o resto, na carteira livre.
+   Benefício (se existir); o resto, na carteira padrão. Você pode trocar no campo **Carteira**.
 3. **Valor**:
    - **Valor cheio**: um valor fixo por mês.
    - **Por unidade**: um preço multiplicado por uma quantidade. Escreva o nome da unidade (por exemplo "dia trabalhado", "hora" ou

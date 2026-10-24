@@ -4,17 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api/client'
 import type { CategoryHistory, MonthlySummary } from '../api/types'
-import { fail, mockApi, monthsBetween, ok, me, renderAt } from '../test/utils'
+import { fail, mockApi, monthsBetween, ok, me, renderAt, walletBalance } from '../test/utils'
 
 configure({ asyncUtilTimeout: 5000 })
 
 // Dia 22: o salário previsto ainda não foi marcado como recebido. O realizado da livre é negativo, o projetado não.
 const summary: MonthlySummary = {
   month: '2026-10-01',
-  wallets: {
-    free: { expectedIncomeCents: 600000, receivedIncomeCents: 0, paidCents: 252681, balanceCents: -252681, pendingCents: 100000, projectedCents: 247319 },
-    benefit: { expectedIncomeCents: 80000, receivedIncomeCents: 80000, paidCents: 92000, balanceCents: -12000, pendingCents: 0, projectedCents: -12000 },
-  },
+  wallets: [
+    walletBalance('w1', { expectedIncomeCents: 600000, receivedIncomeCents: 0, paidCents: 252681, balanceCents: -252681, pendingCents: 100000, projectedCents: 247319 }),
+    walletBalance('w2', { expectedIncomeCents: 80000, receivedIncomeCents: 80000, paidCents: 92000, balanceCents: -12000, pendingCents: 0, projectedCents: -12000 }),
+  ],
   totalPaidCents: 344681, totalPendingCents: 100000, overdueCents: 30000, overdueCount: 2,
   byCategory: [
     { categoryId: 'c1', totalCents: 300000, paidCents: 200000 },
@@ -26,7 +26,7 @@ const cats = [
   { id: 'c1', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
   { id: 'c5', name: 'Gás', isEssential: true, sortOrder: 0, archived: false, parentId: 'c1' },
   { id: 'c6', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
-  { id: 'c2', name: 'Mercado', defaultWallet: 'benefit' as const, isEssential: true, sortOrder: 1, archived: false },
+  { id: 'c2', name: 'Mercado', defaultWalletId: 'w2', isEssential: true, sortOrder: 1, archived: false },
 ]
 
 /** Histórico sintético: Gás 100,00/mês (pago), Luz 50,00/mês (outubro a pagar), Mercado 200,00; parcelas no futuro. */
@@ -70,7 +70,7 @@ describe('resumo do mês', () => {
   it('salário ainda não recebido não vira alarme: o número principal é o projetado', async () => {
     mockApi({ me: ok(me), summary: ok(summary) })
     renderAt('/resumo?mes=2026-10')
-    const livre = await screen.findByRole('region', { name: 'Carteira livre' })
+    const livre = await screen.findByRole('region', { name: 'Geral' })
     expect(within(livre).getByText('deve sobrar')).toBeInTheDocument()
     expect(within(livre).queryByText('[ ✖ ]')).not.toBeInTheDocument()
     expect(within(livre).getByText('R$ 2.473,19')).toBeInTheDocument()
@@ -82,7 +82,7 @@ describe('resumo do mês', () => {
   it('coral só quando o projetado é negativo', async () => {
     mockApi({ me: ok(me), summary: ok(summary) })
     renderAt('/resumo?mes=2026-10')
-    const vr = await screen.findByRole('region', { name: 'Carteira de benefício' })
+    const vr = await screen.findByRole('region', { name: 'Benefício' })
     expect(within(vr).getByText('vai faltar')).toBeInTheDocument()
     expect(within(vr).getByText('[ ✖ ]')).toBeInTheDocument()
     expect(within(vr).getAllByText('R$ 120,00').length).toBeGreaterThan(0)

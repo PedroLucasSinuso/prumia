@@ -7,6 +7,7 @@ import { buildTree } from '../lib/categories'
 import { addDays, dayMonth, monthOf, todayISO } from '../lib/dates'
 import { flashRow } from '../lib/flash'
 import { readPref, writePref } from '../lib/storage'
+import { useWalletTag } from '../lib/useWalletName'
 import { formatCents } from '../lib/money'
 import { BoletoImport } from './BoletoImport'
 import { Button } from './Button'
@@ -75,6 +76,7 @@ type NewCategory = { name: string; asChild: boolean; busy: boolean; error?: stri
  * Pagar, desfazer e excluir ficam no detalhe da conta (`InvoiceDetail`), não aqui. Enter salva (envio nativo do formulário).
  */
 export function InvoiceForm({ month, houseId, categories: baseCategories, payees = [], invoice, canWrite, onDone, onCancel, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onCreateCategory, onExtractBoleto, onOpenInvoice, initialKind }: Props) {
+  const walletTag = useWalletTag()
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
@@ -267,7 +269,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         isEssential: parent?.isEssential ?? false,
         ...(parent ? { parentId: parent.id } : {}),
         // a filha herda a carteira sugerida da mãe (Mercado › Feira continua sugerindo o benefício)
-        ...(parent?.defaultWallet ? { defaultWallet: parent.defaultWallet } : {}),
+        ...(parent?.defaultWalletId ? { defaultWalletId: parent.defaultWalletId } : {}),
       })
       setCreated((list) => [...list, cat])
       setCategoryId(cat.id)
@@ -281,10 +283,13 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
   }
 
   // Opções do combobox: mãe, depois as filhas ("Moradia › Gás"). A mãe com filhas continua escolhível (conta "geral" dela).
-  const vr = { badge: 'VR', badgeTitle: 'Sugere a carteira de benefício' } as const
+  const tagOf = (id: string | null | undefined) => {
+    const name = walletTag(id)
+    return name ? { badge: name, badgeTitle: `Sugere a carteira ${name}` } : {}
+  }
   const categoryOptions: ComboOption[] = tree.flatMap(({ category: c, children }) => [
-    { value: c.id, label: c.name, ...(c.defaultWallet === 'benefit' ? vr : {}) },
-    ...children.map((k): ComboOption => ({ value: k.id, label: k.name, group: c.name, ...(k.defaultWallet === 'benefit' ? vr : {}) })),
+    { value: c.id, label: c.name, ...tagOf(c.defaultWalletId) },
+    ...children.map((k): ComboOption => ({ value: k.id, label: k.name, group: c.name, ...tagOf(k.defaultWalletId) })),
   ])
   // Atalhos: as últimas categorias usadas e, para completar até 4, as principais da lista.
   const byId = new Map(categories.map((c) => [c.id, c]))
@@ -444,9 +449,9 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
               return (
                 <button key={id} type="button" aria-pressed={on} onClick={() => { setCategoryId(id); clear('categoryId') }} className={chipCls(on)}>
                   {c.name}
-                  {c.defaultWallet === 'benefit' && (
-                    <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-on-structure/70' : 'border-ink/50'}`} title="Sugere a carteira de benefício">
-                      VR
+                  {walletTag(c.defaultWalletId) && (
+                    <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-on-structure/70' : 'border-ink/50'}`} title={`Sugere a carteira ${walletTag(c.defaultWalletId)}`}>
+                      {walletTag(c.defaultWalletId)}
                     </span>
                   )}
                 </button>

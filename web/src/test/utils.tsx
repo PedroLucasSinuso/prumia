@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 
 import App from '../App'
 import { api } from '../api/client'
-import type { BoletoExtraction, Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem } from '../api/types'
+import type { BoletoExtraction, Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem, Wallet, WalletBalance } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { addMonths } from '../lib/dates'
 import { ToastProvider } from '../components/Toast'
@@ -31,9 +31,23 @@ export const twoHousesMe: Me = {
 }
 export const viewerMe: Me = { ...me, households: [{ id: 'h1', name: 'Casa do Pedro', role: 'viewer' }] }
 
+export const wallets: Wallet[] = [
+  { id: 'w1', name: 'Geral', isDefault: true, warnOnOverdraft: false, openingBalanceCents: 0, sortOrder: 0, archived: false },
+  { id: 'w2', name: 'Benefício', isDefault: false, warnOnOverdraft: true, openingBalanceCents: 0, sortOrder: 1, archived: false },
+]
+
+/** Item de `summary.wallets` (zerado); passe só o que o teste usa. */
+export function walletBalance(walletId: string, over: Partial<WalletBalance> = {}): WalletBalance {
+  const w = wallets.find((x) => x.id === walletId)!
+  return {
+    walletId, name: w.name, isDefault: w.isDefault, archived: false, openingBalanceCents: 0, carryOverCents: 0,
+    expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0, monthBalanceCents: 0, pendingCents: 0, projectedCents: 0, ...over,
+  }
+}
+
 export const categories: Category[] = [
   { id: 'c1', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
-  { id: 'c2', name: 'Mercado', defaultWallet: 'benefit', isEssential: true, sortOrder: 1, archived: false },
+  { id: 'c2', name: 'Mercado', defaultWalletId: 'w2', isEssential: true, sortOrder: 1, archived: false },
 ]
 
 export const members: Member[] = [
@@ -43,23 +57,20 @@ export const members: Member[] = [
 
 export const emptySummary: MonthlySummary = {
   month: '2026-10-01',
-  wallets: {
-    free: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0, pendingCents: 0, projectedCents: 0 },
-    benefit: { expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0, pendingCents: 0, projectedCents: 0 },
-  },
+  wallets: [walletBalance('w1'), walletBalance('w2')],
   totalPaidCents: 0, totalPendingCents: 0, overdueCents: 0, overdueCount: 0, byCategory: [],
 }
 
 export function income(over: Partial<Income> & Pick<Income, 'id' | 'description'>): Income {
   return {
-    userId: 'u1', kind: 'salary', wallet: 'free', competenceMonth: '2026-10-01', expectedDate: '2026-10-05',
+    userId: 'u1', kind: 'salary', walletId: 'w1', competenceMonth: '2026-10-01', expectedDate: '2026-10-05',
     amountMode: 'fixed', grossAmountCents: 500000, deductions: [], netAmountCents: 500000, received: false, held: false, repeats: false, ...over,
   }
 }
 
 export function source(over: Partial<IncomeSource> & Pick<IncomeSource, 'id' | 'name'>): IncomeSource {
   return {
-    userId: 'u1', kind: 'salary', wallet: 'free', amountMode: 'fixed', grossAmountCents: 500000, dayOfMonth: 5,
+    userId: 'u1', kind: 'salary', walletId: 'w1', amountMode: 'fixed', grossAmountCents: 500000, dayOfMonth: 5,
     dateRule: { rule: 'day_of_month', n: 5, weekendAdjust: 'none' }, startMonth: '2026-01-01', deductions: [], ...over,
   }
 }
@@ -90,6 +101,9 @@ type Routes = {
   invoices?: Reply
   categories?: Reply
   payees?: Reply
+  wallets?: Reply
+  createWallet?: Reply
+  updateWallet?: Reply
   /** GET /cnpj/{cnpj} (BrasilAPI). Padrão: 503, a consulta fora do ar. */
   cnpj?: Reply
   createPayee?: Reply
@@ -160,6 +174,7 @@ export function mockApi(r: Routes = {}) {
     }
     if (url === '/cnpj/{cnpj}') return r.cnpj ?? fail(503, 'lookup_unavailable')
     if (url === '/households/{householdId}/payees') return r.payees ?? ok([])
+    if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
@@ -225,6 +240,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/invites': r.invite,
       '/households/{householdId}/categories': r.createCategory,
       '/households/{householdId}/payees': r.createPayee,
+      '/households/{householdId}/wallets': r.createWallet,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
       '/auth/password': r.changePassword,
@@ -243,6 +259,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/members/{userId}') return r.setRole ?? ok()
     if (url === '/households/{householdId}/categories/{categoryId}') return r.updateCategory ?? ok({})
     if (url === '/households/{householdId}/payees/{payeeId}') return r.updatePayee ?? ok({})
+    if (url === '/households/{householdId}/wallets/{walletId}') return r.updateWallet ?? ok({})
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.updateIncome ?? ok()
     if (url === '/households/{householdId}/income-sources/{sourceId}') return r.updateSource ?? ok()
     return r.update ?? ok()

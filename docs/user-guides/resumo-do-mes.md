@@ -22,7 +22,7 @@ Por que projetado? Se hoje é dia 22 e o salário cai dia 30, você ainda não m
 
 ## As carteiras
 
-Há um bloco para cada carteira: **livre** (salário e outras receitas) e **benefício** (VR).
+Há um bloco para cada carteira da casa (a **padrão** em destaque; veja [carteiras.md](carteiras.md)). O saldo continua de um mês para o outro: o bloco mostra o que veio dos meses anteriores.
 
 - O destaque é o **saldo projetado** da carteira, com **deve sobrar** ou **vai faltar**.
 - Logo abaixo, **hoje**: o que já foi recebido menos o que já foi pago (o "realizado"). Pode estar negativo sem ser problema, se o
@@ -31,7 +31,7 @@ Há um bloco para cada carteira: **livre** (salário e outras receitas) e **bene
 - Por fim: **previsto para entrar**, **já recebido**, **já pago** e **a pagar (estimado)**.
 
 "A pagar (estimado)": a carteira de uma conta só é conhecida quando você paga. Até lá, o app usa a carteira sugerida da
-categoria (ex.: Mercado → benefício; veja [categorias-e-ajustes.md](categorias-e-ajustes.md)). Sem sugestão, conta na livre. O
+categoria (ex.: Mercado → Benefício; veja [categorias-e-ajustes.md](categorias-e-ajustes.md)). Sem sugestão, conta na carteira padrão. O
 saldo projetado **da casa** (nos destaques) não depende dessa estimativa. Veja também [carteiras.md](carteiras.md).
 
 ## Para onde vai o dinheiro
@@ -71,6 +71,6 @@ conta de luz de setembro paga em outubro entra em **setembro**.
 - **Aparece "Ainda não há receitas neste mês".** Cadastre o salário em **receitas**; o app prevê os próximos meses (veja
   [salario-e-previsao.md](salario-e-previsao.md)). Sem receitas, o projetado mostra só o que sai.
 - **O saldo não bate com o meu banco.** É esperado: o resumo é do mês, sem saldo anterior.
-- **A carteira de benefício diz "vai faltar", mas paguei o mercado com a livre.** A estimativa usa a carteira sugerida da categoria
+- **A carteira Benefício diz "vai faltar", mas paguei o mercado com outra carteira.** A estimativa usa a carteira sugerida da categoria
   até você pagar; depois de marcar como paga, vale a carteira escolhida.
 - **Falta um pagamento.** Confira se a conta foi marcada como **paga** em **mês**.

@@ -11,7 +11,7 @@ const inv = (id: string, over: Partial<Invoice>): Invoice => ({
 const list = [
   inv('Aluguel', { status: 'overdue', dueDate: '2026-10-05' }),
   inv('Botijão', { categoryId: 'g', dueDate: '2026-10-22' }),
-  inv('Cinema', { categoryId: 'z', status: 'paid', dueDate: '2026-10-10', paid: { paidAt: '2026-10-10', wallet: 'free', amountCents: 900 } }),
+  inv('Cinema', { categoryId: 'z', status: 'paid', dueDate: '2026-10-10', paid: { paidAt: '2026-10-10', walletId: 'w1', amountCents: 900 } }),
   inv('Show', { categoryId: 'z', dueDate: '2026-10-30', notes: 'ingresso da Ana' }),
 ]
 

@@ -92,7 +92,7 @@ describe('ajustes · estrutura', () => {
     renderAt('/ajustes')
     const nav = await screen.findByRole('navigation', { name: 'Seções de ajustes' })
     expect(within(nav).getAllByRole('link').map((l) => l.querySelector('span span')?.textContent)).toEqual([
-      'Casa e pessoas', 'Categorias', 'Favorecidos', 'Aparência', 'Minha conta', 'Dados', 'Sobre',
+      'Casa e pessoas', 'Categorias', 'Carteiras', 'Favorecidos', 'Aparência', 'Minha conta', 'Dados', 'Sobre',
     ])
     await userEvent.click(within(nav).getByRole('link', { name: /Sobre/ }))
     expect(await screen.findByRole('heading', { name: 'Sobre' })).toBeInTheDocument()

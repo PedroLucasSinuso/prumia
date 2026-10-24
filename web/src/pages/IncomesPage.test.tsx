@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api/client'
 import type { MonthlySummary } from '../api/types'
-import { emptySummary, fail, income, mockApi, ok, me, renderAt, source, viewerMe } from '../test/utils'
+import { emptySummary, fail, income, mockApi, ok, me, renderAt, source, viewerMe, walletBalance } from '../test/utils'
 
 // A tela é carregada sob demanda (lazy): com a máquina carregada (ou o CI), o primeiro render pode passar de 1 s.
 configure({ asyncUtilTimeout: 5000 })
@@ -16,7 +16,7 @@ const salarioPedro = income({
   deductions: [{ kind: 'inss', name: 'INSS', amountCents: 55000 }, { kind: 'irrf', name: 'IRRF', amountCents: 40000 }],
 })
 const vrPedro = income({
-  id: 'r2', description: 'Vale-refeição', kind: 'benefit', wallet: 'benefit', grossAmountCents: 136500, netAmountCents: 136500,
+  id: 'r2', description: 'Vale-refeição', kind: 'benefit', walletId: 'w2', grossAmountCents: 136500, netAmountCents: 136500,
   expectedDate: '2026-10-28', repeats: true, sourceId: 's2', dateRule: { rule: 'day_of_month', n: 28, weekendAdjust: 'forward' },
   amountMode: 'per_unit', quantity: 21, unitPriceCents: 6500, unitLabel: 'dia trabalhado',
 })
@@ -29,10 +29,7 @@ const mes = '/receitas?mes=2026-10'
 
 const summaryWith = (over: Partial<MonthlySummary> = {}): MonthlySummary => ({
   ...emptySummary,
-  wallets: {
-    free: { ...emptySummary.wallets.free, expectedIncomeCents: 725000 },
-    benefit: { ...emptySummary.wallets.benefit, expectedIncomeCents: 136500 },
-  },
+  wallets: [walletBalance('w1', { expectedIncomeCents: 725000 }), walletBalance('w2', { expectedIncomeCents: 136500 })],
   totalPaidCents: 100000, totalPendingCents: 200000, ...over,
 })
 

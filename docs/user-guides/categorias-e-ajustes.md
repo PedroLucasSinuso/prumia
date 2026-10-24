@@ -15,7 +15,7 @@ pôr as mais usadas no topo ou tirar de cena uma que não usa mais. Tudo fica em
 1. Abra **Ajustes > Categorias**.
 2. Toque em **Nova categoria**.
 3. Escreva o **Nome** (ex.: Pets).
-4. Em **carteira padrão**, escolha **livre**, **benefício** ou **nenhuma**. É a carteira que o app sugere ao pagar uma conta desta categoria.
+4. Em **carteira padrão**, escolha uma das suas carteiras (ex.: **Geral**, **Benefício**) ou **nenhuma**. É a carteira que o app sugere ao pagar uma conta desta categoria.
 5. Em **gasto essencial?**, toque **sim** ou **não**.
 6. Toque em **Criar categoria**. Ela entra no fim da lista.
 

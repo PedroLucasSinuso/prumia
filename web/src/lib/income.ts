@@ -24,9 +24,6 @@ export const sumDeductions = (ds: Deduction[]): number => ds.reduce((s, d) => s 
 /** Líquido = bruto − soma dos descontos (nunca negativo na tela; o servidor recusa desconto maior que o bruto). */
 export const netOf = (grossCents: number, ds: Deduction[]): number => grossCents - sumDeductions(ds)
 
-/** A carteira vem do tipo: benefício (VR) cai na carteira de benefício; o resto, na livre. */
-export const walletOfKind = (kind: IncomeKind) => (kind === 'benefit' ? 'benefit' : 'free')
-
 // ------------------------------------------------------------------ estado (derivado no servidor)
 
 /** `received`: a data chegou (recebimento automático) e ninguém disse "não caiu". `held`: "não caiu". Senão, `expected`. */
@@ -99,8 +96,8 @@ export function personTotals(list: Income[], members: Member[]): PersonTotal[] {
 }
 
 /** Sobra do mês: receitas líquidas do mês menos as despesas do mês (pagas + a pagar), com os números de /summary. */
-export function monthSurplus(summary: { wallets: { free: { expectedIncomeCents: number }; benefit: { expectedIncomeCents: number } }; totalPaidCents: number; totalPendingCents: number }) {
-  const income = summary.wallets.free.expectedIncomeCents + summary.wallets.benefit.expectedIncomeCents
+export function monthSurplus(summary: { wallets: { expectedIncomeCents: number }[]; totalPaidCents: number; totalPendingCents: number }) {
+  const income = summary.wallets.reduce((sum, w) => sum + w.expectedIncomeCents, 0)
   const expenses = summary.totalPaidCents + summary.totalPendingCents
   return { income, expenses, surplus: income - expenses }
 }
