@@ -150,7 +150,8 @@ Carteira = um **rótulo com saldo inicial** (não é conta bancária): "Geral", 
 | `isDefault` | **Exatamente uma por casa** (índice único parcial). Não pode ser arquivada (409 `wallet_is_default`); `PATCH isDefault=true` troca qual é (numa transação, com as carteiras da casa travadas); `false` na padrão é 400. |
 | `ownerUserId` | **Só etiqueta** ("carteira da Ana"): não restringe uso nem leitura. Tem de ser membro **ativo** da casa (400 `ownerUserId`); `null` limpa. |
 | `warnOnOverdraft` | Liga o aviso de saldo insuficiente ao pagar (seção 7). Nasce `true` (a "Geral" nasce `false`). |
-| `openingBalanceCents` | Saldo inicial, pode ser negativo (teto de R$ 10 bilhões). Entra no saldo anterior de **todos** os meses. |
+| `openingBalanceCents` | Saldo inicial, pode ser negativo (teto de R$ 10 bilhões). Vale a partir de `openingBalanceMonth`; sem mês, entra no saldo anterior de **todos** os meses. |
+| `openingBalanceMonth` | Opcional (migration `00011`), dia 1 (senão 400 no campo); `null` no PATCH limpa. "O saldo inicial vale a partir deste mês" (seção 5.2.1). Só admin altera. |
 | `sortOrder` | Ordem de exibição; a nova vai para o fim. |
 | `archivedAt` | Não existe exclusão: só `POST .../archive` e `.../restore`. Arquivada não aparece para escolha em lançamentos novos (400 `walletId`/`defaultWalletId`) mas segue no histórico e no resumo (seção 6). |
 
@@ -221,6 +222,27 @@ transferência). Se a **origem** tem `warnOnOverdraft` e o saldo realizado acumu
 
 A exportação CSV (`invoice/export.go`) lista só contas, então não muda.
 
+#### 5.2.1 Mês de início do saldo inicial
+
+Quem começa a usar o app no meio da vida financeira (contas de agosto a janeiro, app usado desde outubro) não precisa lançar o passado:
+a carteira ganha um **mês de início S** (`wallets.opening_balance_month`, `NULL` = comportamento de sempre, nenhuma carteira existente muda).
+Para o mês consultado M:
+
+| Caso | `carryOverCents` |
+|---|---|
+| S nulo | saldo inicial + movimento de todos os meses < M (regra de 5.2) |
+| M < S | **0** (a carteira "ainda não começou"; o saldo inicial não entra). O movimento do **próprio** mês M segue calculado, então agosto e setembro mostram o que foi cadastrado |
+| M = S | saldo inicial |
+| M > S | saldo inicial + movimento dos meses m com S ≤ m < M. O movimento anterior a S **nunca** entra |
+
+"Movimento" é a mesma definição de saldo (recebido líquido − pago + transferências recebidas − enviadas). A regra mora num só lugar:
+`summary.sinceOpening`, o filtro `(w.opening_balance_month IS NULL OR competência >= w.opening_balance_month)` aplicado, com `JOIN wallets`,
+às três consultas de saldo anterior (receitas, pagos, transferências), mais o zero de M < S em `assemble`. Resumo, projetado e
+`OverdraftWarning` (aviso ao pagar/transferir) passam pelas mesmas consultas, então não divergem. Carteira arquivada continua aparecendo só
+com saldo anterior ≠ 0 ou movimento no mês, já com a regra nova. `WalletBalance.openingBalanceMonth` leva o mês à UI.
+Testes: `api/wallet_opening_month_test.go` (cenário das parcelas, NULL, PATCH, M<S/=S/>S, início depois do último movimento, aviso,
+isolamento), `summary/summary_test.go` e `platform/db/migrate_opening_month_test.go` (Up/Down/Up com dados).
+
 ## 6. Resumo mensal (`GET /summary?month=`)
 
 Escopado por `household_id`, tudo por competência, em **6 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses
@@ -234,7 +256,8 @@ testada em tabela.
 |---|---|
 | `walletId`, `name`, `ownerUserId`, `isDefault`, `archived` | da carteira |
 | `openingBalanceCents` | saldo inicial da carteira |
-| `carryOverCents` | saldo anterior (seção 5.2) |
+| `openingBalanceMonth` | mês (dia 1) em que o saldo inicial passa a valer; `null` = desde o início |
+| `carryOverCents` | saldo anterior (seções 5.2 e 5.2.1; 0 antes do mês de início) |
 | `expectedIncomeCents / receivedIncomeCents / paidCents` | do mês, ver seção 5.2 |
 | `transfersInCents / transfersOutCents` | transferências recebidas / enviadas na competência (seção 5.3) |
 | `balanceCents` | **realizado acumulado**: `carryOver + receivedIncomeCents - paidCents + transfersInCents - transfersOutCents` (pode ser negativo) |

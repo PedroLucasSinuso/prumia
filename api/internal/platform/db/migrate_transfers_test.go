@@ -34,9 +34,8 @@ func TestMigracaoTransferenciasUpDownUpComDados(t *testing.T) {
 	inv := one(`INSERT INTO invoices (household_id, category_id, description, amount_cents, due_date, competence_month, created_by, paid_at, paid_wallet_id, paid_amount_cents)
 		VALUES (?, ?, 'paga', 100, '2026-10-10', '2026-10-01', ?, '2026-10-11', ?, 100) RETURNING id::text`, f.houseA, f.catA, f.userA, geralA)
 
-	if err := db.Migrate(ctx, sqlDB); err != nil {
-		t.Fatalf("up 00009: %v", err)
-	}
+	// Só até a 00009 (e não até a última): o Rollback abaixo desfaz exatamente a 00009.
+	gooseTo(t, gdb, 9)
 	ins := `INSERT INTO wallet_transfers (household_id, from_wallet_id, to_wallet_id, amount_cents, transfer_date, competence_month, created_by)
 		VALUES (?, ?, ?, ?, '2026-10-12', ?, ?)`
 	if err := gdb.Exec(ins, f.houseA, geralA, reservaA, 5000, "2026-10-01", f.userA).Error; err != nil {

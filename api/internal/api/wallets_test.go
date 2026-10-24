@@ -13,6 +13,7 @@ type walletOut struct {
 	IsDefault           bool    `json:"isDefault"`
 	WarnOnOverdraft     bool    `json:"warnOnOverdraft"`
 	OpeningBalanceCents int64   `json:"openingBalanceCents"`
+	OpeningBalanceMonth *string `json:"openingBalanceMonth"`
 	SortOrder           int     `json:"sortOrder"`
 	Archived            bool    `json:"archived"`
 }

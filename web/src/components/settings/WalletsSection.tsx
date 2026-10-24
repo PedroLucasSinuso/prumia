@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { useMembers, useWalletActions, useWallets } from '../../api/queries'
 import type { Wallet } from '../../api/types'
+import { monthLabel } from '../../lib/dates'
 import { ICON } from '../../lib/navigation'
 import { Button } from '../Button'
 import { useToast } from '../toastContext'
@@ -36,7 +37,7 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
       <button aria-label={`Abrir carteira ${w.name}`} onClick={() => setEditing({ kind: 'edit', id: w.id })} className="flex min-h-14 w-full min-w-0 flex-col justify-center px-3 py-2 text-left">
         <span className={`block truncate text-[15px] font-medium ${w.archived ? 'text-ink/70' : ''}`}>{w.name}</span>
         <span className="block truncate text-xs text-ink/75">
-          {[w.isDefault ? 'padrão' : null, ownerName(w) ?? 'de todos', w.warnOnOverdraft ? 'avisa saldo negativo' : null].filter(Boolean).join(' · ')}
+          {[w.isDefault ? 'padrão' : null, ownerName(w) ?? 'de todos', w.warnOnOverdraft ? 'avisa saldo negativo' : null, w.openingBalanceMonth ? `começa em ${monthLabel(w.openingBalanceMonth)}` : null].filter(Boolean).join(' · ')}
         </span>
       </button>
     </li>

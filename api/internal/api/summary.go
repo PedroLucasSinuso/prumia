@@ -21,7 +21,7 @@ type Summaries struct {
 func toGenWallet(w summary.WalletBalance) gen.WalletBalance {
 	return gen.WalletBalance{
 		WalletId: w.WalletID, Name: w.Name, OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, Archived: w.Archived,
-		OpeningBalanceCents: w.Opening, CarryOverCents: w.CarryOver,
+		OpeningBalanceCents: w.Opening, OpeningBalanceMonth: w.OpeningMonth, CarryOverCents: w.CarryOver,
 		ExpectedIncomeCents: w.Expected, ReceivedIncomeCents: w.Received, PaidCents: w.Paid, TransfersInCents: w.TransfersIn, TransfersOutCents: w.TransfersOut, BalanceCents: w.Balance(),
 		MonthBalanceCents: w.MonthBalance(), PendingCents: w.Pending, ProjectedCents: w.Projected(),
 	}

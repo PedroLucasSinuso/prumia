@@ -1839,8 +1839,13 @@ export interface components {
             isDefault: boolean;
             /** @description Avisa ao pagar se o saldo realizado desta carteira ficar negativo */
             warnOnOverdraft: boolean;
-            /** @description Saldo inicial (pode ser negativo); entra no saldo anterior de todos os meses */
+            /** @description Saldo inicial (pode ser negativo); vale a partir de openingBalanceMonth (sem mês, entra no saldo anterior de todos os meses) */
             openingBalanceCents: components["schemas"]["Cents"];
+            /**
+             * Format: date
+             * @description Mês (dia 1) a partir do qual o saldo inicial vale; meses anteriores não recebem o saldo inicial nem o saldo anterior. null = desde o início
+             */
+            openingBalanceMonth?: string | null;
             sortOrder: number;
             archived: boolean;
         };
@@ -1856,6 +1861,11 @@ export interface components {
             warnOnOverdraft: boolean;
             /** @description Padrão 0 */
             openingBalanceCents?: components["schemas"]["Cents"];
+            /**
+             * Format: date
+             * @description Mês (dia 1) a partir do qual o saldo inicial vale; dia diferente de 1 = 400 no campo. Padrão null (desde o início)
+             */
+            openingBalanceMonth?: string | null;
             /** @description Padrão = fim da lista */
             sortOrder?: number;
         };
@@ -1868,6 +1878,11 @@ export interface components {
             ownerUserId?: string | null;
             warnOnOverdraft?: boolean;
             openingBalanceCents?: components["schemas"]["Cents"];
+            /**
+             * Format: date
+             * @description null limpa o mês de início (volta a valer desde o início); dia diferente de 1 = 400 no campo
+             */
+            openingBalanceMonth?: string | null;
             /** @description true troca a carteira padrão da casa; false = 400 */
             isDefault?: boolean;
             sortOrder?: number;
@@ -1924,7 +1939,12 @@ export interface components {
             archived: boolean;
             /** @description Saldo inicial da carteira */
             openingBalanceCents: components["schemas"]["Cents"];
-            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência */
+            /**
+             * Format: date
+             * @description Mês (dia 1) a partir do qual o saldo inicial vale; null = desde o início. Em meses anteriores a ele, carryOverCents é 0
+             */
+            openingBalanceMonth?: string | null;
+            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início, se houver), de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência. Antes do mês de início = 0 */
             carryOverCents: components["schemas"]["Cents"];
             /** @description Líquido de todas as receitas da competência na carteira (a receber + recebidas) */
             expectedIncomeCents: components["schemas"]["Cents"];

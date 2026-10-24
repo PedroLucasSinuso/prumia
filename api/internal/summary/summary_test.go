@@ -190,3 +190,40 @@ func TestAssembleTransferenciasMexemSoNosSaldos(t *testing.T) {
 		t.Errorf("transferência vazou para receita/despesa: %+v", got)
 	}
 }
+
+// Mês de início: antes dele o saldo inicial não entra; no mês entra sozinho; depois entra + o que as consultas somaram
+// (que já deixam de fora o movimento anterior ao início, ver sinceOpening).
+func TestAssembleMesDeInicioDoSaldoInicial(t *testing.T) {
+	start := caldate.New(2026, 10, 1)
+	w := mkWallet(1, "Conta", true, 100000, false)
+	w.OpeningBalanceMonth = &start
+	run := func(month caldate.Date, carry int64) WalletBalance {
+		got := assemble(month, []wallet.Wallet{w},
+			[]incomeRow{{WalletID: w.ID, Received: 20000, Expected: 20000, Carry: money.Cents(carry)}}, nil, nil, nil, nil)
+		return got.Wallets[0]
+	}
+	if b := run(caldate.New(2026, 9, 1), 0); b.CarryOver != 0 || b.Opening != 100000 || b.Balance() != 20000 || b.OpeningMonth == nil {
+		t.Errorf("antes do início: %+v", b)
+	}
+	if b := run(start, 0); b.CarryOver != 100000 || b.Balance() != 120000 {
+		t.Errorf("no início: %+v", b)
+	}
+	if b := run(caldate.New(2026, 11, 1), 20000); b.CarryOver != 120000 {
+		t.Errorf("depois do início: %+v", b)
+	}
+	// sem mês de início: saldo inicial em todos os meses (comportamento anterior)
+	w.OpeningBalanceMonth = nil
+	if b := run(caldate.New(2026, 9, 1), 0); b.CarryOver != 100000 || b.OpeningMonth != nil {
+		t.Errorf("sem mês de início: %+v", b)
+	}
+	// arquivada antes do início, sem movimento: some; com saldo inicial vigente: aparece
+	w.OpeningBalanceMonth = &start
+	at := time.Now()
+	w.ArchivedAt = &at
+	if got := assemble(caldate.New(2026, 9, 1), []wallet.Wallet{w}, nil, nil, nil, nil, nil); len(got.Wallets) != 0 {
+		t.Errorf("arquivada antes do início e sem movimento deveria sumir: %+v", got.Wallets)
+	}
+	if got := assemble(start, []wallet.Wallet{w}, nil, nil, nil, nil, nil); len(got.Wallets) != 1 {
+		t.Errorf("arquivada com saldo inicial vigente deveria aparecer: %+v", got.Wallets)
+	}
+}

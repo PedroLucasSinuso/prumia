@@ -8,6 +8,7 @@ import { Field } from './Field'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
 import { Combobox } from './ui/Combobox'
+import { MonthPicker } from './ui/MonthPicker'
 import { PanelFooter } from './ui/Panel'
 import { Segmented } from './ui/Segmented'
 
@@ -33,6 +34,8 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
   const [name, setName] = useState(wallet?.name ?? '')
   const [ownerId, setOwnerId] = useState(wallet?.ownerUserId ?? '')
   const [opening, setOpening] = useState(Math.max(wallet?.openingBalanceCents ?? 0, 0))
+  // Mês em que o saldo inicial passa a valer, "AAAA-MM" ('' = desde o início).
+  const [startMonth, setStartMonth] = useState(wallet?.openingBalanceMonth?.slice(0, 7) ?? '')
   const [warn, setWarn] = useState(wallet?.warnOnOverdraft ?? true)
   const [error, setError] = useState<string>()
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -72,13 +75,20 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
     }
     // Saldo inicial negativo vindo de fora é preservado: só mexe nele se a pessoa digitou outro valor.
     const openingChanged = opening !== Math.max(wallet?.openingBalanceCents ?? 0, 0)
+    const startChanged = startMonth !== (wallet?.openingBalanceMonth?.slice(0, 7) ?? '')
     if (wallet) {
       void run(
-        () => onUpdate(wallet.id, { name: clean, ownerUserId: ownerId || null, warnOnOverdraft: warn, ...(openingChanged ? { openingBalanceCents: opening } : {}) }),
+        () =>
+          onUpdate(wallet.id, {
+            name: clean, ownerUserId: ownerId || null, warnOnOverdraft: warn,
+            ...(openingChanged ? { openingBalanceCents: opening } : {}),
+            // null no PATCH limpa o mês de início ("sem data: conta desde o início").
+            ...(startChanged ? { openingBalanceMonth: startMonth ? `${startMonth}-01` : null } : {}),
+          }),
         `${clean} salva.`,
       )
     } else {
-      void run(() => onCreate({ name: clean, ...(ownerId ? { ownerUserId: ownerId } : {}), warnOnOverdraft: warn, openingBalanceCents: opening }), `${clean} criada.`)
+      void run(() => onCreate({ name: clean, ...(ownerId ? { ownerUserId: ownerId } : {}), warnOnOverdraft: warn, openingBalanceCents: opening, ...(startMonth ? { openingBalanceMonth: `${startMonth}-01` } : {}) }), `${clean} criada.`)
     }
   }
 
@@ -101,6 +111,11 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
       <fieldset disabled={!canWrite} className="flex flex-col gap-1">
         <MoneyInput label="Saldo inicial" value={opening} onChange={setOpening} error={fields.openingBalanceCents} />
         <p className="text-xs text-ink/70">Quanto já havia nesta carteira antes do primeiro lançamento. Opcional.</p>
+        <MonthPicker
+          label="Saldo inicial vale a partir de" clearable placeholder="sem data: conta desde o início" value={startMonth}
+          onChange={(m) => { setStartMonth(m); clear('openingBalanceMonth') }} error={fields.openingBalanceMonth}
+          hint="Os meses antes deste aparecem normalmente, mas não entram no saldo que vem de trás. Use para começar do saldo real da sua conta."
+        />
       </fieldset>
       <Segmented
         label="Avisar se o saldo ficar negativo ao pagar" value={warn ? 'yes' : 'no'} disabled={!canWrite}

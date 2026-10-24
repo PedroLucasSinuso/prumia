@@ -76,9 +76,8 @@ func TestMigracaoCarteirasConverteFreeEBenefit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := db.Migrate(ctx, sqlDB); err != nil {
-		t.Fatalf("up 00008: %v", err)
-	}
+	// Sobe só até a 00009 (e não até a última): o teste desce 00009 e 00008 e não pode depender de migrations futuras.
+	gooseTo(t, gdb, 9)
 
 	walletName := func(table, col, id string) string {
 		var n string

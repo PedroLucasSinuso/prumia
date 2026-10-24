@@ -1716,7 +1716,8 @@ components:
         ownerUserId: { type: string, format: uuid, nullable: true, description: "Só etiqueta (de quem é a carteira); não restringe o uso" }
         isDefault: { type: boolean, description: "Exatamente uma por casa" }
         warnOnOverdraft: { type: boolean, description: "Avisa ao pagar se o saldo realizado desta carteira ficar negativo" }
-        openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo inicial (pode ser negativo); entra no saldo anterior de todos os meses" }
+        openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo inicial (pode ser negativo); vale a partir de openingBalanceMonth (sem mês, entra no saldo anterior de todos os meses)" }
+        openingBalanceMonth: { type: string, format: date, nullable: true, description: "Mês (dia 1) a partir do qual o saldo inicial vale; meses anteriores não recebem o saldo inicial nem o saldo anterior. null = desde o início" }
         sortOrder: { type: integer }
         archived: { type: boolean }
     WalletInput:
@@ -1727,6 +1728,7 @@ components:
         ownerUserId: { type: string, format: uuid, nullable: true, description: "Deve ser membro da casa" }
         warnOnOverdraft: { type: boolean, default: true }
         openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Padrão 0" }
+        openingBalanceMonth: { type: string, format: date, nullable: true, description: "Mês (dia 1) a partir do qual o saldo inicial vale; dia diferente de 1 = 400 no campo. Padrão null (desde o início)" }
         sortOrder: { type: integer, description: "Padrão = fim da lista" }
     WalletPatch:
       type: object
@@ -1735,6 +1737,7 @@ components:
         ownerUserId: { type: string, format: uuid, nullable: true, description: "null limpa o dono" }
         warnOnOverdraft: { type: boolean }
         openingBalanceCents: { $ref: '#/components/schemas/Cents' }
+        openingBalanceMonth: { type: string, format: date, nullable: true, description: "null limpa o mês de início (volta a valer desde o início); dia diferente de 1 = 400 no campo" }
         isDefault: { type: boolean, description: "true troca a carteira padrão da casa; false = 400" }
         sortOrder: { type: integer }
     Transfer:
@@ -1780,7 +1783,8 @@ components:
         isDefault: { type: boolean }
         archived: { type: boolean, description: "Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento (inclusive transferência) no mês" }
         openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo inicial da carteira" }
-        carryOverCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência" }
+        openingBalanceMonth: { type: string, format: date, nullable: true, description: "Mês (dia 1) a partir do qual o saldo inicial vale; null = desde o início. Em meses anteriores a ele, carryOverCents é 0" }
+        carryOverCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início, se houver), de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência. Antes do mês de início = 0" }
         expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (a receber + recebidas)" }
         receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)" }
         paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Valor efetivamente pago das invoices da competência pagas com esta carteira" }

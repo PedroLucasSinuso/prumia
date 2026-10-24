@@ -19,6 +19,7 @@ Quem é **Responsável** pela casa cria, renomeia e arquiva carteiras. Os demais
 - **Nome**: único entre as carteiras ativas.
 - **De quem é**: só uma etiqueta ("VR da Ana"). **Não restringe o uso**: quem pode lançar usa qualquer carteira.
 - **Saldo inicial**: quanto já havia ali antes do primeiro lançamento (opcional).
+- **Saldo inicial vale a partir de**: o mês em que esse saldo começa a valer (opcional). Veja o exemplo em "Comecei a usar o app no meio do caminho".
 - **Avisar se o saldo ficar negativo ao pagar**: o pagamento sempre é feito; o app só avisa.
 - **Tornar padrão**: a padrão recebe os lançamentos sem escolha. Só existe uma por casa e ela não pode ser arquivada.
 - **Arquivar**: tira a carteira da lista ao lançar. O que já foi lançado nela e o saldo continuam. Dá para restaurar.
@@ -30,7 +31,7 @@ Para cada carteira:
 > **saldo = saldo anterior + o que você já recebeu nela no mês − o que você já pagou com ela no mês ± transferências**
 
 - **O saldo continua de um mês para o outro**: o que sobrou (ou faltou) até o mês anterior aparece como "saldo que veio dos meses
-  anteriores". Ele soma o saldo inicial e todos os meses anteriores.
+  anteriores". Ele soma o saldo inicial e todos os meses anteriores (a partir do mês de início, se você definiu um).
 - Só conta o que está marcado como **recebido**; o que ainda é **previsto** aparece à parte.
 - O valor da receita é o **líquido** (já sem os descontos). O valor da despesa é o que você **efetivamente pagou**.
 - O "mês" é o **mês de competência**. Uma conta de setembro paga em outubro conta em **setembro**.
@@ -38,6 +39,19 @@ Para cada carteira:
 - **Transferências** (próxima seção) somam na carteira que recebe e subtraem na que envia.
 
 É uma estimativa para você se organizar, não o saldo do banco.
+
+## Comecei a usar o app no meio do caminho
+
+Exemplo: você tem parcelas de agosto a janeiro, mas só começou a usar o prumia em outubro. Se cadastrar as parcelas desde agosto, sem as
+receitas de agosto e setembro, a carteira ficaria negativa dali para a frente. Para evitar isso:
+
+1. Abra **Ajustes > Carteiras** e a carteira que paga essas contas.
+2. Em **Saldo inicial**, digite o dinheiro real que havia nela em outubro (o saldo da sua conta).
+3. Em **Saldo inicial vale a partir de**, escolha **outubro**. Salve.
+
+Pronto: agosto e setembro aparecem normalmente com o que você cadastrou, mas **não entram** no saldo que vem de trás. Outubro começa
+exatamente no saldo real que você informou, e os meses seguintes continuam dali. Na tela do Resumo de agosto, o cartão avisa "esta
+carteira começa em outubro de 2026". Deixando o mês em branco ("sem data"), a carteira conta desde o primeiro lançamento, como sempre foi.
 
 ## Guardar dinheiro na Reserva (ou tirar de lá)
 
