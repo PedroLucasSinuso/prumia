@@ -23,6 +23,7 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
 
 - **Só o primeiro usuário do sistema** pode se cadastrar sem convite. Depois disso, 403 `registration_closed`.
   (Uma trava de aplicação no Postgres impede dois "primeiros usuários" simultâneos.)
+- `PUBLIC_URL` (opcional) define o endereço que vai nos links de convite e de nova senha; sem ele o front usa o endereço do navegador de quem gera o link.
 - `OPEN_REGISTRATION=true` no `.env` libera cadastro sem convite para qualquer um. Mantenha `false`.
 - Com `inviteToken` o cadastro **não cria casa**: o usuário entra na casa do convite, com o papel do convite (ver [Convites](#convites)). Nesse caso o cadastro funciona mesmo com o cadastro livre fechado.
 

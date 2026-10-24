@@ -1202,6 +1202,12 @@ export interface components {
             /** Format: email */
             email: string;
             theme: components["schemas"]["Theme"];
+            /**
+             * Format: uri
+             * @description Endereço público do app (PUBLIC_URL do servidor), sem barra final. O front monta com ele os links de convite e de nova
+             *     senha; ausente = usa o endereço do navegador de quem gera o link.
+             */
+            publicUrl?: string;
             households: components["schemas"]["HouseholdRef"][];
         };
         /**

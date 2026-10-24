@@ -1130,6 +1130,10 @@ type Me struct {
 	Id         openapi_types.UUID `json:"id"`
 	Name       string             `json:"name"`
 
+	// PublicUrl Endereço público do app (PUBLIC_URL do servidor), sem barra final. O front monta com ele os links de convite e de nova
+	// senha; ausente = usa o endereço do navegador de quem gera o link.
+	PublicUrl *string `json:"publicUrl,omitempty"`
+
 	// Theme Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 	Theme Theme `json:"theme"`
 }

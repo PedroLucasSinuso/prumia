@@ -115,6 +115,7 @@ Tailscale>` e acesso por `http://100.x.y.z:8080` (cifrado pelo WireGuard, mas se
 | `APP_ENV` | `production` | cookie `Secure`, Gin release; `development` para http local |
 | `APP_TIMEZONE` | `America/Sao_Paulo` | |
 | `OPEN_REGISTRATION` | `false` | só o 1º usuário se cadastra sozinho; o resto por convite |
+| `PUBLIC_URL` | `https://app.seudominio.com.br` (ou o endereço do `tailscale serve`) | endereço público, sem barra final; vai nos links de convite e de nova senha (a API o devolve em `/auth/me` como `publicUrl`). Sem ele, o link sai com o endereço do navegador de quem gera, e `localhost` não abre no celular de quem recebe |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | gerados por `make env` | senha só com letras e números |
 | `WEB_PORT` | `8080` | porta local que o `tailscale serve` aponta |
 | `WEB_BIND` | `127.0.0.1` | nunca `0.0.0.0` |

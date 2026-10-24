@@ -186,7 +186,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
               <div className="mt-3">
                 <LinkBox
                   label={`Link de nova senha para ${reset.member.name}`}
-                  link={resetLink(reset.token)}
+                  link={resetLink(reset.token, me.publicUrl)}
                   note={`Vale até ${expiry(reset.expiresAt)}. Mande só para ${reset.member.name}: quem abrir o link define a senha.`}
                 />
               </div>
@@ -223,7 +223,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
                 <div className="mt-3">
                   <LinkBox
                     label="Link do convite"
-                    link={inviteLink(invite.token)}
+                    link={inviteLink(invite.token, me.publicUrl)}
                     note={`Entra como ${roleLabel[invite.role]}. Vale até ${expiry(invite.expiresAt)} e só funciona uma vez. Ele não aparece de novo: copie agora.`}
                   />
                 </div>

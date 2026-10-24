@@ -20,6 +20,16 @@ describe('casa', () => {
     expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invites', expect.objectContaining({ body: { role: 'member', expiresInHours: 48 } }))
   })
 
+  it('com endereço público configurado, o link do convite usa esse endereço (não o localhost de quem gera)', async () => {
+    mockApi({
+      me: ok({ ...me, publicUrl: 'https://app.exemplo.com.br' }),
+      invite: ok({ id: 'i1', token: 'tok123', role: 'member', expiresAt: '2026-10-22T12:00:00Z' }),
+    })
+    renderAt('/ajustes/casa')
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de convite' }))
+    expect(await screen.findByLabelText('Link do convite')).toHaveValue('https://app.exemplo.com.br/convite?token=tok123')
+  })
+
   it('admin troca o papel de outra pessoa', async () => {
     mockApi({ me: ok(me) })
     renderAt('/ajustes/casa')

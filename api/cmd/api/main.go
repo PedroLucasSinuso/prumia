@@ -103,7 +103,7 @@ func run(args []string) error {
 
 	router := httpx.NewRouter(cfg.IsProduction(), log)
 	server := api.NewServer(sqlDB,
-		auth.NewHandler(authSvc, cookie, log),
+		auth.NewHandler(authSvc, cookie, log).WithPublicURL(cfg.PublicURL),
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
 		&api.Payees{Svc: payeeSvc, Log: log},
