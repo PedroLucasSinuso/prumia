@@ -32,9 +32,7 @@ func TestMigracaoMesDaRegraUpDownUpComDados(t *testing.T) {
 	inc := one(`INSERT INTO incomes (household_id, source_id, user_id, kind, description, wallet_id, competence_month, expected_date, gross_amount_cents, created_by)
 		VALUES (?, ?, ?, 'salary', 'Salário', ?, '2026-11-01', '2026-11-05', 500000, ?) RETURNING id::text`, f.houseA, src, f.userA, wal, f.userA)
 
-	if err := db.Migrate(ctx, sqlDB); err != nil {
-		t.Fatalf("up 00010: %v", err)
-	}
+	gooseTo(t, gdb, 10) // só até a 00010: o Rollback abaixo desfaz exatamente ela (a 00011 ainda não foi aplicada)
 	offsets := func() (int, int) {
 		var s, i int
 		gdb.Raw(`SELECT date_rule_offset FROM income_sources WHERE id = ?`, src).Scan(&s)

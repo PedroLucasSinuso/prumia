@@ -28,7 +28,10 @@ type WalletBalance struct {
 	Archived    bool
 	// Opening: saldo inicial cadastrado na carteira.
 	Opening money.Cents
-	// CarryOver: saldo anterior = saldo inicial + soma, dos meses ANTERIORES ao consultado, de (recebido - pago + transferências recebidas - enviadas).
+	// OpeningMonth: mês (dia 1) em que o saldo inicial passa a valer; nil = desde o começo.
+	OpeningMonth *caldate.Date
+	// CarryOver: saldo anterior = saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início,
+	// se houver), de (recebido - pago + transferências recebidas - enviadas). Antes do mês de início é 0.
 	CarryOver money.Cents
 	// Expected: líquido de TODAS as receitas do mês na carteira (previstas + recebidas).
 	Expected money.Cents
@@ -93,6 +96,13 @@ type Service struct {
 // NewService recebe `today` como função (e não um valor) para que cada chamada veja o dia corrente; nos testes, um relógio fixo.
 func NewService(db *gorm.DB, today func() caldate.Date) *Service {
 	return &Service{db: db, today: today}
+}
+
+// sinceOpening é o filtro do saldo anterior, ÚNICO para recebido, pago e transferências (e portanto para o resumo, o
+// aviso de saldo e o projetado): só conta o movimento a partir do mês de início da carteira `w` (NULL = sempre conta).
+// `col` é a coluna de competência da linha. Quem usa precisa juntar a tabela wallets com o alias `w`.
+func sinceOpening(col string) string {
+	return "(w.opening_balance_month IS NULL OR " + col + " >= w.opening_balance_month)"
 }
 
 // Linhas cruas das consultas agregadas (os SUM saem como bigint; ver ::bigint nas consultas).
@@ -162,8 +172,9 @@ func (s *Service) incomesByWallet(ctx context.Context, householdID uuid.UUID, mo
 		SELECT i.wallet_id AS wallet_id,
 		       COALESCE(SUM(net.v) FILTER (WHERE i.competence_month = @month), 0)::bigint AS expected,
 		       COALESCE(SUM(net.v) FILTER (WHERE i.competence_month = @month AND `+recv+`), 0)::bigint AS received,
-		       COALESCE(SUM(net.v) FILTER (WHERE i.competence_month < @month AND `+recv+`), 0)::bigint AS carry
+		       COALESCE(SUM(net.v) FILTER (WHERE i.competence_month < @month AND `+sinceOpening("i.competence_month")+` AND `+recv+`), 0)::bigint AS carry
 		FROM incomes i
+		JOIN wallets w ON w.household_id = i.household_id AND w.id = i.wallet_id
 		CROSS JOIN LATERAL (
 			SELECT i.gross_amount_cents - COALESCE((
 				SELECT SUM(d.amount_cents) FROM income_deductions d
@@ -179,12 +190,13 @@ func (s *Service) incomesByWallet(ctx context.Context, householdID uuid.UUID, mo
 func (s *Service) paidByWallet(ctx context.Context, householdID uuid.UUID, month caldate.Date) ([]paidRow, error) {
 	var rows []paidRow
 	err := s.db.WithContext(ctx).Raw(`
-		SELECT paid_wallet_id AS wallet_id,
-		       COALESCE(SUM(paid_amount_cents) FILTER (WHERE competence_month = @month), 0)::bigint AS paid,
-		       COALESCE(SUM(paid_amount_cents) FILTER (WHERE competence_month < @month), 0)::bigint AS carry
-		FROM invoices
-		WHERE household_id = @hh AND competence_month <= @month AND deleted_at IS NULL AND paid_at IS NOT NULL
-		GROUP BY paid_wallet_id`, sql.Named("hh", householdID), sql.Named("month", month)).Scan(&rows).Error
+		SELECT inv.paid_wallet_id AS wallet_id,
+		       COALESCE(SUM(inv.paid_amount_cents) FILTER (WHERE inv.competence_month = @month), 0)::bigint AS paid,
+		       COALESCE(SUM(inv.paid_amount_cents) FILTER (WHERE inv.competence_month < @month AND `+sinceOpening("inv.competence_month")+`), 0)::bigint AS carry
+		FROM invoices inv
+		JOIN wallets w ON w.household_id = inv.household_id AND w.id = inv.paid_wallet_id
+		WHERE inv.household_id = @hh AND inv.competence_month <= @month AND inv.deleted_at IS NULL AND inv.paid_at IS NOT NULL
+		GROUP BY inv.paid_wallet_id`, sql.Named("hh", householdID), sql.Named("month", month)).Scan(&rows).Error
 	return rows, err
 }
 
@@ -193,10 +205,10 @@ func (s *Service) paidByWallet(ctx context.Context, householdID uuid.UUID, month
 func (s *Service) transfersByWallet(ctx context.Context, householdID uuid.UUID, month caldate.Date) ([]transferRow, error) {
 	var rows []transferRow
 	err := s.db.WithContext(ctx).Raw(`
-		SELECT wallet_id,
-		       COALESCE(SUM(inc) FILTER (WHERE competence_month = @month), 0)::bigint AS "in",
-		       COALESCE(SUM(out) FILTER (WHERE competence_month = @month), 0)::bigint AS "out",
-		       COALESCE(SUM(inc - out) FILTER (WHERE competence_month < @month), 0)::bigint AS carry
+		SELECT t.wallet_id,
+		       COALESCE(SUM(t.inc) FILTER (WHERE t.competence_month = @month), 0)::bigint AS "in",
+		       COALESCE(SUM(t.out) FILTER (WHERE t.competence_month = @month), 0)::bigint AS "out",
+		       COALESCE(SUM(t.inc - t.out) FILTER (WHERE t.competence_month < @month AND `+sinceOpening("t.competence_month")+`), 0)::bigint AS carry
 		FROM (
 			SELECT to_wallet_id AS wallet_id, competence_month, amount_cents AS inc, 0::bigint AS out
 			FROM wallet_transfers WHERE household_id = @hh AND competence_month <= @month AND deleted_at IS NULL
@@ -204,7 +216,8 @@ func (s *Service) transfersByWallet(ctx context.Context, householdID uuid.UUID, 
 			SELECT from_wallet_id, competence_month, 0::bigint, amount_cents
 			FROM wallet_transfers WHERE household_id = @hh AND competence_month <= @month AND deleted_at IS NULL
 		) t
-		GROUP BY wallet_id`, sql.Named("hh", householdID), sql.Named("month", month)).Scan(&rows).Error
+		JOIN wallets w ON w.household_id = @hh AND w.id = t.wallet_id
+		GROUP BY t.wallet_id`, sql.Named("hh", householdID), sql.Named("month", month)).Scan(&rows).Error
 	return rows, err
 }
 
@@ -321,8 +334,14 @@ func assemble(month caldate.Date, ws []wallet.Wallet, inc []incomeRow, paid []pa
 	byID := make(map[uuid.UUID]*WalletBalance, len(ws))
 	list := make([]*WalletBalance, len(ws))
 	for i, w := range ws {
+		// O saldo inicial só vale a partir do mês de início: antes dele a carteira "ainda não começou" (as consultas já
+		// deixam de fora o movimento anterior ao início, ver sinceOpening).
+		carry := w.OpeningBalanceCents
+		if w.OpeningBalanceMonth != nil && month.Before(*w.OpeningBalanceMonth) {
+			carry = 0
+		}
 		list[i] = &WalletBalance{WalletID: w.ID, Name: w.Name, OwnerUserID: w.OwnerUserID, IsDefault: w.IsDefault,
-			Archived: w.Archived(), Opening: w.OpeningBalanceCents, CarryOver: w.OpeningBalanceCents}
+			Archived: w.Archived(), Opening: w.OpeningBalanceCents, OpeningMonth: w.OpeningBalanceMonth, CarryOver: carry}
 		byID[w.ID] = list[i]
 	}
 	// Linhas de carteira desconhecida (não deveria ocorrer: FK composta) são ignoradas, nunca viram pânico.

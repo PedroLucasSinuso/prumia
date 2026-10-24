@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbmodel"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 )
@@ -29,8 +30,12 @@ type Wallet struct {
 	IsDefault bool
 	// WarnOnOverdraft liga o aviso "saldo insuficiente" ao pagar com esta carteira.
 	WarnOnOverdraft bool
-	// OpeningBalanceCents: saldo inicial (pode ser negativo). Entra no saldo anterior de todos os meses.
+	// OpeningBalanceCents: saldo inicial (pode ser negativo). Vale a partir de OpeningBalanceMonth; sem mês, entra no
+	// saldo anterior de todos os meses.
 	OpeningBalanceCents money.Cents
+	// OpeningBalanceMonth (dia 1): mês em que o saldo inicial passa a valer. nil (ponteiro nulo = NULL no banco) =
+	// desde o começo. Meses anteriores não recebem saldo inicial nem saldo anterior (ver internal/summary).
+	OpeningBalanceMonth *caldate.Date `gorm:"type:date"`
 	SortOrder           int
 	ArchivedAt          *time.Time
 }

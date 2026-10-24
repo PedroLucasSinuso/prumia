@@ -175,7 +175,7 @@ export default function SummaryPage() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {s.wallets.map((w) => (
-                <WalletCard key={w.walletId} title={w.name} hint={w.isDefault ? 'carteira padrão' : (members.data?.find((m) => m.userId === w.ownerUserId)?.name ?? '')} balance={w} tone={w.isDefault ? 'dark' : 'light'} />
+                <WalletCard key={w.walletId} title={w.name} hint={w.isDefault ? 'carteira padrão' : (members.data?.find((m) => m.userId === w.ownerUserId)?.name ?? '')} balance={w} month={month} tone={w.isDefault ? 'dark' : 'light'} />
               ))}
             </div>
             <TransfersSection transfers={transfers.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteTransfer} />

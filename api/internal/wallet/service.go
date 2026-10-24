@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
 )
@@ -85,6 +86,13 @@ func checkBalance(c money.Cents, v *validation.Collector) {
 	}
 }
 
+// checkOpeningMonth: o mês de início tem de ser o dia 1 (nil = sem mês de início).
+func checkOpeningMonth(m *caldate.Date, v *validation.Collector) {
+	if m != nil && (m.IsZero() || !m.IsStartOfMonth()) {
+		v.Add("openingBalanceMonth", "informe o primeiro dia do mês (AAAA-MM-01)")
+	}
+}
+
 // checkOwner: o dono (etiqueta) tem de ser membro ATIVO da casa.
 func checkOwner(db *gorm.DB, householdID uuid.UUID, owner *uuid.UUID, v *validation.Collector) error {
 	if owner == nil {
@@ -107,7 +115,8 @@ type CreateInput struct {
 	OwnerUserID         *uuid.UUID
 	WarnOnOverdraft     *bool // nil = true
 	OpeningBalanceCents money.Cents
-	SortOrder           *int // nil = fim da lista
+	OpeningBalanceMonth *caldate.Date // nil = o saldo inicial vale desde o começo
+	SortOrder           *int          // nil = fim da lista
 }
 
 // Create cria uma carteira (somente admin). Nunca nasce como padrão: para isso, Update com IsDefault.
@@ -119,6 +128,7 @@ func (s *Service) Create(ctx context.Context, householdID, actor uuid.UUID, in C
 	var v validation.Collector
 	in.Name = cleanName(in.Name, &v)
 	checkBalance(in.OpeningBalanceCents, &v)
+	checkOpeningMonth(in.OpeningBalanceMonth, &v)
 	if err := checkOwner(db, householdID, in.OwnerUserID, &v); err != nil {
 		return Wallet{}, err
 	}
@@ -126,7 +136,7 @@ func (s *Service) Create(ctx context.Context, householdID, actor uuid.UUID, in C
 		return Wallet{}, err
 	}
 	w := Wallet{HouseholdID: householdID, Name: in.Name, OwnerUserID: in.OwnerUserID, WarnOnOverdraft: true,
-		OpeningBalanceCents: in.OpeningBalanceCents}
+		OpeningBalanceCents: in.OpeningBalanceCents, OpeningBalanceMonth: in.OpeningBalanceMonth}
 	if in.WarnOnOverdraft != nil {
 		w.WarnOnOverdraft = *in.WarnOnOverdraft
 	}
@@ -156,6 +166,9 @@ type Patch struct {
 	OwnerUserID         *uuid.UUID
 	WarnOnOverdraft     *bool
 	OpeningBalanceCents *money.Cents
+	// OpeningMonthSet: o campo veio no PATCH (OpeningBalanceMonth nil + OpeningMonthSet = limpar o mês de início).
+	OpeningMonthSet     bool
+	OpeningBalanceMonth *caldate.Date
 	IsDefault           *bool
 	SortOrder           *int
 }
@@ -197,6 +210,10 @@ func (s *Service) Update(ctx context.Context, householdID, actor, id uuid.UUID, 
 		if p.OpeningBalanceCents != nil {
 			checkBalance(*p.OpeningBalanceCents, &v)
 			updates["opening_balance_cents"] = *p.OpeningBalanceCents
+		}
+		if p.OpeningMonthSet {
+			checkOpeningMonth(p.OpeningBalanceMonth, &v)
+			updates["opening_balance_month"] = p.OpeningBalanceMonth // nil grava NULL
 		}
 		if p.SortOrder != nil {
 			updates["sort_order"] = *p.SortOrder

@@ -1482,8 +1482,11 @@ type Wallet struct {
 	IsDefault bool   `json:"isDefault"`
 	Name      string `json:"name"`
 
-	// OpeningBalanceCents Saldo inicial (pode ser negativo); entra no saldo anterior de todos os meses
+	// OpeningBalanceCents Saldo inicial (pode ser negativo); vale a partir de openingBalanceMonth (sem mês, entra no saldo anterior de todos os meses)
 	OpeningBalanceCents Cents `json:"openingBalanceCents"`
+
+	// OpeningBalanceMonth Mês (dia 1) a partir do qual o saldo inicial vale; meses anteriores não recebem o saldo inicial nem o saldo anterior. null = desde o início
+	OpeningBalanceMonth *caldate.Date `json:"openingBalanceMonth,omitempty"`
 
 	// OwnerUserId Só etiqueta (de quem é a carteira); não restringe o uso
 	OwnerUserId *openapi_types.UUID `json:"ownerUserId,omitempty"`
@@ -1501,7 +1504,7 @@ type WalletBalance struct {
 	// BalanceCents Saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas (não é saldo bancário)
 	BalanceCents Cents `json:"balanceCents"`
 
-	// CarryOverCents Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência
+	// CarryOverCents Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início, se houver), de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência. Antes do mês de início = 0
 	CarryOverCents Cents `json:"carryOverCents"`
 
 	// ExpectedIncomeCents Líquido de todas as receitas da competência na carteira (a receber + recebidas)
@@ -1513,7 +1516,10 @@ type WalletBalance struct {
 	Name              string `json:"name"`
 
 	// OpeningBalanceCents Saldo inicial da carteira
-	OpeningBalanceCents Cents               `json:"openingBalanceCents"`
+	OpeningBalanceCents Cents `json:"openingBalanceCents"`
+
+	// OpeningBalanceMonth Mês (dia 1) a partir do qual o saldo inicial vale; null = desde o início. Em meses anteriores a ele, carryOverCents é 0
+	OpeningBalanceMonth *caldate.Date       `json:"openingBalanceMonth,omitempty"`
 	OwnerUserId         *openapi_types.UUID `json:"ownerUserId,omitempty"`
 
 	// PaidCents Valor efetivamente pago das invoices da competência pagas com esta carteira
@@ -1544,6 +1550,9 @@ type WalletInput struct {
 	// OpeningBalanceCents Padrão 0
 	OpeningBalanceCents *Cents `json:"openingBalanceCents,omitempty"`
 
+	// OpeningBalanceMonth Mês (dia 1) a partir do qual o saldo inicial vale; dia diferente de 1 = 400 no campo. Padrão null (desde o início)
+	OpeningBalanceMonth *caldate.Date `json:"openingBalanceMonth,omitempty"`
+
 	// OwnerUserId Deve ser membro da casa
 	OwnerUserId *openapi_types.UUID `json:"ownerUserId,omitempty"`
 
@@ -1560,6 +1569,9 @@ type WalletPatch struct {
 
 	// OpeningBalanceCents Valor em centavos (BRL)
 	OpeningBalanceCents *Cents `json:"openingBalanceCents,omitempty"`
+
+	// OpeningBalanceMonth null limpa o mês de início (volta a valer desde o início); dia diferente de 1 = 400 no campo
+	OpeningBalanceMonth *caldate.Date `json:"openingBalanceMonth,omitempty"`
 
 	// OwnerUserId null limpa o dono
 	OwnerUserId     *openapi_types.UUID `json:"ownerUserId,omitempty"`

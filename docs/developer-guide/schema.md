@@ -124,6 +124,7 @@ gravado).
 | `is_default` | **uma por casa** (`wallets_default_uq`, índice único parcial `WHERE is_default`); `CHECK (NOT is_default OR archived_at IS NULL)` |
 | `warn_on_overdraft` | liga o aviso de saldo insuficiente ao pagar (padrão `true`) |
 | `opening_balance_cents` | `bigint`, pode ser negativo |
+| `opening_balance_month` | `date` NULL (migration `00011`), `CHECK` dia 1: mês a partir do qual o saldo inicial vale; `NULL` = desde o início. O `Down` descarta a coluna |
 | `sort_order`, `archived_at`, `created_at`, `updated_at` | sem `deleted_at`: não há exclusão, só arquivar |
 
 Referências: `incomes.wallet_id` e `income_sources.wallet_id` (NOT NULL), `invoices.paid_wallet_id` (junto de `paid_at`, no
@@ -131,7 +132,7 @@ Referências: `incomes.wallet_id` e `income_sources.wallet_id` (NOT NULL), `invo
 carteira de outra casa. A `00008` faz o backfill (toda casa ganha "Geral" padrão e "Benefício"; `free` → Geral, `benefit` → Benefício),
 remove as colunas de texto e os `CHECK`s `kind`/`wallet`. O `Down` volta ao texto com perda (`benefit` = carteira chamada "Benefício").
 
-Saldo = saldo inicial + receitas recebidas na carteira − invoices pagas com ela, **acumulado entre os meses**. Saldo insuficiente
+Saldo = saldo inicial + receitas recebidas na carteira − invoices pagas com ela, **acumulado entre os meses** (a partir de `opening_balance_month`, se houver). Saldo insuficiente
 **só avisa**, não bloqueia (é estimativa, não controle bancário). Definições exatas em [incomes-and-wallets.md](incomes-and-wallets.md).
 
 ### wallet_transfers (migration 00009)

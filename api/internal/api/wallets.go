@@ -22,7 +22,7 @@ type Wallets struct {
 func toGenWalletItem(w wallet.Wallet) gen.Wallet {
 	return gen.Wallet{
 		Id: w.ID, Name: w.Name, OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, WarnOnOverdraft: w.WarnOnOverdraft,
-		OpeningBalanceCents: w.OpeningBalanceCents, SortOrder: w.SortOrder, Archived: w.Archived(),
+		OpeningBalanceCents: w.OpeningBalanceCents, OpeningBalanceMonth: w.OpeningBalanceMonth, SortOrder: w.SortOrder, Archived: w.Archived(),
 	}
 }
 
@@ -48,7 +48,8 @@ func (h *Wallets) CreateWallet(c *gin.Context, householdId gen.HouseholdId) {
 		badJSON(c)
 		return
 	}
-	in := wallet.CreateInput{Name: body.Name, OwnerUserID: body.OwnerUserId, WarnOnOverdraft: body.WarnOnOverdraft, SortOrder: body.SortOrder}
+	in := wallet.CreateInput{Name: body.Name, OwnerUserID: body.OwnerUserId, WarnOnOverdraft: body.WarnOnOverdraft, SortOrder: body.SortOrder,
+		OpeningBalanceMonth: body.OpeningBalanceMonth}
 	if body.OpeningBalanceCents != nil {
 		in.OpeningBalanceCents = *body.OpeningBalanceCents
 	}
@@ -70,7 +71,7 @@ func (h *Wallets) UpdateWallet(c *gin.Context, householdId gen.HouseholdId, wall
 	updated, err := h.Svc.Update(c.Request.Context(), householdId, auth.CurrentUser(c).ID, walletId, wallet.Patch{
 		Name: body.Name, OwnerSet: present["ownerUserId"], OwnerUserID: body.OwnerUserId,
 		WarnOnOverdraft: body.WarnOnOverdraft, OpeningBalanceCents: body.OpeningBalanceCents,
-		IsDefault: body.IsDefault, SortOrder: body.SortOrder,
+		OpeningMonthSet: present["openingBalanceMonth"], OpeningBalanceMonth: body.OpeningBalanceMonth, IsDefault: body.IsDefault, SortOrder: body.SortOrder,
 	})
 	if err != nil {
 		writeDomainError(c, h.Log, err)

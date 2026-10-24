@@ -1,8 +1,9 @@
 import type { WalletBalance } from '../api/types'
+import { monthLabel } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { PaidGauge } from './PaidGauge'
 
-type Props = { title: string; hint: string; balance: WalletBalance; /** `dark`: a carteira padrão da casa; as outras são contornadas. */ tone?: 'dark' | 'light' }
+type Props = { title: string; hint: string; balance: WalletBalance; /** Mês consultado (AAAA-MM-01): antes do mês de início da carteira ela "ainda não começou". */ month?: string; /** `dark`: a carteira padrão da casa; as outras são contornadas. */ tone?: 'dark' | 'light' }
 
 const row = 'flex items-baseline justify-between gap-3 border-t border-line py-2 text-[13px] md:py-1.5'
 
@@ -11,7 +12,9 @@ const row = 'flex items-baseline justify-between gap-3 border-t border-line py-2
  * `[ ✖ ]`, se no fim do mês vai faltar. O realizado (recebido − pago) vem embaixo, como informação: um salário que ainda não
  * foi marcado como recebido não é alarme. O "a pagar" por carteira é estimado pela carteira padrão da categoria.
  */
-export function WalletCard({ title, hint, balance, tone = 'light' }: Props) {
+export function WalletCard({ title, hint, balance, month, tone = 'light' }: Props) {
+  const start = balance.openingBalanceMonth
+  const beforeStart = Boolean(start && month && month < start)
   const dark = tone === 'dark'
   const projected = balance.projectedCents
   const negative = projected < 0
@@ -42,8 +45,9 @@ export function WalletCard({ title, hint, balance, tone = 'light' }: Props) {
       </p>
       <PaidGauge fraction={Math.min(1, paidFraction)} tone={dark ? 'dark' : 'light'} className="mt-3" />
       <p className={`mt-1 text-[11px] ${soft}`}>{Math.round(paidFraction * 100)}% do previsto já foi pago</p>
+      {beforeStart && start && <p className={`mt-1 text-[11px] ${soft}`}>esta carteira começa em {monthLabel(start)}</p>}
       <dl className={`mt-3 ${dark ? '[&>div]:border-on-structure/20' : ''}`}>
-        {balance.carryOverCents !== 0 && (
+        {!beforeStart && balance.carryOverCents !== 0 && (
           <div className={row}>
             <dt>saldo que veio dos meses anteriores</dt>
             <dd className="font-mono tabular-nums">{formatCents(balance.carryOverCents)}</dd>

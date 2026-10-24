@@ -74,21 +74,22 @@ type srcT struct {
 }
 
 type walletT struct {
-	WalletID            string `json:"walletId"`
-	Name                string `json:"name"`
-	IsDefault           bool   `json:"isDefault"`
-	Archived            bool   `json:"archived"`
-	OpeningBalanceCents int64  `json:"openingBalanceCents"`
-	CarryOverCents      int64  `json:"carryOverCents"`
-	ExpectedIncomeCents int64  `json:"expectedIncomeCents"`
-	ReceivedIncomeCents int64  `json:"receivedIncomeCents"`
-	PaidCents           int64  `json:"paidCents"`
-	TransfersInCents    int64  `json:"transfersInCents"`
-	TransfersOutCents   int64  `json:"transfersOutCents"`
-	BalanceCents        int64  `json:"balanceCents"`
-	MonthBalanceCents   int64  `json:"monthBalanceCents"`
-	PendingCents        int64  `json:"pendingCents"`
-	ProjectedCents      int64  `json:"projectedCents"`
+	WalletID            string  `json:"walletId"`
+	Name                string  `json:"name"`
+	IsDefault           bool    `json:"isDefault"`
+	Archived            bool    `json:"archived"`
+	OpeningBalanceCents int64   `json:"openingBalanceCents"`
+	OpeningBalanceMonth *string `json:"openingBalanceMonth"`
+	CarryOverCents      int64   `json:"carryOverCents"`
+	ExpectedIncomeCents int64   `json:"expectedIncomeCents"`
+	ReceivedIncomeCents int64   `json:"receivedIncomeCents"`
+	PaidCents           int64   `json:"paidCents"`
+	TransfersInCents    int64   `json:"transfersInCents"`
+	TransfersOutCents   int64   `json:"transfersOutCents"`
+	BalanceCents        int64   `json:"balanceCents"`
+	MonthBalanceCents   int64   `json:"monthBalanceCents"`
+	PendingCents        int64   `json:"pendingCents"`
+	ProjectedCents      int64   `json:"projectedCents"`
 }
 
 type summaryT struct {
