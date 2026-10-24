@@ -1,5 +1,6 @@
 import { addMonths, currentMonth, monthLabel } from '../lib/dates'
 import { useIsDesktop } from '../lib/useIsDesktop'
+import { Tooltip } from './ui/Tooltip'
 
 type Props = { month: string; onChange: (month: string) => void }
 
@@ -19,16 +20,20 @@ export function MonthSelector({ month, onChange }: Props) {
   const label = monthLabel(month) // "outubro de 2026"
   const [rawName, year] = label.split(' de ')
   const name = rawName.charAt(0).toUpperCase() + rawName.slice(1) // "outubro" -> "Outubro" (o título visível; o aria-label fica em minúsculas)
-  const arrow = `flex items-center justify-center rounded-md text-heading transition-colors hover:bg-ink/5 ${desktop ? "size-10" : "size-11"}`
+  const arrow = `flex items-center justify-center rounded-md text-heading transition-colors hover:bg-ink/8 active:bg-ink/12 ${desktop ? "size-10" : "size-11"}`
   const prev = (
-    <button aria-label="Mês anterior" title={desktop ? "Mês anterior (←)" : undefined} className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, -1))}>
-      {chevron('M15 5 L8 12 L15 19')}
-    </button>
+    <Tooltip label="Mês anterior" shortcut="←">
+      <button aria-label="Mês anterior" className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, -1))}>
+        {chevron('M15 5 L8 12 L15 19')}
+      </button>
+    </Tooltip>
   )
   const next = (
-    <button aria-label="Próximo mês" title={desktop ? "Próximo mês (→)" : undefined} className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, 1))}>
-      {chevron('M9 5 L16 12 L9 19')}
-    </button>
+    <Tooltip label="Próximo mês" shortcut="→">
+      <button aria-label="Próximo mês" className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, 1))}>
+        {chevron('M9 5 L16 12 L9 19')}
+      </button>
+    </Tooltip>
   )
   const title = (
     <div className={desktop ? '' : 'flex flex-1 flex-col items-center'}>

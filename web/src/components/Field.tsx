@@ -1,19 +1,25 @@
 import { forwardRef, useId, type InputHTMLAttributes } from 'react'
 
+import { controlCls, labelCls } from './ui/styles'
+
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string
   error?: string
   hint?: string
 }
 
-/** Campo de formulário da marca: rótulo em caixa alta pequena, borda fina, erro em coral. Acessível (label, aria). */
-export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ label, error, hint, id, ...input }, ref) {
+/**
+ * Campo de formulário da marca: rótulo em caixa alta pequena, borda fina, erro em coral. Acessível (label, aria).
+ * Estados: hover (borda mais forte), foco (borda `accent` + contorno global), erro, desabilitado.
+ * Celular: 44px; computador: 36px. O visual vem de `ui/styles` (igual ao DatePicker, Combobox e MonthPicker).
+ */
+export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ label, error, hint, id, className = '', ...input }, ref) {
   const auto = useId()
   const fieldId = id ?? auto
   const describedBy = [error ? `${fieldId}-erro` : null, hint ? `${fieldId}-dica` : null].filter(Boolean).join(' ')
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={fieldId} className="text-xs font-medium uppercase tracking-wider text-ink/70">
+      <label htmlFor={fieldId} className={labelCls}>
         {label}
       </label>
       <input
@@ -21,9 +27,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className={`h-11 rounded-md border bg-raised/40 px-3 text-base text-ink placeholder:text-ink/40 ${
-          error ? 'border-alert' : 'border-ink/25'
-        }`}
+        className={`${controlCls(Boolean(error))} ${className}`}
         {...input}
       />
       {hint && !error && (

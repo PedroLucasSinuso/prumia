@@ -1,21 +1,31 @@
-import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
 import type { Boleto, DocumentExtraction, DocumentItem, Category, CategoryInput, Invoice, Payee, InvoiceInput, InvoicePatch, PurchaseInput, RecurrenceInput, SeriesScope } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { addDays, dayMonth, monthOf, todayISO } from '../lib/dates'
 import { buildTree } from '../lib/categories'
+import { addDays, dayMonth, monthOf, todayISO } from '../lib/dates'
+import { flashRow } from '../lib/flash'
+import { readPref, writePref } from '../lib/storage'
 import { formatCents } from '../lib/money'
 import { BoletoImport } from './BoletoImport'
 import { Button } from './Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
+import { Combobox, type ComboOption } from './ui/Combobox'
+import { DatePicker } from './ui/DatePicker'
+import { MonthPicker } from './ui/MonthPicker'
+import { PanelFooter } from './ui/Panel'
+import { Segmented } from './ui/Segmented'
+import { chipCls } from './ui/styles'
+import { Tooltip } from './ui/Tooltip'
 
 type Props = {
   /** Mês exibido na tela (define o vencimento padrão ao criar). */
   month: string
+  /** Casa ativa: separa as categorias "recentes" de cada casa no aparelho. */
+  houseId?: string
   categories: Category[]
   /** Todos os favorecidos da casa (arquivados só aparecem se a conta já usa um). Opcional: sem a lista, o campo some. */
   payees?: Payee[]
@@ -53,21 +63,18 @@ const kinds: Array<[Kind, string]> = [['single', 'avulsa'], ['installments', 'pa
 /** O servidor acrescenta " (n/N)" ao descrever parcelas; ao editar "esta e as seguintes" mandamos só o nome-base. */
 const stripInstallmentSuffix = (d: string) => d.replace(/\s*\(\d+\/\d+\)\s*$/, '')
 
-// Botão de escolha. `whitespace-nowrap`: o rótulo nunca quebra ("hoje ·" / "20/10"); quem quebra é a fileira.
-// Celular: 44 px de alvo; computador (md+): 36 px, mais denso para o mouse.
-const chip = (on: boolean) =>
-  `flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-[13px] transition-colors md:min-h-9 ${
-    on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium text-ink hover:bg-ink/5'
-  }`
+const RECENT_MAX = 4
+const recentKey = (houseId?: string) => `prumia.categoriasRecentes.${houseId ?? 'casa'}`
 
 type NewCategory = { name: string; asChild: boolean; busy: boolean; error?: string }
 
 /**
- * Formulário de criar/editar conta. Valor em destaque (recebe o foco ao abrir); vencimento e categoria são BOTÕES visíveis
- * (nada de menu suspenso): menos toques e menos decisões escondidas. "Mais opções" guarda favorecido, competência e observação.
+ * Formulário de criar/editar conta. Valor em destaque (recebe o foco ao abrir). Vencimento: controle segmentado (hoje, amanhã,
+ * em 7 dias) + calendário em "outra data". Categoria: até 4 atalhos "recentes" (por casa, no aparelho) e uma lista pesquisável com
+ * "Mãe › filha". "Mais opções" guarda favorecido, competência e observação. O rodapé com a ação principal fica sempre à vista.
  * Pagar, desfazer e excluir ficam no detalhe da conta (`InvoiceDetail`), não aqui. Enter salva (envio nativo do formulário).
  */
-export function InvoiceForm({ month, categories: baseCategories, payees = [], invoice, canWrite, onDone, onCancel, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onCreateCategory, onExtractBoleto, onOpenInvoice, initialKind }: Props) {
+export function InvoiceForm({ month, houseId, categories: baseCategories, payees = [], invoice, canWrite, onDone, onCancel, onCreate, onCreatePurchase, onCreateRecurrence, onUpdate, onCreateCategory, onExtractBoleto, onOpenInvoice, initialKind }: Props) {
   const editing = invoice !== undefined
   const today = todayISO()
   const inCurrentMonth = month === monthOf(today)
@@ -81,6 +88,7 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
   const [amount, setAmount] = useState(invoice?.amountCents ?? 0)
   const [dueDate, setDueDate] = useState(invoice?.dueDate ?? defaultDue)
   const [otherDate, setOtherDate] = useState(editing || !inCurrentMonth)
+  const [recent, setRecent] = useState<string[]>(() => readPref<string[]>(recentKey(houseId), []))
   const [categoryId, setCategoryId] = useState(invoice?.categoryId ?? buildTree(baseCategories)[0]?.category.id ?? '')
   const [payeeId, setPayeeId] = useState(invoice?.payeeId ?? '')
   const [competence, setCompetence] = useState(invoice ? invoice.competenceMonth.slice(0, 7) : '')
@@ -107,6 +115,13 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
   const [newCat, setNewCat] = useState<NewCategory | null>(null)
   const descRef = useRef<HTMLInputElement>(null)
   const amountRef = useRef<HTMLInputElement>(null)
+
+  // Guarda a categoria usada como "recente" (por casa, no aparelho; falha de armazenamento é ignorada).
+  function remember(id: string) {
+    const next = [id, ...recent.filter((x) => x !== id)].slice(0, RECENT_MAX)
+    setRecent(next)
+    writePref(recentKey(houseId), next)
+  }
 
   const clear = (f: string) => {
     setFields(({ [f]: _removed, ...rest }) => rest)
@@ -175,6 +190,8 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
           } as InvoicePatch,
           following ? 'following' : 'this',
         )
+        flashRow(invoice.id)
+        remember(categoryId)
         onDone()
       } else if (kind === 'installments') {
         const n = Number(count)
@@ -184,6 +201,7 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
           ...(amountIsTotal ? { totalAmountCents: amount } : { totalAmountCents: amount * n, installmentAmountCents: amount }),
           ...(notes.trim() ? { notes } : {}),
         })
+        remember(categoryId)
         onDone()
       } else if (kind === 'recurring') {
         await onCreateRecurrence({
@@ -191,9 +209,10 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
           ...(endMonth ? { endMonth: `${endMonth}-01` } : {}),
           ...(notes.trim() ? { notes } : {}),
         })
+        remember(categoryId)
         onDone()
       } else {
-        await onCreate({
+        const created = await onCreate({
           description, amountCents: amount, dueDate, categoryId,
           ...(payeeId ? { payeeId } : {}),
           ...(!payeeId && newPayeeName.trim() ? { newPayee: { name: newPayeeName.trim() } } : {}),
@@ -201,6 +220,9 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
           ...(notes.trim() ? { notes } : {}),
           ...(boleto ? { boleto } : {}),
         })
+        const newId = (created as { id?: string } | undefined)?.id
+        if (newId) flashRow(newId)
+        remember(categoryId)
         if (addAnother) {
           // mantém categoria e vencimento (lançar várias contas parecidas) e volta ao começo: o valor
           setDescription('')
@@ -258,34 +280,37 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
     }
   }
 
-  const pick = (c: Category, text: string, on: boolean, key = c.id) => (
-    <button key={key} type="button" aria-pressed={on} onClick={() => { setCategoryId(c.id); clear('categoryId') }} className={`${chip(on)} min-h-10`}>
-      {text}
-      {c.defaultWallet === 'benefit' && text !== 'geral' && (
-        <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-on-structure/70' : 'border-ink/50'}`} title="Sugere a carteira de benefício">
-          VR
-        </span>
-      )}
-    </button>
-  )
-  const dueChips = [
-    { label: `hoje · ${dayMonth(today)}`, value: today },
-    { label: `amanhã · ${dayMonth(addDays(today, 1))}`, value: addDays(today, 1) },
-    { label: `em 7 dias · ${dayMonth(addDays(today, 7))}`, value: addDays(today, 7) },
+  // Opções do combobox: mãe, depois as filhas ("Moradia › Gás"). A mãe com filhas continua escolhível (conta "geral" dela).
+  const vr = { badge: 'VR', badgeTitle: 'Sugere a carteira de benefício' } as const
+  const categoryOptions: ComboOption[] = tree.flatMap(({ category: c, children }) => [
+    { value: c.id, label: c.name, ...(c.defaultWallet === 'benefit' ? vr : {}) },
+    ...children.map((k): ComboOption => ({ value: k.id, label: k.name, group: c.name, ...(k.defaultWallet === 'benefit' ? vr : {}) })),
+  ])
+  // Atalhos: as últimas categorias usadas e, para completar até 4, as principais da lista.
+  const byId = new Map(categories.map((c) => [c.id, c]))
+  const shortcutIds = [...recent.filter((id) => byId.has(id)), ...tree.map((n) => n.category.id)].filter((id, i, all) => all.indexOf(id) === i).slice(0, RECENT_MAX)
+  const dueOptions = [
+    { id: 'today', date: today, name: 'Hoje' },
+    { id: 'tomorrow', date: addDays(today, 1), name: 'Amanhã' },
+    { id: 'week', date: addDays(today, 7), name: 'Em 7 dias' },
   ]
+  const dueValue = otherDate ? 'other' : (dueOptions.find((o) => o.date === dueDate)?.id ?? null)
+  const dueLabel = !editing && kind === 'installments' ? '1ª parcela vence' : !editing && kind === 'recurring' ? 'Vence no dia' : 'Vence'
+  const invalid = busy || !description || amount <= 0 || !dueDate || !categoryId
+  const primaryText = editing ? 'Salvar alterações' : kind === 'installments' ? 'Adicionar compra parcelada' : kind === 'recurring' ? 'Adicionar conta fixa' : 'Adicionar conta'
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={onSubmit} className="flex min-h-full flex-col gap-4" noValidate>
       <FormError message={error} />
 
       {!editing && canWrite && (
-        <div role="group" aria-label="Tipo de conta" className="grid grid-cols-3 gap-2">
-          {kinds.map(([k, text]) => (
-            <button key={k} type="button" aria-pressed={kind === k} onClick={() => { setKind(k); setError(undefined); if (k !== 'single') discardBoleto() }} className={chip(kind === k)}>
-              {text}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Tipo de conta"
+          hideLabel
+          value={kind}
+          onChange={(k) => { setKind(k); setError(undefined); if (k !== 'single') discardBoleto() }}
+          options={kinds.map(([value, label]) => ({ value, label }))}
+        />
       )}
 
       {!editing && canWrite && kind === 'single' && onExtractBoleto && (
@@ -341,10 +366,13 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
       {!editing && kind === 'installments' && (
         <div className="flex flex-col gap-3">
           <Field label="Parcelas" name="count" type="number" inputMode="numeric" min={2} max={120} value={count} onChange={(e) => { setCount(e.target.value); clear('count') }} error={fields.count} />
-          <div role="group" aria-label="O valor informado é" className="grid grid-cols-2 gap-2">
-            <button type="button" aria-pressed={!amountIsTotal} onClick={() => setAmountIsTotal(false)} className={chip(!amountIsTotal)}>de cada parcela</button>
-            <button type="button" aria-pressed={amountIsTotal} onClick={() => setAmountIsTotal(true)} className={chip(amountIsTotal)}>total da compra</button>
-          </div>
+          <Segmented
+            label="O valor informado é"
+            hideLabel
+            value={amountIsTotal ? 'total' : 'each'}
+            onChange={(v) => setAmountIsTotal(v === 'total')}
+            options={[{ value: 'each', label: 'de cada parcela' }, { value: 'total', label: 'total da compra' }]}
+          />
           {amount > 0 && Number(count) >= 2 && (
             <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
               {amountIsTotal
@@ -373,47 +401,69 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
         error={fields.description}
       />
 
-      <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
-        <legend className={otherDate ? 'sr-only' : 'mb-1 text-xs font-medium uppercase tracking-wider text-ink/80'}>{!editing && kind === 'installments' ? '1ª parcela vence' : !editing && kind === 'recurring' ? 'Vence no dia' : 'Vence'}</legend>
-        {!otherDate ? (
-          <div className="flex flex-wrap gap-2">
-            {dueChips.map((c) => (
-              <button key={c.value} type="button" aria-pressed={dueDate === c.value} onClick={() => { setDueDate(c.value); clear('dueDate') }} className={`${chip(dueDate === c.value)} flex-auto`}>
-                {c.label}
-              </button>
-            ))}
-            <button type="button" onClick={() => setOtherDate(true)} className={`${chip(false)} flex-auto`}>
-              outra data
-            </button>
-          </div>
+      <fieldset className="flex flex-col gap-2" disabled={!canWrite}>
+        <Segmented
+          label={dueLabel}
+          value={dueValue}
+          onChange={(id) => {
+            if (id === 'other') return setOtherDate(true)
+            const o = dueOptions.find((x) => x.id === id)
+            if (!o) return
+            setDueDate(o.date)
+            setOtherDate(false)
+            clear('dueDate')
+          }}
+          options={[
+            ...dueOptions.map((o) => ({
+              value: o.id,
+              ariaLabel: `${o.name}, ${dayMonth(o.date)}`,
+              label: (
+                <span className="flex flex-col items-center leading-tight">
+                  {o.name}
+                  <span className="font-mono text-[11px] font-normal tabular-nums opacity-80">{dayMonth(o.date)}</span>
+                </span>
+              ),
+            })),
+            { value: 'other', label: 'Outra data' },
+          ]}
+        />
+        {otherDate ? (
+          <DatePicker label="Data de vencimento" name="dueDate" required value={dueDate} onChange={(d) => { setDueDate(d); clear('dueDate') }} error={fields.dueDate} />
         ) : (
-          <Field
-            label="Data de vencimento"
-            type="date"
-            name="dueDate"
-            required
-            value={dueDate}
-            onChange={(e) => { setDueDate(e.target.value); clear('dueDate') }}
-            error={fields.dueDate}
-          />
+          fields.dueDate && <p className="text-xs text-alert">{fields.dueDate}</p>
         )}
-        {!otherDate && fields.dueDate && <p className="text-xs text-alert">{fields.dueDate}</p>}
       </fieldset>
 
-      <fieldset className="flex flex-col gap-1.5" disabled={!canWrite}>
-        <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">Categoria</legend>
-        <div className="flex flex-wrap gap-2">
-          {tree.map(({ category: c }) => pick(c, c.name, topId === c.id))}
-          {canWrite && onCreateCategory && !newCat && (
-            <button
-              type="button"
-              onClick={() => setNewCat({ name: '', asChild: false, busy: false })}
-              className="flex min-h-10 items-center gap-1 whitespace-nowrap rounded-md border border-dashed border-ink/40 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-ink/5 md:min-h-9"
-            >
-              <Plus size={15} strokeWidth={1.5} aria-hidden="true" /> nova
-            </button>
-          )}
-        </div>
+      <fieldset className="flex flex-col gap-2" disabled={!canWrite}>
+        <legend className="sr-only">Categoria</legend>
+        {shortcutIds.length > 0 && (
+          <div role="group" aria-label="Categorias recentes" className="flex flex-wrap gap-2">
+            {shortcutIds.map((id) => {
+              const c = byId.get(id)!
+              const on = categoryId === id
+              return (
+                <button key={id} type="button" aria-pressed={on} onClick={() => { setCategoryId(id); clear('categoryId') }} className={chipCls(on)}>
+                  {c.name}
+                  {c.defaultWallet === 'benefit' && (
+                    <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-on-structure/70' : 'border-ink/50'}`} title="Sugere a carteira de benefício">
+                      VR
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <Combobox
+          label="Categoria"
+          options={categoryOptions}
+          value={categoryId}
+          onChange={(v) => { setCategoryId(v); clear('categoryId') }}
+          placeholder="Buscar categoria…"
+          onCreate={canWrite && onCreateCategory ? (typed) => setNewCat({ name: typed, asChild: false, busy: false }) : undefined}
+          createLabel="Nova categoria"
+          error={fields.categoryId}
+        />
         {newCat && (
           <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md border border-line p-3">
             <div className="flex flex-wrap gap-2">
@@ -429,12 +479,12 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
                   if (e.key === 'Enter') { e.preventDefault(); void createCategory() }
                   if (e.key === 'Escape') { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setNewCat(null) }
                 }}
-                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink md:h-9 md:text-sm"
+                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink transition-colors hover:border-ink/45 focus-visible:border-accent md:h-9 md:text-sm"
               />
-              <Button type="button" disabled={newCat.busy || !newCat.name.trim()} onClick={() => void createCategory()} className="md:h-9">
-                {newCat.busy ? 'Criando…' : 'Criar categoria'}
+              <Button type="button" disabled={!newCat.name.trim()} loading={newCat.busy} loadingLabel="Criando…" onClick={() => void createCategory()}>
+                Criar categoria
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setNewCat(null)} className="md:h-9">
+              <Button type="button" variant="ghost" onClick={() => setNewCat(null)}>
                 Cancelar
               </Button>
             </div>
@@ -447,46 +497,38 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
             {newCat.error && <p role="alert" className="text-xs text-alert">{newCat.error}</p>}
           </div>
         )}
-        {/* Só aparece para quem criou subcategorias: escolher uma mãe com filhas abre esta 2ª linha (geral · Gás · Luz…). */}
-        {topNode && topNode.children.length > 0 && (
-          <div role="group" aria-label={`Detalhe de ${topNode.category.name}`} className="flex flex-wrap gap-2 border-l-2 border-ink/20 pl-3">
-            {pick(topNode.category, 'geral', categoryId === topNode.category.id, 'geral')}
-            {topNode.children.map((c) => pick(c, c.name, categoryId === c.id))}
-          </div>
-        )}
-        {fields.categoryId && <p className="text-xs text-alert">{fields.categoryId}</p>}
       </fieldset>
 
       <details className="rounded-md border border-line px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
-        <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold">
+        <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold transition-colors hover:text-heading">
           Mais opções <span className="text-xs font-normal text-ink/75">favorecido · competência · observação</span>
         </summary>
         <div className="mt-3 flex flex-col gap-4 pb-1">
           {!editing && kind === 'recurring' && (
-            <Field label="Termina em (opcional)" type="month" name="endMonth" value={endMonth} onChange={(e) => { setEndMonth(e.target.value); clear('endMonth') }} hint="Em branco: continua até você encerrar." error={fields.endMonth} />
+            <MonthPicker label="Termina em (opcional)" value={endMonth} clearable onChange={(m) => { setEndMonth(m); clear('endMonth') }} hint="Em branco: continua até você encerrar." error={fields.endMonth} />
           )}
           {(editing || kind === 'single') && payeeOptions.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor="invoice-payee" className="text-xs font-medium uppercase tracking-wider text-ink/70">Favorecido (opcional)</label>
-              <select id="invoice-payee" value={payeeId} disabled={!canWrite} onChange={(e) => pickPayee(e.target.value)}
-                className="h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink">
-                <option value="">nenhum</option>
-                {payeeOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              {fields.payeeId && <p className="text-xs text-alert">{fields.payeeId}</p>}
-            </div>
+            <Combobox
+              label="Favorecido (opcional)"
+              options={payeeOptions.map((p) => ({ value: p.id, label: p.name }))}
+              value={payeeId}
+              emptyLabel="nenhum"
+              placeholder="nenhum"
+              disabled={!canWrite}
+              onChange={pickPayee}
+              error={fields.payeeId}
+            />
           )}
           {(editing || kind === 'single') && (
-          <Field
-            label="Mês de competência"
-            type="month"
-            name="competence"
-            value={competence}
-            disabled={!canWrite}
-            hint="Em branco: usa o mês do vencimento."
-            onChange={(e) => { setCompetence(e.target.value); clear('competence') }}
-            error={fields.competence}
-          />
+            <MonthPicker
+              label="Mês de competência"
+              value={competence}
+              clearable
+              disabled={!canWrite}
+              hint="Em branco: usa o mês do vencimento."
+              onChange={(m) => { setCompetence(m); clear('competence') }}
+              error={fields.competence}
+            />
           )}
           <Field label="Observação" name="notes" autoComplete="off" value={notes} disabled={!canWrite} onChange={(e) => { setNotes(e.target.value); clear('notes') }} error={fields.notes} />
         </div>
@@ -494,13 +536,12 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
 
       {inSeries && canWrite && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">
-            {invoice.series?.kind === 'recurrence' ? 'Esta conta é fixa. Alterar' : 'Esta conta é uma parcela. Alterar'}
-          </legend>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" aria-pressed={scope === 'this'} onClick={() => setScope('this')} className={chip(scope === 'this')}>só esta</button>
-            <button type="button" aria-pressed={scope === 'following'} onClick={() => setScope('following')} className={chip(scope === 'following')}>esta e as seguintes</button>
-          </div>
+          <Segmented
+            label={invoice.series?.kind === 'recurrence' ? 'Esta conta é fixa. Alterar' : 'Esta conta é uma parcela. Alterar'}
+            value={scope}
+            onChange={setScope}
+            options={[{ value: 'this', label: 'só esta' }, { value: 'following', label: 'esta e as seguintes' }]}
+          />
           {scope === 'following' && (
             <p className="text-xs text-ink/75">Vale para as ainda não pagas daqui para frente. Contas pagas e anteriores não mudam, e o vencimento de cada uma é mantido.</p>
           )}
@@ -508,26 +549,25 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
       )}
 
       {canWrite && (
-        <div className="flex flex-col gap-1.5">
-          <Button type="submit" title="Enter salva" disabled={busy || !description || amount <= 0 || !dueDate || !categoryId || (kind === 'installments' && !editing && !(Number(count) >= 2))}>
-            {busy ? 'Salvando…' : editing ? 'Salvar alterações' : kind === 'installments' ? 'Adicionar compra parcelada' : kind === 'recurring' ? 'Adicionar conta fixa' : 'Adicionar conta'}
-          </Button>
-          {!editing && kind === 'single' && (
-            <button
-              type="button"
-              disabled={busy || !description || amount <= 0 || !dueDate || !categoryId}
-              onClick={() => void submit(true)}
-              className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-ink/40"
-            >
-              Adicionar e lançar outra
-            </button>
-          )}
-          {editing && onCancel && (
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancelar
-            </Button>
-          )}
-        </div>
+        <PanelFooter>
+          <div className="flex flex-col gap-2 sm:flex-row-reverse">
+            <Tooltip label="Salvar" shortcut="Enter" className="flex flex-1">
+              <Button type="submit" loading={busy} className="w-full" disabled={invalid || (kind === 'installments' && !editing && !(Number(count) >= 2))}>
+                {primaryText}
+              </Button>
+            </Tooltip>
+            {!editing && kind === 'single' && (
+              <Button type="button" variant="ghost" disabled={invalid} onClick={() => void submit(true)}>
+                Adicionar e lançar outra
+              </Button>
+            )}
+            {editing && onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                Cancelar
+              </Button>
+            )}
+          </div>
+        </PanelFooter>
       )}
     </form>
   )

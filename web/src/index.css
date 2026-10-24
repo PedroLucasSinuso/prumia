@@ -47,11 +47,60 @@
   /* Movimento sutil (150-200 ms), sempre atrás de `motion-safe:` para respeitar prefers-reduced-motion. */
   --animate-fade-in: fade-in 150ms ease-out;
   --animate-slide-in: slide-in 180ms ease-out;
+  --animate-fade-out: fade-out 150ms ease-in forwards;
+  --animate-slide-out: slide-out 150ms ease-in forwards;
+  --animate-rise-in: rise-in 180ms ease-out;
+  --animate-rise-out: rise-out 150ms ease-in forwards;
+  --animate-pop-in: pop-in 120ms ease-out;
+  --animate-flash: flash 1600ms ease-out;
+  --animate-fill: fill 220ms ease-out;
+  --animate-toast-in: toast-in 180ms ease-out;
+  --animate-toast-out: toast-out 150ms ease-in forwards;
+  --animate-expand: expand 200ms ease-out;
+  --animate-countdown: countdown 7000ms linear forwards;
   @keyframes fade-in {
     from { opacity: 0; }
   }
+  @keyframes fade-out {
+    to { opacity: 0; }
+  }
   @keyframes slide-in {
     from { transform: translateX(24px); opacity: 0; }
+  }
+  @keyframes slide-out {
+    to { transform: translateX(24px); opacity: 0; }
+  }
+  @keyframes rise-in {
+    from { transform: translateY(16px); opacity: 0; }
+  }
+  @keyframes rise-out {
+    to { transform: translateY(16px); opacity: 0; }
+  }
+  @keyframes pop-in {
+    from { transform: translateY(-4px); opacity: 0; }
+  }
+  /* linha recém-criada/alterada: um realce do accent que some */
+  @keyframes flash {
+    from { background-color: color-mix(in oklab, var(--prumia-accent) 15%, transparent); }
+  }
+  /* nó que acaba de ser pago: o preenchimento "cresce" do centro */
+  @keyframes fill {
+    from { transform: scale(0.6); }
+    60% { transform: scale(1.12); }
+  }
+  @keyframes toast-in {
+    from { transform: translateY(8px); opacity: 0; }
+  }
+  @keyframes toast-out {
+    to { transform: translateY(8px); opacity: 0; }
+  }
+  @keyframes expand {
+    from { grid-template-rows: 0fr; opacity: 0; }
+    to { grid-template-rows: 1fr; opacity: 1; }
+  }
+  @keyframes countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
   }
 }
 
@@ -228,5 +277,16 @@
   :focus-visible {
     outline: var(--prumia-focus) solid var(--prumia-accent-text);
     outline-offset: 2px;
+  }
+}
+
+/* Troca de tema: as cores mudam em 150 ms. A classe `theme-fade` é posta no <html> por lib/theme.ts só durante a troca
+   (transição permanente em tudo pesaria e atrapalharia a navegação). */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-fade,
+  html.theme-fade *,
+  html.theme-fade *::before,
+  html.theme-fade *::after {
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, fill 150ms ease, stroke 150ms ease !important;
   }
 }

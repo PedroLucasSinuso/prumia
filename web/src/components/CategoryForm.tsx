@@ -6,6 +6,9 @@ import { networkErrorMessage, problemFields, problemMessage } from '../auth/erro
 import { Button } from './Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
+import { Combobox } from './ui/Combobox'
+import { PanelFooter } from './ui/Panel'
+import { Segmented } from './ui/Segmented'
 
 type Props = {
   /** Sem categoria = criar uma nova. */
@@ -21,16 +24,11 @@ type Props = {
   onDone: (message: string) => void
 }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
-const chip = (on: boolean) =>
-  `flex min-h-11 flex-1 items-center justify-center rounded-md border px-3 text-[13px] ${
-    on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium text-ink hover:bg-ink/5'
-  }`
-
-const wallets: { value: Wallet | null; text: string }[] = [
-  { value: 'free', text: 'livre' },
-  { value: 'benefit', text: 'benefício' },
-  { value: null, text: 'nenhuma' },
+type WalletChoice = 'free' | 'benefit' | 'none'
+const wallets: { value: WalletChoice; label: string }[] = [
+  { value: 'free', label: 'livre' },
+  { value: 'benefit', label: 'benefício' },
+  { value: 'none', label: 'nenhuma' },
 ]
 
 /**
@@ -93,7 +91,7 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
   const parents = all.filter((c) => !c.parentId && !c.archived && c.id !== category?.id)
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex min-h-full flex-col gap-4">
       <FormError message={error} />
       <Field
         label="Nome"
@@ -111,54 +109,32 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
         <p className="text-sm text-ink/80">Esta categoria tem subcategorias, então é uma categoria principal.</p>
       ) : (
         parents.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="category-parent" className={label}>dentro de</label>
-            <select
-              id="category-parent"
-              value={parentId}
-              disabled={!canWrite}
-              onChange={(e) => {
-                const next = e.target.value
-                setParentId(next)
-                const mother = parentOf(next)
-                if (!category && mother) { setWallet(mother.defaultWallet ?? null); setEssential(mother.isEssential) }
-              }}
-              className="h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink"
-            >
-              <option value="">nenhuma (categoria principal)</option>
-              {parents.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <p className="text-xs text-ink/70">Ex.: Gás dentro de Moradia. O gráfico de Moradia soma o gás.</p>
-          </div>
+          <Combobox
+            label="dentro de"
+            options={parents.map((c) => ({ value: c.id, label: c.name }))}
+            value={parentId}
+            emptyLabel="nenhuma (categoria principal)"
+            placeholder="nenhuma (categoria principal)"
+            disabled={!canWrite}
+            hint="Ex.: Gás dentro de Moradia. O gráfico de Moradia soma o gás."
+            onChange={(next) => {
+              setParentId(next)
+              const mother = parentOf(next)
+              if (!category && mother) { setWallet(mother.defaultWallet ?? null); setEssential(mother.isEssential) }
+            }}
+          />
         )
       )}
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
-        <legend className={label}>carteira padrão</legend>
-        <div className="mt-1 flex gap-2">
-          {wallets.map((w) => (
-            <button key={w.text} type="button" aria-pressed={wallet === w.value} onClick={() => setWallet(w.value)} className={chip(wallet === w.value)}>
-              {w.text}
-            </button>
-          ))}
-        </div>
+        <Segmented label="carteira padrão" value={wallet ?? 'none'} onChange={(v) => setWallet(v === 'none' ? null : v)} options={wallets} />
         <p className="text-xs text-ink/70">Ao pagar uma conta desta categoria, o app já sugere esta carteira.</p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
-        <legend className={label}>gasto essencial?</legend>
-        <div className="mt-1 flex gap-2">
-          <button type="button" aria-pressed={essential} onClick={() => setEssential(true)} className={chip(essential)}>sim</button>
-          <button type="button" aria-pressed={!essential} onClick={() => setEssential(false)} className={chip(!essential)}>não</button>
-        </div>
+        <Segmented label="gasto essencial?" value={essential ? 'yes' : 'no'} onChange={(v) => setEssential(v === 'yes')} options={[{ value: 'yes', label: 'sim' }, { value: 'no', label: 'não' }]} />
         <p className="text-xs text-ink/70">Essencial é o que não dá para cortar: moradia, mercado, saúde.</p>
       </fieldset>
-
-      {canWrite && (
-        <Button type="submit" disabled={busy}>
-          {busy ? 'Salvando…' : category ? 'Salvar categoria' : 'Criar categoria'}
-        </Button>
-      )}
 
       {category && canWrite && (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
@@ -183,6 +159,14 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
           )}
         </div>
       )}
+      {canWrite && (
+        <PanelFooter>
+          <Button type="submit" loading={busy}>
+            {category ? 'Salvar categoria' : 'Criar categoria'}
+          </Button>
+        </PanelFooter>
+      )}
+
     </form>
   )
 }

@@ -59,7 +59,7 @@ converte a resposta do cliente tipado em promessa que rejeita com `ApiError` (qu
 - **Identidade da tela do mês** (ver `docs/brand/design-direction.md`): `Timeline` (a linha de prumo: cada conta é um nó que também
   é o botão de pagar; um losango marca "hoje" e o que está acima e não foi pago é atraso), `MonthRuler` (31 barras: altura = valor
   do dia, cor = estado, o prumo marca hoje; tem texto alternativo com o dia mais pesado), `PaidGauge` (medidor segmentado) e
-  `InvoiceForm` (valor em destaque; vencimento e categoria como **botões**, "Mais opções" para competência e observação).
+  `InvoiceForm` (valor em destaque; vencimento em `Segmented` + `DatePicker`; categoria em `Combobox` com atalhos "recentes"; "Mais opções" para favorecido, competência e observação; ver "Componentes de interface").
 - **Celular x computador** (`useIsDesktop`, breakpoint `md` = 768 px): no celular o formulário sobe num painel (`InvoiceSheet`) e há
   um botão "+" flutuante; no computador o detalhe fica num **painel ao lado da lista** (sem janela por cima) e "Nova conta" fica no
   cabeçalho. Os blocos que só existem num dos modos são renderizados condicionalmente (não duplicados no DOM).
@@ -158,6 +158,57 @@ o aviso com **Abrir a conta** (busca o detalhe, vai ao mês dela e abre) e **Fec
 `fields["boleto.digitableLine"]`, mostrado junto ao quadro do boleto.
 `BoletoBox` (linha digitável agrupada por `lib/boleto.ts` só na exibição + **Copiar linha digitável**, que copia só dígitos) também aparece
 no detalhe de uma conta que já tem `boleto`. Testes: `components/BoletoImport.test.tsx` (rota `extract` do `mockApi` aceita função do corpo).
+
+## Componentes de interface
+
+Primitivas em `src/components/ui/` (cada arquivo tem um comentário de uso no topo e um `.test.tsx`). Só tokens semânticos; celular
+com alvos de 44 px e computador com 32-36 px (`md:`). Estilos de campo e chip compartilhados em `ui/styles.ts`
+(`labelCls`, `controlCls(erro)`, `chipCls(ligado)`): use-os em vez de repetir classes. Atualmente `Button`, `Field`, `MoneyInput`,
+`Sheet`, `SlideOver`, `Toast` e `MonthSelector` já usam as primitivas; `IncomesPage`/`IncomeForm`/`SourceForm`/`DeductionsEditor`
+podem adotá-las do mesmo jeito.
+
+**Decisão: calendário feito à mão** (sem `react-day-picker`/`date-fns`). Datas do app são strings `AAAA-MM-DD` sem fuso e o
+calendário precisa de pouco (grade do mês, navegação, limites); fazer sobre `lib/dates` evita `Date` e fuso, não pesa o pacote
+(zero dependências novas) e deixa o visual 100% nos tokens. Se um dia precisar de intervalos, múltiplos meses ou outro idioma,
+reavalie a `react-day-picker` v9 com `React.lazy`.
+
+| Componente | API (resumo) | Quando usar |
+|---|---|---|
+| `DatePicker` | `label`, `value` (`AAAA-MM-DD` ou `''`), `onChange(iso)`, `min?`, `max?`, `error?`, `hint?`, `disabled?`, `hideLabel?` | qualquer data de calendário. Campo com máscara `dd/mm/aaaa` + calendário em popover (pt-BR, domingo primeiro, hoje com `aria-current`, atalhos Hoje/Amanhã, `↓` abre) |
+| `MonthPicker` | `label`, `value` (`AAAA-MM` ou `''`), `onChange`, `min?`, `max?`, `clearable?`, `placeholder?`, `error?` | competência, "termina em". Popover com ano e grade 3x4; **Limpar** quando opcional |
+| `Combobox` | `label`, `options: {value,label,group?,badge?,badgeTitle?}[]`, `value`, `onChange`, `emptyLabel?` (opção "nenhuma"), `onCreate?(digitado)` + `createLabel?` (item "+ Nova…" sempre no fim), `error?`, `hint?` | escolher entre mais de ~5 itens ou itens agrupados (categoria, favorecido). Filtra sem acento; `group` mostra "Mãe › filha". Enter com a lista fechada envia o formulário |
+| `Segmented` | `label`, `options: {value,label,ariaLabel?,disabled?}[]`, `value` (ou `null`), `onChange`, `hideLabel?`, `wrap?` | 2 a 5 opções exclusivas e curtas (tipo de conta, vencimento, carteira). `radiogroup` com setas |
+| `Tooltip` | `label`, `shortcut?`, `className?`, filho = um elemento focável | botões só de ícone e atalhos. Não aparece no toque; foco de teclado mostra na hora; `Esc` fecha só a dica |
+| `Popover` | `open`, `anchorRef`, `onClose`, `matchWidth?`, `role?`, `trapEscape?` | base dos três campos acima e de menus. Portal + `fixed`, vira para cima se faltar espaço, fecha em clique fora |
+| `Spinner` | `size?` | carregamento; prefira `Button loading` |
+| `Panel` / `Sheet` / `SlideOver` | `title`, `subtitle?`, `onClose`, `footer?`, `initialFocus?` | todo painel modal. Cabeçalho + corpo rolável + **rodapé fixo**; foco preso e devolvido; Esc/×/fundo; entrada e saída animadas |
+| `PanelFooter` | filhos = ações | dentro de `<form className="flex min-h-full flex-col gap-4">` num painel: gruda a ação primária no fim, sempre visível |
+| `Button` | `variant: primary \| ghost`, `loading?`, `loadingLabel?` | `loading` desabilita, mostra spinner e "Salvando…" |
+
+```tsx
+<Segmented label="Vence" value={due} onChange={setDue} options={[{ value: 'today', label: 'Hoje' }, { value: 'other', label: 'Outra data' }]} />
+<DatePicker label="Data de vencimento" value={date} onChange={setDate} min="2026-01-01" error={fields.dueDate} />
+<Combobox label="Categoria" options={opts} value={id} onChange={setId} onCreate={(nome) => abrirNova(nome)} createLabel="Nova categoria" />
+<Tooltip label="Pagar" shortcut="P"><button aria-label="Pagar Luz">…</button></Tooltip>
+```
+
+Armadilhas: `Popover`/`Combobox`/`DatePicker` tratam `Esc` antes do painel (`stopPropagation` + `stopImmediatePropagation` no
+evento nativo; é por isso que fechar a lista não fecha o painel). Dentro de `Sheet`/`SlideOver` use `data-autofocus` no campo
+inicial. Testes com popover: as opções ficam num portal (`document.body`), então consulte com `screen`, não com `within(dialog)`.
+
+**Regras de movimento.** Tudo animado fica atrás de `motion-safe:` (respeita `prefers-reduced-motion`); durações 120-220 ms,
+`ease-out` na entrada e `ease-in` na saída; só `opacity`/`transform` (e `grid-template-rows` para altura). Os keyframes e
+`--animate-*` ficam em `index.css` (`fade-in/out`, `slide-in/out`, `rise-in/out`, `pop-in`, `toast-in/out`, `countdown`,
+`flash`, `fill`, `expand`). Quando o JavaScript precisa esperar a saída (painel, toast), use `lib/motion.ts` (`canAnimate()`,
+`EXIT_MS`): sem animação (jsdom ou movimento reduzido) tudo acontece na hora, por isso os testes não precisam de timers.
+- **Painéis** saem animados só em Esc/×/fundo; se o pai os desmonta sozinho (ex.: depois de salvar), saem sem animação.
+- **Toast**: sobe com fade, sai descendo; com "Desfazer" uma barra fina esvazia em 7 s.
+- **Realces de linha** (`lib/flash.ts`): `flashRow(id)` ao criar/editar e `pulsePaid(id)` ao pagar; `Timeline`/`InvoiceRow` leem com
+  `useFlash`/`usePaidPulse` (pisca `bg-accent/15`; o nó "preenche"). O risco do texto pago é `line-through` com `decoration-transparent`
+  até pagar, para a cor entrar em transição.
+- **Seções recolhíveis** (`MonthSections`): abrem crescendo a altura (`animate-expand`); fechar é instantâneo.
+- **Tema**: `applyTheme` põe a classe `theme-fade` no `<html>` por 200 ms; o CSS faz cor/borda mudarem em 150 ms nesse intervalo.
+- **Categorias recentes** do `InvoiceForm`: `localStorage` `prumia.categoriasRecentes.<casa>` (até 4 ids; via `lib/storage`, com try/catch).
 
 ## Marca no código
 
