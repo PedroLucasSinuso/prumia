@@ -9,6 +9,8 @@ docs/product/
 !.env.example
 *.pem
 *.key
+# Credenciais do Cloudflare Tunnel (make tunnel-setup)
+.cloudflared/
 
 # --- Claude Code (apenas o pessoal fica fora) ----------------------------------
 .claude/settings.local.json

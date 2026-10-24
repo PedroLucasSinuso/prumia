@@ -107,6 +107,20 @@ db-expose: .env ## Publica o Postgres em 127.0.0.1:DB_PORT (padrão 5433) para o
 db-hide: .env ## Volta o Postgres a ficar só na rede interna do compose
 	$(COMPOSE) up -d db
 
+.PHONY: tunnel-setup
+tunnel-setup: .env ## Cria o Cloudflare Tunnel (uma vez; exige TUNNEL_HOSTNAME no .env e o domínio ativo na Cloudflare)
+	@scripts/tunnel-setup.sh
+
+.PHONY: tunnel-up
+tunnel-up: .env ## Liga o Cloudflare Tunnel (depois do make tunnel-setup; app público via domínio)
+	@test -f .cloudflared/config.yml || { echo "Rode make tunnel-setup antes"; exit 1; }
+	TUNNEL_UID=$$(id -u) TUNNEL_GID=$$(id -g) $(COMPOSE) -f deploy/compose.tunnel.yaml up -d
+
+.PHONY: tunnel-down
+tunnel-down: .env ## Desliga o Cloudflare Tunnel (o app volta a ficar só em localhost)
+	$(COMPOSE) -f deploy/compose.tunnel.yaml stop cloudflared
+	$(COMPOSE) -f deploy/compose.tunnel.yaml rm -f cloudflared
+
 .PHONY: tailscale-up
 tailscale-up: ## Publica o app no tailnet com HTTPS (tailscale serve -> 127.0.0.1:WEB_PORT)
 	@scripts/tailscale-serve.sh up

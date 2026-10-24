@@ -1,0 +1,20 @@
+# Override OPCIONAL: publica o app na internet por um Cloudflare Tunnel, sem abrir porta no roteador.
+# Uso: make tunnel-setup (uma vez) e make tunnel-up / make tunnel-down (passo a passo em docs/developer-guide/deployment.md).
+# O container só faz conexão de SAÍDA para a Cloudflare e entrega as requisições ao nginx (web:8081, porta que não é
+# publicada no computador). O túnel é "gerenciado localmente": as credenciais e o config.yml ficam em .cloudflared/
+# (fora do Git, ver .gitignore), criados por scripts/tunnel-setup.sh. Não precisa de Zero Trust nem de cartão.
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.3
+    restart: unless-stopped
+    # Roda com o seu usuário para ler as credenciais (modo 600): o make tunnel-up passa TUNNEL_UID/TUNNEL_GID.
+    user: "${TUNNEL_UID:-1000}:${TUNNEL_GID:-1000}"
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ../.cloudflared:/etc/cloudflared:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      web:
+        condition: service_started

@@ -128,6 +128,52 @@ Tailscale>` e acesso por `http://100.x.y.z:8080` (cifrado pelo WireGuard, mas se
 - `db`: sem porta publicada; `deploy/compose.dbeaver.yaml` publica em `127.0.0.1:${DB_PORT}` sob demanda
   ([getting-started.md](getting-started.md#acessar-o-banco-pelo-dbeaver)).
 
+## Cloudflare Tunnel (domínio próprio, app no seu computador)
+
+Alternativa ao Tailscale quando a pessoa quer abrir o app por um endereço comum (`https://app.seudominio.com.br`) em qualquer aparelho,
+sem instalar nada nele. O app continua rodando no seu computador; um container `cloudflared` faz uma conexão **de saída** para a
+Cloudflare e a Cloudflare entrega as requisições por ela. Não abre porta no roteador e o IP de casa não aparece. O HTTPS é da Cloudflare.
+
+```
+navegador --HTTPS--> Cloudflare --túnel--> cloudflared --HTTP--> web:8081 (nginx) --> api --> db
+```
+
+O túnel é **gerenciado localmente** (credenciais em `.cloudflared/`, fora do Git): só precisa de conta gratuita e do domínio na Cloudflare.
+Não precisa ativar o Zero Trust, que pede cartão ou PayPal mesmo no plano grátis.
+
+### Passo a passo
+
+1. **Domínio na Cloudflare**: crie conta, **Add a domain**, plano **Free**. Mantenha os registros que ela importar. Ela mostra dois nameservers.
+2. **Registro do domínio**: troque os servidores DNS do domínio pelos dois da Cloudflare (no Registro.br: painel do domínio >
+   "Alterar servidores DNS"). Se o DNSSEC estiver ativo no registro, desligue antes de trocar. A propagação leva de minutos a algumas
+   horas; a Cloudflare manda um e-mail quando o domínio ficar **Active**. Espere isso antes do próximo passo.
+3. **`.env`**: `TUNNEL_HOSTNAME=app.seudominio.com.br`, `APP_ENV=production` e `OPEN_REGISTRATION=false`.
+4. **`make tunnel-setup`** (uma vez): abre um endereço da Cloudflare para você autorizar o domínio, cria o túnel `prumia`, cria o DNS
+   do endereço e grava `.cloudflared/config.yml`. As credenciais ficam só nessa pasta (ela está no `.gitignore`).
+5. **`make tunnel-up`**: liga o `cloudflared`. Para desligar: `make tunnel-down` (o app volta a ficar só em localhost).
+6. Abra `https://app.seudominio.com.br` de outro aparelho (rede móvel). Deve aparecer o login do prumia.
+
+**Sem a camada do Cloudflare Access** (login por e-mail antes do app, que exige o Zero Trust): o prumia fica exposto com o próprio
+login (argon2id, limite de tentativas por IP e por e-mail, cadastro fechado). Se mais tarde ativar o Zero Trust, dá para colocar o
+Access na frente sem refazer o túnel.
+
+### Por que a porta 8081
+
+O limite de tentativas de login usa o IP do cliente. Atrás do túnel o nginx só vê o container do `cloudflared`; o IP real vem no cabeçalho
+`CF-Connecting-IP`, que a Cloudflare escreve. O nginx escuta em duas portas (`deploy/nginx/default.conf`): a **8080** (publicada em
+`127.0.0.1`) usa o IP que ele viu; a **8081** (só dentro da rede do compose, **nunca publicada**) confia em `CF-Connecting-IP`.
+Como só o túnel chega na 8081, o cabeçalho não pode ser forjado por quem acessa direto: forjá-lo na 8080 não adianta (testado: 14
+tentativas com IPs diferentes forjados na 8080 foram limitadas como um cliente só; pela 8081 cada IP real tem o seu limite).
+
+### Cuidados
+
+- O app só funciona com o computador ligado e o Docker rodando. Os containers já usam `restart: unless-stopped`. Agende o `make backup`.
+- A Cloudflare termina o HTTPS e portanto vê o tráfego. Para nenhum intermediário, use o Tailscale (seção acima).
+- `WEB_BIND` fica em `127.0.0.1`: o túnel não precisa de porta publicada.
+- Nunca publique a porta 8081 (`ports:`) e nunca commite `.cloudflared/` (contém o certificado e as credenciais do túnel).
+- **Primeiro cadastro:** com `OPEN_REGISTRATION=false` só o primeiro usuário se cadastra sozinho. Se o banco já tem a casa, ninguém mais consegue; num
+  banco novo, crie a sua conta antes de divulgar o endereço.
+
 ## Fase 2 (VPS)
 
 Ainda não documentada: certbot/TLS no nginx (ou proxy TLS na frente mandando `X-Forwarded-Proto: https`), firewall e backup
