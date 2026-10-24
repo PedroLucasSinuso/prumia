@@ -69,3 +69,33 @@ func TestLoadLimitesDeCasaESessao(t *testing.T) {
 		t.Errorf("deveria recusar valores inválidos: %v", err)
 	}
 }
+
+func TestLoadPublicURL(t *testing.T) {
+	env := func(v string) func(string) string {
+		return func(k string) string {
+			if k == "PUBLIC_URL" {
+				return v
+			}
+			if k == "DATABASE_URL" {
+				return "postgres://u:p@db/x"
+			}
+			return ""
+		}
+	}
+	for _, c := range []struct{ in, want string }{
+		{"", ""},
+		{"https://app.exemplo.com.br", "https://app.exemplo.com.br"},
+		{" https://app.exemplo.com.br/ ", "https://app.exemplo.com.br"},
+		{"http://192.168.0.10:8080", "http://192.168.0.10:8080"},
+	} {
+		cfg, err := load(env(c.in))
+		if err != nil || cfg.PublicURL != c.want {
+			t.Errorf("PUBLIC_URL %q: got %q, %v; quero %q", c.in, cfg.PublicURL, err, c.want)
+		}
+	}
+	for _, bad := range []string{"app.exemplo.com.br", "ftp://x.com", "https://x.com/caminho", "https://u:p@x.com", "https://x.com?a=1"} {
+		if _, err := load(env(bad)); err == nil {
+			t.Errorf("PUBLIC_URL %q devia ser recusado", bad)
+		}
+	}
+}

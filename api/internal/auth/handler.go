@@ -17,14 +17,22 @@ import (
 
 // Handler implementa as operações de autenticação do contrato (Register, Login, Logout, GetMe).
 type Handler struct {
-	svc    *Service
-	cookie CookieConfig
-	log    *slog.Logger
+	publicURL string // PUBLIC_URL: endereço público do app, devolvido em /auth/me
+	svc       *Service
+	cookie    CookieConfig
+	log       *slog.Logger
 
 	// Limites contra força bruta: por IP e por e-mail (o do e-mail impede varrer uma conta de vários IPs).
 	loginIP, loginEmail, registerIP, resetIP *ratelimit.Limiter
 	// Troca de senha: limite por usuário (quem roubou a sessão não pode testar senhas à vontade) e por IP.
 	passwordUser, passwordIP *ratelimit.Limiter
+}
+
+// WithPublicURL define o endereço público do app (PUBLIC_URL), devolvido em /auth/me para o front montar os links de
+// convite e de nova senha. Vazio = não informa.
+func (h *Handler) WithPublicURL(u string) *Handler {
+	h.publicURL = u
+	return h
 }
 
 func NewHandler(svc *Service, cookie CookieConfig, log *slog.Logger) *Handler {
@@ -81,6 +89,9 @@ func (h *Handler) me(c *gin.Context, user User) (gen.Me, error) {
 		return gen.Me{}, err
 	}
 	out := gen.Me{Id: user.ID, Name: user.Name, Email: user.Email, Theme: gen.Theme(user.Theme), Households: make([]gen.HouseholdRef, len(refs))}
+	if h.publicURL != "" {
+		out.PublicUrl = &h.publicURL
+	}
 	for i, r := range refs {
 		out.Households[i] = gen.HouseholdRef{Id: r.ID, Name: r.Name, Role: gen.Role(r.Role)}
 	}

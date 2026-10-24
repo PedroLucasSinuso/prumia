@@ -34,6 +34,8 @@ services:
       CNPJ_LOOKUP_URL: ${CNPJ_LOOKUP_URL:-https://brasilapi.com.br/api/cnpj/v1}
       # Feriados nacionais na BrasilAPI (dias úteis das receitas; só o ano vai na URL). "off" usa só o cálculo local.
       HOLIDAYS_URL: ${HOLIDAYS_URL:-https://brasilapi.com.br/api/feriados/v1}
+      # Endereço público do app, usado nos links de convite e de nova senha (vazio = o endereço do navegador de quem gera o link)
+      PUBLIC_URL: ${PUBLIC_URL:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-prumia}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prumia}?sslmode=disable
     # /tmp em memória: as ferramentas de leitura de boleto podem criar arquivos temporários, e boleto nunca deve tocar o disco.
     tmpfs:
