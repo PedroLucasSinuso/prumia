@@ -33,12 +33,20 @@ type incT struct {
 	ReceivedAt       *string `json:"receivedAt"`
 	Held             bool    `json:"held"`
 	Repeats          bool    `json:"repeats"`
+	RepeatsUntil     *string `json:"repeatsUntil"`
 	AmountMode       string  `json:"amountMode"`
 	Quantity         *int    `json:"quantity"`
 	UnitPriceCents   *int64  `json:"unitPriceCents"`
 	UnitLabel        *string `json:"unitLabel"`
 	DateRule         *ruleT  `json:"dateRule"`
 	Notes            *string `json:"notes"`
+}
+
+func (i incT) RepeatsUntilOrEmpty() string {
+	if i.RepeatsUntil == nil {
+		return ""
+	}
+	return *i.RepeatsUntil
 }
 
 type ruleT struct {
