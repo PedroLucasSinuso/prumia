@@ -153,5 +153,90 @@ describe('importar contas', () => {
     renderAt('/importar')
     expect(await screen.findByText(/somente leitura/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Arquivos para importar')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Colar texto/ })).not.toBeInTheDocument()
+  })
+})
+
+const parseCalls = () =>
+  (vi.mocked(api.POST).mock.calls as unknown as Array<[string, { body: { text: string } }]>).filter(([url]) => url === '/households/{householdId}/documents/parse-text')
+
+// Texto sintético no padrão "descrição: valor".
+const textList: DocumentExtraction = {
+  kind: 'list', method: 'text',
+  items: [
+    { description: 'Gás', amountCents: 15000 },
+    { description: 'Mercado', amountCents: 31025 },
+  ],
+}
+
+async function paste(user: ReturnType<typeof userEvent.setup>, text: string) {
+  await waitFor(() => expect(screen.getByRole('button', { name: /Colar texto/ })).toBeEnabled())
+  await user.click(screen.getByRole('button', { name: /Colar texto/ }))
+  await user.click(screen.getByLabelText('Texto das contas'))
+  await user.paste(text)
+  await user.click(screen.getByRole('button', { name: 'Ler texto' }))
+}
+
+describe('importar contas colando texto', () => {
+  it('lê o texto e mostra as contas na mesma tabela de revisão', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: ok(textList) })
+    renderAt('/importar')
+    expect(await screen.findByText(/descrição: valor/, { selector: 'strong' })).toBeInTheDocument()
+    await paste(user, 'Gás: R$ 150,00\nMercado: 310,25')
+
+    expect(await screen.findByText(/1 arquivo lido · 2 contas/i)).toBeInTheDocument()
+    expect(parseCalls()).toHaveLength(1)
+    expect(parseCalls()[0][1].body.text).toBe('Gás: R$ 150,00\nMercado: 310,25')
+    expect(screen.getByRole('button', { name: 'texto' })).toBeInTheDocument()
+    const rows = screen.getAllByRole('listitem', { name: /^Conta \d/ })
+    expect(rows).toHaveLength(2)
+    expect(within(rows[1]).getByLabelText('Descrição')).toHaveValue('Mercado')
+    // não é OCR: sem o selo de conferência
+    expect(screen.queryByText(/OCR: confira/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Criar 2 contas' }))
+    await waitFor(() => expect(batchCalls()).toHaveLength(1))
+    expect(batchCalls()[0][1].body.items).toHaveLength(2)
+  })
+
+  it('texto sem contas mostra o motivo', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: fail(422, 'boleto_not_found') })
+    renderAt('/importar')
+    await paste(user, 'Bom dia!')
+    expect(await screen.findByText(/Não encontrei contas neste texto/)).toBeInTheDocument()
+  })
+
+  it('texto grande demais (413) avisa o limite', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: fail(413, 'text_too_large') })
+    renderAt('/importar')
+    await paste(user, 'Gás: 98,40')
+    expect(await screen.findByText(/passa de 20\.000 caracteres/)).toBeInTheDocument()
+  })
+
+  it('espera e tenta de novo quando o servidor pede calma (429)', async () => {
+    const user = userEvent.setup()
+    let n = 0
+    mockApi({ me: ok(me), parseText: () => (++n === 1 ? fail(429, 'too_many_requests') : ok(textList)) })
+    renderAt('/importar')
+    await paste(user, 'Gás: R$ 150,00\nMercado: 310,25')
+    expect(await screen.findByText(/1 arquivo lido · 2 contas/i)).toBeInTheDocument()
+    expect(parseCalls()).toHaveLength(2)
+  })
+
+  it('429 que não passa vira erro com "Tentar de novo"', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: fail(429, 'too_many_requests') })
+    renderAt('/importar')
+    await paste(user, 'Gás: R$ 150,00')
+    expect(await screen.findByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+  })
+
+  it('papel de leitura não vê "Colar texto"', async () => {
+    mockApi({ me: ok(viewerMe) })
+    renderAt('/importar')
+    expect(await screen.findByText(/somente leitura/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Texto das contas')).not.toBeInTheDocument()
   })
 })

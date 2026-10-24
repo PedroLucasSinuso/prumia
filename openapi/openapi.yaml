@@ -838,6 +838,34 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '503': { description: "Servidor ocupado com outras leituras (`code=busy`); tente de novo", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
 
+  /households/{householdId}/documents/parse-text:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    post:
+      tags: [boleto]
+      operationId: parseDocumentText
+      summary: Lê contas de um texto escrito ou colado (mesmo resultado do `extractDocument`). Nada é salvo; o usuário revisa antes de criar.
+      description: |
+        Padrão de lista: UMA conta por linha, `descrição: valor` (ex.: `Gás: R$ 150,00`, `Mercado: 310,25`). Linha digitável no texto
+        = `boleto`; senão as mesmas regras do `extractDocument` (`bill` ou `list`). Item forte = com `R$` ou valor com vírgula e 2 casas
+        (com `:`, `=` ou `-`); item fraco = inteiro sem `R$` (`Teste: 567`), só vale com 2+ itens fortes. Sem OCR, sem disco, sem log
+        do conteúdo. Mesmo limite de taxa por usuário do `extractDocument`. Resposta com `method: text`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 20000, description: "Até 20.000 caracteres (acima disso, 413)" }
+      responses:
+        '200': { description: "Lido", content: { application/json: { schema: { $ref: '#/components/schemas/DocumentExtraction' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { description: "Texto maior que 20.000 caracteres", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '422': { description: "Não encontrei boleto nem valor de conta no texto (`code=boleto_not_found`)", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
 components:
   securitySchemes:
     cookieAuth:
@@ -1182,7 +1210,7 @@ components:
       type: object
       required: [method, kind, items]
       properties:
-        method: { type: string, enum: [pdf_text, barcode_image, ocr], description: "Como foi lido" }
+        method: { type: string, enum: [pdf_text, barcode_image, ocr, text], description: "Como foi lido (`text` = texto escrito ou colado)" }
         kind:
           type: string
           enum: [boleto, bill, list]

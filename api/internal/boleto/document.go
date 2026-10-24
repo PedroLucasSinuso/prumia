@@ -241,43 +241,6 @@ func largestMoney(body string) int64 {
 	return best
 }
 
-// listLineRe: "Gás R$157,82", "- Mercado: R$ 568,99", "Ração gatos: R$199,99", com hora de mensagem opcional no fim
-// ("14:32") e os vistos do aplicativo de conversa.
-var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*[:=\-–]?[ \t]*R[ \t]?[$S][ \t]*(\d{1,3}(?:\.\d{3})+|\d+)[,.](\d{2})\b[ \t]*(?:\d{1,2}:\d{2})?[ \t]*[✓✔]*(?:[ \t]+\S{1,8}){0,3}[ \t]*$`)
-
-// Um algarismo (ou dois) sozinho antes de uma palavra, no começo da descrição, é ruído de OCR, não parte do nome.
-// (RE2, o regex do Go, não tem lookahead: por isso o resto da descrição vai num grupo.)
-var leadingNoiseRe = regexp.MustCompile(`^\p{P}*\d{1,2}\s+(\p{L}{2}.*)$`)
-
-// Separa itens na mesma linha ("Gás R$157,82 / Mercado R$568,99"): só quando a linha tem mais de um valor.
-var itemSeparatorRe = regexp.MustCompile(`[ \t]+[/;|][ \t]+`)
-
-// Descrições que são rótulo de soma, não conta.
-var notItemRe = regexp.MustCompile(`(?i)^(?:sub)?total(?:\s+(?:a\s+pagar|geral))?$|^valor(?:\s+total)?$|^saldo$`)
-
-func findListItems(body string) []Item {
-	var out []Item
-	for _, line := range strings.Split(body, "\n") {
-		parts := []string{line}
-		if len(currencyRe.FindAllStringIndex(line, -1)) > 1 {
-			parts = itemSeparatorRe.Split(line, -1)
-		}
-		for _, p := range parts {
-			m := listLineRe.FindStringSubmatch(p)
-			if m == nil {
-				continue
-			}
-			desc := cleanDescription(m[1])
-			cents := moneyCents(m[2], m[3])
-			if desc == "" || cents <= 0 || notItemRe.MatchString(desc) {
-				continue
-			}
-			out = append(out, Item{Description: desc, AmountCents: cents})
-		}
-	}
-	return out
-}
-
 // cleanDescription tira pontuação das pontas e espaços repetidos; exige ao menos uma letra e corta em 120 caracteres
 // (o limite da descrição da conta).
 func cleanDescription(s string) string {

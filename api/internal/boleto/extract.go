@@ -19,6 +19,7 @@ const (
 	MethodPDFText      Method = "pdf_text"
 	MethodBarcodeImage Method = "barcode_image"
 	MethodOCR          Method = "ocr"
+	MethodText         Method = "text" // texto escrito ou colado (sem arquivo, sem OCR)
 )
 
 var (

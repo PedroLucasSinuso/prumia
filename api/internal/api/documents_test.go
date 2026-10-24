@@ -118,3 +118,75 @@ func TestDocumentoLimiteDeRequisicoes(t *testing.T) {
 	_, r := a.readDocument(house, c, lineMasked)
 	assertCode(t, r, http.StatusTooManyRequests, "too_many_requests")
 }
+
+// --- texto escrito ou colado: POST /documents/parse-text ---
+
+func (a *app) parseText(house string, c *http.Cookie, text string) (documentOut, resp) {
+	a.t.Helper()
+	r := a.do("POST", "/api/households/"+house+"/documents/parse-text", map[string]any{"text": text}, c)
+	var d documentOut
+	if r.Code == http.StatusOK {
+		r.json(&d)
+	}
+	return d, r
+}
+
+func TestDocumentoTextoListaBoletoEConta(t *testing.T) {
+	a, c, house, catID := casa(t)
+
+	d, r := a.parseText(house, c, "Gás: 98,40\nMédico: 250,00\nRemédio: R$45,90\nTeste: 567")
+	if r.Code != http.StatusOK || d.Kind != "list" || d.Method != "text" || len(d.Items) != 4 ||
+		*d.Items[0].AmountCents != 9840 || str(d.Items[3].Description) != "Teste" || *d.Items[3].AmountCents != 56700 {
+		t.Fatalf("lista: %d %s", r.Code, r.Body)
+	}
+	// um item só = conta
+	d, r = a.parseText(house, c, "Gás: R$150")
+	if r.Code != http.StatusOK || d.Kind != "bill" || len(d.Items) != 1 || *d.Items[0].AmountCents != 15000 {
+		t.Fatalf("conta: %d %s", r.Code, r.Body)
+	}
+	// linha digitável no texto = boleto, com checagem de duplicidade
+	d, r = a.parseText(house, c, "Beneficiário: LOJA EXEMPLO LTDA\n"+lineMasked)
+	if r.Code != http.StatusOK || d.Kind != "boleto" || d.Method != "text" || d.Items[0].Boleto == nil || d.Items[0].DuplicateOfInvoiceID != nil {
+		t.Fatalf("boleto: %d %s", r.Code, r.Body)
+	}
+	created, _ := a.newInvoice(c, house, catID, map[string]any{"boleto": map[string]any{"digitableLine": lineDigits}})
+	d, _ = a.parseText(house, c, lineMasked)
+	if str(d.Items[0].DuplicateOfInvoiceID) != created.ID {
+		t.Errorf("duplicidade: %+v", d.Items[0].DuplicateOfInvoiceID)
+	}
+	// nada a ler: 422; texto vazio: 400
+	_, r = a.parseText(house, c, "Bom dia, tudo certo?")
+	assertCode(t, r, http.StatusUnprocessableEntity, "boleto_not_found")
+	_, r = a.parseText(house, c, "   ")
+	assertCode(t, r, http.StatusBadRequest, "bad_request")
+}
+
+func TestDocumentoTextoLimitesPapeisEIsolamento(t *testing.T) {
+	a, c, house, _ := casa(t)
+	// 20.000 caracteres passam (aqui sem item, então 422); 20.001 dão 413; corpo enorme também
+	_, r := a.parseText(house, c, strings.Repeat("a", 20000))
+	assertCode(t, r, http.StatusUnprocessableEntity, "boleto_not_found")
+	_, r = a.parseText(house, c, strings.Repeat("a", 20001))
+	assertCode(t, r, http.StatusRequestEntityTooLarge, "text_too_large")
+	_, r = a.parseText(house, c, strings.Repeat("a", 100<<10))
+	assertCode(t, r, http.StatusRequestEntityTooLarge, "body_too_large")
+
+	cB, _ := a.register("Beto", "beto@x.com", "Casa B")
+	if _, r := a.parseText(house, cB, "Gás: R$150"); r.Code != http.StatusNotFound {
+		t.Errorf("casa B leu na casa A: %d", r.Code)
+	}
+	a.db.Exec("INSERT INTO household_members (household_id, user_id, role) VALUES (?, ?, 'viewer')", house, a.uid("beto@x.com"))
+	if _, r := a.parseText(house, cB, "Gás: R$150"); r.Code != http.StatusForbidden {
+		t.Errorf("viewer: %d", r.Code)
+	}
+}
+
+// Ler texto, documento e boleto dividem o mesmo limite por usuário.
+func TestDocumentoTextoLimiteDeRequisicoes(t *testing.T) {
+	a, c, house, _ := casa(t)
+	for i := 0; i < 10; i++ {
+		a.parseText(house, c, "nada")
+	}
+	_, r := a.parseText(house, c, "Gás: R$150")
+	assertCode(t, r, http.StatusTooManyRequests, "too_many_requests")
+}

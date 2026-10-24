@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -85,6 +86,12 @@ func novoMundo(t *testing.T) *mundo {
 		}
 	}
 	sort.Strings(m.householdScopedPath)
+	// leitura de texto colado (parse-text) e de arquivo precisam estar nas varreduras de casa e de papel
+	for _, want := range []string{"POST /api/households/:householdId/documents/parse-text", "POST /api/households/:householdId/documents/extract"} {
+		if !slices.Contains(m.householdScopedPath, want) {
+			t.Fatalf("rota fora das varreduras: %s", want)
+		}
+	}
 	if len(m.householdScopedPath) < 30 {
 		t.Fatalf("poucas rotas encontradas (%d): o teste não está varrendo o roteador", len(m.householdScopedPath))
 	}
