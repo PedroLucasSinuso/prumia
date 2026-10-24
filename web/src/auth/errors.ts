@@ -32,6 +32,7 @@ const boletoMessages: Record<string, string> = {
   boleto_not_found: 'Não consegui ler este boleto. Tente o PDF original ou uma foto mais nítida, ou preencha à mão.',
   password_required: 'Este PDF tem senha. Digite a senha para abrir.',
   wrong_password: 'Senha incorreta. Confira e tente de novo.',
+  text_too_large: 'O texto passa de 20.000 caracteres. Cole menos linhas.',
   too_many_requests: messages.too_many_requests,
   busy: 'O servidor está lendo outros boletos agora. Tente de novo em alguns segundos.',
 }
