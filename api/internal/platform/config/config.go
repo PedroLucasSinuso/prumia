@@ -6,6 +6,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +31,10 @@ type Config struct {
 	// HolidaysURL é a base da consulta de feriados nacionais (HOLIDAYS_URL; padrão BrasilAPI). "off" desliga a consulta
 	// externa e usa só o cálculo local. Com a consulta de CNPJ, é a única saída de rede da API.
 	HolidaysURL string
+	// PublicURL é o endereço pelo qual as pessoas abrem o app (PUBLIC_URL, ex.: https://app.exemplo.com.br). Vai nos links de
+	// convite e de nova senha: sem ele o front usaria o endereço do navegador de quem gera o link (localhost no seu computador,
+	// que não abre no celular de quem recebe). Vazio = usa o endereço do navegador.
+	PublicURL string
 }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
@@ -54,6 +59,11 @@ func load(get func(string) string) (Config, error) {
 	}
 
 	var problems []error
+	publicURL, err := parsePublicURL(get("PUBLIC_URL"))
+	if err != nil {
+		problems = append(problems, fmt.Errorf("PUBLIC_URL: %w", err))
+	}
+	cfg.PublicURL = publicURL
 	if cfg.Env != "development" && cfg.Env != "production" {
 		problems = append(problems, fmt.Errorf("APP_ENV inválido %q (use development ou production)", cfg.Env))
 	}
@@ -101,4 +111,18 @@ func valueOr(v, def string) string {
 		return def
 	}
 	return v
+}
+
+// parsePublicURL aceita vazio (desligado) ou uma origem http(s) sem caminho, como https://app.exemplo.com.br.
+// A barra final é removida, para o front poder juntar "/convite?..." sem duplicar.
+func parsePublicURL(raw string) (string, error) {
+	raw = strings.TrimRight(strings.TrimSpace(raw), "/")
+	if raw == "" {
+		return "", nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		return "", errors.New("use só o endereço, como https://app.exemplo.com.br (sem caminho, sem usuário)")
+	}
+	return raw, nil
 }

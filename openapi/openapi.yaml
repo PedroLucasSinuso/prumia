@@ -1135,6 +1135,12 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         theme: { $ref: '#/components/schemas/Theme' }
+        publicUrl:
+          type: string
+          format: uri
+          description: |
+            Endereço público do app (PUBLIC_URL do servidor), sem barra final. O front monta com ele os links de convite e de nova
+            senha; ausente = usa o endereço do navegador de quem gera o link.
         households:
           type: array
           items: { $ref: '#/components/schemas/HouseholdRef' }
