@@ -294,6 +294,24 @@ func (e InvoiceStatus) Valid() bool {
 	}
 }
 
+// Defines values for MonthOffset.
+const (
+	Minus1 MonthOffset = -1
+	N0     MonthOffset = 0
+)
+
+// Valid indicates whether the value is a known member of the MonthOffset enum.
+func (e MonthOffset) Valid() bool {
+	switch e {
+	case Minus1:
+		return true
+	case N0:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	RoleAdmin  Role = "admin"
@@ -704,8 +722,10 @@ type CnpjInfo struct {
 
 // DateRule Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day.
 type DateRule struct {
-	N    *int         `json:"n,omitempty"`
-	Rule DateRuleKind `json:"rule"`
+	// MonthOffset Em que mês, em relação à competência, a regra de data é aplicada: 0 = no mês da competência (padrão); -1 = no mês anterior (ex.: o vale de outubro cai no último dia útil de setembro). A competência não muda, só a data.
+	MonthOffset *MonthOffset `json:"monthOffset,omitempty"`
+	N           *int         `json:"n,omitempty"`
+	Rule        DateRuleKind `json:"rule"`
 
 	// WeekendAdjust Padrão forward
 	WeekendAdjust *WeekendAdjust `json:"weekendAdjust,omitempty"`
@@ -1157,6 +1177,9 @@ type Member struct {
 
 // Month Primeiro dia do mês
 type Month = caldate.Date
+
+// MonthOffset Em que mês, em relação à competência, a regra de data é aplicada: 0 = no mês da competência (padrão); -1 = no mês anterior (ex.: o vale de outubro cai no último dia útil de setembro). A competência não muda, só a data.
+type MonthOffset int
 
 // MonthlySummary defines model for MonthlySummary.
 type MonthlySummary struct {
@@ -1651,6 +1674,7 @@ type PreviewIncomeDatesParams struct {
 	// N Dia do mês (1 a 31) ou ordem do dia útil (1 a 23). Não se aplica a last_business_day.
 	N             *int           `form:"n,omitempty" json:"n,omitempty"`
 	WeekendAdjust *WeekendAdjust `form:"weekendAdjust,omitempty" json:"weekendAdjust,omitempty"`
+	MonthOffset   *MonthOffset   `form:"monthOffset,omitempty" json:"monthOffset,omitempty"`
 	Count         *int           `form:"count,omitempty" json:"count,omitempty"`
 }
 
@@ -2671,6 +2695,14 @@ func (siw *ServerInterfaceWrapper) PreviewIncomeDates(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "weekendAdjust", c.Request.URL.Query(), &params.WeekendAdjust, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter weekendAdjust: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "monthOffset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "monthOffset", c.Request.URL.Query(), &params.MonthOffset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter monthOffset: %w", err), http.StatusBadRequest)
 		return
 	}
 

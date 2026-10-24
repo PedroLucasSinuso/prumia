@@ -40,6 +40,25 @@ coluna de status.
 mês), `backward` (dia útil anterior) ou `none` (mantém). Fontes criadas antes da migration `00007` foram migradas para `none`
 (preserva a data de antes); fontes novas nascem com `forward`.
 
+**Mês em que a regra cai (`monthOffset`, migration `00010`)**: por padrão a regra é aplicada ao mês da competência. Com `monthOffset = -1` ela
+é aplicada ao **mês anterior**: o vale-refeição de outubro (preço por dia × dias úteis de **outubro**) é recebido no último dia útil de
+**setembro**. A competência não muda (é nela que o dinheiro é gasto e que o resumo conta; "a data não importa para o mês, vale a competência"),
+só a **data**. Detalhes:
+
+- `DateRule.Offset` (`0` ou `-1`; qualquer outro valor é 400 em `dateRule.monthOffset`). `DateRule.ExpectedDate(competência)` calcula o mês
+  `competência + Offset` (`AddMonths`) e aplica a regra e o ajuste a ele, com os feriados **do ano desse mês**: competência de janeiro com
+  offset -1 usa dezembro do ano anterior. "Data específica" (`expectedDate` digitada) não tem regra e portanto não tem offset.
+- Colunas `income_sources.date_rule_offset` e `incomes.date_rule_offset` (`smallint NOT NULL DEFAULT 0 CHECK (IN (-1, 0))`): o backfill é 0,
+  então quem já tem dados não muda. O lançamento **copia** o offset da fonte (como já copia `date_rule`, `date_rule_n` e `weekend_adjust`).
+- A **quantidade** padrão de receita por unidade continua sendo os dias úteis do mês da **competência** (`BusinessDaysInMonth(competência)`),
+  nunca os do mês em que a data cai.
+- O estado derivado não muda: `IsReceived` compara só `expectedDate` com hoje. Um vale de outubro com data em 30/09 já conta como **recebido** no
+  resumo de outubro assim que 30/09 chega, e o resumo de setembro não o soma (o resumo agrupa por `competence_month`).
+- `GET /income-dates` aceita `monthOffset` (`-1` ou `0`); a data devolvida pode ser do mês anterior, mas `businessDays` é sempre o da competência
+  (`month` continua sendo a competência).
+- Edição: o offset faz parte do `dateRule` enviado (campo omitido = 0, igual a `weekendAdjust` omitido = `forward`). Em `scope=following` ele
+  vai para o molde e para este e os seguintes não recebidos, que têm a data recalculada; em `scope=this` muda só este lançamento.
+
 **Calendário** (`api/internal/calendar`, fonte única de "dia útil"): sábado, domingo e feriados **nacionais** não são úteis.
 Funções puras e testadas em tabela com os feriados reais de 2026: `IsBusinessDay`, `NthBusinessDay`, `LastBusinessDay`,
 `BusinessDaysInMonth`, `Roll(data, forward|backward|none)`. Os feriados vêm de `GET {HOLIDAYS_URL}/{ano}` (BrasilAPI;
@@ -108,8 +127,12 @@ digitada, descontos (a lista enviada substitui), observação.
 - `scope=this`: só este lançamento; o molde não muda. Mudar o mês não pode colidir com outro mês da mesma repetição (o índice único inclui
   excluídos): 400 em `competenceMonth`. Mudar a regra ou o mês recalcula a data; uma `expectedDate` digitada vence.
 - `scope=following`: atualiza o molde e reaplica **só os campos enviados** a este e aos seguintes que **não contam como recebidos**;
-  recebidos nunca mudam (inclusive este, se já estiver recebido). Por unidade: cada mês mantém a própria quantidade. `competenceMonth`,
+  recebidos nunca mudam (inclusive este, se já estiver recebido: o molde e os próximos mudam, o mês recebido não). Por unidade: cada mês mantém a própria quantidade. `competenceMonth`,
   `expectedDate` e `quantity` valem por mês: 400. Sem repetição, equivale a `this`. Escopo desconhecido: 400.
+- No formulário (`IncomeForm`), numa receita que se repete o **padrão é `following`** ("Este e os seguintes"), também quando o mês editado já foi
+  recebido (aí a frase diz "Este mês já foi recebido e não muda; os próximos sim."). Os campos de um mês só (competência, data específica,
+  quantidade) continuam editáveis, mas ao mexer neles o escopo **volta sozinho** para `this` com uma frase explicando, em vez de o servidor
+  responder 400; voltar para "Este e os seguintes" descarta essas mudanças. O corpo do `PATCH` leva só o que mudou.
 - O bruto por unidade é recalculado; informar `grossAmountCents` em receita por unidade é 400. Descontos acima do novo valor: 400, e nada muda.
 
 ### 4.3 Excluir e restaurar com escopo
@@ -362,6 +385,9 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
   BrasilAPI, API falsa com cache/TTL/falha/`off`), `tax/estimate_test.go` (INSS e IRRF por faixa, redução da Lei 15.270, dependentes, ano
   sem tabela), `income/rules_test.go` (líquido, soma de descontos, carteira, regras de data em meses reais, valor por unidade, estado derivado,
   horizonte) e `summary/*_test.go` (saldo anterior e arquivadas em tabela).
+- Mês anterior (`monthOffset`): `income/rules_test.go` (último, N-ésimo e dia N com offset -1, virada de ano e feriado de 25/12, validação),
+  `platform/db/migrate_offset_test.go` (Up/Down/Up da `00010` com dados, backfill 0 e o `CHECK`) e `api/incomes_offset_test.go` (repetição, quantidade
+  da competência, resumo recebido, `following` e `this`, prévia).
 - Migration (`platform/db/migrate_receitas_test.go`): sobe até a `00006`, cria fonte e receita no formato antigo, aplica a `00007` e confere
   que viraram valor fixo + dia N + ajuste `none`; Up/Down/Up em `migrate_test.go`. Carteiras (`migrate_wallets_test.go`): sobe até a `00007`
   com dados `free`/`benefit` em duas casas (e uma excluída), aplica a `00008` e confere a conversão para os ids, o `Down` (volta ao texto) e

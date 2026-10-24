@@ -95,7 +95,7 @@ type Routes = {
   createSource?: Reply
   restoreIncome?: Reply
   /** GET /income-dates (prévia da regra de data): fixa ou calculada pela consulta. Padrão: dia 5 de cada mês, 21 dias úteis. */
-  incomeDates?: Reply | ((q: { month: string; rule: string; n?: number; weekendAdjust?: string; count?: number }) => Reply)
+  incomeDates?: Reply | ((q: { month: string; rule: string; n?: number; weekendAdjust?: string; monthOffset?: number; count?: number }) => Reply)
   /** GET /tax/estimate (INSS e IRRF sugeridos). */
   taxEstimate?: Reply | ((q: { grossCents: number; dependents?: number }) => Reply)
   updateSource?: Reply
@@ -191,10 +191,11 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
     if (url === '/households/{householdId}/income-sources') return r.sources ?? ok([])
     if (url === '/households/{householdId}/income-dates') {
-      const q = (init?.params?.query ?? {}) as { month: string; rule: string; n?: number; weekendAdjust?: string; count?: number }
+      const q = (init?.params?.query ?? {}) as { month: string; rule: string; n?: number; weekendAdjust?: string; monthOffset?: number; count?: number }
       if (typeof r.incomeDates === 'function') return r.incomeDates(q)
       if (r.incomeDates) return r.incomeDates
-      return ok(monthsBetween(q.month, addMonths(q.month, (q.count ?? 3) - 1)).map((m) => ({ month: m, expectedDate: m.slice(0, 8) + '05', businessDays: 21 })))
+      // Dia 5 de cada mês; com monthOffset -1 a data cai no mês anterior à competência (businessDays segue a competência).
+      return ok(monthsBetween(q.month, addMonths(q.month, (q.count ?? 3) - 1)).map((m) => ({ month: m, expectedDate: addMonths(m, q.monthOffset ?? 0).slice(0, 8) + '05', businessDays: 21 })))
     }
     if (url === '/households/{householdId}/tax/estimate') {
       const q = (init?.params?.query ?? {}) as { grossCents: number; dependents?: number }

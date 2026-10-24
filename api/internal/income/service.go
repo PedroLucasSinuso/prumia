@@ -290,7 +290,7 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 	}
 	if rule != nil {
 		rs, adj := rule.Rule, string(rule.Adjust)
-		row.DateRule, row.DateRuleN, row.WeekendAdjust = &rs, rule.nPtr(), &adj
+		row.DateRule, row.DateRuleN, row.WeekendAdjust, row.DateRuleOffset = &rs, rule.nPtr(), &adj, rule.Offset
 	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&row).Error; err != nil {
@@ -443,7 +443,7 @@ func (s *Service) Preview(ctx context.Context, rule DateRule, from caldate.Date,
 	h := s.holidays(ctx)
 	out := make([]PreviewItem, 0, count)
 	for m, i := from.StartOfMonth(), 0; i < count; m, i = m.AddMonths(1), i+1 {
-		out = append(out, PreviewItem{Month: m, ExpectedDate: rule.ExpectedDate(m, h), BusinessDays: calendar.BusinessDaysInMonth(m, h)})
+		out = append(out, PreviewItem{Month: m, ExpectedDate: rule.ExpectedDate(m, h), BusinessDays: calendar.BusinessDaysInMonth(m, h)}) // dias úteis da COMPETÊNCIA, não do mês em que cai
 	}
 	return out, nil
 }

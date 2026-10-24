@@ -50,7 +50,8 @@ func fromGenDeductions(ds *[]gen.Deduction) []income.Deduction {
 // ruleToGen / ruleFromGen convertem a regra de data entre o contrato e o domínio.
 func ruleToGen(r income.DateRule) gen.DateRule {
 	adj := gen.WeekendAdjust(r.Adjust)
-	out := gen.DateRule{Rule: gen.DateRuleKind(r.Rule), WeekendAdjust: &adj}
+	off := gen.MonthOffset(r.Offset)
+	out := gen.DateRule{Rule: gen.DateRuleKind(r.Rule), WeekendAdjust: &adj, MonthOffset: &off}
 	if r.Rule != income.RuleLastBusiness {
 		n := r.N
 		out.N = &n
@@ -68,6 +69,9 @@ func ruleFromGen(r *gen.DateRule) *income.DateRule {
 	}
 	if r.WeekendAdjust != nil {
 		out.Adjust = calendar.Adjust(*r.WeekendAdjust)
+	}
+	if r.MonthOffset != nil {
+		out.Offset = int(*r.MonthOffset)
 	}
 	return &out
 }
@@ -100,7 +104,7 @@ func toGenIncome(v income.View) gen.Income {
 		if v.WeekendAdjust != nil {
 			adj = *v.WeekendAdjust
 		}
-		r := ruleToGen(income.DateRule{Rule: *v.DateRule, Adjust: calendar.Adjust(adj)})
+		r := ruleToGen(income.DateRule{Rule: *v.DateRule, Adjust: calendar.Adjust(adj), Offset: v.DateRuleOffset})
 		if v.DateRuleN != nil {
 			n := *v.DateRuleN
 			r.N = &n
@@ -115,7 +119,7 @@ func toGenSource(v income.SourceView) gen.IncomeSource {
 		Id: v.ID, UserId: v.UserID, Kind: gen.IncomeSourceKind(v.Kind), WalletId: v.WalletID, Name: v.Name,
 		AmountMode: gen.AmountMode(v.AmountMode), GrossAmountCents: v.GrossAmountCents, UnitPriceCents: v.UnitPriceCents,
 		UnitLabel: v.UnitLabel, DayOfMonth: v.DayOfMonth, StartMonth: v.StartMonth,
-		DateRule:   ruleToGen(income.DateRule{Rule: v.DateRule, Adjust: calendar.Adjust(v.WeekendAdjust)}),
+		DateRule:   ruleToGen(income.DateRule{Rule: v.DateRule, Adjust: calendar.Adjust(v.WeekendAdjust), Offset: v.DateRuleOffset}),
 		Deductions: toGenDeductions(v.Deductions), Notes: v.Notes,
 	}
 	if v.DateRuleN != nil {
@@ -296,6 +300,9 @@ func (h *Incomes) PreviewIncomeDates(c *gin.Context, householdId gen.HouseholdId
 	}
 	if params.WeekendAdjust != nil {
 		rule.Adjust = calendar.Adjust(*params.WeekendAdjust)
+	}
+	if params.MonthOffset != nil {
+		rule.Offset = int(*params.MonthOffset)
 	}
 	count := 3
 	if params.Count != nil {

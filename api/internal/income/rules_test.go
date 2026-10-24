@@ -169,6 +169,16 @@ func TestRegrasDeData2026(t *testing.T) {
 		{"2º dia útil de janeiro (1º é feriado)", DateRule{Rule: RuleNthBusinessDay, N: 2}, d(2027, 1, 1), "2027-01-05"},
 		{"dia 31 em maio (domingo) para a frente", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.Forward}, d(2026, 5, 1), "2026-06-01"},
 		{"dia 31 em fevereiro de 2027 (domingo) mantido", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.None}, d(2027, 2, 1), "2027-02-28"},
+		// Mês anterior à competência (offset -1): o vale de outubro cai em setembro.
+		{"offset 0 explícito não muda nada", DateRule{Rule: RuleLastBusiness, Offset: 0}, d(2026, 10, 1), "2026-10-30"},
+		{"último dia útil do mês anterior (competência outubro)", DateRule{Rule: RuleLastBusiness, Offset: -1}, d(2026, 10, 1), "2026-09-30"},
+		{"último dia útil do mês anterior (competência novembro)", DateRule{Rule: RuleLastBusiness, Offset: -1}, d(2026, 11, 15), "2026-10-30"},
+		{"2º dia útil do mês anterior (competência novembro)", DateRule{Rule: RuleNthBusinessDay, N: 2, Offset: -1}, d(2026, 11, 1), "2026-10-02"},
+		{"dia 28 do mês anterior (competência outubro)", DateRule{Rule: RuleDayOfMonth, N: 28, Adjust: calendar.Forward, Offset: -1}, d(2026, 10, 1), "2026-09-28"},
+		{"virada de ano: último dia útil de dezembro para janeiro", DateRule{Rule: RuleLastBusiness, Offset: -1}, d(2027, 1, 1), "2026-12-31"},
+		{"virada de ano: 1º dia útil de dezembro para janeiro", DateRule{Rule: RuleNthBusinessDay, N: 1, Offset: -1}, d(2027, 1, 1), "2026-12-01"},
+		{"virada de ano usa os feriados do ano certo (25/12 é feriado)", DateRule{Rule: RuleDayOfMonth, N: 25, Adjust: calendar.Forward, Offset: -1}, d(2027, 1, 1), "2026-12-28"},
+		{"dia 31 do mês anterior trava no último dia (competência março)", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.None, Offset: -1}, d(2027, 3, 1), "2027-02-28"},
 	}
 	for _, c := range cases {
 		if got := c.rule.ExpectedDate(c.month, h); got.String() != c.want {
@@ -191,6 +201,9 @@ func TestCheckDeRegraDeData(t *testing.T) {
 		{"último dia útil ignora o N", DateRule{Rule: RuleLastBusiness, N: 99}, ""},
 		{"regra desconhecida", DateRule{Rule: "semanal", N: 1}, "r.rule"},
 		{"ajuste desconhecido", DateRule{Rule: RuleDayOfMonth, N: 1, Adjust: "sempre"}, "r.weekendAdjust"},
+		{"mês anterior", DateRule{Rule: RuleLastBusiness, Offset: -1}, ""},
+		{"offset +1 não existe", DateRule{Rule: RuleLastBusiness, Offset: 1}, "r.monthOffset"},
+		{"offset -2 não existe", DateRule{Rule: RuleDayOfMonth, N: 5, Offset: -2}, "r.monthOffset"},
 	}
 	for _, c := range cases {
 		var v validation.Collector

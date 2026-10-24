@@ -903,6 +903,8 @@ export interface paths {
          * Prévia das datas de uma regra de data (sem gravar nada)
          * @description Para cada um dos `count` meses a partir de `month`, a data em que a regra cai (com o ajuste de fim de semana e
          *     feriados nacionais) e quantos dias úteis o mês tem (a quantidade sugerida para receitas por unidade).
+         *     Com `monthOffset=-1` a regra é aplicada ao mês anterior de cada competência (a data devolvida pode ser do mês
+         *     anterior), mas `businessDays` continua sendo os dias úteis da COMPETÊNCIA.
          */
         get: operations["previewIncomeDates"];
         put?: never;
@@ -1618,12 +1620,19 @@ export interface components {
          * @enum {string}
          */
         WeekendAdjust: "forward" | "backward" | "none";
+        /**
+         * @description Em que mês, em relação à competência, a regra de data é aplicada: 0 = no mês da competência (padrão); -1 = no mês anterior (ex.: o vale de outubro cai no último dia útil de setembro). A competência não muda, só a data.
+         * @default 0
+         * @enum {integer}
+         */
+        MonthOffset: -1 | 0;
         /** @description Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day. */
         DateRule: {
             rule: components["schemas"]["DateRuleKind"];
             n?: number | null;
             /** @description Padrão forward */
             weekendAdjust?: components["schemas"]["WeekendAdjust"];
+            monthOffset?: components["schemas"]["MonthOffset"];
         };
         Income: {
             /** Format: uuid */
@@ -3700,6 +3709,7 @@ export interface operations {
                 /** @description Dia do mês (1 a 31) ou ordem do dia útil (1 a 23). Não se aplica a last_business_day. */
                 n?: number;
                 weekendAdjust?: components["schemas"]["WeekendAdjust"];
+                monthOffset?: components["schemas"]["MonthOffset"];
                 count?: number;
             };
             header?: never;

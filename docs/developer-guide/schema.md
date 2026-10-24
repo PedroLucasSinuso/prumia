@@ -107,6 +107,10 @@ Migration `00007` (receitas v2, aditiva): `income_sources` ganha `amount_mode` (
 `income_source_cuts` (Desfazer em lote). `received_at` continua existindo (recebido de propósito, antes da data); o estado "recebida" é
 **derivado**. Detalhes em [incomes-and-wallets.md](incomes-and-wallets.md).
 
+Migration `00010`: `income_sources.date_rule_offset` e `incomes.date_rule_offset` (`smallint NOT NULL DEFAULT 0`, `CHECK (IN (-1, 0))`): em que
+mês, em relação à competência, a regra de data é aplicada (0 = o da competência; -1 = o anterior, como o VR que cai no fim do mês anterior).
+Backfill 0. O Down só remove as colunas.
+
 ## 5. Carteiras
 
 Tabela **`wallets`** (migration `00008`): carteiras configuráveis da casa, um rótulo com saldo inicial (o saldo em si é **calculado**, não
