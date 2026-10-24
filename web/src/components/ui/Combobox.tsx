@@ -40,6 +40,8 @@ type Props = {
 /** Minúsculas e sem acento: "Educação" casa com "educacao". */
 const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const fullLabel = (o: ComboOption) => (o.group ? `${o.group} › ${o.label}` : o.label)
+/** Texto usado na busca: "Moradia Gás" (o separador › não conta, para "moradia gas" achar "Moradia › Gás"). */
+const searchText = (o: ComboOption) => norm(`${o.group ?? ''} ${o.label}`)
 
 type Item = { kind: 'option'; opt: ComboOption } | { kind: 'empty' } | { kind: 'create' }
 
@@ -66,7 +68,7 @@ export function Combobox({ label, hideLabel, options, value, onChange, placehold
   const [active, setActive] = useState(0)
 
   const selected = options.find((o) => o.value === value)
-  const q = norm(query.trim())
+  const q = norm(query.trim().replace(/›/g, ' ')).replace(/\s+/g, ' ').trim()
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = []
@@ -74,7 +76,7 @@ export function Combobox({ label, hideLabel, options, value, onChange, placehold
     // mãe que combina arrasta as filhas; filha que combina aparece sozinha
     const motherMatches = new Set(options.filter((o) => !o.group && norm(o.label).includes(q)).map((o) => o.label))
     for (const opt of options) {
-      if (!q || norm(fullLabel(opt)).includes(q) || (opt.group && motherMatches.has(opt.group))) out.push({ kind: 'option', opt })
+      if (!q || searchText(opt).includes(q) || (opt.group && motherMatches.has(opt.group))) out.push({ kind: 'option', opt })
     }
     if (onCreate) out.push({ kind: 'create' })
     return out

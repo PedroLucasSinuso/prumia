@@ -9,6 +9,8 @@ import { cnpjDigits, formatCnpj } from '../lib/cnpj'
 import { Button } from './Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
+import { Combobox } from './ui/Combobox'
+import { PanelFooter } from './ui/Panel'
 
 type Props = {
   /** Sem favorecido = criar um novo. */
@@ -22,8 +24,6 @@ type Props = {
   onDone: (message: string) => void
 }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
-const select = 'h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink'
 
 /**
  * Favorecido: o nome que a casa escolhe ("Gás") para quem recebe o pagamento, com CNPJ opcional (serve para
@@ -85,7 +85,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
   const archived = payee?.archived ?? false
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex min-h-full flex-col gap-4">
       <FormError message={error} />
       <Field label="Apelido" value={name} maxLength={60} disabled={!canWrite} hint="Como vocês chamam: Gás, Internet, Luz. Pode mudar quando quiser." error={fields.name}
         onChange={(e) => { setName(e.target.value); clear('name') }} />
@@ -114,23 +114,19 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
       <Field label="Nome oficial (opcional)" value={legalName} maxLength={120} disabled={!canWrite} placeholder="GASCO DISTRIBUIDORA S/A" error={fields.legalName}
         onChange={(e) => { setLegalName(e.target.value); clear('legalName') }} />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="payee-category" className={label}>categoria sugerida (opcional)</label>
-        <select id="payee-category" className={select} value={categoryId} disabled={!canWrite} onChange={(e) => { setCategoryId(e.target.value); clear('defaultCategoryId') }}>
-          <option value="">nenhuma</option>
-          {buildTree(categories).flatMap((n) => [
-            <option key={n.category.id} value={n.category.id}>{n.category.name}</option>,
-            ...n.children.map((c) => <option key={c.id} value={c.id}>{n.category.name} › {c.name}</option>),
-          ])}
-        </select>
-        {fields.defaultCategoryId && <p className="text-xs text-alert">{fields.defaultCategoryId}</p>}
-      </div>
-
-      {canWrite && (
-        <Button type="submit" disabled={busy}>
-          {busy ? 'Salvando…' : payee ? 'Salvar favorecido' : 'Criar favorecido'}
-        </Button>
-      )}
+      <Combobox
+        label="categoria sugerida (opcional)"
+        options={buildTree(categories).flatMap((n) => [
+          { value: n.category.id, label: n.category.name },
+          ...n.children.map((c) => ({ value: c.id, label: c.name, group: n.category.name })),
+        ])}
+        value={categoryId}
+        emptyLabel="nenhuma"
+        placeholder="nenhuma"
+        disabled={!canWrite}
+        onChange={(v) => { setCategoryId(v); clear('defaultCategoryId') }}
+        error={fields.defaultCategoryId}
+      />
 
       {payee && canWrite && (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
@@ -150,6 +146,13 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
             </>
           )}
         </div>
+      )}
+      {canWrite && (
+        <PanelFooter>
+          <Button type="submit" loading={busy}>
+            {payee ? 'Salvar favorecido' : 'Criar favorecido'}
+          </Button>
+        </PanelFooter>
       )}
     </form>
   )

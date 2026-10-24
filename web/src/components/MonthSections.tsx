@@ -39,8 +39,11 @@ export function MonthSections({ sections, collapsed, onToggle, ...timeline }: Pr
               </button>
             </h3>
             {open && (
-              <div id={panelId} className="border-t border-line pb-1">
-                <Timeline {...timeline} invoices={s.items} marker={s.id === 'upcoming'} columns />
+              // Abre crescendo a altura (grid 0fr -> 1fr, `motion-safe`); fechar é instantâneo para não deixar linhas focáveis escondidas.
+              <div id={panelId} className="grid border-t border-line motion-safe:animate-expand">
+                <div className="min-h-0 overflow-hidden pb-1">
+                  <Timeline {...timeline} invoices={s.items} marker={s.id === 'upcoming'} columns />
+                </div>
               </div>
             )}
           </section>

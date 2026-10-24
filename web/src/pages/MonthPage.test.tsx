@@ -336,6 +336,21 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     )
   })
 
+  it('lembra as categorias usadas por casa: a mais recente vira o 1º atalho', async () => {
+    mockApi({ me: ok(me), create: ok(invoice({ id: 'n', description: 'Feira' })) })
+    renderAt(mes)
+    await abrir()
+    expect(screen.getByRole('group', { name: 'Categorias recentes' })).toHaveTextContent('MoradiaMercadoVR')
+    await userEvent.click(screen.getByRole('button', { name: /Mercado/ }))
+    await userEvent.type(screen.getByLabelText('Descrição'), 'Feira')
+    await userEvent.type(screen.getByLabelText('Valor'), '5000')
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
+    await waitFor(() => expect(window.localStorage.getItem('prumia.categoriasRecentes.h1')).toBe('["c2"]'))
+    await abrir()
+    expect(screen.getByRole('group', { name: 'Categorias recentes' })).toHaveTextContent('MercadoVRMoradia')
+    window.localStorage.removeItem('prumia.categoriasRecentes.h1')
+  })
+
   it('"Adicionar e lançar outra" salva e mantém o painel aberto, vazio e com o foco no valor', async () => {
     mockApi({ me: ok(me), create: ok(invoice({ id: 'n', description: 'Água' })) })
     renderAt(mes)

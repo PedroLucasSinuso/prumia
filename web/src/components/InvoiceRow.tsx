@@ -3,7 +3,9 @@ import type { MouseEvent } from 'react'
 import type { Invoice } from '../api/types'
 import { daysBetween, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
+import { useFlash, usePaidPulse } from '../lib/flash'
 import { seriesTag } from '../lib/series'
+import { Tooltip } from './ui/Tooltip'
 
 type Props = {
   invoice: Invoice
@@ -49,11 +51,14 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
   const node = paid ? 'border-structure bg-structure' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
   const tag = seriesTag(invoice)
   const status = rowStatus(invoice, today)
-  const strike = paid ? 'text-ink/60 line-through' : ''
+  // O risco é sempre `line-through`, mas transparente enquanto a conta não está paga: ao pagar, a cor aparece em 150 ms.
+  const strike = `line-through transition-colors ${paid ? 'text-ink/60 decoration-ink/60' : 'decoration-transparent'}`
+  const flashing = useFlash(invoice.id)
+  const pulsing = usePaidPulse(invoice.id)
 
   return (
     <li
-      className={`group relative grid min-h-12 grid-cols-[28px_52px_44px_minmax(0,1fr)_64px] items-center border-l-2 pl-1.5 transition-colors ${
+      className={`group relative grid min-h-12 grid-cols-[28px_52px_44px_minmax(0,1fr)_64px] items-center border-l-2 pl-1.5 transition-colors ${flashing ? 'motion-safe:animate-flash' : ''} ${
         open ? 'border-structure bg-structure/7' : checked ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-ink/4'
       }`}
     >
@@ -73,17 +78,18 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         <span className="font-mono text-[15px] font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
         <span className="text-[11px] text-ink/75">{weekdayShort(invoice.dueDate)}</span>
       </span>
-      <button
-        aria-label={paid ? `Desfazer pagamento de ${invoice.description}` : `Pagar ${invoice.description}`}
-        title={paid ? 'Desfazer pagamento' : 'Pagar (P)'}
-        disabled={!canWrite || busy}
-        onClick={() => onTogglePaid(invoice)}
-        className="flex h-11 w-11 items-center justify-center disabled:cursor-default"
-      >
-        <span className={`flex size-[18px] items-center justify-center rounded-sm border-2 outline-4 outline-surface transition-colors ${node}`}>
-          {paid && <span className="size-2 rounded-[1px] bg-on-structure" />}
-        </span>
-      </button>
+      <Tooltip label={paid ? 'Desfazer pagamento' : 'Pagar'} shortcut={paid ? undefined : 'P'}>
+        <button
+          aria-label={paid ? `Desfazer pagamento de ${invoice.description}` : `Pagar ${invoice.description}`}
+          disabled={!canWrite || busy}
+          onClick={() => onTogglePaid(invoice)}
+          className="group/node flex h-11 w-11 items-center justify-center disabled:cursor-default"
+        >
+          <span className={`flex size-[18px] items-center justify-center rounded-sm border-2 outline-4 outline-surface transition-colors motion-safe:group-active/node:scale-90 ${node} ${pulsing ? 'motion-safe:animate-fill' : ''}`}>
+            {paid && <span className="size-2 rounded-[1px] bg-on-structure" />}
+          </span>
+        </button>
+      </Tooltip>
       <button
         aria-label={`Detalhes de ${invoice.description}`}
         data-row-id={invoice.id}
