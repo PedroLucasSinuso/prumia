@@ -128,6 +128,49 @@ Tailscale>` e acesso por `http://100.x.y.z:8080` (cifrado pelo WireGuard, mas se
 - `db`: sem porta publicada; `deploy/compose.dbeaver.yaml` publica em `127.0.0.1:${DB_PORT}` sob demanda
   ([getting-started.md](getting-started.md#acessar-o-banco-pelo-dbeaver)).
 
+## Cloudflare Tunnel (domínio próprio, app no seu computador)
+
+Alternativa ao Tailscale quando a pessoa quer abrir o app por um endereço comum (`https://app.seudominio.com.br`) em qualquer aparelho,
+sem instalar nada nele. O app continua rodando no seu computador; um container `cloudflared` faz uma conexão **de saída** para a
+Cloudflare e a Cloudflare entrega as requisições por ela. Não abre porta no roteador e o IP de casa não aparece. O HTTPS é da Cloudflare.
+
+```
+navegador --HTTPS--> Cloudflare (Access: login por e-mail) --túnel--> cloudflared --HTTP--> web:8081 (nginx) --> api --> db
+```
+
+**Recomendação: coloque o Cloudflare Access na frente.** Ele pede um código enviado por e-mail antes de qualquer requisição chegar ao
+prumia; só os e-mails liberados passam. É grátis até 50 pessoas e deixa o app invisível para quem não é da casa.
+
+### Passo a passo
+
+1. **Cloudflare**: crie conta e adicione o domínio (plano Free). A Cloudflare mostra dois servidores de nome (nameservers).
+2. **Registro do domínio**: troque os servidores DNS do domínio pelos dois da Cloudflare (no Registro.br: painel do domínio >
+   "Alterar servidores DNS"). Se o DNSSEC estiver ativo no registro, desligue antes de trocar e, se quiser, ligue de novo depois pela Cloudflare
+   (ela entrega o registro DS para colocar no Registro.br). A propagação leva de minutos a algumas horas; a Cloudflare avisa quando ativar.
+3. **Túnel**: Zero Trust > Networks > Tunnels > Create a tunnel > Cloudflared. Dê um nome e copie o **token** (a Cloudflare pede um meio de
+   pagamento para ativar o Zero Trust, mesmo no plano grátis, e não cobra).
+   Em **Public Hostname**: subdomínio `app`, domínio o seu, serviço `HTTP` e URL `web:8081`.
+4. **Access**: Zero Trust > Access > Applications > Add > Self-hosted, o mesmo endereço, e uma política **Allow** com os e-mails das
+   pessoas da casa (método "One-time PIN").
+5. **No computador**: ponha o token no `.env` (`TUNNEL_TOKEN=...`, o arquivo não vai para o Git), confira `APP_ENV=production` e
+   `OPEN_REGISTRATION=false`, e rode `make tunnel-up`. Para desligar: `make tunnel-down`.
+6. Abra `https://app.seudominio.com.br`: deve pedir o código por e-mail e depois mostrar o login do prumia.
+
+### Por que a porta 8081
+
+O limite de tentativas de login usa o IP do cliente. Atrás do túnel o nginx só vê o container do `cloudflared`; o IP real vem no cabeçalho
+`CF-Connecting-IP`, que a Cloudflare escreve. O nginx escuta em duas portas (`deploy/nginx/default.conf`): a **8080** (publicada em
+`127.0.0.1`) usa o IP que ele viu; a **8081** (só dentro da rede do compose, **nunca publicada**) confia em `CF-Connecting-IP`.
+Como só o túnel chega na 8081, o cabeçalho não pode ser forjado por quem acessa direto: forjá-lo na 8080 não adianta (testado: 14
+tentativas com IPs diferentes forjados na 8080 foram limitadas como um cliente só; pela 8081 cada IP real tem o seu limite).
+
+### Cuidados
+
+- O app só funciona com o computador ligado e o Docker rodando. Os containers já usam `restart: unless-stopped`. Agende o `make backup`.
+- A Cloudflare termina o HTTPS e portanto vê o tráfego. Para nenhum intermediário, use o Tailscale (seção acima).
+- `WEB_BIND` fica em `127.0.0.1`: o túnel não precisa de porta publicada.
+- Nunca publique a porta 8081 (`ports:`) e nunca commite o token do túnel.
+
 ## Fase 2 (VPS)
 
 Ainda não documentada: certbot/TLS no nginx (ou proxy TLS na frente mandando `X-Forwarded-Proto: https`), firewall e backup

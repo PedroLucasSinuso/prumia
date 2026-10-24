@@ -1,0 +1,17 @@
+# Override OPCIONAL: publica o app na internet por um Cloudflare Tunnel, sem abrir porta no roteador.
+# Uso: make tunnel-up / make tunnel-down (passo a passo em docs/developer-guide/deployment.md, "Cloudflare Tunnel").
+# O container só faz conexão de SAÍDA para a Cloudflare e entrega as requisições ao nginx (web:8081, porta que não é
+# publicada no computador). O token fica no .env (TUNNEL_TOKEN) e nunca vai para o Git.
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.0
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?defina TUNNEL_TOKEN no .env (token do túnel, painel Cloudflare Zero Trust)}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      web:
+        condition: service_started
