@@ -48,7 +48,7 @@ limitada a 1 MB. Se a API cair, devolver lixo (menos de 8 feriados) ou `HOLIDAYS
 feriados fixos, Páscoa (algoritmo de Meeus/Jones/Butcher), Carnaval (segunda e terça), Sexta-feira Santa, Corpus Christi e a
 Consciência Negra (nacional desde 2024). Feriados estaduais e municipais **não** entram. É, com a consulta de CNPJ, a única saída de
 rede da API (ver [security.md](security.md)). `GET /income-dates` devolve a prévia de uma regra (próximas datas e dias úteis de cada mês),
-sem gravar nada.
+sem gravar nada. O endpoint não conhece "hoje": quem filtra as datas já passadas é o front (`lib/income.upcomingDates`, relógio injetado).
 
 ## 3. Repetição: geração, horizonte e reaplicação
 
@@ -123,6 +123,18 @@ Espelham as contas fixas ([series-generation.md](series-generation.md)).
 - `POST /{id}/restore?scope=this|following`: `following` restaura os da mesma repetição, mês maior ou igual, com o **mesmo `deleted_at`** (exclusões
   avulsas anteriores ficam) e devolve o fim (ou reativa a fonte) **só se ela ainda está como o lote a deixou**; senão 409 `series_changed`
   e nada muda. Restaurar o que não está excluído: 409 `not_deleted`.
+
+### 4.4 Excluir a repetição inteira (`DELETE /income-sources/{id}`)
+
+Para o botão **Excluir** de "Receitas que se repetem" e "Excluir esta repetição" no detalhe. `Service.DeleteSource` (em `scope.go`),
+numa transação com a fonte travada: exclui (logicamente) **todos os lançamentos previstos** da fonte (os que ainda não contam como
+recebidos, de qualquer mês) com o **mesmo `deleted_at`**, e encerra a repetição no mês anterior ao primeiro deles
+(`endSourceBefore`, o mesmo corte de `income_source_cuts` do "este e os seguintes"); se não sobra mês antes do início, ou não havia
+nenhum previsto, a fonte inteira é excluída (com corte registrado). **Recebidos nunca somem**; meses passados continuam no histórico.
+`POST /income-sources/{id}/restore` (`RestoreSource`) desfaz o corte **mais recente** da fonte: confere o estado da fonte
+(`undoSourceCut`; 409 `series_changed` se mudou), restaura só os lançamentos com o `deleted_at` do lote (exclusões avulsas
+anteriores, de outro instante, continuam excluídas) e devolve o fim (ou reativa a fonte). Sem corte a desfazer: 409 `not_deleted`.
+Fonte inexistente, já excluída ou de outra casa: 404. `viewer`: 403 (middleware). Testes: `api/incomes_source_delete_test.go`.
 
 ## 5. Carteiras e saldo
 
@@ -256,7 +268,7 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 | "Caiu" numa receita que já conta como recebida | 409 `already_received` |
 | "Não caiu" numa que não conta como recebida | 409 `not_received` |
 | Restaurar o que não está excluído | 409 `not_deleted` |
-| Desfazer o lote depois que a repetição mudou | 409 `series_changed` |
+| Desfazer o lote depois que a repetição mudou (também em `/income-sources/{id}/restore`) | 409 `series_changed` |
 | `scope` desconhecido, regra de data inválida, mês que colide na repetição | 400 `validation_error` (campo `scope`, `dateRule.n`, `competenceMonth`...) |
 | `viewer` escrevendo | 403 `read_only` |
 | Corpo JSON inválido | 400 `bad_request` |
@@ -273,4 +285,5 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
   papéis) e `api/incomes_v2_test.go` (regras de data em meses reais, valor por unidade, recebimento automático e "não caiu" com relógio
   móvel, excluir/restaurar com escopo incluindo lotes empilhados e recebidos intocados, editar com escopo, prévia e impostos, isolamento
   entre casas e `viewer`). As varreduras de `security_test.go` cobrem as rotas novas sozinhas.
+- Datas da prévia: `income/rules_test.go` (`TestRegrasDeData2026`) fixa as datas reais usadas pelos testes do front (virada de ano, feriados, mês curto, ajustes).
 - Manual: pasta **8. Receitas, fontes de receita e resumo do mês** da coleção em [postman/](postman/prumia.postman_collection.json).

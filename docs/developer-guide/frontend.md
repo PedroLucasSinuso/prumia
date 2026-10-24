@@ -107,11 +107,12 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   mouse, ↑/↓ + Enter, `N` nova, `Esc` fecha. Detalhe em leitura (`IncomeDetail`) num painel fixo `xl` (abaixo, `SlideOver`); formulário
   sempre num `SlideOver` de altura total (computador) ou `Sheet` (celular). Celular: `IncomeList` simples. Fim da página: acordeão
   `RepeatingIncomes` ("Receitas que se repetem": ver a regra, **Editar** abre o formulário já em "este e os seguintes", **Encerrar** manda
-  `endMonth` do mês exibido).
+  `endMonth` do mês exibido, **Excluir** chama `DELETE /income-sources/{id}` com confirmação e toast **Desfazer** (`POST .../restore`); o
+  detalhe da receita tem "Excluir esta repetição" com a mesma confirmação, `DeleteRepetitionConfirm`).
   `IncomeForm` (um só): pessoa (`Combobox`), tipo, valor (`Segmented`: cheio ou por unidade; por unidade sugere os **dias úteis** do mês
   vindos da prévia), **quando cai** (`Segmented` de regra + ajuste de fim de semana + `DatePicker` para data específica) com a **prévia das
-  próximas 3 datas** (`useIncomeDatePreview`, `GET /income-dates`), repete todo mês (`MonthPicker` "até"), descontos (`DeductionsEditor`) com
-  **Sugerir INSS e IRRF** (`estimateTax`; preenche e avisa "estimativa pela tabela de 2026"), e, em receita que se repete e ainda não caiu, o
+  próximas 3 datas** (`useIncomeDatePreview`, `GET /income-dates`, pedida a partir de `max(competência, mês de hoje)`; `lib/income.upcomingDates(itens, hoje)` tira as já passadas e devolve à parte a do mês atual, mostrada como "Este mês: …, já passou: conta como recebida"; `IncomeForm` aceita `today` para testes), repete todo mês (`MonthPicker` "até"), descontos (`DeductionsEditor`) com
+  **Sugerir INSS e IRRF** (`estimateTax`; preenche, mostra "INSS R$ x · IRRF R$ 0,00 (isento nesta faixa…)", avisa quando substituiu INSS/IRRF digitados e, em erro, mostra a causa com o status), e, em receita que se repete e ainda não caiu, o
   escopo "Só este mês / Este e os seguintes". Na edição manda só o que mudou (`buildPatch`), então "este e os seguintes" não sobrescreve o que a
   pessoa não tocou. Excluir com escopo mostra o toast **Desfazer** (`restore` com o mesmo `scope`). Regras puras e textos em linguagem natural
   (`ruleText`: "2º dia útil", "dia 28, ou o próximo dia útil") em `lib/income.ts`.
@@ -214,6 +215,7 @@ inicial. Testes com popover: as opções ficam num portal (`document.body`), ent
 `--animate-*` ficam em `index.css` (`fade-in/out`, `slide-in/out`, `rise-in/out`, `pop-in`, `toast-in/out`, `countdown`,
 `flash`, `fill`, `expand`). Quando o JavaScript precisa esperar a saída (painel, toast), use `lib/motion.ts` (`canAnimate()`,
 `EXIT_MS`): sem animação (jsdom ou movimento reduzido) tudo acontece na hora, por isso os testes não precisam de timers.
+- **Rolagem dos painéis** (`ui/Panel`): coluna flex com `max-h` em `dvh`; o corpo (`data-panel-body`) é o ÚNICO que rola (`min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-pb-24`), então a rolagem não vaza para a página; `useBodyScrollLock` (`lib/scrollLock`, contado, restaurado ao fechar e ao desmontar) trava o `<body>`; o foco num campo faz `scrollIntoView({block:'nearest'})`, que respeita o `scroll-pb` (campo fica acima do rodapé). Rodapé: `footer` fica no fluxo do painel (`shrink-0`) e `PanelFooter` é `sticky bottom-0` dentro do corpo (nunca `fixed`), com fundo opaco, borda `border-line`, sombra sutil para cima e `safe-area-inset-bottom`. Testes: `ui/PanelScroll.test.tsx`.
 - **Painéis** saem animados só em Esc/×/fundo; se o pai os desmonta sozinho (ex.: depois de salvar), saem sem animação.
 - **Toast**: sobe com fade, sai descendo; com "Desfazer" uma barra fina esvazia em 7 s.
 - **Realces de linha** (`lib/flash.ts`): `flashRow(id)` ao criar/editar e `pulsePaid(id)` ao pagar; `Timeline`/`InvoiceRow` leem com
@@ -239,6 +241,7 @@ Nunca use as classes antigas `ivory`/`teal`/`graphite`/`cobalt`/`signal` (não e
 | `on-structure` | `text-on-structure` | texto/ícone sobre `bg-structure` | ivory |
 | `accent` | `text-accent` / `bg-accent` | dado ativo, links, seleção, barras | cobalt |
 | `alert` | `text-alert` / `bg-alert` | só alerta (atraso, hoje, erro; ≤10%) | signal |
+| `scrim` | `bg-scrim/50` | fundo escurecido atrás de painéis/modais. Claro = tom do `ink`; escuro = preto neutro (nunca `bg-ink`, que nos temas escuros é claro e "lava" a página) | graphite |
 
 **Como funciona.** Cada token aponta para uma variável `--prumia-*` (`@theme inline { --color-ink: var(--prumia-ink) }`), e
 o tema troca essas variáveis pelo atributo `data-theme` do `<html>`. Como o Tailwind escreve `var(--prumia-ink)` direto na
