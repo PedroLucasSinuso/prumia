@@ -146,7 +146,7 @@ func TestResumoProjetadoEAtraso(t *testing.T) {
 	var cats []cat
 	a.do("GET", "/api/households/"+house+"/categories", nil, c).json(&cats)
 	moradia, mercado := cats[0].ID, cats[1].ID
-	if cats[1].DefaultWallet == nil || *cats[1].DefaultWallet != "benefit" {
+	if cats[1].DefaultWalletID == nil || *cats[1].DefaultWalletID != a.vr(house) {
 		t.Fatalf("pré-condição: mercado sugere benefício: %+v", cats[1])
 	}
 
@@ -166,18 +166,14 @@ func TestResumoProjetadoEAtraso(t *testing.T) {
 		summaryT
 		OverdueCents int64 `json:"overdueCents"`
 		OverdueCount int   `json:"overdueCount"`
-		Wallets      struct {
-			Free    struct{ PendingCents, ProjectedCents, BalanceCents int64 } `json:"free"`
-			Benefit struct{ PendingCents, ProjectedCents, BalanceCents int64 } `json:"benefit"`
-		} `json:"wallets"`
 	}
 	r = a.do("GET", "/api/households/"+house+"/summary?month=2026-10-01", nil, c)
 	r.json(&s)
 	// realizado da livre é negativo (salário ainda não marcado), mas o projetado não: 608410 - 20000 - 150000
-	if f := s.Wallets.Free; f.BalanceCents != -20000 || f.PendingCents != 150000 || f.ProjectedCents != 438410 {
+	if f := s.Free(); f.BalanceCents != -20000 || f.PendingCents != 150000 || f.ProjectedCents != 438410 {
 		t.Errorf("livre: %+v", f)
 	}
-	if b := s.Wallets.Benefit; b.PendingCents != 41000 || b.ProjectedCents != -41000 {
+	if b := s.Benefit(); b.PendingCents != 41000 || b.ProjectedCents != -41000 {
 		t.Errorf("benefício: %+v", b)
 	}
 	if s.OverdueCents != 150000 || s.OverdueCount != 1 {
@@ -187,7 +183,7 @@ func TestResumoProjetadoEAtraso(t *testing.T) {
 	a.pay(c, house, atrasada.ID, "free", nil)
 	r = a.do("GET", "/api/households/"+house+"/summary?month=2026-10-01", nil, c)
 	r.json(&s)
-	if s.OverdueCount != 0 || s.Wallets.Free.PendingCents != 0 || s.Wallets.Free.ProjectedCents != 438410 {
+	if s.OverdueCount != 0 || s.Free().PendingCents != 0 || s.Free().ProjectedCents != 438410 {
 		t.Errorf("depois de pagar: %+v", s)
 	}
 }

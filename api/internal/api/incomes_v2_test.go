@@ -79,7 +79,7 @@ func TestRegrasDeDataNaCriacaoEmMesesReais(t *testing.T) {
 		}
 	}
 	vr := a.incomeNamed(c, house, "2026-11-01", "VR dia 28")
-	if vr.Wallet != "benefit" || vr.DateRule == nil || vr.DateRule.Rule != "day_of_month" || vr.DateRule.WeekendAdjust != "forward" || !vr.Repeats {
+	if vr.WalletID != a.vr(house) || vr.DateRule == nil || vr.DateRule.Rule != "day_of_month" || vr.DateRule.WeekendAdjust != "forward" || !vr.Repeats {
 		t.Errorf("VR: %+v", vr)
 	}
 	// regra inválida / repetição sem regra / avulsa sem data
@@ -227,10 +227,10 @@ func TestRecebimentoAutomaticoENaoCaiu(t *testing.T) {
 		t.Fatalf("VR ainda não caiu: %+v", vr)
 	}
 	s := a.summaryOf(c, house, "2026-10-01")
-	if f := s.Wallets.Free; f.ReceivedIncomeCents != 450000 || f.ExpectedIncomeCents != 450000 || f.BalanceCents != 450000 {
+	if f := s.Free(); f.ReceivedIncomeCents != 450000 || f.ExpectedIncomeCents != 450000 || f.BalanceCents != 450000 {
 		t.Errorf("livre com recebimento automático: %+v", f)
 	}
-	if b := s.Wallets.Benefit; b.ReceivedIncomeCents != 0 || b.ExpectedIncomeCents != 60000 {
+	if b := s.Benefit(); b.ReceivedIncomeCents != 0 || b.ExpectedIncomeCents != 60000 {
 		t.Errorf("benefício ainda a receber: %+v", b)
 	}
 
@@ -241,7 +241,7 @@ func TestRecebimentoAutomaticoENaoCaiu(t *testing.T) {
 	if r.Code != 200 || got.Received || !got.Held || got.ReceivedAt != nil {
 		t.Fatalf("não caiu: %d %s", r.Code, r.Body)
 	}
-	if f := a.summaryOf(c, house, "2026-10-01").Wallets.Free; f.ReceivedIncomeCents != 0 || f.ExpectedIncomeCents != 450000 || f.BalanceCents != 0 {
+	if f := a.summaryOf(c, house, "2026-10-01").Free(); f.ReceivedIncomeCents != 0 || f.ExpectedIncomeCents != 450000 || f.BalanceCents != 0 {
 		t.Errorf("livre com o salário retido: %+v", f)
 	}
 	if r := a.do("DELETE", base+"/incomes/"+sal.ID+"/receive", nil, c); r.Code != 409 || !strings.Contains(r.Body.String(), "not_received") {
@@ -277,11 +277,11 @@ func TestRecebimentoAutomaticoENaoCaiu(t *testing.T) {
 	if r.Code != 200 || !got.Received || *got.ReceivedAt != "2026-11-19" {
 		t.Fatalf("receber antes da data: %d %s", r.Code, r.Body)
 	}
-	if b := a.summaryOf(c, house, "2026-11-01").Wallets.Benefit; b.ReceivedIncomeCents != 60000 {
+	if b := a.summaryOf(c, house, "2026-11-01").Benefit(); b.ReceivedIncomeCents != 60000 {
 		t.Errorf("benefício recebido antes da data: %+v", b)
 	}
 	a.do("DELETE", base+"/incomes/"+nov.ID+"/receive", nil, c)
-	if b := a.summaryOf(c, house, "2026-11-01").Wallets.Benefit; b.ReceivedIncomeCents != 0 || b.ExpectedIncomeCents != 60000 {
+	if b := a.summaryOf(c, house, "2026-11-01").Benefit(); b.ReceivedIncomeCents != 0 || b.ExpectedIncomeCents != 60000 {
 		t.Errorf("benefício depois do não caiu: %+v", b)
 	}
 }
@@ -445,7 +445,7 @@ func TestEditarReceitaComEscopo(t *testing.T) {
 	r := a.do("PATCH", base+"/incomes/"+nov.ID, map[string]any{"userId": davi, "kind": "benefit", "notes": "mudou"}, c)
 	var upd incT
 	r.json(&upd)
-	if r.Code != 200 || upd.UserID != davi || upd.Kind != "benefit" || upd.Wallet != "benefit" {
+	if r.Code != 200 || upd.UserID != davi || upd.Kind != "benefit" || upd.WalletID != a.free(house) { // trocar o tipo não troca a carteira
 		t.Fatalf("pessoa e tipo: %d %s", r.Code, r.Body)
 	}
 	if dez := a.incomeNamed(c, house, "2026-12-01", "Salário Ana"); dez.UserID == davi || dez.Kind != "salary" {
@@ -454,9 +454,22 @@ func TestEditarReceitaComEscopo(t *testing.T) {
 	if s := a.sourcesOf(c, house)[0]; s.Kind != "salary" {
 		t.Errorf("o molde mudou: %+v", s)
 	}
-	if b := a.summaryOf(c, house, "2026-11-01").Wallets.Benefit; b.ExpectedIncomeCents != 460000 {
+	if b := a.summaryOf(c, house, "2026-11-01").Benefit(); b.ExpectedIncomeCents != 0 {
+		t.Errorf("trocar o tipo não move o valor para a carteira de benefício: %+v", b)
+	}
+	// a carteira só muda quando é pedido (walletId), e só neste mês
+	r = a.do("PATCH", base+"/incomes/"+nov.ID, map[string]any{"walletId": a.vr(house)}, c)
+	r.json(&upd)
+	if r.Code != 200 || upd.WalletID != a.vr(house) {
+		t.Fatalf("trocar a carteira: %d %s", r.Code, r.Body)
+	}
+	if b := a.summaryOf(c, house, "2026-11-01").Benefit(); b.ExpectedIncomeCents != 460000 {
 		t.Errorf("a carteira de benefício deveria ter o valor: %+v", b)
 	}
+	if dez := a.incomeNamed(c, house, "2026-12-01", "Salário Ana"); dez.WalletID != a.free(house) {
+		t.Errorf("dezembro mudou de carteira junto: %+v", dez)
+	}
+	assertField(t, a.do("PATCH", base+"/incomes/"+nov.ID, map[string]any{"walletId": "00000000-0000-0000-0000-000000000001"}, c), 400, "walletId")
 	assertField(t, a.do("PATCH", base+"/incomes/"+nov.ID, map[string]any{"userId": "018f0000-0000-7000-8000-000000000000"}, c), 400, "userId")
 	assertField(t, a.do("PATCH", base+"/incomes/"+nov.ID, map[string]any{"kind": "bolsa"}, c), 400, "kind")
 

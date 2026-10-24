@@ -20,6 +20,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 var (
@@ -948,7 +949,7 @@ func undoRecurrenceCut(tx *gorm.DB, inv Invoice) error {
 // ---------------------------------------------------------------- pagar
 
 type PayInput struct {
-	Wallet      string
+	WalletID    uuid.UUID
 	PaidAt      *caldate.Date // nil = hoje
 	AmountCents *money.Cents  // nil = valor da invoice (informe se houve juros/desconto)
 }
@@ -961,8 +962,10 @@ func (s *Service) Pay(ctx context.Context, householdID, id, userID uuid.UUID, in
 		return View{}, err
 	}
 	var v validation.Collector
-	if !category.ValidWallet(in.Wallet) {
-		v.Add("wallet", "use free (livre) ou benefit (benefício)")
+	if in.WalletID == uuid.Nil {
+		v.Add("walletId", "informe a carteira")
+	} else if err := wallet.CheckUsable(s.db.WithContext(ctx), householdID, in.WalletID, "walletId", &v); err != nil {
+		return View{}, err
 	}
 	paidAt := s.today()
 	if in.PaidAt != nil {
@@ -982,7 +985,7 @@ func (s *Service) Pay(ctx context.Context, householdID, id, userID uuid.UUID, in
 
 	res := s.db.WithContext(ctx).Model(&Invoice{}).
 		Where("household_id = ? AND id = ? AND paid_at IS NULL", householdID, id).
-		Updates(map[string]any{"paid_at": paidAt, "paid_wallet": in.Wallet, "paid_amount_cents": amount, "paid_by_user_id": userID})
+		Updates(map[string]any{"paid_at": paidAt, "paid_wallet_id": in.WalletID, "paid_amount_cents": amount, "paid_by_user_id": userID})
 	if res.Error != nil {
 		return View{}, res.Error
 	}
@@ -999,7 +1002,7 @@ func (s *Service) Pay(ctx context.Context, householdID, id, userID uuid.UUID, in
 func (s *Service) Unpay(ctx context.Context, householdID, id uuid.UUID) (View, error) {
 	res := s.db.WithContext(ctx).Model(&Invoice{}).
 		Where("household_id = ? AND id = ? AND paid_at IS NOT NULL", householdID, id).
-		Updates(map[string]any{"paid_at": nil, "paid_wallet": nil, "paid_amount_cents": nil, "paid_by_user_id": nil})
+		Updates(map[string]any{"paid_at": nil, "paid_wallet_id": nil, "paid_amount_cents": nil, "paid_by_user_id": nil})
 	if res.Error != nil {
 		return View{}, res.Error
 	}

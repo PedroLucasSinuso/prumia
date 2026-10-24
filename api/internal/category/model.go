@@ -10,20 +10,12 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbmodel"
 )
 
-// Wallets válidas (iguais ao CHECK do banco): "free" (livre) e "benefit" (VR).
-const (
-	WalletFree    = "free"
-	WalletBenefit = "benefit"
-)
-
-func ValidWallet(w string) bool { return w == WalletFree || w == WalletBenefit }
-
 type Category struct {
 	dbmodel.Base
 	HouseholdID uuid.UUID `gorm:"type:uuid"`
 	Name        string
-	// DefaultWallet é só sugestão ao pagar (ex.: Mercado -> benefit); nil = sem sugestão.
-	DefaultWallet *string
+	// DefaultWalletID é só sugestão ao pagar (ex.: Mercado -> carteira Benefício); nil = sem sugestão.
+	DefaultWalletID *uuid.UUID `gorm:"type:uuid"`
 	// IsEssential marca gasto essencial: base da meta da reserva de emergência (pós-MVP).
 	IsEssential bool
 	SortOrder   int

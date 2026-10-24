@@ -410,6 +410,91 @@ export interface paths {
         patch: operations["updatePayee"];
         trace?: never;
     };
+    "/households/{householdId}/wallets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /** Carteiras da casa (qualquer membro). A padrão vem primeiro, depois por sortOrder e nome. */
+        get: operations["listWallets"];
+        put?: never;
+        /** Cria carteira (só admin, o Responsável) */
+        post: operations["createWallet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/wallets/{walletId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edita carteira (só admin)
+         * @description Nome, dono (etiqueta; `null` limpa), aviso de saldo, saldo inicial e ordem. `isDefault=true` troca a carteira
+         *     padrão da casa (a anterior deixa de ser padrão; a padrão não pode ser arquivada, e `isDefault=false` é 400:
+         *     escolha outra para ser a padrão). Arquivar e restaurar têm rotas próprias.
+         */
+        patch: operations["updateWallet"];
+        trace?: never;
+    };
+    "/households/{householdId}/wallets/{walletId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Arquiva a carteira (só admin). Não existe exclusão. A padrão não pode ser arquivada (409 `wallet_is_default`). */
+        post: operations["archiveWallet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/wallets/{walletId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restaura a carteira arquivada (só admin). 409 `wallet_exists` se já há outra ativa com o mesmo nome. */
+        post: operations["restoreWallet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/invoices": {
         parameters: {
             query?: never;
@@ -681,7 +766,7 @@ export interface paths {
          * @description `scope=this` (padrão) muda só este lançamento (inclusive pessoa, tipo, mês de competência, quantidade e data digitada).
          *     `scope=following` muda também o molde da repetição e reaplica os campos enviados a este e aos seguintes que ainda
          *     NÃO contam como recebidos; recebidos nunca mudam em lote. `competenceMonth`, `expectedDate` e `quantity` não valem
-         *     em lote (400). Mudar o tipo muda a carteira (benefit vai para a carteira de benefício). Os descontos enviados
+         *     em lote (400). Mudar o tipo NÃO muda a carteira (use `walletId`). Os descontos enviados
          *     substituem a lista. Sem repetição, `following` equivale a `this`.
          */
         patch: operations["updateIncome"];
@@ -1027,8 +1112,6 @@ export interface components {
         /** @enum {string} */
         Role: "admin" | "member" | "viewer";
         /** @enum {string} */
-        Wallet: "free" | "benefit";
-        /** @enum {string} */
         DeductionKind: "inss" | "irrf" | "health_plan" | "health_copay" | "other";
         RegisterRequest: {
             name: string;
@@ -1099,7 +1182,11 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
-            defaultWallet?: (string & components["schemas"]["Wallet"]) | null;
+            /**
+             * Format: uuid
+             * @description Carteira sugerida ao pagar (opcional)
+             */
+            defaultWalletId?: string | null;
             isEssential: boolean;
             sortOrder: number;
             archived: boolean;
@@ -1111,7 +1198,11 @@ export interface components {
         };
         CategoryInput: {
             name: string;
-            defaultWallet?: (string & components["schemas"]["Wallet"]) | null;
+            /**
+             * Format: uuid
+             * @description Carteira da casa, não arquivada (senão 400 no campo defaultWalletId)
+             */
+            defaultWalletId?: string | null;
             /** @default false */
             isEssential: boolean;
             /**
@@ -1122,7 +1213,11 @@ export interface components {
         };
         CategoryPatch: {
             name?: string;
-            defaultWallet?: (string & components["schemas"]["Wallet"]) | null;
+            /**
+             * Format: uuid
+             * @description null limpa a sugestão
+             */
+            defaultWalletId?: string | null;
             isEssential?: boolean;
             sortOrder?: number;
             archived?: boolean;
@@ -1193,7 +1288,8 @@ export interface components {
         Payment: {
             /** Format: date */
             paidAt: string;
-            wallet: components["schemas"]["Wallet"];
+            /** Format: uuid */
+            walletId: string;
             amountCents: components["schemas"]["Cents"];
             /** Format: uuid */
             paidByUserId?: string | null;
@@ -1251,7 +1347,11 @@ export interface components {
             nextCursor?: string | null;
         };
         PayRequest: {
-            wallet: components["schemas"]["Wallet"];
+            /**
+             * Format: uuid
+             * @description Carteira da casa, não arquivada (senão 400 no campo walletId)
+             */
+            walletId: string;
             /**
              * Format: date
              * @description Padrão hoje
@@ -1262,8 +1362,19 @@ export interface components {
         };
         PayResult: {
             invoice: components["schemas"]["Invoice"];
-            /** @description Avisos que não bloqueiam (ex. `benefit_balance_insufficient`) */
+            /** @description Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (veja `warningDetails` para a carteira). */
             warnings?: string[];
+            /** @description Detalhe dos avisos, na mesma ordem de `warnings`. */
+            warningDetails?: components["schemas"]["PayWarning"][];
+        };
+        PayWarning: {
+            /** @description Igual ao item de `warnings` (ex. `wallet_balance_insufficient`) */
+            code: string;
+            /**
+             * Format: uuid
+             * @description Carteira com aviso de saldo ligado cujo saldo realizado ficou negativo
+             */
+            walletId: string;
         };
         Boleto: {
             digitableLine: string;
@@ -1450,7 +1561,11 @@ export interface components {
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
             description: string;
-            wallet: components["schemas"]["Wallet"];
+            /**
+             * Format: uuid
+             * @description Carteira onde a receita cai (o front resolve o nome pela lista de carteiras)
+             */
+            walletId: string;
             competenceMonth: components["schemas"]["Month"];
             /** Format: date */
             expectedDate: string;
@@ -1490,8 +1605,11 @@ export interface components {
             userId: string;
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
-            /** @description Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400. */
-            wallet?: components["schemas"]["Wallet"];
+            /**
+             * Format: uuid
+             * @description Opcional. Padrão = carteira padrão da casa (para o tipo benefit, a carteira ativa chamada Benefício, se existir). Carteira de outra casa ou arquivada = 400 no campo walletId. Qualquer tipo pode ir para qualquer carteira.
+             */
+            walletId?: string;
             description: string;
             competenceMonth: components["schemas"]["Month"];
             /**
@@ -1519,6 +1637,11 @@ export interface components {
             userId?: string;
             /** @enum {string} */
             kind?: "salary" | "benefit" | "other";
+            /**
+             * Format: uuid
+             * @description Muda a carteira (trocar o tipo não troca a carteira)
+             */
+            walletId?: string;
             description?: string;
             competenceMonth?: components["schemas"]["Month"];
             /** Format: date */
@@ -1539,7 +1662,8 @@ export interface components {
             userId: string;
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
-            wallet: components["schemas"]["Wallet"];
+            /** Format: uuid */
+            walletId: string;
             name: string;
             amountMode: components["schemas"]["AmountMode"];
             /** @description Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade). */
@@ -1564,8 +1688,11 @@ export interface components {
             userId: string;
             /** @enum {string} */
             kind: "salary" | "benefit" | "other";
-            /** @description Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400. */
-            wallet?: components["schemas"]["Wallet"];
+            /**
+             * Format: uuid
+             * @description Opcional. Mesmas regras de IncomeInput.walletId. Cada lançamento gerado copia a carteira da fonte.
+             */
+            walletId?: string;
             name: string;
             amountMode?: components["schemas"]["AmountMode"];
             grossAmountCents?: components["schemas"]["Cents"];
@@ -1586,6 +1713,11 @@ export interface components {
             userId?: string;
             /** @enum {string} */
             kind?: "salary" | "benefit" | "other";
+            /**
+             * Format: uuid
+             * @description Muda a carteira do molde (e dos lançamentos que ainda não contam como recebidos, com applyFrom)
+             */
+            walletId?: string;
             name?: string;
             notes?: string | null;
             amountMode?: components["schemas"]["AmountMode"];
@@ -1620,26 +1752,84 @@ export interface components {
             /** @description Sempre verdadeiro: é uma estimativa */
             approximate: boolean;
         };
+        Wallet: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description Só etiqueta (de quem é a carteira); não restringe o uso
+             */
+            ownerUserId?: string | null;
+            /** @description Exatamente uma por casa */
+            isDefault: boolean;
+            /** @description Avisa ao pagar se o saldo realizado desta carteira ficar negativo */
+            warnOnOverdraft: boolean;
+            /** @description Saldo inicial (pode ser negativo); entra no saldo anterior de todos os meses */
+            openingBalanceCents: components["schemas"]["Cents"];
+            sortOrder: number;
+            archived: boolean;
+        };
+        WalletInput: {
+            /** @description Único entre as carteiras ativas da casa (sem diferenciar maiúsculas) */
+            name: string;
+            /**
+             * Format: uuid
+             * @description Deve ser membro da casa
+             */
+            ownerUserId?: string | null;
+            /** @default true */
+            warnOnOverdraft: boolean;
+            /** @description Padrão 0 */
+            openingBalanceCents?: components["schemas"]["Cents"];
+            /** @description Padrão = fim da lista */
+            sortOrder?: number;
+        };
+        WalletPatch: {
+            name?: string;
+            /**
+             * Format: uuid
+             * @description null limpa o dono
+             */
+            ownerUserId?: string | null;
+            warnOnOverdraft?: boolean;
+            openingBalanceCents?: components["schemas"]["Cents"];
+            /** @description true troca a carteira padrão da casa; false = 400 */
+            isDefault?: boolean;
+            sortOrder?: number;
+        };
         WalletBalance: {
+            /** Format: uuid */
+            walletId: string;
+            name: string;
+            /** Format: uuid */
+            ownerUserId?: string | null;
+            isDefault: boolean;
+            /** @description Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento no mês */
+            archived: boolean;
+            /** @description Saldo inicial da carteira */
+            openingBalanceCents: components["schemas"]["Cents"];
+            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas) da carteira, por competência */
+            carryOverCents: components["schemas"]["Cents"];
             /** @description Líquido de todas as receitas da competência na carteira (a receber + recebidas) */
             expectedIncomeCents: components["schemas"]["Cents"];
             /** @description Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu) */
             receivedIncomeCents: components["schemas"]["Cents"];
             /** @description Valor efetivamente pago das invoices da competência pagas com esta carteira */
             paidCents: components["schemas"]["Cents"];
-            /** @description Recebido - pago (estimativa, não é saldo bancário) */
+            /** @description Saldo REALIZADO acumulado: saldo anterior + recebido - pago (não é saldo bancário) */
             balanceCents: components["schemas"]["Cents"];
-            /** @description Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar. */
+            /** @description Só o mês: recebido - pago */
+            monthBalanceCents: components["schemas"]["Cents"];
+            /** @description Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar. */
             pendingCents: components["schemas"]["Cents"];
-            /** @description Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar. */
+            /** @description Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar). Negativo = vai faltar. */
             projectedCents: components["schemas"]["Cents"];
         };
         MonthlySummary: {
             month: components["schemas"]["Month"];
-            wallets: {
-                free: components["schemas"]["WalletBalance"];
-                benefit: components["schemas"]["WalletBalance"];
-            };
+            /** @description Carteira padrão primeiro, depois por sortOrder e nome. */
+            wallets: components["schemas"]["WalletBalance"][];
             totalPaidCents: components["schemas"]["Cents"];
             totalPendingCents: components["schemas"]["Cents"];
             /** @description Parte do pendente já vencida (vencimento antes de hoje) */
@@ -2518,6 +2708,142 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listWallets: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Wallet"][];
+                };
+            };
+        };
+    };
+    createWallet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletInput"];
+            };
+        };
+        responses: {
+            /** @description Criada */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Wallet"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateWallet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Wallet"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    archiveWallet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Wallet"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    restoreWallet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Wallet"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };

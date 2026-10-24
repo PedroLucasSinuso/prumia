@@ -22,7 +22,7 @@ coluna de status.
 | Descontos | Tipos `inss`, `irrf`, `health_plan`, `health_copay`, `other`; cada um com `name` (1 a 60) e `amountCents > 0`. No máximo 20. **Opcionais**; `inss` e `irrf` só valem em receita do tipo salário (`CheckSalaryTaxes`; vale e outras recusam); o servidor só os calcula em `GET /tax/estimate` (sugestão, seção 6.2). |
 | Soma <= bruto | A soma dos descontos não pode ultrapassar o bruto. Erros por campo: `deductions`, `deductions[2].amountCents`... |
 | Teto | Bruto e cada desconto até R$ 10 bilhões (`invoice.MaxAmount`). |
-| Carteira | Derivada do tipo: `benefit` vai para a carteira `benefit`; `salary` e `other` para a `free`. Trocar o tipo troca a carteira. O campo `wallet` na entrada é opcional; incoerente = 400 no campo `wallet`. O banco reforça com `CHECK`. |
+| Carteira | `walletId` opcional na entrada. Sem ele: a **carteira padrão** da casa; para o tipo `benefit`, a carteira ativa chamada "Benefício" se existir (senão a padrão). **Qualquer tipo pode ir para qualquer carteira** (a regra antiga "VR só no benefício" caiu, junto com o `CHECK` do banco). Trocar o tipo **não** troca a carteira; para isso, `walletId` no `PATCH`. Carteira de outra casa, inexistente ou arquivada = 400 no campo `walletId`. |
 | Responsável | `userId` deve ser membro **ativo** da casa (400 no campo `userId`). A FK composta do banco recusa usuário de fora. |
 | Datas | `competenceMonth` e `startMonth`/`endMonth` são dia 1. `expectedDate` é um dia de calendário (`caldate.Date`, sem fuso). |
 
@@ -59,7 +59,7 @@ Mesmo desenho das recorrências de despesa ([series-generation.md](series-genera
   do maior entre o mês de hoje e `startMonth`, limitado por `endMonth`. `generated_through` guarda o último mês gerado. `startMonth`
   fica a no máximo 120 meses de hoje. A `quantity` informada vale só para o primeiro mês; os outros usam os dias úteis.
 - **Data esperada** de cada mês = `DateRule.ExpectedDate(mês)` (função pura `GenerateOccurrences`).
-- **Cada lançamento gerado** copia da fonte: pessoa, tipo, carteira, nome (vira a descrição), valor (por unidade: preço e rótulo, com a
+- **Cada lançamento gerado** copia da fonte: pessoa, tipo, carteira (`wallet_id`), nome (vira a descrição), valor (por unidade: preço e rótulo, com a
   quantidade = dias úteis do mês), **regra de data**, observação e descontos. A regra fica gravada no lançamento para o detalhe mostrá-la.
 - **Não ressuscita**: o índice único `(source_id, competence_month)` **inclui linhas excluídas**; o insert usa `ON CONFLICT DO NOTHING`.
 - **Estender sob demanda** (`Service.EnsureHorizon`): `GET /incomes?month=`, `GET /income-sources` e `GET /summary?month=` garantem a
@@ -73,6 +73,7 @@ Mesmo desenho das recorrências de despesa ([series-generation.md](series-genera
 |---|---|
 | Sem `applyFrom` | Só o molde muda. Lançamentos já gerados ficam; os meses ainda não gerados saem com o molde novo. |
 | Com `applyFrom=AAAA-MM-01` | Os lançamentos que **ainda não contam como recebidos** daquele mês em diante recebem o molde **inteiro** (descrição, valor, regra de data e data calculada, observação, descontos trocados pelos do molde). Recebidos (inclusive os automáticos) **nunca mudam**; excluídos nunca voltam. |
+| `walletId` | Muda a carteira do molde; com `applyFrom`, a dos lançamentos a receber daquele mês em diante (recebidos nunca mudam). |
 | `endMonth` | Só **antecipar**. Os lançamentos a receber depois do novo fim são excluídos (logicamente). |
 | `dateRule` / `dayOfMonth` | `dayOfMonth` é o atalho antigo (equivale a `day_of_month` mantendo o ajuste). |
 
@@ -101,7 +102,7 @@ mexe nelas; o estado é derivado). `receivedAt` na resposta é o dia marcado ou,
 
 ### 4.2 Editar com escopo (`PATCH`)
 
-Campos: pessoa, tipo (muda a carteira), descrição, mês de competência, valor (modo, preço, quantidade, rótulo), regra de data ou data
+Campos: pessoa, tipo (não muda a carteira), carteira (`walletId`), descrição, mês de competência, valor (modo, preço, quantidade, rótulo), regra de data ou data
 digitada, descontos (a lista enviada substitui), observação.
 
 - `scope=this`: só este lançamento; o molde não muda. Mudar o mês não pode colidir com outro mês da mesma repetição (o índice único inclui
@@ -138,10 +139,38 @@ Fonte inexistente, já excluída ou de outra casa: 404. `viewer`: 403 (middlewar
 
 ## 5. Carteiras e saldo
 
-Não existe tabela de carteira. São dois valores (`free`, `benefit`) por casa, e o saldo é **calculado**, por mês:
+### 5.1 A tabela `wallets`
+
+Carteira = um **rótulo com saldo inicial** (não é conta bancária): "Geral", "Benefício", "Nubank da Ana"... Cada casa tem as suas. Código em
+`api/internal/wallet` (`model.go`, `service.go`, `resolve.go`) e `api/internal/api/wallets.go`.
+
+| Campo | Regra |
+|---|---|
+| `name` | 1 a 40 caracteres, **único entre as ativas** da casa (sem diferenciar maiúsculas; índice parcial). Repetido = 409 `wallet_exists`. |
+| `isDefault` | **Exatamente uma por casa** (índice único parcial). Não pode ser arquivada (409 `wallet_is_default`); `PATCH isDefault=true` troca qual é (numa transação, com as carteiras da casa travadas); `false` na padrão é 400. |
+| `ownerUserId` | **Só etiqueta** ("carteira da Ana"): não restringe uso nem leitura. Tem de ser membro **ativo** da casa (400 `ownerUserId`); `null` limpa. |
+| `warnOnOverdraft` | Liga o aviso de saldo insuficiente ao pagar (seção 7). Nasce `true` (a "Geral" nasce `false`). |
+| `openingBalanceCents` | Saldo inicial, pode ser negativo (teto de R$ 10 bilhões). Entra no saldo anterior de **todos** os meses. |
+| `sortOrder` | Ordem de exibição; a nova vai para o fim. |
+| `archivedAt` | Não existe exclusão: só `POST .../archive` e `.../restore`. Arquivada não aparece para escolha em lançamentos novos (400 `walletId`/`defaultWalletId`) mas segue no histórico e no resumo (seção 6). |
+
+- **Casa nova** (`household.Service.CreateWithin`, na mesma transação): "Geral" (padrão, sem aviso) e "Benefício" (com aviso); a categoria
+  Mercado e "Alimentação fora" sugerem a "Benefício". **Casas existentes** ganharam as duas na migration `00008` (backfill): `free` virou
+  "Geral" e `benefit` virou "Benefício" em receitas, fontes, `invoices.paid_wallet_id` e `categories.default_wallet_id`.
+- **Autorização**: listar = qualquer membro (inclusive `viewer`); criar, renomear, definir dono, trocar a padrão, arquivar, restaurar e
+  saldo inicial = só **admin** (o "Responsável"), conferido no `wallet.Service` (403 `forbidden`; `member` também). `viewer` nunca escreve
+  (403 `read_only` no porteiro). O `household_id` vem da rota; carteira de outra casa em qualquer campo `walletId` é 400, e na URL, 404.
+- **Quem valida**: receita, fonte, pagamento e categoria chamam `wallet.CheckUsable` (existe na casa e está ativa). Testes:
+  `api/wallets_test.go`.
+
+### 5.2 O saldo
+
+O saldo agora **é transportado**: o que sobra (ou falta) num mês entra como **saldo anterior** do seguinte.
 
 ```
-saldo(carteira, mês) = receitas RECEBIDAS na carteira - despesas PAGAS com a carteira
+anterior(carteira, mês) = saldo inicial + soma, nos meses ANTERIORES ao consultado, de (receitas RECEBIDAS líquidas - despesas PAGAS)
+saldo(carteira, mês)    = anterior + receitas RECEBIDAS do mês - despesas PAGAS do mês        (REALIZADO)
+do mês                  = receitas RECEBIDAS do mês - despesas PAGAS do mês
 ```
 
 Definições (decisão deste módulo, onde a spec era aberta):
@@ -151,29 +180,44 @@ Definições (decisão deste módulo, onde a spec era aberta):
 | Receita do mês | lançamentos não excluídos com `competence_month = mês`. Usa o **líquido** (bruto - descontos). |
 | Recebida | **Derivada** (seção 4.1): a data esperada chegou (ou foi marcada antes) e ninguém disse "não caiu". A data não importa para o mês; vale a competência. |
 | Prevista (`expectedIncomeCents`) | líquido de **todas** as receitas do mês na carteira (a receber + recebidas, inclusive as "não caiu"). `expected - received` = ainda a receber. |
-| Despesa do mês | invoices não excluídas e **pagas**, com `competence_month = mês`, na carteira de pagamento (`paid_wallet`). |
+| Despesa do mês | invoices não excluídas e **pagas**, com `competence_month = mês`, na carteira de pagamento (`paid_wallet_id`). |
 | Valor da despesa | `paid_amount_cents` (o que foi **efetivamente pago**, com juros/multa/desconto), nunca o `amount_cents` original. |
 
 **Por que tudo por competência**: a spec manda o resumo usar competência; usar a mesma régua para receita e despesa evita misturar
 critérios (uma invoice de setembro paga em outubro pertence a setembro). Consequências a conhecer:
 
-- O saldo é **do mês**: **não há saldo transportado** entre meses (VR que sobrou em outubro não soma em novembro). É uma estimativa
-  por mês, não um controle bancário. Transportar saldo é uma evolução possível, mas muda o significado de "saldo do mês".
+- O saldo anterior é **realizado**, como o saldo: só conta o que já foi recebido/pago. Para um mês futuro, a receita de um mês anterior que
+  ainda não "caiu" **não** está no saldo anterior (está no `expected` do próprio mês, que o projetado soma).
 - Receita **a receber** (data futura) ou **"não caiu"** não entra no saldo (só em `expectedIncomeCents`). Como o recebimento é automático,
   ninguém precisa marcar o salário/VR; o saldo só fica menor se alguém disser "não caiu".
-- Uma invoice paga com a carteira de benefício conta para a competência **da invoice**, não do dia do pagamento.
+- Uma invoice paga com uma carteira conta para a competência **da invoice**, não do dia do pagamento.
+- Não é saldo bancário: não há transferência entre carteiras nem conciliação (pós-MVP).
 
 ## 6. Resumo mensal (`GET /summary?month=`)
 
-Escopado por `household_id`, tudo por competência, em **4 consultas agregadas** (sem N+1): receitas por carteira, pagos por
-carteira, pendentes por carteira estimada (com o atraso), invoices por categoria. A montagem (`summary.assemble`) é pura e testada em tabela.
+Escopado por `household_id`, tudo por competência, em **5 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses
+anteriores, com `FILTER`), pagos por carteira (idem), pendentes por carteira estimada (com o atraso) e invoices por categoria. O saldo
+anterior sai da **mesma agregação** (`competence_month < mês`), sem consulta por carteira. A montagem (`summary.assemble`) é pura e
+testada em tabela.
+
+`wallets` é uma **lista** (não mais `{free, benefit}`): a carteira padrão primeiro, depois `sortOrder` e nome. Cada item:
 
 | Campo | Cálculo |
 |---|---|
-| `wallets.{free,benefit}.expectedIncomeCents / receivedIncomeCents / paidCents` | ver seção 5 |
-| `wallets.*.balanceCents` | **realizado**: `receivedIncomeCents - paidCents` (pode ser negativo) |
-| `wallets.*.pendingCents` | **estimativa** do que falta pagar com a carteira (ver "saldo projetado" abaixo) |
-| `wallets.*.projectedCents` | **saldo projetado**: `expectedIncomeCents - paidCents - pendingCents` |
+| `walletId`, `name`, `ownerUserId`, `isDefault`, `archived` | da carteira |
+| `openingBalanceCents` | saldo inicial da carteira |
+| `carryOverCents` | saldo anterior (seção 5.2) |
+| `expectedIncomeCents / receivedIncomeCents / paidCents` | do mês, ver seção 5.2 |
+| `balanceCents` | **realizado acumulado**: `carryOver + receivedIncomeCents - paidCents` (pode ser negativo) |
+| `monthBalanceCents` | só o mês: `receivedIncomeCents - paidCents` |
+| `pendingCents` | **estimativa** do que falta pagar com a carteira (ver "saldo projetado" abaixo) |
+| `projectedCents` | **saldo projetado**: `carryOver + expectedIncomeCents - paidCents - pendingCents` |
+
+**Carteira arquivada** só entra na lista se tem `carryOver` diferente de zero **ou** algum movimento no mês (previsto, recebido, pago ou a
+pagar). As ativas sempre entram.
+
+| Outros campos | Cálculo |
+|---|---|
 | `overdueCents` / `overdueCount` | pendentes da competência com `due_date < hoje` (fuso da app): soma e quantidade |
 | `totalPaidCents` | soma de `paid_amount_cents` das invoices **pagas** da competência |
 | `totalPendingCents` | soma de `amount_cents` das invoices **não pagas** da competência; **inclui as atrasadas** |
@@ -182,19 +226,20 @@ carteira, pendentes por carteira estimada (com o atraso), invoices por categoria
 | Ordem de `byCategory` | `totalCents` decrescente; empate pelo `categoryId`, para a ordem ser estável |
 
 Categorias arquivadas aparecem se tiverem invoices no mês. O nome da categoria não vem no resumo; o front cruza pelo `categoryId`
-com `GET /categories?includeArchived=true`. Mês sem dados devolve zeros e `byCategory: []`. `month` fora do dia 1 = 400 no campo `month`.
+com `GET /categories?includeArchived=true`; o das carteiras já vem no item. Mês sem dados devolve a lista de carteiras (com o saldo anterior)
+e `byCategory: []`. `month` fora do dia 1 = 400 no campo `month`.
 
 ### Saldo projetado (o número principal do resumo)
 
-`projetado = previsto para entrar − (já pago + a pagar)`. Responde "no fim do mês, sobra ou falta?" sem depender de o salário já ter caído: no dia 22, com o salário do dia 30 só previsto, o **realizado** (recebido − pago) é negativo, mas
+`projetado = saldo anterior + previsto para entrar − (já pago + a pagar)`. Responde "no fim do mês, sobra ou falta?" sem depender de o salário já ter caído: no dia 22, com o salário do dia 30 só previsto, o **realizado** (anterior + recebido − pago) pode ser negativo, mas
 isso não é alarme. Por isso a UI usa o projetado como número principal e o coral/`[ ✖ ]` **só quando o projetado é negativo**; o
 realizado aparece em segundo plano ("hoje: …").
 
-**Decisão sobre o "a pagar" por carteira**: a carteira de uma conta pendente só é conhecida ao pagar (`paid_wallet`). A estimativa
-usa a **carteira padrão da categoria** (`categories.default_wallet`); se a categoria é filha e não tem padrão, usa a da mãe; sem
-nenhuma, vai para a **livre**. Na soma da casa (`free.projected + benefit.projected`) a escolha não importa: o total é
-`previsto − pago − pendente` de qualquer jeito. Por carteira é uma estimativa (quem paga o mercado com a livre, por exemplo, verá
-a livre "melhor" do que vai ficar até pagar). `BenefitBalance` (aviso ao pagar, seção 7) continua usando o **realizado**.
+**Decisão sobre o "a pagar" por carteira**: a carteira de uma conta pendente só é conhecida ao pagar (`paid_wallet_id`). A estimativa
+usa a **carteira padrão da categoria** (`categories.default_wallet_id`); se a categoria é filha e não tem padrão, usa a da mãe; sem
+nenhuma, vai para a **carteira padrão da casa**. Na soma da casa a escolha não importa: o total é
+`anterior + previsto − pago − pendente` de qualquer jeito. Por carteira é uma estimativa (quem paga o mercado com a Geral, por exemplo, verá
+a Geral "melhor" do que vai ficar até pagar). O aviso ao pagar (seção 7) usa o **realizado**.
 
 ## 6.1 Histórico por categoria (`GET /summary/categories?from=&to=`)
 
@@ -234,12 +279,14 @@ fica sob a casa (`/households/{id}/tax/estimate`, qualquer membro lê) e `approx
 - Não existe API pública oficial; fontes conferidas: gov.br/inss (tabela de contribuição mensal), gov.br/receitafederal (tabelas do IRPF 2026)
   e planalto.gov.br (Lei 15.270/2025). Valores de teste conferidos à mão contra elas.
 
-## 7. Aviso de saldo de benefício ao pagar
+## 7. Aviso de saldo insuficiente ao pagar
 
-`POST /invoices/{id}/pay` com `wallet = benefit`: depois de gravar o pagamento, o handler calcula o saldo da carteira de
-benefício **na competência da invoice** (seção 5, já incluindo este pagamento). Se `saldo < 0`, responde 200 com
-`warnings: ["benefit_balance_insufficient"]`. **Nunca bloqueia**: o pagamento já foi feito. Pagar com a carteira livre nunca avisa.
-Se o cálculo falhar, vira `Warn` no log e `warnings: []` (o pagamento não vira erro).
+`POST /invoices/{id}/pay` exige `walletId` (carteira ativa da casa; ausente ou inválido = 400 `walletId`). Depois de gravar o pagamento,
+`summary.OverdraftWarning` calcula o saldo **realizado acumulado** da carteira usada **até a competência da invoice** (seção 5.2, já
+incluindo este pagamento e o saldo anterior). Se a carteira tem `warnOnOverdraft = true` e o saldo `< 0`, a resposta 200 traz
+`warnings: ["wallet_balance_insufficient"]` e `warningDetails: [{code, walletId}]` (a carteira que estourou; o front escreve o nome).
+**Nunca bloqueia**: o pagamento já foi feito. Carteira com o aviso desligado nunca avisa. Se o cálculo falhar, vira `Warn` no log e
+`warnings: []` (o pagamento não vira erro). O código antigo `benefit_balance_insufficient` **deixou de existir**.
 
 Pegadinha esperada: como só receitas **recebidas** contam, quem paga o mercado antes da data do VR (ou com o VR como "não caiu")
 recebe o aviso. Se o dinheiro entrou adiantado, "Caiu" resolve.
@@ -263,7 +310,7 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 
 | Situação | Resposta |
 |---|---|
-| Validação (campo, soma de descontos, carteira incoerente, responsável fora da casa, mês fora do dia 1) | 400 `validation_error` com `fields` |
+| Validação (campo, soma de descontos, `walletId` inexistente/de outra casa/arquivada, responsável fora da casa, mês fora do dia 1) | 400 `validation_error` com `fields` |
 | Lançamento/fonte inexistente, excluído ou de outra casa | 404 `not_found` |
 | "Caiu" numa receita que já conta como recebida | 409 `already_received` |
 | "Não caiu" numa que não conta como recebida | 409 `not_received` |
@@ -271,6 +318,10 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 | Desfazer o lote depois que a repetição mudou (também em `/income-sources/{id}/restore`) | 409 `series_changed` |
 | `scope` desconhecido, regra de data inválida, mês que colide na repetição | 400 `validation_error` (campo `scope`, `dateRule.n`, `competenceMonth`...) |
 | `viewer` escrevendo | 403 `read_only` |
+| Carteira: `member` escrevendo (só admin) | 403 `forbidden` |
+| Carteira: nome já usado por outra ativa (criar, renomear, restaurar) | 409 `wallet_exists` |
+| Carteira: arquivar a padrão | 409 `wallet_is_default` |
+| Carteira inexistente ou de outra casa (na URL) | 404 `not_found` |
 | Corpo JSON inválido | 400 `bad_request` |
 
 ## 11. Testes
@@ -278,11 +329,13 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 - Unitários (sem Docker): `calendar/calendar_test.go` (dias úteis, N-ésimo e último dia útil, `Roll`, feriados de 2026 contra a lista real da
   BrasilAPI, API falsa com cache/TTL/falha/`off`), `tax/estimate_test.go` (INSS e IRRF por faixa, redução da Lei 15.270, dependentes, ano
   sem tabela), `income/rules_test.go` (líquido, soma de descontos, carteira, regras de data em meses reais, valor por unidade, estado derivado,
-  horizonte) e `summary/*_test.go`.
+  horizonte) e `summary/*_test.go` (saldo anterior e arquivadas em tabela).
 - Migration (`platform/db/migrate_receitas_test.go`): sobe até a `00006`, cria fonte e receita no formato antigo, aplica a `00007` e confere
-  que viraram valor fixo + dia N + ajuste `none`; Up/Down/Up em `migrate_test.go`.
+  que viraram valor fixo + dia N + ajuste `none`; Up/Down/Up em `migrate_test.go`. Carteiras (`migrate_wallets_test.go`): sobe até a `00007`
+  com dados `free`/`benefit` em duas casas (e uma excluída), aplica a `00008` e confere a conversão para os ids, o `Down` (volta ao texto) e
+  um novo `Up`; `TestSchemaCarteiras` confere as garantias do banco (uma padrão por casa, nome único entre ativas, FKs compostas).
 - Ponta a ponta (Postgres real): `api/incomes_test.go` (descontos, reaplicação, exclusão que não ressuscita, horizonte, VR, resumo, aviso,
-  papéis) e `api/incomes_v2_test.go` (regras de data em meses reais, valor por unidade, recebimento automático e "não caiu" com relógio
+  papéis), `api/wallets_test.go` (CRUD, papéis, uma padrão por casa, arquivar/restaurar, isolamento entre casas, saldo anterior acumulando entre meses, aviso por carteira) e `api/incomes_v2_test.go` (regras de data em meses reais, valor por unidade, recebimento automático e "não caiu" com relógio
   móvel, excluir/restaurar com escopo incluindo lotes empilhados e recebidos intocados, editar com escopo, prévia e impostos, isolamento
   entre casas e `viewer`). As varreduras de `security_test.go` cobrem as rotas novas sozinhas.
 - Datas da prévia: `income/rules_test.go` (`TestRegrasDeData2026`) fixa as datas reais usadas pelos testes do front (virada de ano, feriados, mês curto, ajustes).

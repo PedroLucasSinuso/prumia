@@ -14,6 +14,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 // maxStartAwayMonths limita quão longe (passado ou futuro) uma fonte pode começar (não gerar milhares de linhas por requisição).
@@ -69,7 +70,7 @@ func newOccurrence(src Source, o Occurrence, h calendar.HolidayFunc, qtyOverride
 	rs, adj := src.DateRule, src.WeekendAdjust
 	row := Income{
 		HouseholdID: src.HouseholdID, SourceID: &sid, UserID: src.UserID, Kind: src.Kind, Description: src.Name,
-		Wallet: src.Wallet, CompetenceMonth: o.Month, ExpectedDate: o.ExpectedDate,
+		WalletID: src.WalletID, CompetenceMonth: o.Month, ExpectedDate: o.ExpectedDate,
 		GrossAmountCents: src.GrossAmountCents, Notes: src.Notes, CreatedBy: src.CreatedBy,
 		DateRule: &rs, DateRuleN: src.DateRuleN, WeekendAdjust: &adj,
 	}
@@ -121,7 +122,7 @@ func insertOccurrences(tx *gorm.DB, src Source, tmpl []Deduction, from, through 
 type SourceInput struct {
 	UserID     uuid.UUID
 	Kind       string
-	Wallet     *string
+	WalletID   *uuid.UUID
 	Name       string
 	Amount     AmountInput
 	Rule       DateRule
@@ -141,7 +142,11 @@ func (s *Service) createSource(ctx context.Context, householdID, createdBy uuid.
 	var v validation.Collector
 	h := s.holidays(ctx)
 	in.Name = checkName("name", in.Name, 120, &v)
-	wallet := ResolveWallet(in.Kind, in.Wallet, &v)
+	CheckKind(in.Kind, &v)
+	walletID, err := s.resolveWallet(s.db.WithContext(ctx), householdID, in.Kind, in.WalletID, &v)
+	if err != nil {
+		return SourceView{}, err
+	}
 	if in.Rule.Rule == "" && in.DayOfMonth != nil {
 		if *in.DayOfMonth < 1 || *in.DayOfMonth > 31 {
 			v.Add("dayOfMonth", "informe um dia de 1 a 31")
@@ -190,7 +195,7 @@ func (s *Service) createSource(ctx context.Context, householdID, createdBy uuid.
 		moldGross = *amount.UnitPriceCents
 	}
 	src := Source{
-		HouseholdID: householdID, UserID: in.UserID, Kind: in.Kind, Name: in.Name, Wallet: wallet,
+		HouseholdID: householdID, UserID: in.UserID, Kind: in.Kind, Name: in.Name, WalletID: walletID,
 		GrossAmountCents: moldGross, AmountMode: amount.Mode, UnitLabel: amount.UnitLabel, UnitPriceCents: amount.UnitPriceCents,
 		DateRule: rule.Rule, DateRuleN: rule.nPtr(), WeekendAdjust: string(rule.Adjust), DayOfMonth: dayMirror(rule),
 		StartMonth: in.StartMonth, EndMonth: end, Notes: in.Notes, CreatedBy: createdBy,
@@ -200,7 +205,7 @@ func (s *Service) createSource(ctx context.Context, householdID, createdBy uuid.
 	if amount.Mode == AmountPerUnit {
 		firstQty = amount.Quantity
 	}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&src).Error; err != nil {
 			return fmt.Errorf("criando fonte de receita: %w", err)
 		}
@@ -308,9 +313,10 @@ func (s *Service) sourceViews(ctx context.Context, householdID uuid.UUID, srcs [
 
 // SourcePatch: nil = não mexer. EndMonthSet/NotesSet/DeductionsSet distinguem "ausente" de "null"/"lista vazia".
 type SourcePatch struct {
-	UserID *uuid.UUID
-	Kind   *string
-	Name   *string
+	UserID   *uuid.UUID
+	Kind     *string
+	WalletID *uuid.UUID
+	Name     *string
 	// Valor: qualquer um dos campos abaixo reavalia o valor do molde.
 	AmountMode       *string
 	GrossAmountCents *money.Cents
@@ -329,10 +335,10 @@ type SourcePatch struct {
 
 // moldTouch diz quais grupos de campos do molde mudaram (e devem ser copiados para os lançamentos afetados).
 type moldTouch struct {
-	Identity, Name, Notes, Amount, Rule, Deductions bool
+	Identity, Wallet, Name, Notes, Amount, Rule, Deductions bool
 }
 
-func allTouched() moldTouch { return moldTouch{true, true, true, true, true, true} }
+func allTouched() moldTouch { return moldTouch{true, true, true, true, true, true, true} }
 
 // UpdateSource edita o molde da repetição.
 //
@@ -439,10 +445,18 @@ func (s *Service) patchMold(ctx context.Context, tx *gorm.DB, cur *Source, p Sou
 		out.touch.Identity = true
 	}
 	if p.Kind != nil {
+		CheckKind(*p.Kind, v)
 		cur.Kind = *p.Kind
-		cur.Wallet = ResolveWallet(cur.Kind, nil, v)
-		out.cols["kind"], out.cols["wallet"] = cur.Kind, cur.Wallet
+		out.cols["kind"] = cur.Kind // trocar o tipo NÃO troca a carteira (use WalletID)
 		out.touch.Identity = true
+	}
+	if p.WalletID != nil {
+		if err := wallet.CheckUsable(tx, cur.HouseholdID, *p.WalletID, "walletId", v); err != nil {
+			return out, err
+		}
+		cur.WalletID = *p.WalletID
+		out.cols["wallet_id"] = cur.WalletID
+		out.touch.Wallet = true
 	}
 	if p.Name != nil {
 		cur.Name = checkName("name", *p.Name, 120, v)
@@ -547,7 +561,10 @@ func (s *Service) applyMoldRows(ctx context.Context, tx *gorm.DB, src Source, tm
 		ids[i] = r.ID
 		upd := map[string]any{}
 		if touch.Identity {
-			upd["user_id"], upd["kind"], upd["wallet"] = src.UserID, src.Kind, src.Wallet
+			upd["user_id"], upd["kind"] = src.UserID, src.Kind
+		}
+		if touch.Wallet {
+			upd["wallet_id"] = src.WalletID
 		}
 		if touch.Name {
 			upd["description"] = src.Name

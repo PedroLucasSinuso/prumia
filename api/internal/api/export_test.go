@@ -58,7 +58,7 @@ func TestExportarContasCSV(t *testing.T) {
 	rows := readCSV(t, a.do("GET", base+"/export/invoices.csv?from=2026-10-01&to=2026-10-31", nil, c))
 	want := [][]string{
 		{"vencimento", "competência", "descrição", "categoria", "favorecido", "valor", "status", "pago em", "carteira", "valor pago"},
-		{"05/10/2026", "10/2026", "Botijão", "Moradia › Gás", "Gás", "157,82", "paga", "06/10/2026", "benefício", "158,00"},
+		{"05/10/2026", "10/2026", "Botijão", "Moradia › Gás", "Gás", "157,82", "paga", "06/10/2026", "Benefício", "158,00"},
 		{"10/10/2026", "10/2026", "Condomínio", "Moradia", "", "1234,56", "atrasada", "", "", ""},
 		{"20/10/2026", "10/2026", "Aluguel", "Moradia", "", "1500,00", "pendente", "", "", ""},
 		{"25/10/2026", "10/2026", "'=HYPERLINK(\"x\")", "Moradia", "", "1,00", "pendente", "", "", ""},

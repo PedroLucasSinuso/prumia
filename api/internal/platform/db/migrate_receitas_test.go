@@ -6,7 +6,6 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/migrations"
 )
@@ -39,7 +38,7 @@ func TestMigracaoReceitasV2PreservaDadosAntigos(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := db.Migrate(ctx, sqlDB); err != nil {
+	if err := goose.UpToContext(ctx, sqlDB, ".", 7); err != nil { // só a 00007: este teste ainda usa a carteira em texto
 		t.Fatalf("up 00007: %v", err)
 	}
 	var s struct {

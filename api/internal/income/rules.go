@@ -34,31 +34,11 @@ func SumDeductions(ds []Deduction) money.Cents {
 	return sum
 }
 
-// WalletFor deriva a carteira do tipo: VR (benefit) só existe na carteira de benefício, e o resto na livre.
-// Espelha o CHECK ((kind='benefit') = (wallet='benefit')) do banco.
-func WalletFor(kind string) string {
-	if kind == KindBenefit {
-		return WalletBenefit
-	}
-	return WalletFree
-}
-
-// ResolveWallet valida o tipo e a carteira opcionalmente informada. Informar `benefit` com tipo salário (ou `free` com VR)
-// é incoerente e vira erro no campo `wallet`.
-func ResolveWallet(kind string, wallet *string, v *validation.Collector) string {
+// CheckKind valida o tipo da receita (salary, benefit ou other). Erro no campo `kind`.
+func CheckKind(kind string, v *validation.Collector) {
 	if kind != KindSalary && kind != KindBenefit && kind != KindOther {
 		v.Add("kind", "use salary, benefit ou other")
-		return ""
 	}
-	w := WalletFor(kind)
-	if wallet != nil && *wallet != w {
-		if kind == KindBenefit {
-			v.Add("wallet", "vale-refeição/benefício só pode ficar na carteira de benefício")
-		} else {
-			v.Add("wallet", "só receitas do tipo benefício vão para a carteira de benefício")
-		}
-	}
-	return w
 }
 
 // CheckDeductions normaliza (apara nomes) e valida os descontos: tipo conhecido, nome 1..60, valor > 0 e a SOMA não

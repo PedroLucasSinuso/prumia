@@ -33,6 +33,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 func main() {
@@ -105,6 +106,7 @@ func run(args []string) error {
 		&api.Households{Svc: households, Log: log},
 		&api.Categories{Svc: category.NewService(gdb), Log: log},
 		&api.Payees{Svc: payeeSvc, Log: log},
+		&api.Wallets{Svc: wallet.NewService(gdb), Log: log},
 		api.NewCNPJLookups(cnpjClient, log),
 		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},

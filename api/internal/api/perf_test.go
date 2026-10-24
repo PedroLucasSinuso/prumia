@@ -151,14 +151,15 @@ func seedInvoices(t *testing.T, a *app, house string, n int) {
 	err := a.db.Exec(`
 		WITH cats AS (SELECT array_agg(id ORDER BY sort_order) AS ids FROM categories WHERE household_id = @h),
 		     u AS (SELECT user_id FROM household_members WHERE household_id = @h LIMIT 1),
+		     w AS (SELECT id FROM wallets WHERE household_id = @h AND is_default),
 		     g AS (SELECT s, (date '2025-01-01' + (s % 730))::date AS d, 1000 + (s * 37 % 50000) AS amt FROM generate_series(1, @n) s)
 		INSERT INTO invoices (household_id, category_id, description, amount_cents, due_date, competence_month, created_by,
-		                      paid_at, paid_wallet, paid_amount_cents, paid_by_user_id, deleted_at)
+		                      paid_at, paid_wallet_id, paid_amount_cents, paid_by_user_id, deleted_at)
 		SELECT @h, cats.ids[1 + g.s % array_length(cats.ids, 1)], 'Conta ' || g.s, g.amt, g.d, date_trunc('month', g.d)::date, u.user_id,
-		       CASE WHEN g.s % 10 < 6 THEN g.d END, CASE WHEN g.s % 10 < 6 THEN 'free' END,
+		       CASE WHEN g.s % 10 < 6 THEN g.d END, CASE WHEN g.s % 10 < 6 THEN w.id END,
 		       CASE WHEN g.s % 10 < 6 THEN g.amt END, CASE WHEN g.s % 10 < 6 THEN u.user_id END,
 		       CASE WHEN g.s % 20 = 0 THEN now() END
-		FROM g, cats, u`, map[string]any{"h": house, "n": n}).Error
+		FROM g, cats, u, w`, map[string]any{"h": house, "n": n}).Error
 	if err != nil {
 		t.Fatal(err)
 	}

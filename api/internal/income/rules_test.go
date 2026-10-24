@@ -88,32 +88,18 @@ func TestMuitosDescontosRecusados(t *testing.T) {
 	}
 }
 
-func TestCarteiraDerivadaDoTipo(t *testing.T) {
-	free, ben := WalletFree, WalletBenefit
-	cases := []struct {
-		kind   string
-		wallet *string
-		want   string
-		bad    string // campo com erro
-	}{
-		{KindSalary, nil, WalletFree, ""},
-		{KindBenefit, nil, WalletBenefit, ""},
-		{KindOther, &free, WalletFree, ""},
-		{KindBenefit, &ben, WalletBenefit, ""},
-		{KindBenefit, &free, WalletBenefit, "wallet"},
-		{KindSalary, &ben, WalletFree, "wallet"},
-		{"bolsa", nil, "", "kind"},
-	}
-	for _, c := range cases {
+func TestTipoDaReceitaValido(t *testing.T) {
+	for _, kind := range []string{KindSalary, KindBenefit, KindOther} {
 		var v validation.Collector
-		got := ResolveWallet(c.kind, c.wallet, &v)
-		if got != c.want {
-			t.Errorf("%s: carteira %q, quer %q", c.kind, got, c.want)
+		CheckKind(kind, &v)
+		if v.Err() != nil {
+			t.Errorf("%s deveria ser válido: %v", kind, v.Err())
 		}
-		ve, _ := v.Err().(*validation.Error)
-		if (c.bad == "") != (ve == nil) || (ve != nil && ve.Fields[c.bad] == "") {
-			t.Errorf("%s/%v: erro %v, quer campo %q", c.kind, c.wallet, v.Err(), c.bad)
-		}
+	}
+	var v validation.Collector
+	CheckKind("bolsa", &v)
+	if ve, _ := v.Err().(*validation.Error); ve == nil || ve.Fields["kind"] == "" {
+		t.Errorf("tipo desconhecido deveria dar erro no campo kind: %v", v.Err())
 	}
 }
 
