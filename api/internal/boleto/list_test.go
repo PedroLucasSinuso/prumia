@@ -38,6 +38,9 @@ func TestPadraoDeLista(t *testing.T) {
 		"fraco acima do teto":    {"Gás: 98,40\nLuz: 12,00\nCarro: 250000", KindList, []want{{"Gás", 9840}, {"Luz", 1200}}},
 		"R$ sem centavos 2":      {"Gás: R$150\nLuz R$ 90", KindList, []want{{"Gás", 15000}, {"Luz", 9000}}},
 		"CNPJ nao e valor":       {"Gás: 98,40\nLuz: 12,00\nEmpresa CNPJ 12.345.678/0001-90", KindList, []want{{"Gás", 9840}, {"Luz", 1200}}},
+		"lixo colado no valor":   {"Gás: R$150\nInternet: R$119,90\nRação Gatos: R$24,99\nTeste: 567| |", KindList, []want{{"Gás", 15000}, {"Internet", 11990}, {"Ração Gatos", 2499}, {"Teste", 56700}}},
+		"lixo colado em fortes":  {"Gás: R$150|\nInternet: 119,90]\nLuz: R$ 90_ )", KindList, []want{{"Gás", 15000}, {"Internet", 11990}, {"Luz", 9000}}},
+		"fraco colado sozinho":   {"Medidor: 123456|", "", nil},
 		"total nao e item":       {"Gás: R$ 100,00\nLuz: R$ 50,00\nTotal: R$ 150,00", KindList, []want{{"Gás", 10000}, {"Luz", 5000}}},
 	} {
 		t.Run(name, func(t *testing.T) {

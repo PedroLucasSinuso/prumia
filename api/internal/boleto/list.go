@@ -24,7 +24,7 @@ const maxPlainDescription = 40
 
 // listLineRe separa uma linha em: descrição (preguiçosa), separador, "R$", número e lixo curto no fim (OCR: "M", "2519 ,").
 // RE2, o regex do Go, não tem lookahead/lookbehind: por isso tudo vai em grupos e a decisão fica no código (parseListLine).
-var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*([:=\-–])?[ \t]*(R[ \t]?[$S][ \t]*)?(\d[\d.,]*)[ \t]*[✓✔]*(?:[ \t]+\S{1,8}){0,3}[ \t]*$`)
+var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*([:=\-–])?[ \t]*(R[ \t]?[$S][ \t]*)?(\d[\d.,]*)[|\[\])_]*[ \t]*[✓✔]*(?:[ \t]+\S{1,8}){0,3}[ \t]*$`)
 
 // Hora da mensagem no fim da linha ("14:32 ✓✓"): é tirada antes de ler; hora no meio da linha descarta a linha.
 var (
