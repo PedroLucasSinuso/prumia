@@ -5,6 +5,7 @@ import type { Income, SeriesScope } from '../api/types'
 import { fullDate, monthLabel, weekdayShort } from '../lib/dates'
 import { kindLabel, ruleText, stateMark, stateOf, stateText, stateTone, sumDeductions, unitText, untilText } from '../lib/income'
 import { formatCents } from '../lib/money'
+import { useWalletName } from '../lib/useWalletName'
 import { Button } from './Button'
 import { DeleteRepetitionConfirm } from './DeleteRepetitionConfirm'
 
@@ -32,6 +33,7 @@ const label = 'text-[11px] font-medium uppercase tracking-wider text-ink/75'
  * linguagem natural, a repetição e as ações (Não caiu / Caiu, Editar, Excluir com escopo). Editar abre o formulário.
  */
 export function IncomeDetail({ income, personName, today, canWrite, busy, onReceive, onHold, onEdit, onDelete, onDeleteRepetition }: Props) {
+  const nameOf = useWalletName()
   const [confirming, setConfirming] = useState(false)
   const state = stateOf(income)
   const discounts = sumDeductions(income.deductions)
@@ -42,7 +44,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
     ['Regra', ruleText(income.dateRule)],
     ['Repetição', income.repeats ? `todo mês, ${untilText(income.repeatsUntil)}` : income.sourceId ? 'último mês da repetição' : 'não se repete'],
     ['Pessoa', personName],
-    ['Tipo', `${kindLabel[income.kind]} · carteira ${income.wallet === 'free' ? 'livre' : 'de benefício'}`],
+    ['Tipo', `${kindLabel[income.kind]} · carteira ${nameOf(income.walletId)}`],
     ['Competência', monthLabel(income.competenceMonth)],
   ]
   if (income.notes) rows.push(['Observação', income.notes])

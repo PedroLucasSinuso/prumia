@@ -1,8 +1,11 @@
 import { Pencil, Trash2, Undo2 } from 'lucide-react'
 
+import { useState } from 'react'
+
 import type { Invoice, Purchase, SeriesScope, Wallet } from '../api/types'
 import { daysBetween, fullDate, monthLabel, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
+import { walletName } from '../lib/wallets'
 import { BoletoBox } from './BoletoBox'
 import { Button } from './Button'
 import { Tooltip } from './ui/Tooltip'
@@ -16,17 +19,18 @@ type Props = {
   purchase?: Purchase
   /** Hoje (AAAA-MM-DD): calcula "vence em 3 dias" / "atrasada há 2 dias". */
   today: string
-  /** Carteira que o "Pagar" vai usar (a sugerida pela categoria). */
-  payWallet: Wallet
+  /** Carteiras que podem pagar (as ativas da casa). */
+  wallets: Wallet[]
+  /** Carteira que o "Pagar" vai usar de início (a sugerida pela categoria, senão a padrão). */
+  payWalletId: string
   canWrite: boolean
   busy: boolean
-  onPay: (invoice: Invoice) => void
+  onPay: (invoice: Invoice, walletId: string) => void
   onUnpay: (invoice: Invoice) => void
   onEdit: () => void
   onDelete: (invoice: Invoice, scope: SeriesScope) => void
 }
 
-const walletName = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
 const label = 'text-[11px] font-medium uppercase tracking-wider text-ink/75'
 
 function statusLine(inv: Invoice, today: string): { mark: string; tone: string; text: string } {
@@ -59,8 +63,10 @@ function seriesLines(inv: Invoice, purchase?: Purchase): string[] {
  * Detalhe da conta em modo LEITURA: o que a pessoa quer conferir (valor, situação, vencimento, série, pagamento, boleto)
  * e as ações (Pagar, Editar, Excluir, Desfazer pagamento). Editar troca este quadro pelo formulário, no mesmo lugar.
  */
-export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, today, payWallet, canWrite, busy, onPay, onUnpay, onEdit, onDelete }: Props) {
+export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, today, wallets, payWalletId, canWrite, busy, onPay, onUnpay, onEdit, onDelete }: Props) {
   const status = statusLine(invoice, today)
+  const [chosen, setChosen] = useState<string>()
+  const payWallet = chosen ?? payWalletId
   const paid = invoice.status === 'paid'
   const inSeries = invoice.series != null
   const rows: Array<[string, string]> = [
@@ -99,7 +105,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
         <section aria-label="Pagamento" className="rounded-md border border-line px-3 py-3 text-sm">
           <p className={`${label} mb-1.5`}>pagamento</p>
           <p>
-            <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · {walletName[invoice.paid.wallet]}
+            <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · carteira {walletName(wallets, invoice.paid.walletId)}
           </p>
           <p className="mt-0.5 text-ink/80">
             Valor pago: <span className="font-mono font-semibold tabular-nums text-ink">{formatCents(invoice.paid.amountCents)}</span>
@@ -117,10 +123,24 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {!paid && (
             <Tooltip label="Pagar" shortcut="P" className="flex w-full">
-              <Button type="button" disabled={busy} onClick={() => onPay(invoice)} className="w-full">
-                Pagar · {walletName[payWallet]}
+              <Button type="button" disabled={busy} onClick={() => onPay(invoice, payWallet)} className="w-full">
+                Pagar · carteira {walletName(wallets, payWallet)}
               </Button>
             </Tooltip>
+          )}
+          {!paid && wallets.length > 1 && (
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span className={label}>pagar com</span>
+              <select
+                value={payWallet}
+                onChange={(e) => setChosen(e.target.value)}
+                className="h-11 min-w-0 flex-1 rounded-md border border-ink/25 bg-raised/40 px-2 text-sm md:h-9"
+              >
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
+            </label>
           )}
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="ghost" onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 md:h-9">

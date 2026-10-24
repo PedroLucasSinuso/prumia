@@ -36,7 +36,7 @@ Para mudar de mês, use as setas **‹** e **›**. Em outro mês, aparece o ata
 2. Digite o **Valor**. Basta digitar os números: ao digitar `9990`, o campo mostra `R$ 99,90`.
 3. Escreva **Descrição** (por exemplo, "Aluguel").
 4. Escolha quando **vence**: **Hoje**, **Amanhã**, **Em 7 dias** ou **Outra data**. Em "Outra data" aparece um campo de data: digite `dd/mm/aaaa` (as barras entram sozinhas) ou abra o **calendário** no ícone ao lado (no teclado, `↓` abre). No calendário, as setas do teclado andam pelos dias, `PageUp`/`PageDown` trocam o mês, `Enter` escolhe e `Esc` fecha; os botões **Hoje** e **Amanhã** escolhem direto.
-5. Escolha a **Categoria**: os botões no alto são as **últimas que você usou** (até 4, separadas por casa, neste aparelho). Para outra, clique no campo e **digite para filtrar** (`↑`/`↓` e `Enter` no teclado). As subcategorias aparecem como **Moradia › Gás**. As que mostram **VR** sugerem a carteira de benefício.
+5. Escolha a **Categoria**: os botões no alto são as **últimas que você usou** (até 4, separadas por casa, neste aparelho). Para outra, clique no campo e **digite para filtrar** (`↑`/`↓` e `Enter` no teclado). As subcategorias aparecem como **Moradia › Gás**. As que mostram o nome de uma carteira (ex.: **Benefício**) sugerem pagar com ela.
 6. Clique em **Adicionar conta**. Para lançar várias seguidas, use **Adicionar e lançar outra**: a categoria e o vencimento ficam, e o cursor volta para o começo. O botão principal fica sempre visível no rodapé do painel, mesmo com o formulário comprido, e mostra "Salvando…" enquanto grava. A conta nova pisca de leve na lista.
 
 Se a categoria que você precisa não existe, abra a lista e use **+ Nova categoria** no fim (se você já digitou um nome, ele vem preenchido): ela é criada na hora e já fica escolhida (marcando "dentro de …", vira subcategoria).
@@ -47,7 +47,7 @@ Em **Mais opções** você pode informar o **Favorecido** (também uma lista pes
 
 Toque no **[ ▫ ]** à esquerda da conta. Ela vai para **Pagas**, riscada.
 
-A carteira usada é a sugerida pela categoria. Mercado e Alimentação fora usam a carteira de **benefício** (vale-refeição); as demais usam a carteira **livre**. Um aviso aparece por alguns segundos com o botão **Desfazer**, caso você tenha tocado sem querer.
+A carteira usada é a sugerida pela categoria. Mercado e Alimentação fora usam a carteira **Benefício** (vale-refeição); as demais usam a carteira **padrão** (Geral). Para pagar com outra, abra a conta e use **Pagar com**. Um aviso aparece por alguns segundos com o botão **Desfazer**, caso você tenha tocado sem querer.
 
 Para desfazer depois, toque no **[ ▪ ]** da conta paga.
 

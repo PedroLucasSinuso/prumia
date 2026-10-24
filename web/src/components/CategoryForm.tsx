@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import type { Category, CategoryInput, CategoryPatch, Wallet } from '../api/types'
+import { useWallets } from '../api/queries'
+import { useActiveHouse } from '../auth/useActiveHouse'
+import type { Category, CategoryInput, CategoryPatch } from '../api/types'
+import { activeWallets } from '../lib/wallets'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { Button } from './Button'
 import { Field } from './Field'
@@ -24,24 +27,20 @@ type Props = {
   onDone: (message: string) => void
 }
 
-type WalletChoice = 'free' | 'benefit' | 'none'
-const wallets: { value: WalletChoice; label: string }[] = [
-  { value: 'free', label: 'livre' },
-  { value: 'benefit', label: 'benefício' },
-  { value: 'none', label: 'nenhuma' },
-]
-
 /**
  * Criar ou editar uma categoria: nome, carteira sugerida ao pagar e se é gasto essencial.
  * Arquivar/restaurar ficam aqui também. Quem só lê (viewer) vê os dados, sem botões de escrita.
  */
 export function CategoryForm({ category, all, defaultParentId, canWrite, onCreate, onUpdate, onDone }: Props) {
+  const { house } = useActiveHouse()
+  const walletList = useWallets(house?.id ?? '').data
+  const walletOptions = [...activeWallets(walletList ?? []).map((w) => ({ value: w.id, label: w.name })), { value: 'none', label: 'nenhuma' }]
   const [name, setName] = useState(category?.name ?? '')
   // Subcategoria nasce com a carteira e o "essencial" da mãe (a pessoa pode mudar): menos coisa para preencher.
   const initialParent = category?.parentId ?? defaultParentId ?? ''
   const parentOf = (id: string) => all.find((c) => c.id === id)
   const [parentId, setParentId] = useState(initialParent)
-  const [wallet, setWallet] = useState<Wallet | null>(category ? (category.defaultWallet ?? null) : (parentOf(initialParent)?.defaultWallet ?? null))
+  const [wallet, setWallet] = useState<string | null>(category ? (category.defaultWalletId ?? null) : (parentOf(initialParent)?.defaultWalletId ?? null))
   const [essential, setEssential] = useState(category ? category.isEssential : (parentOf(initialParent)?.isEssential ?? false))
   const [error, setError] = useState<string>()
   const [nameError, setNameError] = useState<string>()
@@ -79,9 +78,9 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
     if (category) {
       // parentId só vai se mudou (ausente = não mexe; null = volta ao topo)
       const moved = parentId !== (category.parentId ?? '') ? { parentId: parentId || null } : {}
-      void run(() => onUpdate(category.id, { name: clean, defaultWallet: wallet, isEssential: essential, ...moved }), `${clean} salva.`)
+      void run(() => onUpdate(category.id, { name: clean, defaultWalletId: wallet, isEssential: essential, ...moved }), `${clean} salva.`)
     } else {
-      void run(() => onCreate({ name: clean, defaultWallet: wallet, isEssential: essential, ...(parentId ? { parentId } : {}) }), `${clean} criada.`)
+      void run(() => onCreate({ name: clean, defaultWalletId: wallet, isEssential: essential, ...(parentId ? { parentId } : {}) }), `${clean} criada.`)
     }
   }
 
@@ -120,14 +119,14 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
             onChange={(next) => {
               setParentId(next)
               const mother = parentOf(next)
-              if (!category && mother) { setWallet(mother.defaultWallet ?? null); setEssential(mother.isEssential) }
+              if (!category && mother) { setWallet(mother.defaultWalletId ?? null); setEssential(mother.isEssential) }
             }}
           />
         )
       )}
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
-        <Segmented label="carteira padrão" value={wallet ?? 'none'} onChange={(v) => setWallet(v === 'none' ? null : v)} options={wallets} />
+        <Segmented label="carteira padrão" value={wallet ?? 'none'} onChange={(v) => setWallet(v === 'none' ? null : v)} options={walletOptions} />
         <p className="text-xs text-ink/70">Ao pagar uma conta desta categoria, o app já sugere esta carteira.</p>
       </fieldset>
 

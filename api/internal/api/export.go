@@ -26,7 +26,6 @@ const utf8BOM = "\xEF\xBB\xBF"
 var exportHeader = []string{"vencimento", "competência", "descrição", "categoria", "favorecido", "valor", "status", "pago em", "carteira", "valor pago"}
 
 var exportStatus = map[invoice.Status]string{invoice.StatusPending: "pendente", invoice.StatusOverdue: "atrasada", invoice.StatusPaid: "paga"}
-var exportWallet = map[string]string{"free": "livre", "benefit": "benefício"}
 
 // sheetDecimal: 123456 -> "1234,56"; -500 -> "-5,00". Inteiros do começo ao fim (nada de float com dinheiro).
 func sheetDecimal(c money.Cents) string {
@@ -79,10 +78,6 @@ func (h *Invoices) ExportInvoicesCsv(c *gin.Context, householdId gen.HouseholdId
 		if r.PaidAmountCents != nil {
 			paidAmount = sheetDecimal(*r.PaidAmountCents)
 		}
-		wallet := ""
-		if r.PaidWallet != nil {
-			wallet = exportWallet[*r.PaidWallet]
-		}
 		_ = w.Write([]string{
 			sheetDate(r.DueDate),
 			fmt.Sprintf("%02d/%04d", int(r.CompetenceMonth.Month()), r.CompetenceMonth.Year()),
@@ -92,7 +87,7 @@ func (h *Invoices) ExportInvoicesCsv(c *gin.Context, householdId gen.HouseholdId
 			sheetDecimal(r.AmountCents),
 			exportStatus[r.Status],
 			sheetDate(r.PaidAt),
-			wallet,
+			sheetText(deref(r.PaidWallet)), // o nome da carteira é texto livre da casa
 			paidAmount,
 		})
 	}

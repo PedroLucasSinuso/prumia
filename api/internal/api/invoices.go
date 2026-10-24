@@ -12,7 +12,6 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
-	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 )
 
 // HorizonEnsurer estende as ocorrências das recorrências (ver series.RecurrenceService.EnsureHorizon).
@@ -21,10 +20,10 @@ type HorizonEnsurer interface {
 	EnsureHorizon(ctx context.Context, householdID uuid.UUID, requested caldate.Date) error
 }
 
-// BenefitBalancer calcula o saldo estimado da carteira de benefício de uma competência (ver summary.Service).
-// nil = sem aviso de saldo (testes que não montam receitas).
-type BenefitBalancer interface {
-	BenefitBalance(ctx context.Context, householdID uuid.UUID, month caldate.Date) (money.Cents, error)
+// OverdraftChecker diz se a carteira (com o aviso de saldo ligado) ficou com saldo realizado negativo até a competência
+// (ver summary.Service). nil = sem aviso de saldo (testes que não montam receitas).
+type OverdraftChecker interface {
+	OverdraftWarning(ctx context.Context, householdID, walletID uuid.UUID, month caldate.Date) (bool, error)
 }
 
 // Invoices implementa as operações de invoice do contrato.
@@ -32,7 +31,7 @@ type Invoices struct {
 	Svc     *invoice.Service
 	Log     *slog.Logger
 	Horizon HorizonEnsurer
-	Balance BenefitBalancer
+	Balance OverdraftChecker
 }
 
 func toGenInvoice(v invoice.View) gen.Invoice {
@@ -42,9 +41,9 @@ func toGenInvoice(v invoice.View) gen.Invoice {
 		DueDate: v.DueDate, CompetenceMonth: v.CompetenceMonth,
 		Status: gen.InvoiceStatus(v.Status), Notes: v.Notes,
 	}
-	if v.Paid() && v.PaidWallet != nil && v.PaidAmountCents != nil {
+	if v.Paid() && v.PaidWalletID != nil && v.PaidAmountCents != nil {
 		out.Paid = &gen.Payment{
-			PaidAt: v.PaidAt, Wallet: gen.Wallet(*v.PaidWallet), AmountCents: *v.PaidAmountCents, PaidByUserId: v.PaidByUserID,
+			PaidAt: v.PaidAt, WalletId: *v.PaidWalletID, AmountCents: *v.PaidAmountCents, PaidByUserId: v.PaidByUserID,
 		}
 	}
 	if v.Boleto != nil {
@@ -238,36 +237,37 @@ func (h *Invoices) PayInvoice(c *gin.Context, householdId gen.HouseholdId, invoi
 		return
 	}
 	v, err := h.Svc.Pay(c.Request.Context(), householdId, invoiceId, auth.CurrentUser(c).ID, invoice.PayInput{
-		Wallet: string(body.Wallet), PaidAt: body.PaidAt, AmountCents: body.AmountCents,
+		WalletID: body.WalletId, PaidAt: body.PaidAt, AmountCents: body.AmountCents,
 	})
 	if err != nil {
 		writeDomainError(c, h.Log, err)
 		return
 	}
-	warnings := h.payWarnings(c.Request.Context(), householdId, v)
-	c.JSON(http.StatusOK, gen.PayResult{Invoice: toGenInvoice(v), Warnings: &warnings})
+	warnings, details := h.payWarnings(c.Request.Context(), householdId, v)
+	c.JSON(http.StatusOK, gen.PayResult{Invoice: toGenInvoice(v), Warnings: &warnings, WarningDetails: &details})
 }
 
-// WarnBenefitBalanceInsufficient é o código estável do aviso devolvido ao pagar com a carteira de benefício.
-const WarnBenefitBalanceInsufficient = "benefit_balance_insufficient"
+// WarnWalletBalanceInsufficient é o código estável do aviso devolvido ao pagar com uma carteira cujo saldo fica negativo.
+const WarnWalletBalanceInsufficient = "wallet_balance_insufficient"
 
-// payWarnings avisa (sem bloquear) quando o pagamento com a carteira de benefício deixa o saldo estimado da competência
-// da invoice negativo. O saldo já inclui este pagamento (ele foi gravado antes). Se o cálculo falhar, só registra no log:
-// o pagamento está feito e não pode virar erro para o usuário.
-func (h *Invoices) payWarnings(ctx context.Context, householdID uuid.UUID, v invoice.View) []string {
-	warnings := []string{}
-	if h.Balance == nil || v.PaidWallet == nil || *v.PaidWallet != string(gen.WalletBenefit) {
-		return warnings
+// payWarnings avisa (sem bloquear) quando o pagamento deixa negativo o saldo realizado da carteira usada, se ela tem o
+// aviso de saldo ligado. O saldo já inclui este pagamento (ele foi gravado antes). Se o cálculo falhar, só registra no
+// log: o pagamento está feito e não pode virar erro para o usuário. Devolve os códigos e o detalhe (carteira) de cada um.
+func (h *Invoices) payWarnings(ctx context.Context, householdID uuid.UUID, v invoice.View) ([]string, []gen.PayWarning) {
+	warnings, details := []string{}, []gen.PayWarning{}
+	if h.Balance == nil || v.PaidWalletID == nil {
+		return warnings, details
 	}
-	bal, err := h.Balance.BenefitBalance(ctx, householdID, v.CompetenceMonth)
+	low, err := h.Balance.OverdraftWarning(ctx, householdID, *v.PaidWalletID, v.CompetenceMonth)
 	if err != nil {
-		h.Log.Warn("não foi possível calcular o saldo de benefício", "erro", err)
-		return warnings
+		h.Log.Warn("não foi possível calcular o saldo da carteira", "erro", err)
+		return warnings, details
 	}
-	if bal < 0 {
-		warnings = append(warnings, WarnBenefitBalanceInsufficient)
+	if low {
+		warnings = append(warnings, WarnWalletBalanceInsufficient)
+		details = append(details, gen.PayWarning{Code: WarnWalletBalanceInsufficient, WalletId: *v.PaidWalletID})
 	}
-	return warnings
+	return warnings, details
 }
 
 // UnpayInvoice: DELETE /households/{householdId}/invoices/{invoiceId}/pay

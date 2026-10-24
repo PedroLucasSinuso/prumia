@@ -13,7 +13,7 @@ beforeEach(() => vi.restoreAllMocks())
 
 const cats: Category[] = [
   { id: 'c1', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
-  { id: 'c2', name: 'Mercado', defaultWallet: 'benefit', isEssential: true, sortOrder: 1, archived: false },
+  { id: 'c2', name: 'Mercado', defaultWalletId: 'w2', isEssential: true, sortOrder: 1, archived: false },
   { id: 'c3', name: 'Lazer', isEssential: false, sortOrder: 2, archived: false },
   { id: 'c9', name: 'Academia', isEssential: false, sortOrder: 3, archived: true },
 ]
@@ -28,7 +28,7 @@ describe('ajustes · categorias', () => {
     const list = screen.getByRole('list', { name: 'Categorias ativas' })
     expect(within(list).getAllByRole('button', { name: /^Abrir/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Abrir Moradia', 'Abrir Mercado', 'Abrir Lazer'])
     expect(within(list).getAllByText('essencial').length).toBe(2)
-    expect(within(list).getByText('VR')).toBeInTheDocument()
+    expect(await within(list).findByText('Benefício')).toBeInTheDocument()
     expect(within(list).queryByText(/sem carteira/)).not.toBeInTheDocument()
     expect(screen.getByText('arquivadas (1)')).toBeInTheDocument()
     expect(api.GET).toHaveBeenCalledWith('/households/{householdId}/categories', expect.objectContaining({ params: expect.objectContaining({ query: { includeArchived: true } }) }))
@@ -40,10 +40,10 @@ describe('ajustes · categorias', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Nova categoria/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova categoria' })
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Pets')
-    await userEvent.click(within(dialog).getByRole('radio', { name: 'livre' }))
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Geral' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar categoria' }))
     await waitFor(() =>
-      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/categories', expect.objectContaining({ body: { name: 'Pets', defaultWallet: 'free', isEssential: false } })),
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/categories', expect.objectContaining({ body: { name: 'Pets', defaultWalletId: 'w1', isEssential: false } })),
     )
     expect(await screen.findByText('Pets criada.')).toBeInTheDocument()
   })
@@ -59,7 +59,7 @@ describe('ajustes · categorias', () => {
     await userEvent.click(within(dialog).getByRole('radio', { name: 'nenhuma' }))
     await userEvent.click(within(dialog).getByRole('radio', { name: 'não' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
-    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Supermercado', defaultWallet: null, isEssential: false }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Supermercado', defaultWalletId: null, isEssential: false }))
   })
 
   it('arquiva uma ativa e restaura uma arquivada', async () => {
@@ -131,7 +131,7 @@ describe('ajustes · categorias', () => {
 
 describe('ajustes · subcategorias', () => {
   const tree: Category[] = [
-    { id: 'c1', name: 'Moradia', defaultWallet: 'benefit', isEssential: true, sortOrder: 0, archived: false },
+    { id: 'c1', name: 'Moradia', defaultWalletId: 'w2', isEssential: true, sortOrder: 0, archived: false },
     { id: 'c3', name: 'Lazer', isEssential: false, sortOrder: 1, archived: false },
     { id: 'g1', name: 'Gás', isEssential: true, sortOrder: 0, archived: false, parentId: 'c1' },
     { id: 'l1', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
@@ -157,7 +157,7 @@ describe('ajustes · subcategorias', () => {
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
         '/households/{householdId}/categories',
-        expect.objectContaining({ body: { name: 'Água', defaultWallet: 'benefit', isEssential: true, parentId: 'c1' } }),
+        expect.objectContaining({ body: { name: 'Água', defaultWalletId: 'w2', isEssential: true, parentId: 'c1' } }),
       ),
     )
   })
@@ -170,14 +170,14 @@ describe('ajustes · subcategorias', () => {
     await userEvent.click(within(dialog).getByRole('combobox', { name: 'dentro de' }))
     await userEvent.click(screen.getByRole('option', { name: 'Moradia' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
-    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Lazer', defaultWallet: null, isEssential: false, parentId: 'c1' }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Lazer', defaultWalletId: null, isEssential: false, parentId: 'c1' }))
 
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Gás' }))
     dialog = await screen.findByRole('dialog', { name: 'Gás' })
     await userEvent.click(within(dialog).getByRole('combobox', { name: 'dentro de' }))
     await userEvent.click(screen.getByRole('option', { name: 'nenhuma (categoria principal)' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
-    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', defaultWallet: null, isEssential: true, parentId: null }))
+    await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', defaultWalletId: null, isEssential: true, parentId: null }))
   })
 
   it('categoria com subcategorias não pode virar filha e avisa o que acontece ao arquivar', async () => {
@@ -314,5 +314,38 @@ describe('ajustes · aparência', () => {
     expect(within(grupo).getByRole('radio', { name: /^Dracula/ })).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(within(grupo).getByRole('radio', { name: /^Marfim/ }))
     expect(document.documentElement.dataset.theme).toBe('marfim')
+  })
+})
+
+describe('ajustes · carteiras', () => {
+  const abrir = async (role: 'admin' | 'member' = 'admin') => {
+    const m = role === 'admin' ? me : { ...me, households: [{ id: 'h1', name: 'Casa do Pedro', role }] }
+    mockApi({ me: ok(m) })
+    renderAt('/ajustes/carteiras')
+    return screen.findByRole('list', { name: 'Carteiras ativas' })
+  }
+
+  it('lista as carteiras com a padrão marcada', async () => {
+    const list = await abrir()
+    expect(within(list).getByText('Geral')).toBeInTheDocument()
+    expect(within(list).getByText(/padrão/)).toBeInTheDocument()
+    expect(within(list).getByText('Benefício')).toBeInTheDocument()
+  })
+
+  it('o Responsável cria uma carteira com saldo inicial e aviso', async () => {
+    await abrir()
+    await userEvent.click(screen.getByRole('button', { name: /Nova carteira/ }))
+    const painel = await screen.findByRole('dialog', { name: 'Nova carteira' }).catch(() => screen.getByRole('region', { name: 'Nova carteira' }))
+    await userEvent.type(within(painel).getByLabelText('Nome'), 'Reserva')
+    await userEvent.click(within(painel).getByRole('button', { name: 'Criar carteira' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/wallets', expect.objectContaining({ body: expect.objectContaining({ name: 'Reserva', warnOnOverdraft: true }) })),
+    )
+  })
+
+  it('quem não é Responsável vê as carteiras, sem botão de criar', async () => {
+    await abrir('member')
+    expect(screen.queryByRole('button', { name: /Nova carteira/ })).not.toBeInTheDocument()
+    expect(screen.getByText(/Só o Responsável/)).toBeInTheDocument()
   })
 })

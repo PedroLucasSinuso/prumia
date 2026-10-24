@@ -42,8 +42,8 @@ func TestListaDeComprasTrazParcelas(t *testing.T) {
 	a, c, house, catID, _ := serie(t)
 	base := "/api/households/" + house + "/invoices/"
 	nb, _ := a.newPurchase(c, house, catID, nil) // 6x, comprada em 2026-08-01
-	a.do("POST", base+nb.Installments[0].ID+"/pay", map[string]any{"wallet": "free"}, c)
-	a.do("POST", base+nb.Installments[1].ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", base+nb.Installments[0].ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
+	a.do("POST", base+nb.Installments[1].ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 	if r := a.do("DELETE", base+nb.Installments[2].ID, nil, c); r.Code != 204 {
 		t.Fatal(r.Code)
 	}
@@ -123,7 +123,7 @@ func TestDesfazerExclusaoEmLoteDeParcelas(t *testing.T) {
 
 	// exclusão avulsa ANTES (parcela 2) e depois o lote a partir da 4, com a 5 paga (fica)
 	a.do("DELETE", base+in[1].ID, nil, c)
-	a.do("POST", base+in[4].ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", base+in[4].ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 	if r := a.do("DELETE", base+in[3].ID+"?scope=following", nil, c); r.Code != 204 {
 		t.Fatal(r.Code)
 	}

@@ -20,8 +20,10 @@ type Summaries struct {
 
 func toGenWallet(w summary.WalletBalance) gen.WalletBalance {
 	return gen.WalletBalance{
+		WalletId: w.WalletID, Name: w.Name, OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, Archived: w.Archived,
+		OpeningBalanceCents: w.Opening, CarryOverCents: w.CarryOver,
 		ExpectedIncomeCents: w.Expected, ReceivedIncomeCents: w.Received, PaidCents: w.Paid, BalanceCents: w.Balance(),
-		PendingCents: w.Pending, ProjectedCents: w.Projected(),
+		MonthBalanceCents: w.MonthBalance(), PendingCents: w.Pending, ProjectedCents: w.Projected(),
 	}
 }
 
@@ -43,8 +45,10 @@ func (h *Summaries) GetMonthlySummary(c *gin.Context, householdId gen.HouseholdI
 		Month: s.Month, TotalPaidCents: s.TotalPaid, TotalPendingCents: s.TotalPending,
 		OverdueCents: s.Overdue, OverdueCount: s.OverdueCount,
 	}
-	out.Wallets.Free = toGenWallet(s.Free)
-	out.Wallets.Benefit = toGenWallet(s.Benefit)
+	out.Wallets = make([]gen.WalletBalance, len(s.Wallets))
+	for i, w := range s.Wallets {
+		out.Wallets[i] = toGenWallet(w)
+	}
 	out.ByCategory = make([]gen.CategoryTotal, len(s.ByCategory))
 	for i, cat := range s.ByCategory {
 		out.ByCategory[i] = gen.CategoryTotal{CategoryId: cat.CategoryID, TotalCents: cat.Total, PaidCents: cat.Paid}

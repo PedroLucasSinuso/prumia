@@ -5,6 +5,7 @@ import { useCategories, useCategoryActions } from '../../api/queries'
 import type { Category } from '../../api/types'
 import { buildTree } from '../../lib/categories'
 import { ICON } from '../../lib/navigation'
+import { useWalletTag } from '../../lib/useWalletName'
 import { ActionMenu } from '../ActionMenu'
 import { Button } from '../Button'
 import { CategoryForm } from '../CategoryForm'
@@ -18,12 +19,13 @@ type Drop = { id: string; after: boolean } | null
 
 const sameGroup = (a: Category, b: Category) => (a.parentId ?? '') === (b.parentId ?? '')
 
-/** Só as exceções viram selo: benefício (VR) e essencial. "Carteira livre" é o normal e não aparece. */
+/** Só as exceções viram selo: carteira sugerida diferente da padrão e essencial. */
 function Meta({ c }: { c: Category }) {
-  if (c.defaultWallet !== 'benefit' && !c.isEssential) return null
+  const walletTag = useWalletTag()(c.defaultWalletId)
+  if (!walletTag && !c.isEssential) return null
   return (
     <span className="flex shrink-0 items-center gap-1.5">
-      {c.defaultWallet === 'benefit' && <Tag><span title="Sugere a carteira de benefício (VR/VA) ao pagar">VR</span></Tag>}
+      {walletTag && <Tag><span title={`Sugere a carteira ${walletTag} ao pagar`}>{walletTag}</span></Tag>}
       {c.isEssential && <Tag>essencial</Tag>}
     </span>
   )

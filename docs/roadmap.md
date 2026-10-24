@@ -53,7 +53,11 @@ DatePicker com calendário, categoria em combobox pesquisável (fim do "spam de 
 - **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem); padrão de lista (`descrição: valor`) e "colar texto" já cobrem listas e prints.
 - Cobrir mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x").
 
-## Planejamento: carteiras configuráveis (a desenhar conversando; NÃO implementar ainda)
+## Carteiras configuráveis: backend feito (PR `feat/carteiras-api`), front pendente
+
+**Backend pronto**: tabela `wallets` (migration `00008` com backfill `free`/`benefit` → "Geral"/"Benefício"), rotas `/wallets` (listar, criar, editar, arquivar, restaurar; só admin escreve), `walletId` em receita, fonte, pagamento e categoria (`defaultWalletId`), resumo com lista de carteiras e **saldo anterior transportado** entre meses, aviso `wallet_balance_insufficient`. Ver [incomes-and-wallets.md](developer-guide/incomes-and-wallets.md). **Falta o front** (telas de carteiras em Ajustes, escolha de carteira em receita/pagamento/categoria, resumo em lista, aviso novo) e o guia do usuário.
+
+Registro do desenho original (o que estava em aberto na época):
 
 Hoje são 2 valores fixos (`free`/`benefit`) e o saldo é "recebido − pago" **sem** carregar de um mês para o outro. A ideia é carteira = **conta** (ex.: bancos diferentes, benefício, dinheiro vivo), com saldo real. Risco: **muito alto** (migration **com migração de dados**: `paid_wallet`/`wallet` em texto viram referência a uma carteira).
 

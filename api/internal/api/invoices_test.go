@@ -22,18 +22,18 @@ type inv struct {
 	ResponsibleUser *string `json:"responsibleUserId"`
 	Paid            *struct {
 		PaidAt      string `json:"paidAt"`
-		Wallet      string `json:"wallet"`
+		WalletID    string `json:"walletId"`
 		AmountCents int64  `json:"amountCents"`
 		PaidBy      string `json:"paidByUserId"`
 	} `json:"paid"`
 }
 
 type cat struct {
-	ID            string  `json:"id"`
-	Name          string  `json:"name"`
-	DefaultWallet *string `json:"defaultWallet"`
-	IsEssential   bool    `json:"isEssential"`
-	Archived      bool    `json:"archived"`
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	DefaultWalletID *string `json:"defaultWalletId"`
+	IsEssential     bool    `json:"isEssential"`
+	Archived        bool    `json:"archived"`
 }
 
 // casa prepara um app com relógio fixo, uma conta e a primeira categoria da casa.
@@ -66,12 +66,12 @@ func TestCategorias(t *testing.T) {
 
 	var cats []cat
 	a.do("GET", base, nil, c).json(&cats)
-	if len(cats) != 10 || cats[0].Name != "Moradia" || cats[1].DefaultWallet == nil || *cats[1].DefaultWallet != "benefit" {
+	if len(cats) != 10 || cats[0].Name != "Moradia" || cats[1].DefaultWalletID == nil || *cats[1].DefaultWalletID != a.vr(house) {
 		t.Fatalf("categorias padrão: %+v", cats)
 	}
 
 	// criar, duplicada (sem caixa), validação
-	r := a.do("POST", base, map[string]any{"name": "Pets", "defaultWallet": "free", "isEssential": true}, c)
+	r := a.do("POST", base, map[string]any{"name": "Pets", "defaultWalletId": a.free(house), "isEssential": true}, c)
 	var pets cat
 	r.json(&pets)
 	if r.Code != 201 || pets.Name != "Pets" || !pets.IsEssential {
@@ -83,22 +83,22 @@ func TestCategorias(t *testing.T) {
 	if r := a.do("POST", base, map[string]any{"name": " "}, c); r.Code != 400 {
 		t.Errorf("nome vazio: %d", r.Code)
 	}
-	if r := a.do("POST", base, map[string]any{"name": "X", "defaultWallet": "ouro"}, c); r.Code != 400 {
+	if r := a.do("POST", base, map[string]any{"name": "X", "defaultWalletId": "00000000-0000-0000-0000-000000000001"}, c); r.Code != 400 {
 		t.Errorf("carteira inválida: %d", r.Code)
 	}
 
 	// editar: renomear, limpar defaultWallet com null, e distinguir "ausente" de "null"
-	r = a.do("PATCH", base+"/"+pets.ID, map[string]any{"name": "Animais", "defaultWallet": nil}, c)
+	r = a.do("PATCH", base+"/"+pets.ID, map[string]any{"name": "Animais", "defaultWalletId": nil}, c)
 	var upd cat
 	r.json(&upd)
-	if r.Code != 200 || upd.Name != "Animais" || upd.DefaultWallet != nil {
+	if r.Code != 200 || upd.Name != "Animais" || upd.DefaultWalletID != nil {
 		t.Fatalf("editar: %d %s", r.Code, r.Body)
 	}
-	r = a.do("PATCH", base+"/"+pets.ID, map[string]any{"defaultWallet": "benefit"}, c)
+	r = a.do("PATCH", base+"/"+pets.ID, map[string]any{"defaultWalletId": a.vr(house)}, c)
 	r.json(&upd)
 	r = a.do("PATCH", base+"/"+pets.ID, map[string]any{"isEssential": false}, c) // ausente: não mexe na carteira
 	r.json(&upd)
-	if upd.DefaultWallet == nil || *upd.DefaultWallet != "benefit" || upd.IsEssential {
+	if upd.DefaultWalletID == nil || *upd.DefaultWalletID != a.vr(house) || upd.IsEssential {
 		t.Errorf("campo ausente não pode limpar: %+v", upd)
 	}
 
@@ -263,31 +263,31 @@ func TestPagarEDesfazer(t *testing.T) {
 	i, _ := a.newInvoice(c, house, catID, nil)
 	url := "/api/households/" + house + "/invoices/" + i.ID
 
-	if r := a.do("POST", url+"/pay", map[string]any{"wallet": "ouro"}, c); r.Code != 400 {
+	if r := a.do("POST", url+"/pay", map[string]any{"walletId": "00000000-0000-0000-0000-000000000001"}, c); r.Code != 400 {
 		t.Errorf("carteira inválida: %d", r.Code)
 	}
-	if r := a.do("POST", url+"/pay", map[string]any{"wallet": "free", "amountCents": 0}, c); r.Code != 400 {
+	if r := a.do("POST", url+"/pay", map[string]any{"walletId": a.free(house), "amountCents": 0}, c); r.Code != 400 {
 		t.Errorf("valor pago inválido: %d", r.Code)
 	}
 
 	// pagar com padrões: data = hoje, valor = o da invoice
-	r := a.do("POST", url+"/pay", map[string]any{"wallet": "benefit"}, c)
+	r := a.do("POST", url+"/pay", map[string]any{"walletId": a.vr(house)}, c)
 	var res struct {
 		Invoice  inv      `json:"invoice"`
 		Warnings []string `json:"warnings"`
 	}
 	r.json(&res)
 	p := res.Invoice.Paid
-	if r.Code != 200 || res.Invoice.Status != "paid" || p == nil || p.Wallet != "benefit" || p.PaidAt != "2026-10-18" || p.AmountCents != 150000 || p.PaidBy == "" {
+	if r.Code != 200 || res.Invoice.Status != "paid" || p == nil || p.WalletID != a.vr(house) || p.PaidAt != "2026-10-18" || p.AmountCents != 150000 || p.PaidBy == "" {
 		t.Fatalf("pagar: %d %s", r.Code, r.Body)
 	}
 	// pagar de novo: 409 e nada muda
-	if r := a.do("POST", url+"/pay", map[string]any{"wallet": "free"}, c); r.Code != 409 {
+	if r := a.do("POST", url+"/pay", map[string]any{"walletId": a.free(house)}, c); r.Code != 409 {
 		t.Errorf("pagamento duplo: %d", r.Code)
 	}
 	var again inv
 	a.do("GET", url, nil, c).json(&again)
-	if again.Paid.Wallet != "benefit" {
+	if again.Paid.WalletID != a.vr(house) {
 		t.Error("o segundo pagamento não pode sobrescrever o primeiro")
 	}
 
@@ -302,7 +302,7 @@ func TestPagarEDesfazer(t *testing.T) {
 		t.Errorf("desfazer o que não está pago: %d", r.Code)
 	}
 	// pagar com juros e data passada
-	r = a.do("POST", url+"/pay", map[string]any{"wallet": "free", "amountCents": 152345, "paidAt": "2026-10-15"}, c)
+	r = a.do("POST", url+"/pay", map[string]any{"walletId": a.free(house), "amountCents": 152345, "paidAt": "2026-10-15"}, c)
 	res.Invoice = inv{}
 	r.json(&res)
 	if r.Code != 200 || res.Invoice.Paid.AmountCents != 152345 || res.Invoice.Paid.PaidAt != "2026-10-15" || res.Invoice.AmountCents != 150000 {
@@ -311,7 +311,7 @@ func TestPagarEDesfazer(t *testing.T) {
 	// invoice excluída não paga (404)
 	a.do("DELETE", url+"/pay", nil, c)
 	a.do("DELETE", url, nil, c)
-	if r := a.do("POST", url+"/pay", map[string]any{"wallet": "free"}, c); r.Code != 404 {
+	if r := a.do("POST", url+"/pay", map[string]any{"walletId": a.free(house)}, c); r.Code != 404 {
 		t.Errorf("pagar excluída: %d", r.Code)
 	}
 }
@@ -338,7 +338,7 @@ func TestListagemFiltrosEPaginacao(t *testing.T) {
 	i3 := mk("Mercado 100%", "2026-10-12", map[string]any{"categoryId": mercado}) // atrasada, outra categoria
 	i4 := mk("Internet", "2026-11-03", nil)                                       // novembro
 	i5 := mk("Água", "2026-10-30", nil)                                           // a vencer
-	a.do("POST", "/api/households/"+house+"/invoices/"+i2.ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", "/api/households/"+house+"/invoices/"+i2.ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 	_ = i4
 	list := func(q string) (items []inv, next string, code int) {
 		var page struct {
@@ -447,7 +447,7 @@ func TestInvoiceIsolamentoEPapeis(t *testing.T) {
 			t.Errorf("%s do id da Ana na casa do Beto: %d", m, r.Code)
 		}
 	}
-	if r := a.do("POST", "/api/households/"+houseB+"/invoices/"+ia.ID+"/pay", map[string]any{"wallet": "free"}, cB); r.Code != 404 {
+	if r := a.do("POST", "/api/households/"+houseB+"/invoices/"+ia.ID+"/pay", map[string]any{"walletId": a.free(houseB)}, cB); r.Code != 404 {
 		t.Errorf("pagar invoice alheia: %d", r.Code)
 	}
 	var page struct{ Items []inv }
@@ -469,7 +469,7 @@ func TestInvoiceIsolamentoEPapeis(t *testing.T) {
 	for name, req := range map[string]func() resp{
 		"criar": func() resp { _, r := a.newInvoice(cB, houseA, catsA[0].ID, nil); return r },
 		"pagar": func() resp {
-			return a.do("POST", "/api/households/"+houseA+"/invoices/"+ia.ID+"/pay", map[string]any{"wallet": "free"}, cB)
+			return a.do("POST", "/api/households/"+houseA+"/invoices/"+ia.ID+"/pay", map[string]any{"walletId": a.free(houseA)}, cB)
 		},
 		"editar": func() resp {
 			return a.do("PATCH", "/api/households/"+houseA+"/invoices/"+ia.ID, map[string]any{"description": "x"}, cB)

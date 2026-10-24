@@ -74,9 +74,6 @@ func TestSchemaGarantias(t *testing.T) {
 	mustFail("pago sem carteira", ins(", paid_at", ", '2026-10-11'"), f.houseA, f.catA, f.userA, 1000, "2026-10-01", f.userA)
 	mustFail("categoria duplicada (case-insensitive)",
 		`INSERT INTO categories (household_id, name) VALUES (?, 'MERCADO')`, f.houseA)
-	mustFail("VR em carteira livre",
-		`INSERT INTO incomes (household_id, user_id, kind, description, wallet, competence_month, expected_date, gross_amount_cents, created_by)
-		 VALUES (?, ?, 'benefit', 'vr', 'free', '2026-10-01', '2026-10-05', 1000, ?)`, f.houseA, f.userA, f.userA)
 }
 
 type fixture struct{ houseA, houseB, userA, userB, catA, catB string }

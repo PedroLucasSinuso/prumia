@@ -2,7 +2,7 @@ import { FileUp, Layers, Plus, Search, X } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvoiceActions, useInvoices, usePayees, usePurchase } from '../api/queries'
+import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvoiceActions, useInvoices, usePayees, usePurchase, useWallets } from '../api/queries'
 import type { Category, Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
@@ -29,12 +29,12 @@ import { formatCents } from '../lib/money'
 import { usePref } from '../lib/storage'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
+import { activeWallets, defaultWallet, walletName } from '../lib/wallets'
 
 /** A conta aberta: em leitura (detalhe) ou no formulário (editar). */
 type Panel = { id: string; mode: 'view' | 'edit' } | null
 
 const ImportModal = lazy(() => import('../components/ImportModal'))
-const walletLabel = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
 const label = 'text-xs font-medium uppercase tracking-wider'
 const COLLAPSED_KEY = 'prumia.mes.secoesRecolhidas'
 
@@ -118,24 +118,29 @@ export default function MonthPage() {
   const visibleIds = useMemo(() => new Set(order.map((i) => i.id)), [order])
   const checkedVisible = useMemo(() => new Set([...checked].filter((id) => visibleIds.has(id))), [checked, visibleIds])
 
-  // Um toque: paga com a carteira sugerida pela categoria (Mercado -> benefício); sem sugestão, a livre.
-  const walletFor = (inv: Invoice) => categoryById.get(inv.categoryId)?.defaultWallet ?? 'free'
-  function togglePaid(inv: Invoice) {
+  // Um toque: paga com a carteira sugerida pela categoria (Mercado -> Benefício); sem sugestão, a padrão da casa.
+  const walletList = useWallets(houseId).data
+  const payable = useMemo(() => activeWallets(walletList ?? []), [walletList])
+  const walletFor = (inv: Invoice) => {
+    const wanted = categoryById.get(inv.categoryId)?.defaultWalletId
+    return payable.find((w) => w.id === wanted)?.id ?? defaultWallet(payable)?.id ?? ''
+  }
+  function togglePaid(inv: Invoice, chosen?: string) {
     if (inv.status === 'paid') {
       actions.unpay.mutate(inv.id, { onError: () => toast({ message: 'Não foi possível desfazer o pagamento.' }) })
       return
     }
-    const wallet = walletFor(inv)
+    const walletId = chosen ?? walletFor(inv)
     actions.pay.mutate(
-      { id: inv.id, wallet },
+      { id: inv.id, walletId },
       {
         onSuccess: (result) => {
           pulsePaid(inv.id)
           toast({
-            // O servidor avisa (sem bloquear) quando o saldo de benefício do mês fica negativo.
-            message: result?.warnings?.includes('benefit_balance_insufficient')
-              ? `${inv.description} paga na ${walletLabel[wallet]}. Atenção: o saldo de benefício deste mês ficou negativo.`
-              : `${inv.description} paga na ${walletLabel[wallet]}.`,
+            // O servidor avisa (sem bloquear) quando o saldo de uma carteira com aviso ligado fica negativo.
+            message: result?.warnings?.includes('wallet_balance_insufficient')
+              ? `${inv.description} paga na carteira ${walletName(walletList, walletId)}. Atenção: o saldo dela ficou negativo.`
+              : `${inv.description} paga na carteira ${walletName(walletList, walletId)}.`,
             actionLabel: 'Desfazer',
             onAction: () => actions.unpay.mutate(inv.id),
           })
@@ -151,7 +156,7 @@ export default function MonthPage() {
     const done: Invoice[] = []
     for (const inv of targets) {
       try {
-        await actions.pay.mutateAsync({ id: inv.id, wallet: walletFor(inv) })
+        await actions.pay.mutateAsync({ id: inv.id, walletId: walletFor(inv) })
         done.push(inv)
         pulsePaid(inv.id)
       } catch {
@@ -334,11 +339,12 @@ export default function MonthPage() {
       payeeName={panelInvoice.payeeId ? payeeById.get(panelInvoice.payeeId)?.name : undefined}
       purchase={purchase.data}
       today={today}
-      payWallet={walletFor(panelInvoice)}
+      wallets={payable}
+      payWalletId={walletFor(panelInvoice)}
       canWrite={canWrite}
       busy={busy}
-      onPay={(inv) => {
-        togglePaid(inv)
+      onPay={(inv, walletId) => {
+        togglePaid(inv, walletId)
         if (!desktop) setPanel(null)
       }}
       onUnpay={(inv) => actions.unpay.mutate(inv.id, { onError: () => toast({ message: 'Não foi possível desfazer o pagamento.' }) })}

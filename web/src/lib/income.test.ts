@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { income, members } from '../test/utils'
-import { incomeSections, incomeTotals, monthSurplus, netOf, personTotals, ruleText, stateOf, stateText, sumDeductions, unitText, untilText, walletOfKind } from './income'
+import { incomeSections, incomeTotals, monthSurplus, netOf, personTotals, ruleText, stateOf, stateText, sumDeductions, unitText, untilText } from './income'
 
 const d = (amountCents: number) => ({ kind: 'inss' as const, name: 'INSS', amountCents })
 
@@ -10,11 +10,6 @@ describe('regras de receita', () => {
     expect(netOf(500000, [d(55000), d(40000)])).toBe(405000)
     expect(sumDeductions([])).toBe(0)
     expect(netOf(100000, [])).toBe(100000)
-  })
-  it('a carteira vem do tipo', () => {
-    expect(walletOfKind('benefit')).toBe('benefit')
-    expect(walletOfKind('salary')).toBe('free')
-    expect(walletOfKind('other')).toBe('free')
   })
   it('totais: recebido = só o que conta como recebido, a receber = o resto', () => {
     const list = [income({ id: '1', description: 'a', netAmountCents: 400000, received: true }), income({ id: '2', description: 'b', netAmountCents: 60000 })]
@@ -79,9 +74,9 @@ describe('totais por pessoa, seções e sobra', () => {
   })
   it('sobra do mês = receitas líquidas − despesas (pagas + a pagar)', () => {
     const wallet = (expectedIncomeCents: number) => ({ expectedIncomeCents })
-    expect(monthSurplus({ wallets: { free: wallet(700000), benefit: wallet(60000) }, totalPaidCents: 250000, totalPendingCents: 300000 })).toEqual({
+    expect(monthSurplus({ wallets: [wallet(700000), wallet(60000)], totalPaidCents: 250000, totalPendingCents: 300000 })).toEqual({
       income: 760000, expenses: 550000, surplus: 210000,
     })
-    expect(monthSurplus({ wallets: { free: wallet(0), benefit: wallet(0) }, totalPaidCents: 10000, totalPendingCents: 0 }).surplus).toBe(-10000)
+    expect(monthSurplus({ wallets: [wallet(0), wallet(0)], totalPaidCents: 10000, totalPendingCents: 0 }).surplus).toBe(-10000)
   })
 })

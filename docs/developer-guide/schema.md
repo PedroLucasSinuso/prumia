@@ -44,7 +44,7 @@ isolamento entre casas (a primeira é o escopo `household_id` aplicado em todo r
 ## 3. Despesas
 
 ### categories
-Por casa. `default_wallet` é só **sugestão** ao pagar (Mercado → `benefit`). `is_essential` alimenta, no pós-MVP, a meta da
+Por casa. `default_wallet_id` (FK composta para `wallets`) é só **sugestão** ao pagar (Mercado → "Benefício"). `is_essential` alimenta, no pós-MVP, a meta da
 reserva de emergência (meses de gasto essencial). Em uso → **arquivar** (`archived_at`), não apagar.
 
 #### Subcategorias (migration 00004)
@@ -79,7 +79,7 @@ Desfazer em lote devolver o fim anterior. PK `(recurrence_id, batch_deleted_at)`
 - `due_date` (vencimento) e `competence_month` (a que mês o gasto pertence; o resumo mensal usa **este**).
 - **Série** (no máx. uma): `purchase_id + installment_number` **ou** `recurrence_id + occurrence_month`.
   Os `CHECK`s garantem os pares e a exclusividade.
-- **Pagamento** (tudo ou nada): `paid_at`, `paid_wallet`, `paid_amount_cents` (pode diferir do valor: juros, multa,
+- **Pagamento** (tudo ou nada): `paid_at`, `paid_wallet_id` (FK composta para `wallets`), `paid_amount_cents` (pode diferir do valor: juros, multa,
   desconto), `paid_by_user_id`. Estado é derivado: pago = `paid_at IS NOT NULL`; atrasada = pendente com `due_date < hoje`.
   Não existe coluna `status`, para não haver dois jeitos de dizer a mesma coisa.
 - Índices: lista do mês (`competence_month`), fila de pendentes (`due_date` parcial) e pagos (`paid_at` parcial).
@@ -97,7 +97,8 @@ documento). Nunca o arquivo. Duplicidade de linha digitável é verificada no se
   recebido. É editável mês a mês (coparticipação varia).
 - **income_deductions**: descontos do mês, copiados do template e ajustáveis.
 - **Líquido = bruto − soma dos descontos**, calculado, **não gravado** (evita inconsistência).
-- `CHECK ((kind='benefit') = (wallet='benefit'))`: VR só existe na carteira de benefício e vice-versa.
+- `wallet_id` (NOT NULL, FK composta `(household_id, wallet_id)` para `wallets`) em `incomes` e `income_sources`. Desde a `00008` **não há**
+  mais `CHECK` entre tipo e carteira: qualquer tipo vai para qualquer carteira.
 - O app **não calcula impostos**.
 
 Migration `00007` (receitas v2, aditiva): `income_sources` ganha `amount_mode` (`fixed`|`per_unit`), `unit_label`, `unit_price_cents`,
@@ -108,10 +109,26 @@ Migration `00007` (receitas v2, aditiva): `income_sources` ganha `amount_mode` (
 
 ## 5. Carteiras
 
-Não existe tabela de carteira: são dois valores (`free`, `benefit`) por casa.
-Saldo = receitas recebidas na carteira − invoices pagas com aquela carteira. Saldo de benefício insuficiente
-**só avisa**, não bloqueia (é estimativa, não controle bancário). Definições exatas (o que conta como "do mês", valor pago efetivo,
-sem saldo transportado) em [incomes-and-wallets.md](incomes-and-wallets.md).
+Tabela **`wallets`** (migration `00008`): carteiras configuráveis da casa, um rótulo com saldo inicial (o saldo em si é **calculado**, não
+gravado).
+
+| Coluna | Detalhe |
+|---|---|
+| `id`, `household_id` | PK uuid; `UNIQUE (household_id, id)` para as FKs compostas |
+| `name` | `CHECK` de 1 a 40 caracteres; **único por casa entre as não arquivadas** (`wallets_name_uq`, `lower(name)`, parcial) |
+| `owner_user_id` | opcional; FK composta `(household_id, owner_user_id)` para `household_members` (só etiqueta) |
+| `is_default` | **uma por casa** (`wallets_default_uq`, índice único parcial `WHERE is_default`); `CHECK (NOT is_default OR archived_at IS NULL)` |
+| `warn_on_overdraft` | liga o aviso de saldo insuficiente ao pagar (padrão `true`) |
+| `opening_balance_cents` | `bigint`, pode ser negativo |
+| `sort_order`, `archived_at`, `created_at`, `updated_at` | sem `deleted_at`: não há exclusão, só arquivar |
+
+Referências: `incomes.wallet_id` e `income_sources.wallet_id` (NOT NULL), `invoices.paid_wallet_id` (junto de `paid_at`, no
+`invoices_paid_all_or_none`) e `categories.default_wallet_id` (opcional), todas FKs **compostas** `(household_id, ...)`: o banco recusa
+carteira de outra casa. A `00008` faz o backfill (toda casa ganha "Geral" padrão e "Benefício"; `free` → Geral, `benefit` → Benefício),
+remove as colunas de texto e os `CHECK`s `kind`/`wallet`. O `Down` volta ao texto com perda (`benefit` = carteira chamada "Benefício").
+
+Saldo = saldo inicial + receitas recebidas na carteira − invoices pagas com ela, **acumulado entre os meses**. Saldo insuficiente
+**só avisa**, não bloqueia (é estimativa, não controle bancário). Definições exatas em [incomes-and-wallets.md](incomes-and-wallets.md).
 
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 

@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 var (
@@ -49,10 +50,10 @@ func get(db *gorm.DB, householdID, id uuid.UUID) (Category, error) {
 }
 
 type CreateInput struct {
-	Name          string
-	DefaultWallet *string
-	IsEssential   bool
-	ParentID      *uuid.UUID
+	Name            string
+	DefaultWalletID *uuid.UUID
+	IsEssential     bool
+	ParentID        *uuid.UUID
 }
 
 func cleanName(name string, v *validation.Collector) string {
@@ -63,10 +64,12 @@ func cleanName(name string, v *validation.Collector) string {
 	return name
 }
 
-func checkWallet(w *string, v *validation.Collector) {
-	if w != nil && !ValidWallet(*w) {
-		v.Add("defaultWallet", "use free (livre) ou benefit (benefício)")
+// checkWallet: a carteira sugerida tem de ser uma carteira ATIVA da mesma casa (nil = sem sugestão).
+func checkWallet(db *gorm.DB, householdID uuid.UUID, w *uuid.UUID, v *validation.Collector) error {
+	if w == nil {
+		return nil
 	}
+	return wallet.CheckUsable(db, householdID, *w, "defaultWalletId", v)
 }
 
 // checkParent confere a regra dos dois níveis: a mãe é da mesma casa, é de topo (não é filha de ninguém) e está ativa.
@@ -117,7 +120,9 @@ func (s *Service) Create(ctx context.Context, householdID uuid.UUID, in CreateIn
 	db := s.db.WithContext(ctx)
 	var v validation.Collector
 	in.Name = cleanName(in.Name, &v)
-	checkWallet(in.DefaultWallet, &v)
+	if err := checkWallet(db, householdID, in.DefaultWalletID, &v); err != nil {
+		return Category{}, err
+	}
 	if err := checkParent(db, householdID, in.ParentID, uuid.Nil, false, &v); err != nil {
 		return Category{}, err
 	}
@@ -125,7 +130,7 @@ func (s *Service) Create(ctx context.Context, householdID uuid.UUID, in CreateIn
 		return Category{}, err
 	}
 	// A nova categoria vai para o fim da lista das irmãs.
-	c := Category{HouseholdID: householdID, Name: in.Name, DefaultWallet: in.DefaultWallet, IsEssential: in.IsEssential,
+	c := Category{HouseholdID: householdID, Name: in.Name, DefaultWalletID: in.DefaultWalletID, IsEssential: in.IsEssential,
 		ParentID: in.ParentID, SortOrder: nextSortOrder(db, householdID, in.ParentID)}
 	if err := db.Create(&c).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -136,12 +141,12 @@ func (s *Service) Create(ctx context.Context, householdID uuid.UUID, in CreateIn
 	return c, nil
 }
 
-// Patch: campos nil = não mexer. Os que aceitam "limpar" (DefaultWallet, ParentID) têm um flag Set separado,
+// Patch: campos nil = não mexer. Os que aceitam "limpar" (DefaultWalletID, ParentID) têm um flag Set separado,
 // porque nil sozinho não diferencia "ausente" de "null".
 type Patch struct {
 	Name             *string
 	DefaultWalletSet bool
-	DefaultWallet    *string
+	DefaultWalletID  *uuid.UUID
 	IsEssential      *bool
 	SortOrder        *int
 	Archived         *bool
@@ -161,8 +166,10 @@ func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch
 		updates["name"] = cleanName(*p.Name, &v)
 	}
 	if p.DefaultWalletSet {
-		checkWallet(p.DefaultWallet, &v)
-		updates["default_wallet"] = p.DefaultWallet
+		if err := checkWallet(db, householdID, p.DefaultWalletID, &v); err != nil {
+			return Category{}, err
+		}
+		updates["default_wallet_id"] = p.DefaultWalletID
 	}
 	if p.IsEssential != nil {
 		updates["is_essential"] = *p.IsEssential

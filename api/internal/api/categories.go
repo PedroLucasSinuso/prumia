@@ -18,20 +18,9 @@ type Categories struct {
 }
 
 func toGenCategory(c category.Category) gen.Category {
-	out := gen.Category{Id: c.ID, Name: c.Name, IsEssential: c.IsEssential, SortOrder: c.SortOrder, Archived: c.Archived(), ParentId: c.ParentID}
-	if c.DefaultWallet != nil {
-		w := gen.Wallet(*c.DefaultWallet)
-		out.DefaultWallet = &w
-	}
+	out := gen.Category{Id: c.ID, Name: c.Name, IsEssential: c.IsEssential, SortOrder: c.SortOrder, Archived: c.Archived(), ParentId: c.ParentID,
+		DefaultWalletId: c.DefaultWalletID}
 	return out
-}
-
-func walletPtr(w *gen.Wallet) *string {
-	if w == nil {
-		return nil
-	}
-	s := string(*w)
-	return &s
 }
 
 // ListCategories: GET /households/{householdId}/categories
@@ -56,7 +45,7 @@ func (h *Categories) CreateCategory(c *gin.Context, householdId gen.HouseholdId)
 		badJSON(c)
 		return
 	}
-	in := category.CreateInput{Name: body.Name, DefaultWallet: walletPtr(body.DefaultWallet), ParentID: body.ParentId}
+	in := category.CreateInput{Name: body.Name, DefaultWalletID: body.DefaultWalletId, ParentID: body.ParentId}
 	if body.IsEssential != nil {
 		in.IsEssential = *body.IsEssential
 	}
@@ -77,7 +66,7 @@ func (h *Categories) UpdateCategory(c *gin.Context, householdId gen.HouseholdId,
 	}
 	p := category.Patch{
 		Name: body.Name, IsEssential: body.IsEssential, SortOrder: body.SortOrder, Archived: body.Archived,
-		DefaultWalletSet: present["defaultWallet"], DefaultWallet: walletPtr(body.DefaultWallet),
+		DefaultWalletSet: present["defaultWalletId"], DefaultWalletID: body.DefaultWalletId,
 		ParentSet: present["parentId"], ParentID: body.ParentId,
 	}
 	updated, err := h.Svc.Update(c.Request.Context(), householdId, categoryId, p)

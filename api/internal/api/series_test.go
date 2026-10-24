@@ -183,7 +183,7 @@ func TestCompraParceladaNotebook(t *testing.T) {
 	if items := a.invoicesOf(c, house, "&purchaseId="+p.ID); len(items) != 6 {
 		t.Errorf("por compra: %d", len(items))
 	}
-	if r := a.do("POST", "/api/households/"+house+"/invoices/"+p.Installments[0].ID+"/pay", map[string]any{"wallet": "free"}, c); r.Code != 200 {
+	if r := a.do("POST", "/api/households/"+house+"/invoices/"+p.Installments[0].ID+"/pay", map[string]any{"walletId": a.free(house)}, c); r.Code != 200 {
 		t.Errorf("pagar parcela atrasada: %d %s", r.Code, r.Body)
 	}
 	// GET de uma parcela também traz series completo
@@ -290,7 +290,7 @@ func TestEscopoFollowingEmParcelas(t *testing.T) {
 	in := p.Installments
 
 	// parcela 2 paga: nenhuma edição/exclusão em lote pode tocar nela
-	a.do("POST", base+in[1].ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", base+in[1].ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 
 	// em lote: vencimento e competência são recusados
 	if r := a.do("PATCH", base+in[2].ID+"?scope=following", map[string]any{"dueDate": "2027-01-01"}, c); r.Code != 400 {
@@ -534,7 +534,7 @@ func TestRecorrenciaEditarEEncerrar(t *testing.T) {
 
 	set := a.invoicesOf(c, house, "") // set/26 .. out/27
 	// out/2026 paga; set/2026 é passada (atrasada) e nov/2026 será editada individualmente antes
-	a.do("POST", base+set[1].ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", base+set[1].ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 
 	r := a.do("PATCH", url, map[string]any{"amountCents": 160000, "dayOfMonth": 10, "description": "Aluguel apto"}, c)
 	var got recT
@@ -612,7 +612,7 @@ func TestRecorrenciaEscopoFollowing(t *testing.T) {
 
 	// janeiro/2027 em diante passa a R$ 1.700; dezembro já paga fica; "só esta" em fevereiro não vaza
 	dec := byMonth("2026-12-01")
-	a.do("POST", base+dec.ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", base+dec.ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 	jan := byMonth("2027-01-01")
 	if r := a.do("PATCH", base+jan.ID+"?scope=following", map[string]any{"amountCents": 170000}, c); r.Code != 200 {
 		t.Fatalf("%d %s", r.Code, r.Body)
@@ -631,7 +631,7 @@ func TestRecorrenciaEscopoFollowing(t *testing.T) {
 
 	// pagas no meio da série são preservadas por escopo following
 	mar := byMonth("2027-03-01")
-	a.do("POST", base+byMonth("2027-05-01").ID+"/pay", map[string]any{"wallet": "free"}, c)
+	a.do("POST", base+byMonth("2027-05-01").ID+"/pay", map[string]any{"walletId": a.free(house)}, c)
 	if r := a.do("DELETE", base+mar.ID+"?scope=following", nil, c); r.Code != 204 {
 		t.Fatalf("%d", r.Code)
 	}

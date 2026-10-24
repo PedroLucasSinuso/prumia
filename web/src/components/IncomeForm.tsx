@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
-import { estimateTax, useIncomeDatePreview } from '../api/queries'
+import { estimateTax, useIncomeDatePreview, useWallets } from '../api/queries'
 import type { AmountMode, DateRule, Deduction, Income, IncomeInput, IncomeKind, IncomePatch, Member, SeriesScope, WeekendAdjust } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { dayMonth, monthLabel, monthOf, todayISO, weekdayShort } from '../lib/dates'
 import { deductionLabel, kindLabel, netOf, PREVIEW_FETCH, sumDeductions, upcomingDates } from '../lib/income'
 import { formatCents } from '../lib/money'
+import { suggestWalletId } from '../lib/wallets'
 import { Button } from './Button'
 import { DeductionsEditor } from './DeductionsEditor'
 import { Field } from './Field'
@@ -64,6 +65,15 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
   const [userId, setUserId] = useState(income?.userId ?? defaultUserId)
   const [kind, setKind] = useState<IncomeKind>(income?.kind ?? 'salary')
   const [description, setDescription] = useState(income?.description ?? '')
+  // Carteira: nova receita já vem com a sugerida (Vale -> Benefício, senão a padrão) até a pessoa escolher outra.
+  const walletList = useWallets(houseId).data
+  const [walletId, setWalletId] = useState(income?.walletId ?? '')
+  const walletTouched = useRef(false)
+  const choices = (walletList ?? []).filter((w) => !w.archived || w.id === income?.walletId)
+  useEffect(() => {
+    if (editing || walletTouched.current || !walletList) return
+    setWalletId(suggestWalletId(walletList, kind))
+  }, [editing, walletList, kind])
 
   const [mode, setMode] = useState<AmountMode>(income?.amountMode ?? 'fixed')
   const [gross, setGross] = useState(income?.grossAmountCents ?? 0)
@@ -175,6 +185,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
     const patch: IncomePatch = {}
     if (userId !== orig.userId) patch.userId = userId
     if (kind !== orig.kind) patch.kind = kind
+    if (walletId && walletId !== orig.walletId) patch.walletId = walletId
     if (description.trim() !== orig.description) patch.description = description.trim()
     if ((notes.trim() || null) !== (orig.notes ?? null)) patch.notes = notes.trim() === '' ? null : notes
     const amountChanged =
@@ -204,6 +215,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       } else {
         await onCreate({
           userId, kind, description: description.trim(), competenceMonth: month, ...amountFields(),
+          ...(walletId ? { walletId } : {}),
           ...(currentRule ? { dateRule: currentRule } : { expectedDate: exact }),
           ...(repeats ? { repeats: true, ...(until ? { repeatsUntil: `${until}-01` } : {}) } : {}),
           ...(deductions.length > 0 ? { deductions } : {}),
@@ -247,7 +259,10 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           }}
           options={[{ value: 'salary', label: 'Salário' }, { value: 'benefit', label: 'Vale (VR)' }, { value: 'other', label: 'Outra' }]}
         />
-        <p className="text-xs text-ink/75">{kind === 'benefit' ? 'Entra na carteira de benefício.' : 'Entra na carteira livre.'}</p>
+        <Combobox
+          label="Carteira" value={walletId} onChange={(v) => { if (v) { walletTouched.current = true; setWalletId(v); clear('walletId') } }}
+          options={choices.map((w) => ({ value: w.id, label: w.name }))} error={fields.walletId}
+        />
         <Field label="Descrição" name="description" autoComplete="off" data-autofocus="" autoFocus={!editing} required value={description}
           placeholder={kind === 'benefit' ? 'Ex.: Vale-refeição' : 'Ex.: Salário'} onChange={(e) => { setDescription(e.target.value); clear('description') }} error={fields.description} />
       </fieldset>

@@ -22,6 +22,7 @@ tags:
   - { name: households, description: "Casas, membros e convites" }
   - { name: categories, description: "Categorias de despesa" }
   - { name: payees, description: "Favorecidos (apelido + CNPJ opcional)" }
+  - { name: wallets, description: "Carteiras da casa (saldo por carteira)" }
   - { name: invoices, description: "Despesas (contas, parcelas, recorrências)" }
   - { name: incomes, description: "Receitas (salário, benefício)" }
   - { name: summary, description: "Resumo mensal" }
@@ -442,6 +443,77 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  # --------------------------------------------------------------- wallets
+  /households/{householdId}/wallets:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [wallets]
+      operationId: listWallets
+      summary: Carteiras da casa (qualquer membro). A padrão vem primeiro, depois por sortOrder e nome.
+      parameters:
+        - { name: includeArchived, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Wallet' } } } } }
+    post:
+      tags: [wallets]
+      operationId: createWallet
+      summary: Cria carteira (só admin, o Responsável)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/WalletInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Wallet' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/wallets/{walletId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: walletId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [wallets]
+      operationId: updateWallet
+      summary: Edita carteira (só admin)
+      description: |
+        Nome, dono (etiqueta; `null` limpa), aviso de saldo, saldo inicial e ordem. `isDefault=true` troca a carteira
+        padrão da casa (a anterior deixa de ser padrão; a padrão não pode ser arquivada, e `isDefault=false` é 400:
+        escolha outra para ser a padrão). Arquivar e restaurar têm rotas próprias.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/WalletPatch' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Wallet' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/wallets/{walletId}/archive:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: walletId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [wallets]
+      operationId: archiveWallet
+      summary: Arquiva a carteira (só admin). Não existe exclusão. A padrão não pode ser arquivada (409 `wallet_is_default`).
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Wallet' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/wallets/{walletId}/restore:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: walletId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [wallets]
+      operationId: restoreWallet
+      summary: Restaura a carteira arquivada (só admin). 409 `wallet_exists` se já há outra ativa com o mesmo nome.
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Wallet' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   # --------------------------------------------------------------- invoices
   /households/{householdId}/invoices:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
@@ -678,7 +750,7 @@ paths:
         `scope=this` (padrão) muda só este lançamento (inclusive pessoa, tipo, mês de competência, quantidade e data digitada).
         `scope=following` muda também o molde da repetição e reaplica os campos enviados a este e aos seguintes que ainda
         NÃO contam como recebidos; recebidos nunca mudam em lote. `competenceMonth`, `expectedDate` e `quantity` não valem
-        em lote (400). Mudar o tipo muda a carteira (benefit vai para a carteira de benefício). Os descontos enviados
+        em lote (400). Mudar o tipo NÃO muda a carteira (use `walletId`). Os descontos enviados
         substituem a lista. Sem repetição, `following` equivale a `this`.
       parameters:
         - { $ref: '#/components/parameters/IncomeScope' }
@@ -1038,7 +1110,6 @@ components:
       format: date
       description: Primeiro dia do mês
     Role: { type: string, enum: [admin, member, viewer] }
-    Wallet: { type: string, enum: [free, benefit] }
     DeductionKind: { type: string, enum: [inss, irrf, health_plan, health_copay, other] }
 
     RegisterRequest:
@@ -1119,7 +1190,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
+        defaultWalletId: { type: string, format: uuid, nullable: true, description: "Carteira sugerida ao pagar (opcional)" }
         isEssential: { type: boolean }
         sortOrder: { type: integer }
         archived: { type: boolean }
@@ -1129,14 +1200,14 @@ components:
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 60 }
-        defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
+        defaultWalletId: { type: string, format: uuid, nullable: true, description: "Carteira da casa, não arquivada (senão 400 no campo defaultWalletId)" }
         isEssential: { type: boolean, default: false }
         parentId: { type: string, format: uuid, nullable: true, description: "Cria dentro desta categoria principal" }
     CategoryPatch:
       type: object
       properties:
         name: { type: string }
-        defaultWallet: { type: string, allOf: [ { $ref: '#/components/schemas/Wallet' } ], nullable: true }
+        defaultWalletId: { type: string, format: uuid, nullable: true, description: "null limpa a sugestão" }
         isEssential: { type: boolean }
         sortOrder: { type: integer }
         archived: { type: boolean }
@@ -1207,10 +1278,10 @@ components:
         notes: { type: string, nullable: true }
     Payment:
       type: object
-      required: [paidAt, wallet, amountCents]
+      required: [paidAt, walletId, amountCents]
       properties:
         paidAt: { type: string, format: date }
-        wallet: { $ref: '#/components/schemas/Wallet' }
+        walletId: { type: string, format: uuid }
         amountCents: { $ref: '#/components/schemas/Cents' }
         paidByUserId: { type: string, format: uuid, nullable: true }
     SeriesRef:
@@ -1263,9 +1334,9 @@ components:
         nextCursor: { type: string, nullable: true }
     PayRequest:
       type: object
-      required: [wallet]
+      required: [walletId]
       properties:
-        wallet: { $ref: '#/components/schemas/Wallet' }
+        walletId: { type: string, format: uuid, description: "Carteira da casa, não arquivada (senão 400 no campo walletId)" }
         paidAt: { type: string, format: date, description: "Padrão hoje" }
         amountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Padrão = valor da invoice (informe se houve juros/desconto)" }
     PayResult:
@@ -1275,8 +1346,18 @@ components:
         invoice: { $ref: '#/components/schemas/Invoice' }
         warnings:
           type: array
-          description: Avisos que não bloqueiam (ex. `benefit_balance_insufficient`)
+          description: Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (veja `warningDetails` para a carteira).
           items: { type: string }
+        warningDetails:
+          type: array
+          description: Detalhe dos avisos, na mesma ordem de `warnings`.
+          items: { $ref: '#/components/schemas/PayWarning' }
+    PayWarning:
+      type: object
+      required: [code, walletId]
+      properties:
+        code: { type: string, description: "Igual ao item de `warnings` (ex. `wallet_balance_insufficient`)" }
+        walletId: { type: string, format: uuid, description: "Carteira com aviso de saldo ligado cujo saldo realizado ficou negativo" }
 
     Boleto:
       type: object
@@ -1430,14 +1511,14 @@ components:
         weekendAdjust: { allOf: [ { $ref: '#/components/schemas/WeekendAdjust' } ], description: "Padrão forward" }
     Income:
       type: object
-      required: [id, userId, kind, description, wallet, competenceMonth, expectedDate, amountMode, grossAmountCents, netAmountCents, deductions, received, held, repeats]
+      required: [id, userId, kind, description, walletId, competenceMonth, expectedDate, amountMode, grossAmountCents, netAmountCents, deductions, received, held, repeats]
       properties:
         id: { type: string, format: uuid }
         sourceId: { type: string, format: uuid, nullable: true }
         userId: { type: string, format: uuid }
         kind: { type: string, enum: [salary, benefit, other] }
         description: { type: string }
-        wallet: { $ref: '#/components/schemas/Wallet' }
+        walletId: { type: string, format: uuid, description: "Carteira onde a receita cai (o front resolve o nome pela lista de carteiras)" }
         competenceMonth: { $ref: '#/components/schemas/Month' }
         expectedDate: { type: string, format: date }
         amountMode: { $ref: '#/components/schemas/AmountMode' }
@@ -1460,7 +1541,7 @@ components:
       properties:
         userId: { type: string, format: uuid, description: "Deve ser membro ativo da casa" }
         kind: { type: string, enum: [salary, benefit, other] }
-        wallet: { allOf: [ { $ref: '#/components/schemas/Wallet' } ], description: "Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400." }
+        walletId: { type: string, format: uuid, description: "Opcional. Padrão = carteira padrão da casa (para o tipo benefit, a carteira ativa chamada Benefício, se existir). Carteira de outra casa ou arquivada = 400 no campo walletId. Qualquer tipo pode ir para qualquer carteira." }
         description: { type: string }
         competenceMonth: { $ref: '#/components/schemas/Month' }
         expectedDate: { type: string, format: date, description: "Data digitada. Obrigatória se não houver dateRule; com repeats vale só para o primeiro mês." }
@@ -1479,6 +1560,7 @@ components:
       properties:
         userId: { type: string, format: uuid }
         kind: { type: string, enum: [salary, benefit, other] }
+        walletId: { type: string, format: uuid, description: "Muda a carteira (trocar o tipo não troca a carteira)" }
         description: { type: string }
         competenceMonth: { $ref: '#/components/schemas/Month' }
         expectedDate: { type: string, format: date }
@@ -1492,12 +1574,12 @@ components:
         notes: { type: string, nullable: true }
     IncomeSource:
       type: object
-      required: [id, userId, kind, wallet, name, amountMode, grossAmountCents, dayOfMonth, dateRule, startMonth, deductions]
+      required: [id, userId, kind, walletId, name, amountMode, grossAmountCents, dayOfMonth, dateRule, startMonth, deductions]
       properties:
         id: { type: string, format: uuid }
         userId: { type: string, format: uuid }
         kind: { type: string, enum: [salary, benefit, other] }
-        wallet: { $ref: '#/components/schemas/Wallet' }
+        walletId: { type: string, format: uuid }
         name: { type: string }
         amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade)." }
@@ -1516,7 +1598,7 @@ components:
       properties:
         userId: { type: string, format: uuid, description: "Deve ser membro ativo da casa" }
         kind: { type: string, enum: [salary, benefit, other] }
-        wallet: { allOf: [ { $ref: '#/components/schemas/Wallet' } ], description: "Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400." }
+        walletId: { type: string, format: uuid, description: "Opcional. Mesmas regras de IncomeInput.walletId. Cada lançamento gerado copia a carteira da fonte." }
         name: { type: string }
         amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
@@ -1534,6 +1616,7 @@ components:
       properties:
         userId: { type: string, format: uuid }
         kind: { type: string, enum: [salary, benefit, other] }
+        walletId: { type: string, format: uuid, description: "Muda a carteira do molde (e dos lançamentos que ainda não contam como recebidos, com applyFrom)" }
         name: { type: string }
         notes: { type: string, nullable: true }
         amountMode: { $ref: '#/components/schemas/AmountMode' }
@@ -1562,27 +1645,63 @@ components:
         checkedOn: { type: string, format: date, description: "Quando as tabelas foram conferidas" }
         approximate: { type: boolean, description: "Sempre verdadeiro: é uma estimativa" }
 
+    Wallet:
+      type: object
+      required: [id, name, isDefault, warnOnOverdraft, openingBalanceCents, sortOrder, archived]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        ownerUserId: { type: string, format: uuid, nullable: true, description: "Só etiqueta (de quem é a carteira); não restringe o uso" }
+        isDefault: { type: boolean, description: "Exatamente uma por casa" }
+        warnOnOverdraft: { type: boolean, description: "Avisa ao pagar se o saldo realizado desta carteira ficar negativo" }
+        openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo inicial (pode ser negativo); entra no saldo anterior de todos os meses" }
+        sortOrder: { type: integer }
+        archived: { type: boolean }
+    WalletInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 40, description: "Único entre as carteiras ativas da casa (sem diferenciar maiúsculas)" }
+        ownerUserId: { type: string, format: uuid, nullable: true, description: "Deve ser membro da casa" }
+        warnOnOverdraft: { type: boolean, default: true }
+        openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Padrão 0" }
+        sortOrder: { type: integer, description: "Padrão = fim da lista" }
+    WalletPatch:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 40 }
+        ownerUserId: { type: string, format: uuid, nullable: true, description: "null limpa o dono" }
+        warnOnOverdraft: { type: boolean }
+        openingBalanceCents: { $ref: '#/components/schemas/Cents' }
+        isDefault: { type: boolean, description: "true troca a carteira padrão da casa; false = 400" }
+        sortOrder: { type: integer }
     WalletBalance:
       type: object
-      required: [expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents, pendingCents, projectedCents]
+      required: [walletId, name, isDefault, archived, openingBalanceCents, carryOverCents, expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents, monthBalanceCents, pendingCents, projectedCents]
       properties:
+        walletId: { type: string, format: uuid }
+        name: { type: string }
+        ownerUserId: { type: string, format: uuid, nullable: true }
+        isDefault: { type: boolean }
+        archived: { type: boolean, description: "Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento no mês" }
+        openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo inicial da carteira" }
+        carryOverCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas) da carteira, por competência" }
         expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (a receber + recebidas)" }
         receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)" }
         paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Valor efetivamente pago das invoices da competência pagas com esta carteira" }
-        balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Recebido - pago (estimativa, não é saldo bancário)" }
-        pendingCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar." }
-        projectedCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar." }
+        balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo REALIZADO acumulado: saldo anterior + recebido - pago (não é saldo bancário)" }
+        monthBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Só o mês: recebido - pago" }
+        pendingCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar." }
+        projectedCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar). Negativo = vai faltar." }
     MonthlySummary:
       type: object
       required: [month, wallets, totalPaidCents, totalPendingCents, overdueCents, overdueCount, byCategory]
       properties:
         month: { $ref: '#/components/schemas/Month' }
         wallets:
-          type: object
-          required: [free, benefit]
-          properties:
-            free: { $ref: '#/components/schemas/WalletBalance' }
-            benefit: { $ref: '#/components/schemas/WalletBalance' }
+          type: array
+          description: Carteira padrão primeiro, depois por sortOrder e nome.
+          items: { $ref: '#/components/schemas/WalletBalance' }
         totalPaidCents: { $ref: '#/components/schemas/Cents' }
         totalPendingCents: { $ref: '#/components/schemas/Cents' }
         overdueCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Parte do pendente já vencida (vencimento antes de hoje)" }

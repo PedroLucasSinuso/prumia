@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleUserRound, Database, Info, Palette, Store, Tags, Users, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CircleUserRound, Database, Info, Palette, Store, Tags, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import { useCategories } from '../api/queries'
@@ -13,15 +13,17 @@ import { CategoriesSection } from '../components/settings/CategoriesSection'
 import { DataSection } from '../components/settings/DataSection'
 import { HouseSection } from '../components/settings/HouseSection'
 import { PayeesSection } from '../components/settings/PayeesSection'
+import { WalletsSection } from '../components/settings/WalletsSection'
 import { ICON } from '../lib/navigation'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
-type SectionId = 'casa' | 'categorias' | 'favorecidos' | 'aparencia' | 'conta' | 'dados' | 'sobre'
+type SectionId = 'casa' | 'categorias' | 'carteiras' | 'favorecidos' | 'aparencia' | 'conta' | 'dados' | 'sobre'
 
 /** As seções de Ajustes, na ordem do menu. O `id` é o último pedaço do endereço (/ajustes/casa). */
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: LucideIcon }[] = [
   { id: 'casa', label: 'Casa e pessoas', hint: 'Quem mora, convites, nome da casa', icon: Users },
   { id: 'categorias', label: 'Categorias', hint: 'Organize e ordene os gastos', icon: Tags },
+  { id: 'carteiras', label: 'Carteiras', hint: 'Onde o dinheiro da casa fica', icon: Wallet },
   { id: 'favorecidos', label: 'Favorecidos', hint: 'Quem recebe: empresas e pessoas', icon: Store },
   { id: 'aparencia', label: 'Aparência', hint: 'Tema de cor', icon: Palette },
   { id: 'conta', label: 'Minha conta', hint: 'Nome, senha e aparelhos', icon: CircleUserRound },
@@ -128,6 +130,8 @@ function SectionBody({ id, me, house, desktop }: { id: SectionId; me: Me; house?
       return <HouseSection me={me} house={house} />
     case 'categorias':
       return <CategoriesSection houseId={house.id} canWrite={canWrite} desktop={desktop} />
+    case 'carteiras':
+      return <WalletsSection houseId={house.id} isAdmin={house.role === 'admin'} desktop={desktop} />
     case 'favorecidos':
       return <PayeesWithCategories houseId={house.id} canWrite={canWrite} desktop={desktop} />
     case 'dados':

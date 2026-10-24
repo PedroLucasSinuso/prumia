@@ -372,24 +372,6 @@ func (e Theme) Valid() bool {
 	}
 }
 
-// Defines values for Wallet.
-const (
-	WalletBenefit Wallet = "benefit"
-	WalletFree    Wallet = "free"
-)
-
-// Valid indicates whether the value is a known member of the Wallet enum.
-func (e Wallet) Valid() bool {
-	switch e {
-	case WalletBenefit:
-		return true
-	case WalletFree:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for WeekendAdjust.
 const (
 	Backward WeekendAdjust = "backward"
@@ -631,11 +613,13 @@ type BoletoExtractionMethod string
 
 // Category defines model for Category.
 type Category struct {
-	Archived      bool               `json:"archived"`
-	DefaultWallet *Wallet            `json:"defaultWallet,omitempty"`
-	Id            openapi_types.UUID `json:"id"`
-	IsEssential   bool               `json:"isEssential"`
-	Name          string             `json:"name"`
+	Archived bool `json:"archived"`
+
+	// DefaultWalletId Carteira sugerida ao pagar (opcional)
+	DefaultWalletId *openapi_types.UUID `json:"defaultWalletId,omitempty"`
+	Id              openapi_types.UUID  `json:"id"`
+	IsEssential     bool                `json:"isEssential"`
+	Name            string              `json:"name"`
 
 	// ParentId Categoria principal (só dois níveis); null = de topo
 	ParentId  *openapi_types.UUID `json:"parentId,omitempty"`
@@ -653,9 +637,10 @@ type CategoryHistory struct {
 
 // CategoryInput defines model for CategoryInput.
 type CategoryInput struct {
-	DefaultWallet *Wallet `json:"defaultWallet,omitempty"`
-	IsEssential   *bool   `json:"isEssential,omitempty"`
-	Name          string  `json:"name"`
+	// DefaultWalletId Carteira da casa, não arquivada (senão 400 no campo defaultWalletId)
+	DefaultWalletId *openapi_types.UUID `json:"defaultWalletId,omitempty"`
+	IsEssential     *bool               `json:"isEssential,omitempty"`
+	Name            string              `json:"name"`
 
 	// ParentId Cria dentro desta categoria principal
 	ParentId *openapi_types.UUID `json:"parentId,omitempty"`
@@ -663,10 +648,12 @@ type CategoryInput struct {
 
 // CategoryPatch defines model for CategoryPatch.
 type CategoryPatch struct {
-	Archived      *bool   `json:"archived,omitempty"`
-	DefaultWallet *Wallet `json:"defaultWallet,omitempty"`
-	IsEssential   *bool   `json:"isEssential,omitempty"`
-	Name          *string `json:"name,omitempty"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// DefaultWalletId null limpa a sugestão
+	DefaultWalletId *openapi_types.UUID `json:"defaultWalletId,omitempty"`
+	IsEssential     *bool               `json:"isEssential,omitempty"`
+	Name            *string             `json:"name,omitempty"`
 
 	// ParentId Move para dentro de uma categoria principal; null = volta ao topo
 	ParentId  *openapi_types.UUID `json:"parentId,omitempty"`
@@ -840,7 +827,9 @@ type Income struct {
 	// UnitPriceCents Só por unidade
 	UnitPriceCents *Cents             `json:"unitPriceCents,omitempty"`
 	UserId         openapi_types.UUID `json:"userId"`
-	Wallet         Wallet             `json:"wallet"`
+
+	// WalletId Carteira onde a receita cai (o front resolve o nome pela lista de carteiras)
+	WalletId openapi_types.UUID `json:"walletId"`
 }
 
 // IncomeKind defines model for Income.Kind.
@@ -893,8 +882,8 @@ type IncomeInput struct {
 	// UserId Deve ser membro ativo da casa
 	UserId openapi_types.UUID `json:"userId"`
 
-	// Wallet Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400.
-	Wallet *Wallet `json:"wallet,omitempty"`
+	// WalletId Opcional. Padrão = carteira padrão da casa (para o tipo benefit, a carteira ativa chamada Benefício, se existir). Carteira de outra casa ou arquivada = 400 no campo walletId. Qualquer tipo pode ir para qualquer carteira.
+	WalletId *openapi_types.UUID `json:"walletId,omitempty"`
 }
 
 // IncomeInputKind defines model for IncomeInput.Kind.
@@ -924,6 +913,9 @@ type IncomePatch struct {
 	// UnitPriceCents Valor em centavos (BRL)
 	UnitPriceCents *Cents              `json:"unitPriceCents,omitempty"`
 	UserId         *openapi_types.UUID `json:"userId,omitempty"`
+
+	// WalletId Muda a carteira (trocar o tipo não troca a carteira)
+	WalletId *openapi_types.UUID `json:"walletId,omitempty"`
 }
 
 // IncomePatchKind defines model for IncomePatch.Kind.
@@ -957,7 +949,7 @@ type IncomeSource struct {
 	UnitLabel      *string            `json:"unitLabel,omitempty"`
 	UnitPriceCents *Cents             `json:"unitPriceCents,omitempty"`
 	UserId         openapi_types.UUID `json:"userId"`
-	Wallet         Wallet             `json:"wallet"`
+	WalletId       openapi_types.UUID `json:"walletId"`
 }
 
 // IncomeSourceKind defines model for IncomeSource.Kind.
@@ -995,8 +987,8 @@ type IncomeSourceInput struct {
 	// UserId Deve ser membro ativo da casa
 	UserId openapi_types.UUID `json:"userId"`
 
-	// Wallet Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400.
-	Wallet *Wallet `json:"wallet,omitempty"`
+	// WalletId Opcional. Mesmas regras de IncomeInput.walletId. Cada lançamento gerado copia a carteira da fonte.
+	WalletId *openapi_types.UUID `json:"walletId,omitempty"`
 }
 
 // IncomeSourceInputKind defines model for IncomeSourceInput.Kind.
@@ -1025,6 +1017,9 @@ type IncomeSourcePatch struct {
 	// UnitPriceCents Valor em centavos (BRL)
 	UnitPriceCents *Cents              `json:"unitPriceCents,omitempty"`
 	UserId         *openapi_types.UUID `json:"userId,omitempty"`
+
+	// WalletId Muda a carteira do molde (e dos lançamentos que ainda não contam como recebidos, com applyFrom)
+	WalletId *openapi_types.UUID `json:"walletId,omitempty"`
 }
 
 // IncomeSourcePatchKind defines model for IncomeSourcePatch.Kind.
@@ -1178,10 +1173,9 @@ type MonthlySummary struct {
 
 	// TotalPendingCents Valor em centavos (BRL)
 	TotalPendingCents Cents `json:"totalPendingCents"`
-	Wallets           struct {
-		Benefit WalletBalance `json:"benefit"`
-		Free    WalletBalance `json:"free"`
-	} `json:"wallets"`
+
+	// Wallets Carteira padrão primeiro, depois por sortOrder e nome.
+	Wallets []WalletBalance `json:"wallets"`
 }
 
 // PayRequest defines model for PayRequest.
@@ -1191,15 +1185,29 @@ type PayRequest struct {
 
 	// PaidAt Padrão hoje
 	PaidAt *caldate.Date `json:"paidAt,omitempty"`
-	Wallet Wallet        `json:"wallet"`
+
+	// WalletId Carteira da casa, não arquivada (senão 400 no campo walletId)
+	WalletId openapi_types.UUID `json:"walletId"`
 }
 
 // PayResult defines model for PayResult.
 type PayResult struct {
 	Invoice Invoice `json:"invoice"`
 
-	// Warnings Avisos que não bloqueiam (ex. `benefit_balance_insufficient`)
+	// WarningDetails Detalhe dos avisos, na mesma ordem de `warnings`.
+	WarningDetails *[]PayWarning `json:"warningDetails,omitempty"`
+
+	// Warnings Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (veja `warningDetails` para a carteira).
 	Warnings *[]string `json:"warnings,omitempty"`
+}
+
+// PayWarning defines model for PayWarning.
+type PayWarning struct {
+	// Code Igual ao item de `warnings` (ex. `wallet_balance_insufficient`)
+	Code string `json:"code"`
+
+	// WalletId Carteira com aviso de saldo ligado cujo saldo realizado ficou negativo
+	WalletId openapi_types.UUID `json:"walletId"`
 }
 
 // Payee defines model for Payee.
@@ -1242,7 +1250,7 @@ type Payment struct {
 	AmountCents  Cents               `json:"amountCents"`
 	PaidAt       caldate.Date        `json:"paidAt"`
 	PaidByUserId *openapi_types.UUID `json:"paidByUserId,omitempty"`
-	Wallet       Wallet              `json:"wallet"`
+	WalletId     openapi_types.UUID  `json:"walletId"`
 }
 
 // Problem defines model for Problem.
@@ -1397,27 +1405,91 @@ type TaxEstimate struct {
 type Theme string
 
 // Wallet defines model for Wallet.
-type Wallet string
+type Wallet struct {
+	Archived bool               `json:"archived"`
+	Id       openapi_types.UUID `json:"id"`
+
+	// IsDefault Exatamente uma por casa
+	IsDefault bool   `json:"isDefault"`
+	Name      string `json:"name"`
+
+	// OpeningBalanceCents Saldo inicial (pode ser negativo); entra no saldo anterior de todos os meses
+	OpeningBalanceCents Cents `json:"openingBalanceCents"`
+
+	// OwnerUserId Só etiqueta (de quem é a carteira); não restringe o uso
+	OwnerUserId *openapi_types.UUID `json:"ownerUserId,omitempty"`
+	SortOrder   int                 `json:"sortOrder"`
+
+	// WarnOnOverdraft Avisa ao pagar se o saldo realizado desta carteira ficar negativo
+	WarnOnOverdraft bool `json:"warnOnOverdraft"`
+}
 
 // WalletBalance defines model for WalletBalance.
 type WalletBalance struct {
-	// BalanceCents Recebido - pago (estimativa, não é saldo bancário)
+	// Archived Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento no mês
+	Archived bool `json:"archived"`
+
+	// BalanceCents Saldo REALIZADO acumulado: saldo anterior + recebido - pago (não é saldo bancário)
 	BalanceCents Cents `json:"balanceCents"`
+
+	// CarryOverCents Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas) da carteira, por competência
+	CarryOverCents Cents `json:"carryOverCents"`
 
 	// ExpectedIncomeCents Líquido de todas as receitas da competência na carteira (a receber + recebidas)
 	ExpectedIncomeCents Cents `json:"expectedIncomeCents"`
+	IsDefault           bool  `json:"isDefault"`
+
+	// MonthBalanceCents Só o mês: recebido - pago
+	MonthBalanceCents Cents  `json:"monthBalanceCents"`
+	Name              string `json:"name"`
+
+	// OpeningBalanceCents Saldo inicial da carteira
+	OpeningBalanceCents Cents               `json:"openingBalanceCents"`
+	OwnerUserId         *openapi_types.UUID `json:"ownerUserId,omitempty"`
 
 	// PaidCents Valor efetivamente pago das invoices da competência pagas com esta carteira
 	PaidCents Cents `json:"paidCents"`
 
-	// PendingCents Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar.
+	// PendingCents Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar.
 	PendingCents Cents `json:"pendingCents"`
 
-	// ProjectedCents Saldo projetado: previsto para entrar - (pago + a pagar). Negativo = vai faltar.
+	// ProjectedCents Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar). Negativo = vai faltar.
 	ProjectedCents Cents `json:"projectedCents"`
 
 	// ReceivedIncomeCents Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)
-	ReceivedIncomeCents Cents `json:"receivedIncomeCents"`
+	ReceivedIncomeCents Cents              `json:"receivedIncomeCents"`
+	WalletId            openapi_types.UUID `json:"walletId"`
+}
+
+// WalletInput defines model for WalletInput.
+type WalletInput struct {
+	// Name Único entre as carteiras ativas da casa (sem diferenciar maiúsculas)
+	Name string `json:"name"`
+
+	// OpeningBalanceCents Padrão 0
+	OpeningBalanceCents *Cents `json:"openingBalanceCents,omitempty"`
+
+	// OwnerUserId Deve ser membro da casa
+	OwnerUserId *openapi_types.UUID `json:"ownerUserId,omitempty"`
+
+	// SortOrder Padrão = fim da lista
+	SortOrder       *int  `json:"sortOrder,omitempty"`
+	WarnOnOverdraft *bool `json:"warnOnOverdraft,omitempty"`
+}
+
+// WalletPatch defines model for WalletPatch.
+type WalletPatch struct {
+	// IsDefault true troca a carteira padrão da casa; false = 400
+	IsDefault *bool   `json:"isDefault,omitempty"`
+	Name      *string `json:"name,omitempty"`
+
+	// OpeningBalanceCents Valor em centavos (BRL)
+	OpeningBalanceCents *Cents `json:"openingBalanceCents,omitempty"`
+
+	// OwnerUserId null limpa o dono
+	OwnerUserId     *openapi_types.UUID `json:"ownerUserId,omitempty"`
+	SortOrder       *int                `json:"sortOrder,omitempty"`
+	WarnOnOverdraft *bool               `json:"warnOnOverdraft,omitempty"`
 }
 
 // WeekendAdjust Quando a data cai em fim de semana ou feriado nacional: forward = próximo dia útil (padrão), backward = dia útil anterior, none = manter
@@ -1679,6 +1751,11 @@ type EstimateTaxParams struct {
 	Dependents *int         `form:"dependents,omitempty" json:"dependents,omitempty"`
 }
 
+// ListWalletsParams defines parameters for ListWallets.
+type ListWalletsParams struct {
+	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
 // AcceptInviteJSONBody defines parameters for AcceptInvite.
 type AcceptInviteJSONBody struct {
 	Token string `json:"token"`
@@ -1767,6 +1844,12 @@ type CreateRecurrenceJSONRequestBody = RecurrenceInput
 
 // UpdateRecurrenceJSONRequestBody defines body for UpdateRecurrence for application/json ContentType.
 type UpdateRecurrenceJSONRequestBody = RecurrencePatch
+
+// CreateWalletJSONRequestBody defines body for CreateWallet for application/json ContentType.
+type CreateWalletJSONRequestBody = WalletInput
+
+// UpdateWalletJSONRequestBody defines body for UpdateWallet for application/json ContentType.
+type UpdateWalletJSONRequestBody = WalletPatch
 
 // AcceptInviteJSONRequestBody defines body for AcceptInvite for application/json ContentType.
 type AcceptInviteJSONRequestBody AcceptInviteJSONBody
@@ -1962,6 +2045,21 @@ type ServerInterface interface {
 	// EstimateTax Estimativa de INSS e IRRF de um salário mensal (sugestão para preencher descontos)
 	// (GET /households/{householdId}/tax/estimate)
 	EstimateTax(c *gin.Context, householdId HouseholdId, params EstimateTaxParams)
+	// ListWallets Carteiras da casa (qualquer membro). A padrão vem primeiro, depois por sortOrder e nome.
+	// (GET /households/{householdId}/wallets)
+	ListWallets(c *gin.Context, householdId HouseholdId, params ListWalletsParams)
+	// CreateWallet Cria carteira (só admin, o Responsável)
+	// (POST /households/{householdId}/wallets)
+	CreateWallet(c *gin.Context, householdId HouseholdId)
+	// UpdateWallet Edita carteira (só admin)
+	// (PATCH /households/{householdId}/wallets/{walletId})
+	UpdateWallet(c *gin.Context, householdId HouseholdId, walletId openapi_types.UUID)
+	// ArchiveWallet Arquiva a carteira (só admin). Não existe exclusão. A padrão não pode ser arquivada (409 `wallet_is_default`).
+	// (POST /households/{householdId}/wallets/{walletId}/archive)
+	ArchiveWallet(c *gin.Context, householdId HouseholdId, walletId openapi_types.UUID)
+	// RestoreWallet Restaura a carteira arquivada (só admin). 409 `wallet_exists` se já há outra ativa com o mesmo nome.
+	// (POST /households/{householdId}/wallets/{walletId}/restore)
+	RestoreWallet(c *gin.Context, householdId HouseholdId, walletId openapi_types.UUID)
 	// AcceptInvite Usuário logado entra em outra casa com um token de convite
 	// (POST /invites/accept)
 	AcceptInvite(c *gin.Context)
@@ -3970,6 +4068,169 @@ func (siw *ServerInterfaceWrapper) EstimateTax(c *gin.Context) {
 	siw.Handler.EstimateTax(c, householdId, params)
 }
 
+// ListWallets operation middleware
+func (siw *ServerInterfaceWrapper) ListWallets(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWalletsParams
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", c.Request.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter includeArchived: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListWallets(c, householdId, params)
+}
+
+// CreateWallet operation middleware
+func (siw *ServerInterfaceWrapper) CreateWallet(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateWallet(c, householdId)
+}
+
+// UpdateWallet operation middleware
+func (siw *ServerInterfaceWrapper) UpdateWallet(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "walletId" -------------
+	var walletId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "walletId", c.Param("walletId"), &walletId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter walletId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateWallet(c, householdId, walletId)
+}
+
+// ArchiveWallet operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveWallet(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "walletId" -------------
+	var walletId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "walletId", c.Param("walletId"), &walletId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter walletId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ArchiveWallet(c, householdId, walletId)
+}
+
+// RestoreWallet operation middleware
+func (siw *ServerInterfaceWrapper) RestoreWallet(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "walletId" -------------
+	var walletId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "walletId", c.Param("walletId"), &walletId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter walletId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RestoreWallet(c, householdId, walletId)
+}
+
 // AcceptInvite operation middleware
 func (siw *ServerInterfaceWrapper) AcceptInvite(c *gin.Context) {
 
@@ -4039,6 +4300,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/payees", wrapper.CreatePayee)
 	router.DELETE(options.BaseURL+"/households/:householdId/payees/:payeeId", wrapper.DeletePayee)
 	router.PATCH(options.BaseURL+"/households/:householdId/payees/:payeeId", wrapper.UpdatePayee)
+	router.GET(options.BaseURL+"/households/:householdId/wallets", wrapper.ListWallets)
+	router.POST(options.BaseURL+"/households/:householdId/wallets", wrapper.CreateWallet)
+	router.PATCH(options.BaseURL+"/households/:householdId/wallets/:walletId", wrapper.UpdateWallet)
+	router.POST(options.BaseURL+"/households/:householdId/wallets/:walletId/archive", wrapper.ArchiveWallet)
+	router.POST(options.BaseURL+"/households/:householdId/wallets/:walletId/restore", wrapper.RestoreWallet)
 	router.GET(options.BaseURL+"/households/:householdId/invoices", wrapper.ListInvoices)
 	router.POST(options.BaseURL+"/households/:householdId/invoices", wrapper.CreateInvoice)
 	router.POST(options.BaseURL+"/households/:householdId/invoices/batch", wrapper.CreateInvoiceBatch)

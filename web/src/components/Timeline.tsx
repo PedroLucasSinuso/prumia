@@ -3,6 +3,7 @@ import { dayMonth, daysBetween, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { useFlash, usePaidPulse } from '../lib/flash'
 import { seriesTag } from '../lib/series'
+import { useWalletName } from '../lib/useWalletName'
 import { InvoiceRow } from './InvoiceRow'
 
 type Props = {
@@ -24,7 +25,6 @@ type Props = {
   onCheck?: (invoice: Invoice, range: boolean) => void
 }
 
-const walletLabel = { free: 'livre', benefit: 'benefício' } as const
 
 /**
  * A linha de prumo do mês: uma linha vertical sustenta as contas, cada uma é um nó nela (e o nó é o botão de pagar).
@@ -109,13 +109,14 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
   const overdue = invoice.status === 'overdue'
   const node = paid ? 'border-structure bg-structure' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
   const tag = seriesTag(invoice)
+  const nameOf = useWalletName()
   const flashing = useFlash(invoice.id)
   const pulsing = usePaidPulse(invoice.id)
   // O risco é sempre `line-through`, transparente até a conta ser paga: a cor aparece com transição.
   const strike = `line-through transition-colors ${paid ? 'text-ink/60 decoration-ink/60' : 'decoration-transparent'}`
   const lateDays = overdue && today ? daysBetween(invoice.dueDate, today) : 0
   const meta = paid && invoice.paid
-    ? `paga na carteira ${walletLabel[invoice.paid.wallet]}`
+    ? `paga na carteira ${nameOf(invoice.paid.walletId)}`
     : overdue
       ? lateDays > 0 ? `atrasada ${lateDays} ${lateDays === 1 ? 'dia' : 'dias'}` : 'atrasada'
       : `vence dia ${invoice.dueDate.slice(8, 10)}`

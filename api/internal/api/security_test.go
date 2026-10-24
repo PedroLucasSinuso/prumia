@@ -78,7 +78,7 @@ func novoMundo(t *testing.T) *mundo {
 
 	m.ids = map[string]string{
 		"categoryId": c.Id, "payeeId": pe.Id, "invoiceId": invA.ID, "purchaseId": p.ID, "recurrenceId": rec.ID,
-		"incomeId": inc.ID, "sourceId": src.ID, "inviteId": invite.Id, "userId": m.anaID,
+		"incomeId": inc.ID, "sourceId": src.ID, "inviteId": invite.Id, "userId": m.anaID, "walletId": a.vr(m.houseA),
 	}
 	for _, rt := range a.router.Routes() {
 		if strings.HasPrefix(rt.Path, "/api/households/:householdId") {
@@ -117,7 +117,7 @@ func (m *mundo) url(route, house string) (method, path string, otherIDs bool) {
 
 // corpo genérico e plausível: o suficiente para a requisição chegar ao serviço em vez de parar no JSON.
 var corpoGenerico = map[string]any{
-	"name": "x", "description": "x", "amountCents": 1, "grossAmountCents": 1, "wallet": "free", "role": "member",
+	"name": "x", "description": "x", "amountCents": 1, "grossAmountCents": 1, "walletId": "00000000-0000-0000-0000-000000000001", "role": "member",
 }
 
 // impressaoDigital resume (md5) todas as linhas da casa A, em todas as tabelas com household_id, mais a conta da Ana.
@@ -125,7 +125,7 @@ var corpoGenerico = map[string]any{
 func (m *mundo) impressaoDigital(t *testing.T) string {
 	t.Helper()
 	tables := []string{"households", "household_members", "household_invites", "categories", "payees", "invoices", "purchases",
-		"recurrences", "invoice_boletos", "income_sources", "income_source_deductions", "incomes", "income_deductions"}
+		"recurrences", "wallets", "invoice_boletos", "income_sources", "income_source_deductions", "incomes", "income_deductions"}
 	var parts []string
 	for _, tb := range tables {
 		col := "household_id"
@@ -221,6 +221,10 @@ func TestVarreduraMemberNaoFazOperacaoDeAdmin(t *testing.T) {
 		"PATCH /api/households/:householdId/members/:userId":                    true,
 		"DELETE /api/households/:householdId/members/:userId":                   true, // userId = Ana (outra pessoa)
 		"POST /api/households/:householdId/invites":                             true,
+		"POST /api/households/:householdId/wallets":                             true,
+		"PATCH /api/households/:householdId/wallets/:walletId":                  true,
+		"POST /api/households/:householdId/wallets/:walletId/archive":           true,
+		"POST /api/households/:householdId/wallets/:walletId/restore":           true,
 		"DELETE /api/households/:householdId/invites/:inviteId":                 true,
 		"POST /api/households/:householdId/members/:userId/password-reset-link": true,
 	}

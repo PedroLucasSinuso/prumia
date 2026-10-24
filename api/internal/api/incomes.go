@@ -82,7 +82,7 @@ func amountModePtr(m *gen.AmountMode) string {
 func toGenIncome(v income.View) gen.Income {
 	out := gen.Income{
 		Id: v.ID, SourceId: v.SourceID, UserId: v.UserID, Kind: gen.IncomeKind(v.Kind), Description: v.Description,
-		Wallet: gen.Wallet(v.Wallet), CompetenceMonth: v.CompetenceMonth, ExpectedDate: v.ExpectedDate,
+		WalletId: v.WalletID, CompetenceMonth: v.CompetenceMonth, ExpectedDate: v.ExpectedDate,
 		AmountMode: gen.AmountMode(v.Mode()), GrossAmountCents: v.GrossAmountCents, Deductions: toGenDeductions(v.Deductions),
 		NetAmountCents: v.Net, Received: v.Received, Held: v.HeldAt != nil, Repeats: v.Repeats, Notes: v.Notes,
 		UnitPriceCents: v.UnitPriceCents, Quantity: v.Quantity, UnitLabel: v.UnitLabel,
@@ -112,7 +112,7 @@ func toGenIncome(v income.View) gen.Income {
 
 func toGenSource(v income.SourceView) gen.IncomeSource {
 	out := gen.IncomeSource{
-		Id: v.ID, UserId: v.UserID, Kind: gen.IncomeSourceKind(v.Kind), Wallet: gen.Wallet(v.Wallet), Name: v.Name,
+		Id: v.ID, UserId: v.UserID, Kind: gen.IncomeSourceKind(v.Kind), WalletId: v.WalletID, Name: v.Name,
 		AmountMode: gen.AmountMode(v.AmountMode), GrossAmountCents: v.GrossAmountCents, UnitPriceCents: v.UnitPriceCents,
 		UnitLabel: v.UnitLabel, DayOfMonth: v.DayOfMonth, StartMonth: v.StartMonth,
 		DateRule:   ruleToGen(income.DateRule{Rule: v.DateRule, Adjust: calendar.Adjust(v.WeekendAdjust)}),
@@ -171,7 +171,7 @@ func (h *Incomes) CreateIncome(c *gin.Context, householdId gen.HouseholdId) {
 		return
 	}
 	in := income.CreateInput{
-		UserID: body.UserId, Kind: string(body.Kind), Wallet: walletPtr(body.Wallet), Description: body.Description,
+		UserID: body.UserId, Kind: string(body.Kind), WalletID: body.WalletId, Description: body.Description,
 		CompetenceMonth: body.CompetenceMonth, ExpectedDate: body.ExpectedDate, Rule: ruleFromGen(body.DateRule),
 		Amount: income.AmountInput{
 			Mode: amountModePtr(body.AmountMode), GrossCents: body.GrossAmountCents, UnitPriceCents: body.UnitPriceCents,
@@ -205,7 +205,7 @@ func (h *Incomes) UpdateIncome(c *gin.Context, householdId gen.HouseholdId, inco
 		return
 	}
 	p := income.Patch{
-		UserID: body.UserId, Description: body.Description, CompetenceMonth: body.CompetenceMonth, ExpectedDate: body.ExpectedDate,
+		UserID: body.UserId, WalletID: body.WalletId, Description: body.Description, CompetenceMonth: body.CompetenceMonth, ExpectedDate: body.ExpectedDate,
 		Quantity: body.Quantity, GrossAmountCents: body.GrossAmountCents, UnitPriceCents: body.UnitPriceCents, UnitLabel: body.UnitLabel,
 		Rule: ruleFromGen(body.DateRule), DeductionsSet: present["deductions"] && body.Deductions != nil,
 		Deductions: fromGenDeductions(body.Deductions), NotesSet: present["notes"], Notes: body.Notes,
@@ -367,7 +367,7 @@ func (h *Incomes) CreateIncomeSource(c *gin.Context, householdId gen.HouseholdId
 		return
 	}
 	in := income.SourceInput{
-		UserID: body.UserId, Kind: string(body.Kind), Wallet: walletPtr(body.Wallet), Name: body.Name,
+		UserID: body.UserId, Kind: string(body.Kind), WalletID: body.WalletId, Name: body.Name,
 		Amount: income.AmountInput{
 			Mode: amountModePtr(body.AmountMode), GrossCents: body.GrossAmountCents, UnitPriceCents: body.UnitPriceCents,
 			Quantity: body.Quantity, UnitLabel: body.UnitLabel,
@@ -413,7 +413,7 @@ func (h *Incomes) UpdateIncomeSource(c *gin.Context, householdId gen.HouseholdId
 		return
 	}
 	p := income.SourcePatch{
-		UserID: body.UserId, Name: body.Name, GrossAmountCents: body.GrossAmountCents, UnitPriceCents: body.UnitPriceCents,
+		UserID: body.UserId, WalletID: body.WalletId, Name: body.Name, GrossAmountCents: body.GrossAmountCents, UnitPriceCents: body.UnitPriceCents,
 		UnitLabel: body.UnitLabel, Rule: ruleFromGen(body.DateRule), DayOfMonth: body.DayOfMonth,
 		EndMonthSet: present["endMonth"], EndMonth: body.EndMonth, NotesSet: present["notes"], Notes: body.Notes,
 		DeductionsSet: present["deductions"] && body.Deductions != nil, Deductions: fromGenDeductions(body.Deductions),

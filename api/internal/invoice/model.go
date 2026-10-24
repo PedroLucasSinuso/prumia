@@ -35,7 +35,7 @@ type Invoice struct {
 
 	// Pagamento: os quatro campos andam juntos (CHECK no banco). PaidAt zero = pendente.
 	PaidAt          caldate.Date
-	PaidWallet      *string
+	PaidWalletID    *uuid.UUID `gorm:"type:uuid"`
 	PaidAmountCents *money.Cents
 	PaidByUserID    *uuid.UUID `gorm:"type:uuid"`
 

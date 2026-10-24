@@ -13,12 +13,14 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 // Patch: nil = não mexer. DeductionsSet/NotesSet distinguem "não enviado" de "lista vazia"/"null".
 type Patch struct {
 	UserID      *uuid.UUID
 	Kind        *string
+	WalletID    *uuid.UUID
 	Description *string
 	// Só valem com scope=this (cada mês tem o seu):
 	CompetenceMonth *caldate.Date
@@ -81,7 +83,7 @@ func (s *Service) updateFollowing(ctx context.Context, tx *gorm.DB, cur Income, 
 		return err
 	}
 	upd, err := s.patchMold(ctx, tx, &src, SourcePatch{
-		UserID: p.UserID, Kind: p.Kind, Name: p.Description, AmountMode: p.AmountMode, GrossAmountCents: p.GrossAmountCents,
+		UserID: p.UserID, Kind: p.Kind, WalletID: p.WalletID, Name: p.Description, AmountMode: p.AmountMode, GrossAmountCents: p.GrossAmountCents,
 		UnitPriceCents: p.UnitPriceCents, UnitLabel: p.UnitLabel, Rule: p.Rule, NotesSet: p.NotesSet, Notes: p.Notes,
 		DeductionsSet: p.DeductionsSet, Deductions: p.Deductions,
 	}, &v)
@@ -113,7 +115,14 @@ func (s *Service) updateThis(ctx context.Context, tx *gorm.DB, cur Income, p Pat
 		cols["user_id"] = *p.UserID
 	}
 	if p.Kind != nil {
-		cols["kind"], cols["wallet"] = *p.Kind, ResolveWallet(*p.Kind, nil, &v)
+		CheckKind(*p.Kind, &v)
+		cols["kind"] = *p.Kind // trocar o tipo NÃO troca a carteira (use WalletID)
+	}
+	if p.WalletID != nil {
+		if err := wallet.CheckUsable(tx, cur.HouseholdID, *p.WalletID, "walletId", &v); err != nil {
+			return err
+		}
+		cols["wallet_id"] = *p.WalletID
 	}
 	if p.Description != nil {
 		cols["description"] = checkName("description", *p.Description, 120, &v)

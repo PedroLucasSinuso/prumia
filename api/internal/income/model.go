@@ -15,14 +15,11 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 )
 
-// Tipos de receita e carteiras (valores iguais aos CHECKs do banco).
+// Tipos de receita (valores iguais ao CHECK do banco). A carteira é independente do tipo (ver wallet.BenefitOrDefaultID).
 const (
 	KindSalary  = "salary"
 	KindBenefit = "benefit"
 	KindOther   = "other"
-
-	WalletFree    = "free"
-	WalletBenefit = "benefit"
 )
 
 // Source espelha `income_sources`: o molde de uma receita mensal de uma pessoa.
@@ -32,7 +29,7 @@ type Source struct {
 	UserID           uuid.UUID `gorm:"type:uuid"`
 	Kind             string
 	Name             string
-	Wallet           string
+	WalletID         uuid.UUID `gorm:"type:uuid"`
 	GrossAmountCents money.Cents
 	DayOfMonth       int
 	StartMonth       caldate.Date
@@ -61,7 +58,7 @@ type Income struct {
 	UserID           uuid.UUID  `gorm:"type:uuid"`
 	Kind             string
 	Description      string
-	Wallet           string
+	WalletID         uuid.UUID `gorm:"type:uuid"`
 	CompetenceMonth  caldate.Date
 	ExpectedDate     caldate.Date
 	GrossAmountCents money.Cents

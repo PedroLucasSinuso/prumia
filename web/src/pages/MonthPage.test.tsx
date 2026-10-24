@@ -9,7 +9,7 @@ const aluguel = invoice({ id: 'i1', description: 'Aluguel', amountCents: 150000,
 const luz = invoice({ id: 'i2', description: 'Luz', amountCents: 20000, dueDate: '2026-10-25', status: 'pending' })
 const feira = invoice({
   id: 'i3', description: 'Feira', categoryId: 'c2', amountCents: 32000, dueDate: '2026-10-12', status: 'paid',
-  paid: { paidAt: '2026-10-12', wallet: 'benefit', amountCents: 30000 },
+  paid: { paidAt: '2026-10-12', walletId: 'w2', amountCents: 30000 },
 })
 const mes = '/?mes=2026-10'
 
@@ -68,7 +68,7 @@ describe('visão do mês', () => {
     withInvoices()
     renderAt(mes)
     expect(await screen.findByText('Feira')).toHaveClass('line-through')
-    expect(screen.getByText(/paga na carteira benefício/)).toBeInTheDocument()
+    expect(screen.getByText(/paga na carteira Benefício/)).toBeInTheDocument()
   })
 
   it('o filtro mostra só o que falta pagar, ou só as pagas', async () => {
@@ -133,31 +133,31 @@ describe('pagar', () => {
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
         '/households/{householdId}/invoices/{invoiceId}/pay',
-        expect.objectContaining({ body: { wallet: 'free' }, params: { path: { householdId: 'h1', invoiceId: 'i2' } } }),
+        expect.objectContaining({ body: { walletId: 'w1' }, params: { path: { householdId: 'h1', invoiceId: 'i2' } } }),
       ),
     )
-    expect(await screen.findByText(/Luz paga na carteira livre/)).toBeInTheDocument()
+    expect(await screen.findByText(/Luz paga na carteira Geral/)).toBeInTheDocument()
   })
 
-  it('usa a carteira sugerida pela categoria (Mercado -> benefício)', async () => {
+  it('usa a carteira sugerida pela categoria (Mercado -> Benefício)', async () => {
     mockApi({ me: ok(me), invoices: ok({ items: [invoice({ id: 'i9', description: 'Compras da semana', categoryId: 'c2' })] }) })
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Pagar Compras da semana' }))
     await waitFor(() =>
-      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.objectContaining({ body: { wallet: 'benefit' } })),
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.objectContaining({ body: { walletId: 'w2' } })),
     )
-    expect(await screen.findByText(/paga na carteira de benefício/)).toBeInTheDocument()
+    expect(await screen.findByText(/paga na carteira Benefício/)).toBeInTheDocument()
   })
 
   it('avisa, sem bloquear, quando o saldo de benefício do mês fica negativo', async () => {
     mockApi({
       me: ok(me),
       invoices: ok({ items: [invoice({ id: 'i9', description: 'Mercado', categoryId: 'c2' })] }),
-      pay: ok({ invoice: {}, warnings: ['benefit_balance_insufficient'] }),
+      pay: ok({ invoice: {}, warnings: ['wallet_balance_insufficient'] }),
     })
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Pagar Mercado' }))
-    expect(await screen.findByText(/Atenção: o saldo de benefício deste mês ficou negativo/)).toBeInTheDocument()
+    expect(await screen.findByText(/Atenção: o saldo dela ficou negativo/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument() // o pagamento foi feito e pode ser desfeito
   })
 
@@ -211,7 +211,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
   describe('subcategorias', () => {
     const subcats = [
       { id: 'c1', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
-      { id: 'c2', name: 'Mercado', defaultWallet: 'benefit' as const, isEssential: true, sortOrder: 1, archived: false },
+      { id: 'c2', name: 'Mercado', defaultWalletId: 'w2', isEssential: true, sortOrder: 1, archived: false },
       { id: 'g1', name: 'Gás', isEssential: true, sortOrder: 0, archived: false, parentId: 'c1' },
       { id: 'l1', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
     ]
@@ -221,7 +221,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       renderAt('/?mes=2026-05')
       await abrir()
       await userEvent.click(screen.getByRole('combobox', { name: 'Categoria' }))
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moradia', 'MercadoVR', 'Nova categoria'])
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moradia', 'MercadoBenefício', 'Nova categoria'])
     })
 
     it('o combobox agrupa "Mãe › filha"; escolher a filha manda a filha e a mãe continua escolhível', async () => {
@@ -232,7 +232,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       const combo = screen.getByRole('combobox', { name: 'Categoria' })
       expect(combo).toHaveValue('Moradia')
       await userEvent.click(combo)
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moradia', 'Moradia › Gás', 'Moradia › Luz', 'MercadoVR', 'Nova categoria'])
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moradia', 'Moradia › Gás', 'Moradia › Luz', 'MercadoBenefício', 'Nova categoria'])
       await userEvent.click(screen.getByRole('option', { name: 'Moradia › Gás' }))
       expect(combo).toHaveValue('Moradia › Gás')
       await userEvent.type(screen.getByRole('textbox', { name: /O que é|Descrição/ }), 'Gás')
@@ -325,7 +325,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     await abrir()
     expect(screen.getByRole('button', { name: 'Moradia' })).toHaveAttribute('aria-pressed', 'true')
     const mercado = screen.getByRole('button', { name: /Mercado/ })
-    expect(within(mercado).getByText('VR')).toBeInTheDocument()
+    expect(within(mercado).getByText('Benefício')).toBeInTheDocument()
     await userEvent.click(mercado)
     expect(mercado).toHaveAttribute('aria-pressed', 'true')
     await userEvent.type(screen.getByLabelText('Descrição'), 'Feira')
@@ -340,14 +340,14 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     mockApi({ me: ok(me), create: ok(invoice({ id: 'n', description: 'Feira' })) })
     renderAt(mes)
     await abrir()
-    expect(screen.getByRole('group', { name: 'Categorias recentes' })).toHaveTextContent('MoradiaMercadoVR')
+    expect(screen.getByRole('group', { name: 'Categorias recentes' })).toHaveTextContent('MoradiaMercadoBenefício')
     await userEvent.click(screen.getByRole('button', { name: /Mercado/ }))
     await userEvent.type(screen.getByLabelText('Descrição'), 'Feira')
     await userEvent.type(screen.getByLabelText('Valor'), '5000')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
     await waitFor(() => expect(window.localStorage.getItem('prumia.categoriasRecentes.h1')).toBe('["c2"]'))
     await abrir()
-    expect(screen.getByRole('group', { name: 'Categorias recentes' })).toHaveTextContent('MercadoVRMoradia')
+    expect(screen.getByRole('group', { name: 'Categorias recentes' })).toHaveTextContent('MercadoBenefícioMoradia')
     window.localStorage.removeItem('prumia.categoriasRecentes.h1')
   })
 
@@ -421,9 +421,9 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     withInvoices()
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Luz' }))
-    await userEvent.click(screen.getByRole('button', { name: /Pagar · carteira livre/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Pagar · carteira Geral/ }))
     await waitFor(() =>
-      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.objectContaining({ body: { wallet: 'free' } })),
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.objectContaining({ body: { walletId: 'w1' } })),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
@@ -474,7 +474,7 @@ describe('detalhe em modo leitura', () => {
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Feira' }))
     const pagamento = screen.getByRole('region', { name: 'Pagamento' })
-    expect(within(pagamento).getByText(/Paga em 12\/10\/2026 · carteira de benefício/)).toBeInTheDocument()
+    expect(within(pagamento).getByText(/Paga em 12\/10\/2026 · carteira Benefício/)).toBeInTheDocument()
     expect(within(pagamento).getByText('R$ 300,00')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Desfazer pagamento' }))
     await waitFor(() => expect(api.DELETE).toHaveBeenCalledWith('/households/{householdId}/invoices/{invoiceId}/pay', expect.anything()))
@@ -584,7 +584,7 @@ describe('computador', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Detalhes de Luz' }))
     const painel = await screen.findByRole('region', { name: 'Detalhes da conta' })
     expect(within(painel).getByRole('heading', { name: 'Luz' })).toBeInTheDocument()
-    expect(within(painel).getByRole('button', { name: /Pagar · carteira livre/ })).toBeInTheDocument()
+    expect(within(painel).getByRole('button', { name: /Pagar · carteira Geral/ })).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await userEvent.click(within(painel).getByRole('button', { name: 'Editar' }))
     expect(within(painel).getByLabelText('Descrição')).toHaveValue('Luz')

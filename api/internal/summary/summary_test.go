@@ -2,55 +2,87 @@ package summary
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
+	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 var oct = caldate.New(2026, 10, 1)
 
-func TestSaldoEhRecebidoMenosPago(t *testing.T) {
+func TestSaldoEhAnteriorMaisRecebidoMenosPago(t *testing.T) {
 	cases := []struct {
-		name string
-		w    WalletBalance
-		want int64
+		name          string
+		w             WalletBalance
+		want, inMonth int64
 	}{
-		{"só recebido", WalletBalance{Received: 500000}, 500000},
-		{"previsto não conta no saldo", WalletBalance{Expected: 900000, Received: 500000, Paid: 200000}, 300000},
-		{"pode ficar negativo", WalletBalance{Received: 100000, Paid: 150000}, -50000},
-		{"vazio", WalletBalance{}, 0},
+		{"só recebido", WalletBalance{Received: 500000}, 500000, 500000},
+		{"previsto não conta no saldo", WalletBalance{Expected: 900000, Received: 500000, Paid: 200000}, 300000, 300000},
+		{"pode ficar negativo", WalletBalance{Received: 100000, Paid: 150000}, -50000, -50000},
+		{"saldo anterior entra no saldo, não no movimento do mês", WalletBalance{CarryOver: 70000, Received: 100000, Paid: 150000}, 20000, -50000},
+		{"saldo anterior negativo", WalletBalance{CarryOver: -30000, Received: 100000}, 70000, 100000},
+		{"vazio", WalletBalance{}, 0, 0},
 	}
 	for _, c := range cases {
 		if got := int64(c.w.Balance()); got != c.want {
 			t.Errorf("%s: saldo %d, quer %d", c.name, got, c.want)
 		}
+		if got := int64(c.w.MonthBalance()); got != c.inMonth {
+			t.Errorf("%s: saldo do mês %d, quer %d", c.name, got, c.inMonth)
+		}
 	}
 }
 
+func TestProjetadoSomaOSaldoAnterior(t *testing.T) {
+	w := WalletBalance{CarryOver: 100000, Expected: 600000, Received: 400000, Paid: 150000, Pending: 90000}
+	if got := w.Projected(); got != 460000 { // 100000 + 600000 - 150000 - 90000
+		t.Errorf("projetado %d, quer 460000", got)
+	}
+}
+
+func uid(n byte) uuid.UUID { return uuid.UUID{15: n} }
+
+func mkWallet(n byte, name string, def bool, opening int64, archived bool) wallet.Wallet {
+	w := wallet.Wallet{HouseholdID: uid(99), Name: name, IsDefault: def, OpeningBalanceCents: money.Cents(opening)}
+	w.ID = uid(n)
+	if archived {
+		at := time.Now()
+		w.ArchivedAt = &at
+	}
+	return w
+}
+
 func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
-	a, b, c := uuid.MustParse("00000000-0000-0000-0000-00000000000a"), uuid.MustParse("00000000-0000-0000-0000-00000000000b"), uuid.MustParse("00000000-0000-0000-0000-00000000000c")
-	got := assemble(oct,
-		[]incomeRow{{Wallet: "free", Expected: 600000, Received: 400000}, {Wallet: "benefit", Expected: 80000, Received: 80000}},
-		[]paidRow{{Wallet: "free", Paid: 150000}, {Wallet: "benefit", Paid: 90000}},
-		[]pendingRow{{Wallet: "free", Pending: 90000, Overdue: 40000, OverdueCount: 1}, {Wallet: "benefit", Pending: 50000, Overdue: 50000, OverdueCount: 2}},
+	a, b, c := uid(0xa), uid(0xb), uid(0xc)
+	geral, vr := mkWallet(1, "Geral", true, 0, false), mkWallet(2, "Benefício", false, 0, false)
+	got := assemble(oct, []wallet.Wallet{geral, vr},
+		[]incomeRow{{WalletID: geral.ID, Expected: 600000, Received: 400000}, {WalletID: vr.ID, Expected: 80000, Received: 80000}},
+		[]paidRow{{WalletID: geral.ID, Paid: 150000}, {WalletID: vr.ID, Paid: 90000}},
+		[]pendingRow{{WalletID: geral.ID, Pending: 90000, Overdue: 40000, OverdueCount: 1}, {WalletID: vr.ID, Pending: 50000, Overdue: 50000, OverdueCount: 2}},
 		[]categoryRow{
 			{CategoryID: b, Total: 50000, Paid: 50000},
 			{CategoryID: a, Total: 240000, Paid: 150000, Pending: 90000},
 			{CategoryID: c, Total: 50000, Pending: 50000}, // empata com b: desempata por id
 		})
-	if got.Free.Balance() != 250000 || got.Free.Expected != 600000 {
-		t.Errorf("livre: %+v", got.Free)
+	if len(got.Wallets) != 2 || got.Wallets[0].WalletID != geral.ID || !got.Wallets[0].IsDefault {
+		t.Fatalf("a padrão deveria vir primeiro: %+v", got.Wallets)
 	}
-	if got.Benefit.Balance() != -10000 {
-		t.Errorf("benefício deveria estar negativo: %+v", got.Benefit)
+	free, ben := got.Wallets[0], got.Wallets[1]
+	if free.Balance() != 250000 || free.Expected != 600000 {
+		t.Errorf("geral: %+v", free)
+	}
+	if ben.Balance() != -10000 {
+		t.Errorf("benefício deveria estar negativo: %+v", ben)
 	}
 	if got.TotalPaid != 200000 || got.TotalPending != 140000 {
 		t.Errorf("totais: pago %d pendente %d", got.TotalPaid, got.TotalPending)
 	}
 	// projetado = previsto - pago - a pagar (estimado por carteira)
-	if got.Free.Pending != 90000 || got.Free.Projected() != 360000 || got.Benefit.Projected() != -60000 {
-		t.Errorf("projetado: livre %+v benefício %+v", got.Free, got.Benefit)
+	if free.Pending != 90000 || free.Projected() != 360000 || ben.Projected() != -60000 {
+		t.Errorf("projetado: geral %+v benefício %+v", free, ben)
 	}
 	if got.Overdue != 90000 || got.OverdueCount != 3 {
 		t.Errorf("atraso: %d em %d contas", got.Overdue, got.OverdueCount)
@@ -63,9 +95,45 @@ func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
 	}
 }
 
+func TestAssembleSaldoAnteriorCarregaInicialRecebidoEPago(t *testing.T) {
+	geral := mkWallet(1, "Geral", true, 100000, false) // saldo inicial R$ 1.000,00
+	got := assemble(oct, []wallet.Wallet{geral},
+		[]incomeRow{{WalletID: geral.ID, Expected: 500000, Received: 500000, Carry: 300000}},
+		[]paidRow{{WalletID: geral.ID, Paid: 200000, Carry: 450000}}, nil, nil)
+	w := got.Wallets[0]
+	// anterior = 1000 + 3000 - 4500 = -500 (negativo); saldo = -500 + 5000 - 2000
+	if w.Opening != 100000 || w.CarryOver != -50000 || w.Balance() != 250000 || w.MonthBalance() != 300000 {
+		t.Errorf("saldo anterior: %+v (saldo %d)", w, w.Balance())
+	}
+}
+
+func TestAssembleArquivadaSoApareceComSaldoOuMovimento(t *testing.T) {
+	ativa := mkWallet(1, "Geral", true, 0, false)
+	vazia := mkWallet(2, "Antiga", false, 0, true)
+	comSaldo := mkWallet(3, "Poupança velha", false, 5000, true)
+	comMovimento := mkWallet(4, "VR velho", false, 0, true)
+	got := assemble(oct, []wallet.Wallet{ativa, vazia, comSaldo, comMovimento},
+		[]incomeRow{{WalletID: comMovimento.ID, Expected: 1000, Received: 1000}}, nil, nil, nil)
+	var names []string
+	for _, w := range got.Wallets {
+		names = append(names, w.Name)
+	}
+	if len(names) != 3 || names[0] != "Geral" || names[1] != "Poupança velha" || names[2] != "VR velho" {
+		t.Errorf("carteiras no resumo: %v", names)
+	}
+}
+
+func TestAssembleIgnoraCarteiraDesconhecida(t *testing.T) {
+	geral := mkWallet(1, "Geral", true, 0, false)
+	got := assemble(oct, []wallet.Wallet{geral}, []incomeRow{{WalletID: uid(77), Received: 5}}, nil, nil, nil)
+	if got.Wallets[0].Received != 0 {
+		t.Errorf("linha de outra carteira não deveria somar: %+v", got.Wallets[0])
+	}
+}
+
 func TestAssembleMesVazio(t *testing.T) {
-	got := assemble(oct, nil, nil, nil, nil)
-	if got.ByCategory == nil || len(got.ByCategory) != 0 || got.Free.Balance() != 0 || got.TotalPaid != 0 {
+	got := assemble(oct, nil, nil, nil, nil, nil)
+	if got.ByCategory == nil || len(got.ByCategory) != 0 || got.Wallets == nil || len(got.Wallets) != 0 || got.TotalPaid != 0 {
 		t.Errorf("mês vazio: %+v", got)
 	}
 }

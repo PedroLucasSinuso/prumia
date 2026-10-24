@@ -66,7 +66,7 @@ converte a resposta do cliente tipado em promessa que rejeita com `ApiError` (qu
 - **`pages/MonthPage`**: a visão do mês. O mês escolhido fica na URL (`?mes=2026-10`); sem parâmetro, vale o mês atual.
   Agrupa por `status` (derivado no servidor): atrasadas, a vencer, pagas. Totais: *a pagar* soma atrasadas e a vencer; *pago* soma
   o **valor efetivamente pago** (pode diferir do valor da conta).
-- **Pagar com um toque**: `togglePaid` usa a carteira sugerida pela categoria (`defaultWallet`) ou a livre, mostra um aviso com
+- **Pagar com um toque**: `togglePaid` usa a carteira sugerida pela categoria (`defaultWalletId`) ou a padrão da casa (`lib/wallets.ts`), mostra um aviso com
   **Desfazer** (`ToastProvider`/`useToast`) e não pergunta nada.
 - **Mês no computador** (`MonthPage`): destaques, régua + "por categoria", lista e painel fixo (`xl`, `useHasSidePanel`). Abaixo de `xl`,
   o detalhe usa `SlideOver` (painel lateral de altura total, foco preso, Esc/clique fora fecham), como "Nova conta" em qualquer
@@ -150,8 +150,12 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   Excluir "esta e as seguintes" mostra o toast com **Desfazer**, que chama `restore` com `scope=following` (`actions.restore.mutate({ id, scope })`);
   se o servidor recusar (409), o toast avisa para restaurar uma a uma.
 - **Líquido**: o front só mostra `bruto − descontos` enquanto a pessoa digita (`lib/income.ts`); a fonte da verdade é `netAmountCents` do servidor.
-- **Aviso de VR**: ao pagar na carteira de benefício, `warnings: ["benefit_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
+- **Aviso de saldo**: ao pagar numa carteira com aviso ligado, `warnings: ["wallet_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
 - Pagar, receber ou criar invalida as listas **e** o resumo (`['summary', casa]`), então os saldos se atualizam sozinhos.
+
+## Carteiras
+
+Carteiras são da casa e configuráveis (`useWallets`, `useWalletActions` em `api/queries.ts`; helpers em `lib/wallets.ts`: `activeWallets`, `defaultWallet`, `suggestWalletId`). O nome de uma carteira por id vem de `useWalletName()` / `useWalletTag()` (`lib/useWalletName.ts`, usam a lista em cache da casa ativa). Telas: Ajustes > Carteiras (`WalletsSection` + `WalletForm`, só o Responsável escreve), seletor de carteira no `IncomeForm` (nova receita sugere Benefício para Vale, senão a padrão), "Pagar com" no `InvoiceDetail` e carteira sugerida na `CategoryForm`. O Resumo mostra um `WalletCard` por item de `summary.wallets` (a padrão em destaque), com o saldo anterior.
 
 ## Importar em massa
 

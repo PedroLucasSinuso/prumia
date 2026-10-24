@@ -23,7 +23,7 @@ type incT struct {
 	UserID           string  `json:"userId"`
 	Kind             string  `json:"kind"`
 	Description      string  `json:"description"`
-	Wallet           string  `json:"wallet"`
+	WalletID         string  `json:"walletId"`
 	CompetenceMonth  string  `json:"competenceMonth"`
 	ExpectedDate     string  `json:"expectedDate"`
 	GrossAmountCents int64   `json:"grossAmountCents"`
@@ -59,7 +59,7 @@ type srcT struct {
 	ID               string  `json:"id"`
 	UserID           string  `json:"userId"`
 	Kind             string  `json:"kind"`
-	Wallet           string  `json:"wallet"`
+	WalletID         string  `json:"walletId"`
 	Name             string  `json:"name"`
 	GrossAmountCents int64   `json:"grossAmountCents"`
 	DayOfMonth       int     `json:"dayOfMonth"`
@@ -73,20 +73,26 @@ type srcT struct {
 }
 
 type walletT struct {
-	ExpectedIncomeCents int64 `json:"expectedIncomeCents"`
-	ReceivedIncomeCents int64 `json:"receivedIncomeCents"`
-	PaidCents           int64 `json:"paidCents"`
-	BalanceCents        int64 `json:"balanceCents"`
+	WalletID            string `json:"walletId"`
+	Name                string `json:"name"`
+	IsDefault           bool   `json:"isDefault"`
+	Archived            bool   `json:"archived"`
+	OpeningBalanceCents int64  `json:"openingBalanceCents"`
+	CarryOverCents      int64  `json:"carryOverCents"`
+	ExpectedIncomeCents int64  `json:"expectedIncomeCents"`
+	ReceivedIncomeCents int64  `json:"receivedIncomeCents"`
+	PaidCents           int64  `json:"paidCents"`
+	BalanceCents        int64  `json:"balanceCents"`
+	MonthBalanceCents   int64  `json:"monthBalanceCents"`
+	PendingCents        int64  `json:"pendingCents"`
+	ProjectedCents      int64  `json:"projectedCents"`
 }
 
 type summaryT struct {
-	Month   string `json:"month"`
-	Wallets struct {
-		Free    walletT `json:"free"`
-		Benefit walletT `json:"benefit"`
-	} `json:"wallets"`
-	TotalPaidCents    int64 `json:"totalPaidCents"`
-	TotalPendingCents int64 `json:"totalPendingCents"`
+	Month             string    `json:"month"`
+	Wallets           []walletT `json:"wallets"`
+	TotalPaidCents    int64     `json:"totalPaidCents"`
+	TotalPendingCents int64     `json:"totalPendingCents"`
 	ByCategory        []struct {
 		CategoryID string `json:"categoryId"`
 		TotalCents int64  `json:"totalCents"`
@@ -94,9 +100,27 @@ type summaryT struct {
 	} `json:"byCategory"`
 }
 
+// named devolve a carteira do resumo com este nome (vazia se não aparece).
+func (s summaryT) named(name string) walletT {
+	for _, w := range s.Wallets {
+		if w.Name == name {
+			return w
+		}
+	}
+	return walletT{}
+}
+
+// Free é a carteira "Geral" (a padrão das duas que toda casa ganha) e Benefit a "Benefício".
+func (s summaryT) Free() walletT    { return s.named("Geral") }
+func (s summaryT) Benefit() walletT { return s.named("Benefício") }
+
 type payResultT struct {
-	Invoice  inv      `json:"invoice"`
-	Warnings []string `json:"warnings"`
+	Invoice        inv      `json:"invoice"`
+	Warnings       []string `json:"warnings"`
+	WarningDetails []struct {
+		Code     string `json:"code"`
+		WalletID string `json:"walletId"`
+	} `json:"warningDetails"`
 }
 
 // salarioPadrao: bruto R$ 8.000,00, INSS 908, IRRF 612, plano 350 e coparticipação média 45,90 => líquido R$ 6.084,10.
@@ -179,9 +203,29 @@ func (a *app) receive(c *http.Cookie, house, id string, body any) resp {
 	return a.do("POST", "/api/households/"+house+"/incomes/"+id+"/receive", body, c)
 }
 
+// walletID devolve o id da carteira ATIVA da casa com este nome (toda casa nasce com "Geral" e "Benefício").
+func (a *app) walletID(house, name string) string {
+	a.t.Helper()
+	var id string
+	if err := a.db.Raw(`SELECT id::text FROM wallets WHERE household_id = ? AND name = ? AND archived_at IS NULL`, house, name).Scan(&id).Error; err != nil || id == "" {
+		a.t.Fatalf("carteira %q da casa %s não encontrada: %v", name, house, err)
+	}
+	return id
+}
+
+func (a *app) free(house string) string { return a.walletID(house, "Geral") }
+func (a *app) vr(house string) string   { return a.walletID(house, "Benefício") }
+
+// pay paga a invoice. `wallet` é "free" (Geral), "benefit" (Benefício) ou o id de uma carteira.
 func (a *app) pay(c *http.Cookie, house, invID, wallet string, extra map[string]any) (payResultT, resp) {
 	a.t.Helper()
-	body := map[string]any{"wallet": wallet}
+	switch wallet {
+	case "free":
+		wallet = a.free(house)
+	case "benefit":
+		wallet = a.vr(house)
+	}
+	body := map[string]any{"walletId": wallet}
 	for k, v := range extra {
 		body[k] = v
 	}
@@ -199,7 +243,7 @@ func TestSalarioBrutoComDescontosEPrevisao(t *testing.T) {
 	base := "/api/households/" + house
 
 	src, r := a.newSource(c, house, ana, nil)
-	if r.Code != 201 || src.Wallet != "free" || src.GeneratedThrough != "2027-10-01" || len(src.Deductions) != 4 {
+	if r.Code != 201 || src.WalletID != a.free(house) || src.GeneratedThrough != "2027-10-01" || len(src.Deductions) != 4 {
 		t.Fatalf("criar fonte: %d %s", r.Code, r.Body)
 	}
 	// previsão gerada: de out/2026 a out/2027 = 13 lançamentos
@@ -443,29 +487,37 @@ func TestCarteiraDeBeneficioEValidacoes(t *testing.T) {
 	ana := a.uid("ana@x.com")
 	base := "/api/households/" + house
 
-	// VR em carteira livre: 400 no campo wallet (fonte e avulsa); salário em benefício também
-	_, r := a.newSource(c, house, ana, map[string]any{"kind": "benefit", "wallet": "free", "name": "VR", "deductions": []dedT{}})
-	assertField(t, r, 400, "wallet")
-	_, r = a.newSource(c, house, ana, map[string]any{"wallet": "benefit"})
-	assertField(t, r, 400, "wallet")
-	avulsa := map[string]any{
-		"userId": ana, "kind": "benefit", "wallet": "free", "description": "VR extra", "competenceMonth": "2026-10-01",
-		"expectedDate": "2026-10-20", "grossAmountCents": 10000,
+	// a coerência tipo <-> carteira caiu: VR pode ir para a Geral e salário para a Benefício
+	geral := a.free(house)
+	s1, r := a.newSource(c, house, ana, map[string]any{"kind": "benefit", "walletId": geral, "name": "VR", "deductions": []dedT{}})
+	if r.Code != 201 || s1.WalletID != geral {
+		t.Errorf("VR na carteira Geral deveria valer: %d %s", r.Code, r.Body)
 	}
-	assertField(t, a.do("POST", base+"/incomes", avulsa, c), 400, "wallet")
-	// sem informar a carteira, o VR vai para a carteira de benefício
-	delete(avulsa, "wallet")
+	s2, r := a.newSource(c, house, ana, map[string]any{"walletId": a.vr(house), "name": "Salário no VR"})
+	if r.Code != 201 || s2.WalletID != a.vr(house) {
+		t.Errorf("salário na carteira Benefício deveria valer: %d %s", r.Code, r.Body)
+	}
+	// carteira que não existe na casa: 400 no campo walletId (fonte e avulsa)
+	_, r = a.newSource(c, house, ana, map[string]any{"walletId": "00000000-0000-0000-0000-000000000001"})
+	assertField(t, r, 400, "walletId")
+	avulsa := map[string]any{
+		"userId": ana, "kind": "benefit", "walletId": "00000000-0000-0000-0000-000000000001", "description": "VR extra",
+		"competenceMonth": "2026-10-01", "expectedDate": "2026-10-20", "grossAmountCents": 10000,
+	}
+	assertField(t, a.do("POST", base+"/incomes", avulsa, c), 400, "walletId")
+	// sem informar a carteira, o VR vai para a carteira "Benefício" da casa
+	delete(avulsa, "walletId")
 	var vr incT
 	if r := a.do("POST", base+"/incomes", avulsa, c); r.Code != 201 {
 		t.Fatalf("VR avulso: %d %s", r.Code, r.Body)
 	} else {
 		r.json(&vr)
 	}
-	if vr.Wallet != "benefit" || vr.SourceID != nil || vr.Received || vr.NetAmountCents != 10000 || len(vr.Deductions) != 0 {
+	if vr.WalletID != a.vr(house) || vr.SourceID != nil || vr.Received || vr.NetAmountCents != 10000 || len(vr.Deductions) != 0 {
 		t.Errorf("VR avulso: %+v", vr)
 	}
 	vrSrc, r := a.newSource(c, house, ana, map[string]any{"kind": "benefit", "name": "VR mensal", "grossAmountCents": 60000, "deductions": []dedT{}})
-	if r.Code != 201 || vrSrc.Wallet != "benefit" {
+	if r.Code != 201 || vrSrc.WalletID != a.vr(house) {
 		t.Fatalf("fonte VR: %d %s", r.Code, r.Body)
 	}
 
@@ -565,7 +617,7 @@ func TestReceitaAvulsaCicloCompleto(t *testing.T) {
 	r := a.do("POST", base+"/incomes", body, c)
 	var in incT
 	r.json(&in)
-	if r.Code != 201 || in.SourceID != nil || in.Wallet != "free" || in.NetAmountCents != 142500 || in.Received {
+	if r.Code != 201 || in.SourceID != nil || in.WalletID != a.free(house) || in.NetAmountCents != 142500 || in.Received {
 		t.Fatalf("criar: %d %s", r.Code, r.Body)
 	}
 	r = a.do("PATCH", base+"/incomes/"+in.ID, map[string]any{"expectedDate": "2026-10-28", "description": "Freela de outubro", "notes": nil}, c)
@@ -587,8 +639,8 @@ func TestReceitaAvulsaCicloCompleto(t *testing.T) {
 		t.Errorf("excluída na lista: %+v", got)
 	}
 	// excluída não entra no resumo
-	if s := a.summaryOf(c, house, "2026-10-01"); s.Wallets.Free.ExpectedIncomeCents != 0 {
-		t.Errorf("excluída no resumo: %+v", s.Wallets.Free)
+	if s := a.summaryOf(c, house, "2026-10-01"); s.Free().ExpectedIncomeCents != 0 {
+		t.Errorf("excluída no resumo: %+v", s.Free())
 	}
 }
 
@@ -631,12 +683,14 @@ func TestResumoComReceitaEDespesaEmCarteirasDiferentes(t *testing.T) {
 	a.pay(c, house, setembro.ID, "free", nil)
 
 	s := a.summaryOf(c, house, "2026-10-01")
-	// livre: previsto 608410 + 50000, recebido 608410, pago 148000 (valor efetivo, não 150000)
-	if f := s.Wallets.Free; f.ExpectedIncomeCents != 658410 || f.ReceivedIncomeCents != 608410 || f.PaidCents != 148000 || f.BalanceCents != 460410 {
+	// livre: previsto 608410 + 50000, recebido 608410, pago 148000 (valor efetivo, não 150000).
+	// Saldo anterior: a conta de setembro (99900) foi paga com a livre e não houve receita em setembro => -99900.
+	if f := s.Free(); f.ExpectedIncomeCents != 658410 || f.ReceivedIncomeCents != 608410 || f.PaidCents != 148000 ||
+		f.CarryOverCents != -99900 || f.MonthBalanceCents != 460410 || f.BalanceCents != 360510 {
 		t.Errorf("livre: %+v", f)
 	}
 	// benefício: recebido 60000, pago 40000
-	if b := s.Wallets.Benefit; b.ExpectedIncomeCents != 60000 || b.ReceivedIncomeCents != 60000 || b.PaidCents != 40000 || b.BalanceCents != 20000 {
+	if b := s.Benefit(); b.ExpectedIncomeCents != 60000 || b.ReceivedIncomeCents != 60000 || b.PaidCents != 40000 || b.CarryOverCents != 0 || b.BalanceCents != 20000 {
 		t.Errorf("benefício: %+v", b)
 	}
 	if s.TotalPaidCents != 188000 || s.TotalPendingCents != 30000 || s.Month != "2026-10-01" {
@@ -649,7 +703,7 @@ func TestResumoComReceitaEDespesaEmCarteirasDiferentes(t *testing.T) {
 	}
 	// setembro tem só a invoice paga de setembro (pagamento em outubro não conta para outubro)
 	sep := a.summaryOf(c, house, "2026-09-01")
-	if sep.TotalPaidCents != 99900 || sep.Wallets.Free.PaidCents != 99900 || len(sep.ByCategory) != 1 {
+	if sep.TotalPaidCents != 99900 || sep.Free().PaidCents != 99900 || len(sep.ByCategory) != 1 {
 		t.Errorf("setembro: %+v", sep)
 	}
 	// mês sem nada: zeros e lista vazia (não null)
@@ -663,7 +717,7 @@ func TestResumoComReceitaEDespesaEmCarteirasDiferentes(t *testing.T) {
 			a.do("DELETE", "/api/households/"+house+"/incomes/"+in.ID+"/receive", nil, c)
 		}
 	}
-	if f := a.summaryOf(c, house, "2026-10-01").Wallets.Free; f.ReceivedIncomeCents != 0 || f.BalanceCents != -148000 || f.ExpectedIncomeCents != 658410 {
+	if f := a.summaryOf(c, house, "2026-10-01").Free(); f.ReceivedIncomeCents != 0 || f.MonthBalanceCents != -148000 || f.BalanceCents != -247900 || f.ExpectedIncomeCents != 658410 {
 		t.Errorf("livre após desfazer: %+v", f)
 	}
 }
@@ -682,8 +736,11 @@ func TestAvisoDeSaldoDeBeneficioAoPagar(t *testing.T) {
 
 	// VR ainda previsto (não recebido): saldo estimado = 0 - 40000 => avisa, mas paga
 	p, r := a.pay(c, house, i1.ID, "benefit", nil)
-	if r.Code != 200 || p.Invoice.Status != "paid" || len(p.Warnings) != 1 || p.Warnings[0] != "benefit_balance_insufficient" {
+	if r.Code != 200 || p.Invoice.Status != "paid" || len(p.Warnings) != 1 || p.Warnings[0] != "wallet_balance_insufficient" {
 		t.Fatalf("sem VR recebido: %d %s", r.Code, r.Body)
+	}
+	if len(p.WarningDetails) != 1 || p.WarningDetails[0].Code != "wallet_balance_insufficient" || p.WarningDetails[0].WalletID != a.vr(house) {
+		t.Errorf("o aviso devolve a carteira: %+v", p.WarningDetails)
 	}
 	// desfaz, recebe o VR (600,00) e paga de novo: saldo 20000 >= 0, sem aviso
 	a.do("DELETE", "/api/households/"+house+"/invoices/"+i1.ID+"/pay", nil, c)
@@ -737,7 +794,7 @@ func TestReceitasIsolamentoEntreCasas(t *testing.T) {
 	if got := a.sourcesOf(cB, houseB); len(got) != 0 {
 		t.Errorf("lista de fontes vazou: %+v", got)
 	}
-	if s := a.summaryOf(cB, houseB, "2026-10-01"); s.Wallets.Free.ExpectedIncomeCents != 0 || s.TotalPaidCents != 0 || len(s.ByCategory) != 0 {
+	if s := a.summaryOf(cB, houseB, "2026-10-01"); s.Free().ExpectedIncomeCents != 0 || s.TotalPaidCents != 0 || len(s.ByCategory) != 0 {
 		t.Errorf("resumo vazou: %+v", s)
 	}
 	for _, p := range []string{baseA + "/incomes?month=2026-10-01", baseA + "/income-sources", baseA + "/summary?month=2026-10-01"} {
@@ -802,8 +859,8 @@ func TestReceitasPapeisEVisibilidade(t *testing.T) {
 		if got := a.sourcesOf(ck, houseA); len(got) != 1 {
 			t.Errorf("%s lendo fontes: %+v", name, got)
 		}
-		if s := a.summaryOf(ck, houseA, "2026-10-01"); s.Wallets.Free.ExpectedIncomeCents != 608410 {
-			t.Errorf("%s lendo resumo: %+v", name, s.Wallets.Free)
+		if s := a.summaryOf(ck, houseA, "2026-10-01"); s.Free().ExpectedIncomeCents != 608410 {
+			t.Errorf("%s lendo resumo: %+v", name, s.Free())
 		}
 	}
 	// viewer não escreve nada

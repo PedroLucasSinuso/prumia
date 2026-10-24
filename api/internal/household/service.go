@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 // ErrNotFound: a casa não existe ou o usuário não é membro dela (não distinguimos, para não vazar a existência).
@@ -22,19 +23,19 @@ var ErrInvalidName = errors.New("nome da casa deve ter de 1 a 80 caracteres")
 // defaultCategories são criadas com a casa (spec, seção 5). Mercado e Alimentação fora sugerem VR.
 var defaultCategories = []struct {
 	name      string
-	wallet    string // "" = sem sugestão
+	benefit   bool // true = sugere a carteira Benefício ao pagar
 	essential bool
 }{
-	{"Moradia", "", true},
-	{"Mercado", "benefit", true},
-	{"Alimentação fora", "benefit", false},
-	{"Transporte", "", true},
-	{"Saúde", "", true},
-	{"Educação", "", false},
-	{"Lazer", "", false},
-	{"Assinaturas", "", false},
-	{"Compras", "", false},
-	{"Outros", "", false},
+	{"Moradia", false, true},
+	{"Mercado", true, true},
+	{"Alimentação fora", true, false},
+	{"Transporte", false, true},
+	{"Saúde", false, true},
+	{"Educação", false, false},
+	{"Lazer", false, false},
+	{"Assinaturas", false, false},
+	{"Compras", false, false},
+	{"Outros", false, false},
 }
 
 // Erros de negócio de convites e membros (mapeados para HTTP em um único lugar, no pacote api/auth).
@@ -71,7 +72,7 @@ func NormalizeName(name string) (string, error) {
 	return name, nil
 }
 
-// CreateWithin cria a casa, torna o criador admin e semeia as categorias padrão, tudo dentro da
+// CreateWithin cria a casa, torna o criador admin e semeia as carteiras e categorias padrão, tudo dentro da
 // transação `tx` recebida. Assim quem chama (cadastro de usuário, criação de casa) decide o limite
 // da transação: ou tudo é gravado, ou nada.
 func (s *Service) CreateWithin(tx *gorm.DB, name string, creator uuid.UUID) (Household, error) {
@@ -86,12 +87,16 @@ func (s *Service) CreateWithin(tx *gorm.DB, name string, creator uuid.UUID) (Hou
 	if err := tx.Create(&Member{HouseholdID: h.ID, UserID: creator, Role: RoleAdmin}).Error; err != nil {
 		return Household{}, fmt.Errorf("criando membro admin: %w", err)
 	}
+	_, benefit, err := wallet.CreateDefaults(tx, h.ID) // "Geral" (padrão) e "Benefício", na mesma transação
+	if err != nil {
+		return Household{}, err
+	}
 	cats := make([]category.Category, len(defaultCategories))
 	for i, c := range defaultCategories {
 		cats[i] = category.Category{HouseholdID: h.ID, Name: c.name, IsEssential: c.essential, SortOrder: i}
-		if c.wallet != "" {
-			w := c.wallet
-			cats[i].DefaultWallet = &w
+		if c.benefit {
+			id := benefit.ID
+			cats[i].DefaultWalletID = &id
 		}
 	}
 	if err := tx.Create(&cats).Error; err != nil {

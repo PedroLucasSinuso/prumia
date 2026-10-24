@@ -25,6 +25,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 // app é a API completa (serviços reais, Postgres real) montada para testes de ponta a ponta.
@@ -79,6 +80,7 @@ func newApp(t *testing.T, o opts) *app {
 		&Households{Svc: hs, Log: log},
 		&Categories{Svc: category.NewService(gdb), Log: log},
 		&Payees{Svc: payeeSvc, Log: log},
+		&Wallets{Svc: wallet.NewService(gdb), Log: log},
 		NewCNPJLookups(o.company, log),
 		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},

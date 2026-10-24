@@ -5,6 +5,7 @@ import { daysBetween, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { useFlash, usePaidPulse } from '../lib/flash'
 import { seriesTag } from '../lib/series'
+import { useWalletName } from '../lib/useWalletName'
 import { Tooltip } from './ui/Tooltip'
 
 type Props = {
@@ -26,11 +27,9 @@ type Props = {
   onCheck: (invoice: Invoice, range: boolean) => void
 }
 
-const walletLabel = { free: 'livre', benefit: 'benefício' } as const
-
 /** Situação curta da linha: o marcador da marca e o texto (atraso em `ink`, o coral fica só no marcador e no nó). */
-function rowStatus(invoice: Invoice, today?: string): { mark: string; tone: string; text: string } {
-  if (invoice.status === 'paid') return { mark: '[ ▪ ]', tone: 'text-accent', text: invoice.paid ? `paga · ${walletLabel[invoice.paid.wallet]}` : 'paga' }
+function rowStatus(invoice: Invoice, today: string | undefined, walletName: string): { mark: string; tone: string; text: string } {
+  if (invoice.status === 'paid') return { mark: '[ ▪ ]', tone: 'text-accent', text: invoice.paid && walletName ? `paga · ${walletName}` : 'paga' }
   if (invoice.status === 'overdue') {
     const late = today ? daysBetween(invoice.dueDate, today) : 0
     return { mark: '[ ✖ ]', tone: 'text-alert', text: late > 0 ? `atrasada ${late} ${late === 1 ? 'dia' : 'dias'}` : 'atrasada' }
@@ -50,7 +49,8 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
   const overdue = invoice.status === 'overdue'
   const node = paid ? 'border-structure bg-structure' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
   const tag = seriesTag(invoice)
-  const status = rowStatus(invoice, today)
+  const nameOf = useWalletName()
+  const status = rowStatus(invoice, today, nameOf(invoice.paid?.walletId))
   // O risco é sempre `line-through`, mas transparente enquanto a conta não está paga: ao pagar, a cor aparece em 150 ms.
   const strike = `line-through transition-colors ${paid ? 'text-ink/60 decoration-ink/60' : 'decoration-transparent'}`
   const flashing = useFlash(invoice.id)

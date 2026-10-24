@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useState, type ReactNode } from 'react'
 
-import { useCategories, useCategoryHistory, useSummary } from '../api/queries'
+import { useCategories, useCategoryHistory, useMembers, useSummary } from '../api/queries'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
@@ -43,6 +43,7 @@ export default function SummaryPage() {
   const houseId = house?.id ?? ''
   const summary = useSummary(houseId, month)
   const categories = useCategories(houseId)
+  const members = useMembers(houseId)
   const future = useCategoryHistory(houseId, addMonths(month, 1), addMonths(month, 3))
   const desktop = useIsDesktop()
   const [picked, setPicked] = useState<string | null>(null)
@@ -50,9 +51,9 @@ export default function SummaryPage() {
   if (!house) return null
   const s = summary.data
   const cats = categories.data ?? []
-  const noIncome = s !== undefined && s.wallets.free.expectedIncomeCents === 0 && s.wallets.benefit.expectedIncomeCents === 0
+  const noIncome = s !== undefined && s.wallets.every((w) => w.expectedIncomeCents === 0)
   const rows = rollup(s?.byCategory ?? [], cats)
-  const projected = s ? s.wallets.free.projectedCents + s.wallets.benefit.projectedCents : 0
+  const projected = s ? s.wallets.reduce((sum, w) => sum + w.projectedCents, 0) : 0
   // No computador o painel nunca fica vazio: sem escolha, mostra a categoria que mais pesa.
   const selected = picked ?? (desktop ? (rows[0]?.id ?? null) : null)
   const selectedName = selected ? (cats.find((c) => c.id === selected)?.name ?? 'Sem categoria') : ''
@@ -128,15 +129,16 @@ export default function SummaryPage() {
               </p>
             </section>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
-              <WalletCard title="Carteira livre" hint="salário e outras receitas" balance={s.wallets.free} tone="free" />
-              <WalletCard title="Carteira de benefício" hint="vale-refeição" balance={s.wallets.benefit} tone="benefit" />
-              {desktop && (
-                <div className={`${card} md:col-span-2 lg:col-span-1`}>
-                  <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} />
-                </div>
-              )}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {s.wallets.map((w) => (
+                <WalletCard key={w.walletId} title={w.name} hint={w.isDefault ? 'carteira padrão' : (members.data?.find((m) => m.userId === w.ownerUserId)?.name ?? '')} balance={w} tone={w.isDefault ? 'dark' : 'light'} />
+              ))}
             </div>
+            {desktop && (
+              <div className={card}>
+                <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} />
+              </div>
+            )}
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
               <section aria-label="Por categoria" className={card}>

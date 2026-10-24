@@ -12,35 +12,13 @@ mês do vencimento. O resumo mensal e a tela do mês usam a **competência**: um
 
 **Dinheiro** em centavos (`int64`). Valor entre 1 centavo e R$ 10 bilhões.
 
-**Pagamento.** `POST .../pay` exige só a `wallet` (`free` ou `benefit`); `paidAt` padrão = hoje e `amountCents` padrão = valor da
+**Pagamento.** `POST .../pay` exige só o `walletId` (carteira **ativa da casa**; ausente, inexistente, de outra casa ou arquivada = 400 no
+campo `walletId`); `paidAt` padrão = hoje e `amountCents` padrão = valor da
 invoice (informe se houve juros ou desconto: o valor pago pode diferir). O `UPDATE` é **condicional** (`paid_at IS NULL`):
 dois toques seguidos, ou duas pessoas ao mesmo tempo, pagam uma vez só e o segundo recebe 409 `already_paid`.
-`DELETE .../pay` desfaz (os quatro campos de pagamento voltam a `NULL`). Pagando com `benefit`, a resposta pode trazer
-`warnings: ["benefit_balance_insufficient"]` (saldo estimado do benefício negativo; não bloqueia): regra em
-[incomes-and-wallets.md](incomes-and-wallets.md#7-aviso-de-saldo-de-benefício-ao-pagar).
-
-**Exclusão lógica.** `DELETE` marca `deleted_at`; `POST .../restore` desfaz (`scope=following` desfaz o lote "esta e as seguintes":
-[series-generation.md](series-generation.md#desfazer-o-lote-post-invoicesidrestorescopefollowing)). Restaurar uma invoice cuja
-categoria foi excluída nesse meio tempo dá 409 `category_deleted`.
-
-**Referências.** A categoria precisa ser da casa e não estar arquivada; o responsável precisa ser membro ativo. Erro de validação
-(400 `validation_error`) traz `fields` por campo. O banco ainda reforça isso com FKs compostas.
-
-**Categorias.** Nome único por casa, ignorando maiúsculas (409 `category_exists`). **Em uso não se exclui, arquiva-se**
-(409 `category_in_use`). Arquivada some da lista padrão (`?includeArchived=true` mostra) e não aceita invoices novas.
-Membros (não só admins) gerenciam categorias.
-
-**Séries.** Parcelas e contas fixas são invoices comuns ligadas a uma compra (`purchases`) ou recorrência (`recurrences`); a resposta traz
-`series` (`installmentNumber` + `installmentsCount`, ou `recurrenceId`). `scope=this` (padrão) mexe só na própria; `scope=following` edita/exclui
-esta e as seguintes **ainda não pagas** da mesma série, sem aceitar `dueDate`/`competenceMonth` em lote. Geração, horizonte e regras
-completas: [series-generation.md](series-generation.md).
-
-## Listagem
-
-`GET .../invoices` aceita `month` (competência, dia 1), `status` (`pending|overdue|paid`), `categoryId`, `responsibleUserId`,
-`purchaseId`, `q` (busca na descrição, sem diferenciar maiúsculas; `%` e `_` valem como texto) e paginação. Ordem: vencimento, depois id.
-Ao listar, o horizonte das contas fixas é estendido antes (inclusive até o mês pedido em `month`, se futuro). A paginação é por **cursor** (keyset sobre `(due_date, id)`): estável mesmo se itens mudam entre páginas, sem pular nem repetir.
-Passe o `nextCursor` recebido em `cursor`; `limit` padrão 50, máximo 200.
+`DELETE .../pay` desfaz (os quatro campos de pagamento voltam a `NULL`). Pagando com uma carteira que tem o aviso de saldo ligado, a resposta pode
+trazer `warnings: ["wallet_balance_insufficient"]` e `warningDetails: [{code, walletId}]` (saldo realizado da carteira negativo; não bloqueia):
+regra em [incomes-and-wallets.md](incomes-and-wallets.md#7-aviso-de-saldo-insuficiente-ao-pagar). A exportação CSV traz o **nome** da carteira de pagamento.
 
 ## PATCH: "ausente" x "null"
 

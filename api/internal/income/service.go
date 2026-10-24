@@ -15,6 +15,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
+	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
 var (
@@ -236,7 +237,7 @@ func (s *Service) List(ctx context.Context, householdID uuid.UUID, month caldate
 type CreateInput struct {
 	UserID          uuid.UUID
 	Kind            string
-	Wallet          *string // opcional; derivada do tipo (se informada, tem de ser coerente)
+	WalletID        *uuid.UUID // opcional; padrão = carteira padrão da casa (benefício: a "Benefício" ativa, se existir)
 	Description     string
 	CompetenceMonth caldate.Date
 	// ExpectedDate é uma data digitada. Sem Rule ela é obrigatória. Com Rule, ela só vale se enviada (a regra continua
@@ -259,7 +260,11 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 	}
 	var v validation.Collector
 	in.Description = checkName("description", in.Description, 120, &v)
-	wallet := ResolveWallet(in.Kind, in.Wallet, &v)
+	CheckKind(in.Kind, &v)
+	walletID, err := s.resolveWallet(s.db.WithContext(ctx), householdID, in.Kind, in.WalletID, &v)
+	if err != nil {
+		return View{}, err
+	}
 	checkMonth("competenceMonth", in.CompetenceMonth, &v)
 	amount := in.Amount.Resolve(calendar.BusinessDaysInMonth(in.CompetenceMonth, s.holidays(ctx)), &v)
 	var rule *DateRule
@@ -278,7 +283,7 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 		return View{}, err
 	}
 	row := Income{
-		HouseholdID: householdID, UserID: in.UserID, Kind: in.Kind, Description: in.Description, Wallet: wallet,
+		HouseholdID: householdID, UserID: in.UserID, Kind: in.Kind, Description: in.Description, WalletID: walletID,
 		CompetenceMonth: in.CompetenceMonth, ExpectedDate: expected, GrossAmountCents: amount.GrossCents,
 		Quantity: amount.Quantity, UnitPriceCents: amount.UnitPriceCents, UnitLabel: amount.UnitLabel,
 		Notes: in.Notes, CreatedBy: createdBy,
@@ -287,7 +292,7 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 		rs, adj := rule.Rule, string(rule.Adjust)
 		row.DateRule, row.DateRuleN, row.WeekendAdjust = &rs, rule.nPtr(), &adj
 	}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&row).Error; err != nil {
 			return fmt.Errorf("criando receita: %w", err)
 		}
@@ -297,6 +302,19 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 		return View{}, err
 	}
 	return s.Get(ctx, householdID, row.ID)
+}
+
+// resolveWallet decide a carteira de uma receita: a informada (tem de ser ativa e da casa) ou, sem ela, a sugerida pelo
+// tipo (benefício: a carteira "Benefício" ativa, se existir; senão a padrão da casa). Qualquer tipo pode ir para qualquer
+// carteira, então não há mais coerência tipo <-> carteira. Erro de validação vai para o campo `walletId`.
+func (s *Service) resolveWallet(db *gorm.DB, householdID uuid.UUID, kind string, requested *uuid.UUID, v *validation.Collector) (uuid.UUID, error) {
+	if requested != nil {
+		return *requested, wallet.CheckUsable(db, householdID, *requested, "walletId", v)
+	}
+	if kind == KindBenefit {
+		return wallet.BenefitOrDefaultID(db, householdID)
+	}
+	return wallet.DefaultID(db, householdID)
 }
 
 // expectedFor decide a data esperada: a digitada, ou a calculada pela regra no mês de competência.
@@ -323,7 +341,7 @@ func (s *Service) createRepeating(ctx context.Context, householdID, createdBy uu
 		return View{}, err
 	}
 	src, err := s.createSource(ctx, householdID, createdBy, SourceInput{
-		UserID: in.UserID, Kind: in.Kind, Wallet: in.Wallet, Name: in.Description, Amount: in.Amount, Rule: *in.Rule,
+		UserID: in.UserID, Kind: in.Kind, WalletID: in.WalletID, Name: in.Description, Amount: in.Amount, Rule: *in.Rule,
 		StartMonth: in.CompetenceMonth, EndMonth: in.RepeatUntil, Notes: in.Notes, Deductions: in.Deductions,
 	})
 	if err != nil {

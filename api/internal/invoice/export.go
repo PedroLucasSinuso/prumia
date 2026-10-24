@@ -22,7 +22,7 @@ type ExportRow struct {
 	AmountCents     money.Cents
 	Status          Status
 	PaidAt          caldate.Date // zero = não paga
-	PaidWallet      *string
+	PaidWallet      *string      // NOME da carteira de pagamento
 	PaidAmountCents *money.Cents
 }
 
@@ -49,9 +49,10 @@ func (s *Service) Export(ctx context.Context, householdID uuid.UUID, from, to *c
 	}
 	q := s.db.WithContext(ctx).Table("invoices i").
 		Select(`i.due_date, i.competence_month, i.description, c.name AS category_name, p.name AS parent_name,
-			pe.name AS payee_name, i.amount_cents, i.paid_at, i.paid_wallet, i.paid_amount_cents`).
+			pe.name AS payee_name, i.amount_cents, i.paid_at, w.name AS paid_wallet, i.paid_amount_cents`).
 		Joins("JOIN categories c ON c.household_id = i.household_id AND c.id = i.category_id").
 		Joins("LEFT JOIN categories p ON p.household_id = c.household_id AND p.id = c.parent_id").
+		Joins("LEFT JOIN wallets w ON w.household_id = i.household_id AND w.id = i.paid_wallet_id").
 		Joins("LEFT JOIN payees pe ON pe.household_id = i.household_id AND pe.id = i.payee_id").
 		Where("i.household_id = ? AND i.deleted_at IS NULL", householdID)
 	if from != nil {

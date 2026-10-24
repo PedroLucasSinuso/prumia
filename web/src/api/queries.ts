@@ -2,12 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
   categories: (house: string) => ['categories', house] as const,
   payees: (house: string) => ['payees', house] as const,
+  wallets: (house: string) => ['wallets', house] as const,
   invoices: (house: string, month: string) => ['invoices', house, month] as const,
   allInvoices: (house: string) => ['invoices', house] as const,
   incomes: (house: string, month: string) => ['incomes', house, month] as const,
@@ -83,6 +84,41 @@ export function usePayeeActions(houseId: string) {
   return { create, update }
 }
 
+/** Carteiras da casa, inclusive arquivadas (o histórico continua mostrando o nome). Quem oferece para escolher filtra `archived`. */
+export function useWallets(houseId: string) {
+  return useQuery({
+    queryKey: keys.wallets(houseId),
+    enabled: houseId !== '',
+    queryFn: (): Promise<Wallet[]> =>
+      unwrap(api.GET('/households/{householdId}/wallets', { params: { path: { householdId: houseId }, query: { includeArchived: true } } })),
+  })
+}
+
+/** Criar, editar, arquivar e restaurar carteiras (só o Responsável). O resumo depende delas: também é refeito. */
+export function useWalletActions(houseId: string) {
+  const qc = useQueryClient()
+  const refresh = () =>
+    Promise.all([qc.invalidateQueries({ queryKey: keys.wallets(houseId) }), qc.invalidateQueries({ queryKey: keys.summary(houseId) })])
+  const path = (walletId: string) => ({ params: { path: { householdId: houseId, walletId } } })
+  const create = useMutation({
+    mutationFn: (body: WalletInput) => unwrap(api.POST('/households/{householdId}/wallets', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: WalletPatch }) => unwrap(api.PATCH('/households/{householdId}/wallets/{walletId}', { ...path(id), body })),
+    onSettled: refresh,
+  })
+  const archive = useMutation({
+    mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/wallets/{walletId}/archive', path(id))),
+    onSettled: refresh,
+  })
+  const restore = useMutation({
+    mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/wallets/{walletId}/restore', path(id))),
+    onSettled: refresh,
+  })
+  return { create, update, archive, restore }
+}
+
 /** Todas as invoices de um mês de competência (segue o cursor se passar de uma página). */
 export function useInvoices(houseId: string, month: string) {
   return useQuery({
@@ -140,8 +176,8 @@ export function useInvoiceActions(houseId: string) {
     onSettled: refresh,
   })
   const pay = useMutation({
-    mutationFn: ({ id, wallet }: { id: string; wallet: Wallet }) =>
-      unwrap(api.POST('/households/{householdId}/invoices/{invoiceId}/pay', { ...path(id), body: { wallet } })),
+    mutationFn: ({ id, walletId }: { id: string; walletId: string }) =>
+      unwrap(api.POST('/households/{householdId}/invoices/{invoiceId}/pay', { ...path(id), body: { walletId } })),
     onSettled: refresh,
   })
   const unpay = useMutation({
