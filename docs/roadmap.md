@@ -33,6 +33,26 @@ Quer ver o gasto de "Gás" **e** o de "Moradia" (que soma gás, luz, internet…
 2. ~~**Gráficos**~~ **feito** (PR `feat/resumo-graficos`): em "Por categoria" (resumo), cada categoria abre o histórico dela (6 ou 12 meses; mãe = filhas empilhadas; a pagar tracejado), "Gasto por mês" da casa no computador, saldo projetado como número principal e compromissos futuros. Endpoint `GET /summary/categories` (competência). SVG próprio com a paleta da marca, sem biblioteca.
 3. Criar categoria na hora de lançar (sem ir a Ajustes) e "mover para dentro de…".
 
+## Em andamento: Receitas v2
+
+Decisões do dono (24/10/2026), a partir dos casos de uso reais dele e da noiva, abstraídos para servir a qualquer casa:
+- **Recebimento automático**: a receita vira "recebida" na data, sem check. A exceção é "não caiu".
+- **Valor**: fixo (padrão, "valor cheio") ou, como configuração à parte, **preço × quantidade** (ex.: R$ 65 × dias úteis do mês), com rótulo da unidade editável.
+- **Data**: dia do mês, N-ésimo dia útil ou último dia útil. Nunca cai em sábado, domingo ou feriado nacional: **arredonda para a frente**. Feriados pela BrasilAPI, com cálculo offline de reserva.
+- **Topo da tela**: "Recebido" em destaque, "A receber" pequeno, total por pessoa e "Sobra do mês". O bloco grande de "Previsto" some.
+- **Editar e excluir** com escopo ("só este mês" / "este e os seguintes") e Desfazer, como nas contas; o formulário muda pessoa, tipo, mês e valor.
+- **Descontos opcionais**, com sugestão de INSS e IRRF por **tabela versionada por ano** (não existe API oficial). Estimativa que o dono ajusta.
+
+## Em andamento: acabamento da interface
+
+DatePicker com calendário, categoria em combobox pesquisável (fim do "spam de botões"), tooltips, painéis com rodapé fixo, animações e feedback visual (tudo respeitando `prefers-reduced-motion`). Depois, aplicar nos formulários de Receitas.
+
+## Anotado para o futuro
+
+- **Importação em massa no computador**: a página dedicada só fica boa no celular; no computador, preferir **modal sobre modal** (abrir a revisão sobre a tela atual) em vez de página cheia e vazia.
+- **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem); padrão de lista (`descrição: valor`) e "colar texto" já cobrem listas e prints.
+- Cobrir mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x").
+
 ## Planejamento: carteiras configuráveis (a desenhar conversando; NÃO implementar ainda)
 
 Hoje são 2 valores fixos (`free`/`benefit`) e o saldo é "recebido − pago" **sem** carregar de um mês para o outro. A ideia é carteira = **conta** (ex.: bancos diferentes, benefício, dinheiro vivo), com saldo real. Risco: **muito alto** (migration **com migração de dados**: `paid_wallet`/`wallet` em texto viram referência a uma carteira).
