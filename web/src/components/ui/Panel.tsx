@@ -140,7 +140,7 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
  */
 export function PanelFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-5 -mb-5 mt-auto flex flex-col gap-2 border-t border-line bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_8px_-6px] shadow-ink/15">
+    <div className="sticky -bottom-5 z-10 -mx-5 -mb-5 mt-auto flex flex-col gap-2 border-t border-line bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_8px_-6px] shadow-ink/15">
       {children}
     </div>
   )

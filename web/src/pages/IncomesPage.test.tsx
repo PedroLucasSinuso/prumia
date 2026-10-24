@@ -645,7 +645,7 @@ describe('painel do formulário de receita: rolagem', () => {
     const submit = within(dialog).getByRole('button', { name: 'Adicionar receita' })
     const footer = submit.closest('div.sticky')!
     expect(body.contains(footer)).toBe(true)
-    expect(footer.className).toMatch(/bottom-0/)
+    expect(footer.className).toMatch(/-bottom-5/)
     expect(footer.className).not.toMatch(/\bfixed\b/)
     expect(footer.className).toMatch(/bg-surface/)
     expect(document.body.style.overflow).toBe('hidden')
