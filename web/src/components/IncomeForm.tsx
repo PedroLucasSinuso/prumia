@@ -103,7 +103,7 @@ export function IncomeForm({ month, members, defaultUserId, income, canWrite, on
           </fieldset>
           <div className="flex flex-col gap-1">
             <label htmlFor="pessoa" className="text-xs font-medium uppercase tracking-wider text-ink/80">De quem é</label>
-            <select id="pessoa" value={userId} disabled={!canWrite} onChange={(e) => setUserId(e.target.value)} className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base">
+            <select id="pessoa" value={userId} disabled={!canWrite} onChange={(e) => setUserId(e.target.value)} className="h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base">
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.name}
@@ -132,7 +132,7 @@ export function IncomeForm({ month, members, defaultUserId, income, canWrite, on
 
       <div className={`rounded-md border-2 px-3 py-2.5 ${net < 0 ? 'border-alert' : 'border-structure'}`}>
         <p className="text-xs font-medium uppercase tracking-wider text-ink/80">líquido (bruto − descontos)</p>
-        <p className="font-mono text-[34px] font-semibold leading-tight tabular-nums text-structure">{formatCents(net)}</p>
+        <p className="font-mono text-[34px] font-semibold leading-tight tabular-nums text-heading">{formatCents(net)}</p>
         {net < 0 && <p className="text-xs text-alert">Os descontos passam do valor bruto.</p>}
       </div>
 

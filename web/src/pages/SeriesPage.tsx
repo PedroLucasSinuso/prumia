@@ -92,7 +92,7 @@ export default function SeriesPage() {
     <AppShell>
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
         <header>
-          <h1 className="font-display text-[32px] font-bold leading-none text-structure font-stretch-condensed">Parcelas e contas fixas</h1>
+          <h1 className="font-display text-[32px] font-bold leading-none text-heading font-stretch-condensed">Parcelas e contas fixas</h1>
           <p className="mt-1 text-sm text-ink/80">Compras no cartão e contas que se repetem todo mês.</p>
           {canWrite && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -113,7 +113,7 @@ export default function SeriesPage() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Quando comprei… (ex.: notebook)"
-                className="h-11 w-full rounded-md border border-ink/25 bg-white/40 px-3 text-base"
+                className="h-11 w-full rounded-md border border-ink/25 bg-raised/40 px-3 text-base"
               />
             </div>
             {purchases.isPending && <p role="status" className="mt-2 text-sm text-ink/70">carregando…</p>}

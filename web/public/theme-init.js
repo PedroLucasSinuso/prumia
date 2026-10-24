@@ -2,8 +2,11 @@
 // Arquivo externo (e não <script> inline) porque a CSP do nginx só aceita scripts de 'self'.
 // Mantenha em sincronia com src/lib/theme.ts (chave, temas e cores da barra do sistema).
 ;(function () {
-  var themes = ['marfim', 'grafite', 'contraste', 'sistema']
-  var color = { marfim: '#203D40', grafite: '#313638', contraste: '#203D40' }
+  var themes = ['marfim', 'solarized', 'latte', 'dracula', 'nord', 'gruvbox', 'rosepine', 'contraste', 'sistema']
+  var color = {
+    marfim: '#203D40', solarized: '#FDF6E3', latte: '#EFF1F5', dracula: '#282A36',
+    nord: '#2E3440', gruvbox: '#282828', rosepine: '#191724', contraste: '#FFFFFF',
+  }
   var theme = 'marfim'
   try {
     var saved = window.localStorage.getItem('prumia.theme')
@@ -14,7 +17,7 @@
   var resolved = theme
   if (theme === 'sistema') {
     var dark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches
-    resolved = dark ? 'grafite' : 'marfim'
+    resolved = dark ? 'dracula' : 'marfim'
   }
   document.documentElement.setAttribute('data-theme', theme)
   var meta = document.querySelector('meta[name="theme-color"]')

@@ -1,32 +1,44 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
 /**
- * Temas de cor da prumia. Nenhum tema cria cor: todos usam só as 5 cores da marca e trocam qual cor faz qual papel
- * (tokens `surface`, `ink`, `structure`, `on-structure`, `accent`, `alert` em src/index.css).
+ * Temas de cor da prumia. Cada tema é uma paleta completa que preenche os mesmos papéis (tokens `surface`, `raised`, `ink`,
+ * `structure`, `on-structure`, `heading`, `accent`, `alert`, `line` em src/index.css); o componente nunca usa cor solta.
  *
  * O tema vale por aparelho (localStorage) e vai no atributo `data-theme` do <html>. Quem aplica no carregamento,
  * antes do React, é `public/theme-init.js` (evita piscar o tema errado); mantenha os dois em sincronia.
  */
-export type ThemeId = 'marfim' | 'grafite' | 'contraste' | 'sistema'
-/** Tema efetivamente na tela (`sistema` vira `marfim` ou `grafite`). */
+export type ThemeId = 'marfim' | 'solarized' | 'latte' | 'dracula' | 'nord' | 'gruvbox' | 'rosepine' | 'contraste' | 'sistema'
+/** Tema efetivamente na tela (`sistema` vira `marfim` ou `dracula`). */
 export type ResolvedTheme = Exclude<ThemeId, 'sistema'>
 
-export const THEMES: ReadonlyArray<{ id: ThemeId; label: string; description: string }> = [
-  { id: 'marfim', label: 'Marfim', description: 'Claro, o visual padrão da prumia.' },
-  { id: 'grafite', label: 'Grafite', description: 'Escuro, para usar à noite.' },
-  { id: 'contraste', label: 'Contraste', description: 'Claro, com bordas e foco mais fortes.' },
-  { id: 'sistema', label: 'Sistema', description: 'Segue o modo claro ou escuro do aparelho.' },
+export type ThemeInfo = { id: ThemeId; label: string; description: string; tone: 'claro' | 'escuro' | 'auto' }
+
+export const THEMES: ReadonlyArray<ThemeInfo> = [
+  { id: 'marfim', label: 'Marfim', description: 'A identidade da prumia: marfim, petróleo e cobalto.', tone: 'claro' },
+  { id: 'solarized', label: 'Solarized', description: 'Claro e suave, de Ethan Schoonover. Bom para ler muito texto.', tone: 'claro' },
+  { id: 'latte', label: 'Latte', description: 'Claro e frio, da paleta Catppuccin, com azul vivo.', tone: 'claro' },
+  { id: 'contraste', label: 'Alto contraste', description: 'Preto e branco, com bordas e foco mais fortes.', tone: 'claro' },
+  { id: 'dracula', label: 'Dracula', description: 'Escuro clássico, com roxo e fundo azul-noite.', tone: 'escuro' },
+  { id: 'nord', label: 'Nord', description: 'Escuro e frio, em tons de gelo e azul.', tone: 'escuro' },
+  { id: 'gruvbox', label: 'Gruvbox', description: 'Escuro e quente, em tons de terra e âmbar.', tone: 'escuro' },
+  { id: 'rosepine', label: 'Rosé Pine', description: 'Escuro e discreto, em tons de malva.', tone: 'escuro' },
+  { id: 'sistema', label: 'Sistema', description: 'Marfim de dia e Dracula quando o aparelho está no modo escuro.', tone: 'auto' },
 ]
 
 export const DEFAULT_THEME: ThemeId = 'marfim'
 export const THEME_STORAGE_KEY = 'prumia.theme'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
-/** Cor da barra do sistema (<meta name="theme-color">) por tema. Só cores da paleta. */
+/** Cor da barra do sistema (<meta name="theme-color">) por tema: a do fundo (no Marfim, o petróleo da marca). */
 export const THEME_COLOR: Record<ResolvedTheme, string> = {
   marfim: '#203D40',
-  grafite: '#313638',
-  contraste: '#203D40',
+  solarized: '#FDF6E3',
+  latte: '#EFF1F5',
+  dracula: '#282A36',
+  nord: '#2E3440',
+  gruvbox: '#282828',
+  rosepine: '#191724',
+  contraste: '#FFFFFF',
 }
 
 function isThemeId(v: unknown): v is ThemeId {
@@ -49,7 +61,7 @@ function systemIsDark(): boolean {
 
 export function resolveTheme(theme: ThemeId): ResolvedTheme {
   if (theme !== 'sistema') return theme
-  return systemIsDark() ? 'grafite' : 'marfim'
+  return systemIsDark() ? 'dracula' : 'marfim'
 }
 
 /** Põe o tema no <html> e atualiza a cor da barra do sistema. As cores mudam pelo CSS (seletor data-theme). */
@@ -105,7 +117,7 @@ export function resetThemeForTests(): void {
 
 /**
  * Tema atual, o tema efetivo (`resolved`, útil para `sistema`) e a função para trocar.
- * Ex.: `const { theme, setTheme } = useTheme(); setTheme('grafite')`.
+ * Ex.: `const { theme, setTheme } = useTheme(); setTheme('dracula')`.
  */
 export function useTheme(): { theme: ThemeId; resolved: ResolvedTheme; setTheme: (t: ThemeId) => void } {
   const theme = useSyncExternalStore(subscribe, getTheme, getTheme)

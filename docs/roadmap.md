@@ -50,7 +50,7 @@ Pontos de atenção: manter o fluxo de pagar em poucos toques; casas existentes 
 
 ## Feito: redesign de navegação, Ajustes, Mês e Importação (#34 a #39)
 
-Tokens e temas (Marfim, Grafite, Contraste), Resumo com saldo projetado e gráficos, navegação Mês · Receitas · Resumo · Ajustes (+ Importar), painel de **Ajustes** unificado (Casa e pessoas, Categorias com arrastar, Favorecidos, Aparência com tema na conta, Minha conta com troca de senha, Dados com exportação CSV, Sobre), Mês redesenhado para computador e importação inteligente de documentos.
+Tokens e 9 temas (Marfim, Solarized, Latte, Alto contraste, Dracula, Nord, Gruvbox, Rosé Pine, Sistema), Resumo com saldo projetado e gráficos, navegação Mês · Receitas · Resumo · Ajustes (+ Importar), painel de **Ajustes** unificado (Casa e pessoas, Categorias com arrastar, Favorecidos, Aparência com tema na conta, Minha conta com troca de senha, Dados com exportação CSV, Sobre), Mês redesenhado para computador e importação inteligente de documentos.
 
 ## Melhorias de curto prazo
 

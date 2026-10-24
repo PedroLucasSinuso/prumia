@@ -32,7 +32,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled }: Pro
               aria-label={`Tipo do desconto ${i + 1}`}
               value={d.kind}
               onChange={(e) => setKind(i, e.target.value as DeductionKind)}
-              className="h-11 min-w-0 flex-1 rounded-md border border-ink/25 bg-white/40 px-2 text-sm"
+              className="h-11 min-w-0 flex-1 rounded-md border border-ink/25 bg-raised/40 px-2 text-sm"
             >
               {deductionKinds.map((k) => (
                 <option key={k} value={k}>

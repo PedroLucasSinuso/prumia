@@ -1,3 +1,4 @@
+import { FileUp, ListChecks, Receipt, ScanText } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -53,6 +54,13 @@ let fileSeq = 0
  * uma linha por conta encontrada (boleto, conta sem boleto ou cada item de uma lista) -> "Criar N contas" (um lote só,
  * tudo ou nada). Nada é criado antes da revisão. Celular: cartões editáveis. Computador: arquivo à esquerda, contas à direita.
  */
+// O que a tela lê, mostrado enquanto ela está vazia (a funcionalidade precisa se explicar sozinha).
+const examples = [
+  { Icon: Receipt, title: 'Boleto ou fatura', text: 'Linha digitável, valor, vencimento e quem recebe. Reconhece o favorecido pelo CNPJ.' },
+  { Icon: ScanText, title: 'Conta em foto, sem código de barras', text: 'Lê valor, vencimento e mês de referência direto da imagem.' },
+  { Icon: ListChecks, title: 'Lista ou print de conversa', text: 'Várias contas de uma vez: "Gás R$ 98,40 / Mercado R$ 310,25".' },
+]
+
 export default function ImportPage() {
   const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
@@ -261,7 +269,7 @@ export default function ImportPage() {
     <AppShell>
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-none md:gap-6 md:px-10 md:pb-10 md:pt-8">
         <header>
-          <h1 className="font-display text-3xl font-semibold font-stretch-condensed text-structure">Importar contas</h1>
+          <h1 className="font-display text-3xl font-semibold font-stretch-condensed text-heading">Importar contas</h1>
           <p className="mt-1 text-sm text-ink/75">
             Boleto, conta sem código de barras ou print de uma lista ("Gás R$ 157,82"). Você confere tudo antes de criar.
           </p>
@@ -277,7 +285,11 @@ export default function ImportPage() {
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={`flex flex-col items-start gap-3 rounded-md border border-dashed p-4 transition-colors duration-150 md:flex-row md:items-center md:justify-between ${dragging ? 'border-accent bg-accent/10' : 'border-line'}`}
+            className={`flex gap-3 rounded-md border border-dashed transition-colors duration-150 ${dragging ? 'border-accent bg-accent/10' : 'border-line'} ${
+              files.length === 0
+                ? 'flex-col items-center justify-center px-4 py-10 text-center md:min-h-72'
+                : 'flex-col items-start p-4 md:flex-row md:items-center md:justify-between'
+            }`}
           >
             <input
               ref={picker}
@@ -292,8 +304,9 @@ export default function ImportPage() {
                 e.target.value = ''
               }}
             />
+            {files.length === 0 && <FileUp aria-hidden="true" size={40} strokeWidth={1.25} className="text-accent" />}
             <div className="text-sm">
-              <p className="font-semibold">PDF, foto ou print, um ou vários (até 5 MB cada).</p>
+              <p className={files.length === 0 ? 'text-base font-semibold' : 'font-semibold'}>PDF, foto ou print, um ou vários (até 5 MB cada).</p>
               <p className="hidden text-ink/75 md:block">Arraste os arquivos para cá ou escolha no computador.</p>
               <p className="text-ink/75 md:hidden">Tire uma foto, escolha da galeria ou dos arquivos.</p>
             </div>
@@ -301,6 +314,20 @@ export default function ImportPage() {
               {files.length ? 'Adicionar arquivos' : 'Escolher arquivos'}
             </Button>
           </section>
+        )}
+
+        {canWrite && files.length === 0 && (
+          <ul aria-label="O que dá para importar" className="grid gap-3 text-sm md:grid-cols-3">
+            {examples.map(({ Icon, title, text }) => (
+              <li key={title} className="flex gap-3 rounded-md border border-line p-3">
+                <Icon aria-hidden="true" size={20} strokeWidth={1.5} className="mt-0.5 shrink-0 text-accent" />
+                <span>
+                  <span className="block font-semibold">{title}</span>
+                  <span className="block text-ink/75">{text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
 
         {files.length > 0 && (

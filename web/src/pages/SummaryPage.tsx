@@ -24,7 +24,7 @@ function Tile({ title, value, note, strong = false }: { title: string; value: st
   return (
     <div className={`rounded-md p-3 md:p-4 ${strong ? 'border-2 border-structure' : 'border border-line'}`}>
       <p className={label}>{title}</p>
-      <p className={`mt-1 font-mono text-xl font-semibold tabular-nums md:text-2xl ${strong ? 'text-structure' : 'text-ink'}`}>{value}</p>
+      <p className={`mt-1 font-mono text-xl font-semibold tabular-nums md:text-2xl ${strong ? 'text-heading' : 'text-ink'}`}>{value}</p>
       {note && <p className="mt-0.5 text-xs text-ink/75">{note}</p>}
     </div>
   )
@@ -61,7 +61,7 @@ export default function SummaryPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-6xl md:gap-5 md:px-8 md:pb-10 md:pt-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-5 md:px-8 md:pb-10 md:pt-8">
         <header>
           <MonthSelector month={month} onChange={setMonth} />
           <p className="mt-2 hidden text-sm text-ink/75 md:block">Resumo do mês: o que entra, o que sai e para onde vai.</p>
@@ -172,7 +172,7 @@ export default function SummaryPage() {
                     ver parcelas e fixas
                   </Link>
                 </div>
-                <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-structure">{formatCents(aheadTotal)}</p>
+                <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-heading">{formatCents(aheadTotal)}</p>
                 <p className="text-xs text-ink/75">em parcelas e contas fixas nos próximos 3 meses</p>
                 <ul className="mt-3 grid grid-cols-3 gap-3 text-sm">
                   {ahead.map((m) => (

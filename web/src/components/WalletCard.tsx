@@ -34,7 +34,7 @@ export function WalletCard({ title, hint, balance, tone = 'free' }: Props) {
           </>
         )}
       </p>
-      <p className={`font-mono text-[38px] font-semibold leading-tight tracking-tight tabular-nums md:text-[32px] ${dark ? 'text-on-structure' : 'text-structure'}`}>
+      <p className={`font-mono text-[38px] font-semibold leading-tight tracking-tight tabular-nums md:text-[32px] ${dark ? 'text-on-structure' : 'text-heading'}`}>
         {formatCents(Math.abs(projected))}
       </p>
       <p className={`text-[11px] ${soft}`}>

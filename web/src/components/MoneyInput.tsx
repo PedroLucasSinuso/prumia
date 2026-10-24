@@ -41,8 +41,8 @@ export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInpu
       aria-describedby={error ? `${fieldId}-erro` : undefined}
       className={
         hero
-          ? 'w-full border-0 bg-transparent p-0 font-mono text-[40px] font-semibold leading-tight tabular-nums text-structure outline-none'
-          : `h-11 rounded-md border bg-white/40 px-3 font-mono text-base tabular-nums text-ink ${error ? 'border-alert' : 'border-ink/25'}`
+          ? 'w-full border-0 bg-transparent p-0 font-mono text-[40px] font-semibold leading-tight tabular-nums text-heading outline-none'
+          : `h-11 rounded-md border bg-raised/40 px-3 font-mono text-base tabular-nums text-ink ${error ? 'border-alert' : 'border-ink/25'}`
       }
       value={formatCents(value)}
       onChange={(e) => onChange(digitsToCents(e.target.value))}
@@ -55,7 +55,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInpu
   )
   if (hero) {
     return (
-      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-white/35 px-3 py-2.5 transition-colors focus-within:border-accent ${error ? 'border-alert' : 'border-structure'}`}>
+      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-raised/35 px-3 py-2.5 transition-colors focus-within:border-accent ${error ? 'border-alert' : 'border-structure'}`}>
         {label_}
         {input}
         <p className="text-xs text-ink/75">digite só os números: 18735 vira R$ 187,35</p>

@@ -20,7 +20,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
       </aside>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-12">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-structure font-stretch-condensed">{title}</h1>
+          <h1 className="font-display text-4xl font-bold tracking-tight text-heading font-stretch-condensed">{title}</h1>
           <p className="mt-1 text-sm text-ink/75 md:hidden">Clareza para construir o futuro.</p>
         </div>
         {children}

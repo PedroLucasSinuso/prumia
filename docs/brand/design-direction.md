@@ -38,29 +38,32 @@ trocar quando houver o SVG final.
 - **Tipografia** (self-hosted com `@fontsource`; a CSP só aceita `'self'`): **Archivo** (variável, condensada via `font-stretch`) nos
   títulos e no mês; **IBM Plex Sans** (400/500/600) na interface; **IBM Plex Mono** (400/500/600) nos valores, dias e marcadores.
   Rótulos: 11 px, caixa alta, espaçamento aberto; nenhum texto abaixo de 11 px.
-- **Cores**: as cinco da marca, e só elas. Variações de tom vêm de **opacidade**, nunca de um hex novo.
-  Marfim = fundo (≈60%); Petroleum e Grafite = estrutura e texto; Cobalto = dado ativo e links; Coral = só alerta.
-- **Tokens semânticos**: o código não fala o nome da cor, fala o **papel**. `surface` (fundo), `ink` (texto e bordas por
-  opacidade), `structure` (títulos, botão primário, painéis, barra lateral), `on-structure` (texto/ícone sobre `structure`),
-  `accent` (dado ativo, links, seleção), `alert` (só alerta) e `line` (borda padrão, = `ink/15`).
-- **Temas = troca de papel, nunca cor nova.** Só as cinco cores; cada tema decide qual cor faz qual papel:
+- **Cores**: a identidade (tema **Marfim**, o padrão) usa as cinco cores da marca, e só elas; variações de tom vêm de
+  **opacidade**, nunca de um hex novo. Marfim = fundo (≈60%); Petroleum e Grafite = estrutura e texto; Cobalto = dado ativo
+  e links; Coral = só alerta. Os **outros temas** são paletas completas que o dono escolheu (abaixo): servem para
+  personalizar, não substituem a identidade.
+- **Tokens semânticos**: o código não fala o nome da cor, fala o **papel**: `surface` (fundo), `raised` (cartões e campos),
+  `ink` (texto e bordas por opacidade), `heading` (títulos), `structure` / `on-structure` (barra lateral, botão primário,
+  destaques sólidos e o texto sobre eles), `accent` (dado ativo; `text-accent` quando é texto), `alert` (só alerta) e `line`
+  (borda padrão). Por que `heading` separado de `structure`: no Marfim os dois são petroleum, mas num tema escuro o título
+  precisa ser claro e o painel, um tom de cor.
+- **Temas = paletas completas** (`web/src/index.css`, um bloco `[data-theme='...']` por tema, todos definem todos os papéis):
 
-  | Papel | Marfim (padrão) | Grafite (escuro) | Contraste |
+  | Tema | Tom | Base | Observação |
   |---|---|---|---|
-  | `surface` | marfim | grafite | marfim |
-  | `ink` | grafite | marfim | grafite |
-  | `structure` | petroleum | marfim | petroleum |
-  | `on-structure` | marfim | petroleum | marfim |
-  | `accent` (fundo/barra) | cobalto | cobalto | cobalto |
-  | `accent` (texto) | cobalto | marfim (links já sublinhados) | petroleum |
-  | `alert` | coral | coral | coral |
-  | `line` | grafite 15% | marfim 15% | grafite 55% |
+  | Marfim (padrão) | claro | marfim, petroleum, cobalto | a identidade da marca |
+  | Solarized | claro | Ethan Schoonover | `accent-text` escurecido para passar 4,5:1 |
+  | Latte | claro | Catppuccin Latte | texto e azul escurecidos |
+  | Alto contraste | claro | preto e branco | bordas 60% e foco de 3 px |
+  | Dracula | escuro | Dracula | painel em roxo derivado (`#7656bd`) para o texto claro passar 4,5:1 |
+  | Nord | escuro | Nord | painel e alerta derivados |
+  | Gruvbox | escuro | Gruvbox | painel âmbar derivado |
+  | Rosé Pine | escuro | Rosé Pine | texto escuro sobre o painel malva |
+  | Sistema | auto | Marfim de dia, Dracula no escuro | segue `prefers-color-scheme` |
 
-  No Grafite o petroleum sobre grafite some (1,05:1), por isso `structure` vira marfim (botão e painéis claros, texto
-  petroleum) e o cobalto, que como texto dá 2,2:1, só aparece em fundos e barras. O Contraste também engrossa o foco (3 px).
-  **Sistema** segue o modo claro/escuro do aparelho (Marfim ou Grafite).
-  Contraste medido (WCAG): texto principal 10,3:1 em todos; títulos 9,8–10,3:1; texto sobre `structure` 9,8:1;
-  links 4,8:1 (Marfim), 10,3:1 (Grafite), 9,8:1 (Contraste).
+  Cores "derivadas" são tons das paletas originais ajustados só até o texto passar em WCAG AA (4,5:1). Para conferir
+  qualquer paleta (ou uma nova): `python3 scripts/contraste-temas.py` (lê o `index.css`; falha se algum par de **texto**
+  ficar abaixo de 4,5:1). Resultado atual: texto 7,1–21:1, títulos 6,2–21:1, texto sobre painel 4,7–21:1, links 4,8–10,0:1.
 - **Contraste**: o coral `#F06B4F` sobre marfim **não** passa em 4,5:1 para texto. Por isso o coral aparece em marcas, nós e linhas;
   o texto de atraso fica em grafite (o estado já é dito pela marca e pelo texto "atrasada").
 - **Estados do nó**: oco = a vencer; preenchido teal com marca interna = paga; preenchido coral = atrasada; losango coral = hoje.

@@ -72,7 +72,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
     <span
       aria-hidden="true"
       className={`flex size-9 shrink-0 items-center justify-center rounded-md border text-sm font-semibold ${
-        inverse ? 'border-on-structure/40 text-on-structure' : 'border-ink/25 text-structure'
+        inverse ? 'border-on-structure/40 text-on-structure' : 'border-ink/25 text-heading'
       }`}
     >
       {name.slice(0, 1).toUpperCase()}

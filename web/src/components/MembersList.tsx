@@ -24,7 +24,7 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
         const self = m.userId === meId
         return (
           <li key={m.userId} className="relative flex gap-3 py-3 pl-0">
-            <span aria-hidden="true" className="z-10 mt-1 flex size-6 shrink-0 items-center justify-center border-2 border-structure bg-surface font-mono text-xs font-semibold text-structure">
+            <span aria-hidden="true" className="z-10 mt-1 flex size-6 shrink-0 items-center justify-center border-2 border-structure bg-surface font-mono text-xs font-semibold text-heading">
               {m.name.slice(0, 1).toUpperCase()}
             </span>
             <div className="min-w-0 flex-1">
@@ -42,7 +42,7 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
                       value={m.role}
                       disabled={busy}
                       onChange={(e) => onRole(m.userId, e.target.value as Role)}
-                      className="h-11 rounded-md border border-ink/25 bg-white/40 px-2 text-sm text-ink"
+                      className="h-11 rounded-md border border-ink/25 bg-raised/40 px-2 text-sm text-ink"
                     >
                       {(Object.keys(roleLabel) as Role[]).map((r) => (
                         <option key={r} value={r}>{roleLabel[r]} — {roleHelp[r]}</option>

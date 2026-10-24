@@ -177,6 +177,9 @@ func analyze(body string) (Document, bool) {
 		if desc == "" {
 			desc = name
 		}
+		if desc == "" {
+			desc = serviceName(body) // foto sem nome legível (cabeçalho colorido): o tipo de serviço ainda aparece no texto
+		}
 		return Document{Kind: KindBill, Items: []Item{{
 			Description: desc, AmountCents: cents, DueDate: due, Competence: findCompetence(body),
 			Beneficiary: name, BeneficiaryCNPJ: findCNPJ(body),
@@ -240,7 +243,11 @@ func largestMoney(body string) int64 {
 
 // listLineRe: "Gás R$157,82", "- Mercado: R$ 568,99", "Ração gatos: R$199,99", com hora de mensagem opcional no fim
 // ("14:32") e os vistos do aplicativo de conversa.
-var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*[:=\-–]?[ \t]*R[ \t]?[$S][ \t]*(\d{1,3}(?:\.\d{3})+|\d+)[,.](\d{2})\b[ \t]*(?:\d{1,2}:\d{2})?[ \t]*[✓✔]*[ \t]*$`)
+var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*[:=\-–]?[ \t]*R[ \t]?[$S][ \t]*(\d{1,3}(?:\.\d{3})+|\d+)[,.](\d{2})\b[ \t]*(?:\d{1,2}:\d{2})?[ \t]*[✓✔]*(?:[ \t]+\S{1,8}){0,3}[ \t]*$`)
+
+// Um algarismo (ou dois) sozinho antes de uma palavra, no começo da descrição, é ruído de OCR, não parte do nome.
+// (RE2, o regex do Go, não tem lookahead: por isso o resto da descrição vai num grupo.)
+var leadingNoiseRe = regexp.MustCompile(`^\p{P}*\d{1,2}\s+(\p{L}{2}.*)$`)
 
 // Separa itens na mesma linha ("Gás R$157,82 / Mercado R$568,99"): só quando a linha tem mais de um valor.
 var itemSeparatorRe = regexp.MustCompile(`[ \t]+[/;|][ \t]+`)
@@ -275,6 +282,8 @@ func findListItems(body string) []Item {
 // (o limite da descrição da conta).
 func cleanDescription(s string) string {
 	s = strings.Join(strings.Fields(s), " ")
+	// OCR de print de conversa lê o marcador da linha como um algarismo solto ("1 Ração gatos"): descarta.
+	s = leadingNoiseRe.ReplaceAllString(s, "$1")
 	s = strings.TrimFunc(s, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != ')' })
 	if !strings.ContainsFunc(s, unicode.IsLetter) {
 		return ""
@@ -283,4 +292,24 @@ func cleanDescription(s string) string {
 		s = string(r[:120])
 	}
 	return s
+}
+
+// serviceNames: palavras do documento que dizem o tipo da conta, na ordem de prioridade, e o nome curto sugerido.
+// Só usado quando nenhum nome de empresa foi lido; a pessoa sempre pode trocar a descrição ao revisar.
+var serviceNames = []struct{ keyword, name string }{
+	{"energia elétrica", "Luz"}, {"energia eletrica", "Luz"}, {"energia elet", "Luz"},
+	{"gás natural", "Gás"}, {"gas natural", "Gás"},
+	{"saneamento", "Água"}, {"abastecimento de água", "Água"}, {"abastecimento de agua", "Água"},
+	{"comunicação eletrônica", "Internet"}, {"comunicacao eletronica", "Internet"}, {"banda larga", "Internet"},
+	{"telefonia", "Telefone"},
+}
+
+func serviceName(body string) string {
+	low := strings.ToLower(body)
+	for _, s := range serviceNames {
+		if strings.Contains(low, s.keyword) {
+			return s.name
+		}
+	}
+	return ""
 }

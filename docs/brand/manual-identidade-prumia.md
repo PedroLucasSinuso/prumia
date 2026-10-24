@@ -53,6 +53,10 @@ A paleta de cores foi selecionada para emular painéis de controle industriais c
 | **Muted Cobalt Blue**  | `#416A91` | Cor de acento eletrônica e técnica. Indica seleção ou dados ativos. | Elementos de navegação e gráficos |
 | **Controlled Signal**  | `#F06B4F` | Cor de aviso técnica. Pontos focais isolados e status críticos. | Alertas, micro-índices de erro ou conversão |
 
+> **Temas alternativos (adicionado depois da v1.0).** A paleta acima é a identidade e o tema padrão (**Marfim**). O dono pediu temas
+> com outras paletas (Dracula, Nord, Gruvbox etc.), disponíveis em Ajustes > Aparência. Eles são opcionais e valem só dentro do app;
+> logotipo, materiais e o tema padrão seguem exatamente esta tabela. Detalhes em `design-direction.md`.
+
 ### Regra de Proporção e Composição (60-30-10):
 * **60%** do layout deve manter o tom claro de respiro utilizando o `Warm Mineral Ivory`.
 * **30%** é reservado para a estrutura lógica de dados e blocos de agrupamento através do `Deep Petroleum Teal` e `Graphite Charcoal`.

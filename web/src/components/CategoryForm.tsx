@@ -123,7 +123,7 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
                 const mother = parentOf(next)
                 if (!category && mother) { setWallet(mother.defaultWallet ?? null); setEssential(mother.isEssential) }
               }}
-              className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink"
+              className="h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink"
             >
               <option value="">nenhuma (categoria principal)</option>
               {parents.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

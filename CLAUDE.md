@@ -81,10 +81,11 @@ e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear al
 - Erros: retorne `error`, embrulhe com `fmt.Errorf("...: %w", err)`; mapeie para HTTP em um único lugar.
 
 ## UI / marca (resumo; detalhes no manual)
-- Paleta **exata**: Ivory `#F3EBDD`, Petroleum Teal `#203D40`, Graphite `#313638`, Cobalt `#416A91`, Signal `#F06B4F` (≤10%, nunca inundar).
+- Identidade (tema **Marfim**, o padrão): Ivory `#F3EBDD`, Petroleum Teal `#203D40`, Graphite `#313638`, Cobalt `#416A91`, Signal `#F06B4F` (≤10%, nunca inundar).
+  Outros temas (Solarized, Latte, Dracula, Nord, Gruvbox, Rosé Pine, Alto contraste) são paletas opcionais: veja `docs/brand/design-direction.md`.
 - **Estilo só com classes do Tailwind 4**: sem CSS escrito à mão para componentes e sem cores fora do `@theme` (`src/index.css`).
-  Cores são tokens semânticos (`bg-surface`, `text-ink`, `border-line`, `bg-structure text-on-structure`, `text-accent`,
-  `text-alert`) e raios viram classes (`rounded-md`). Temas (Marfim, Grafite, Contraste, Sistema) só trocam o papel das 5 cores.
+  Cores são tokens semânticos (`bg-surface`, `bg-raised`, `text-ink`, `text-heading`, `border-line`, `bg-structure text-on-structure`,
+  `text-accent`, `text-alert`): nunca cor solta nem `bg-white`. Cada tema define todos os papéis; ao criar um, rode `python3 scripts/contraste-temas.py`.
 - Sem gradientes, neon, glassmorphism, `rounded-full`; raio 4–6px; grade 8/16px; borda `1px rgba(49,54,56,.15)`.
 - Fontes: Archivo (títulos, `font-display` + `font-stretch-condensed`), IBM Plex Sans (interface) e IBM Plex Mono (valores: `font-mono`).
 - Números com `tabular-nums`/mono. Marca sempre minúscula: `prumia`. Textos da UI em pt-BR.

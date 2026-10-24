@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={{ pathname: item.to, search }}
               aria-current={active ? 'page' : undefined}
               className={`relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors duration-150 ${
-                active ? 'font-semibold text-structure' : 'font-medium text-ink/75'
+                active ? 'font-semibold text-heading' : 'font-medium text-ink/75'
               }`}
             >
               {active && <span aria-hidden="true" className="absolute inset-x-[24%] -top-px h-[3px] bg-structure" />}

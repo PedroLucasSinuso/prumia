@@ -14,7 +14,7 @@ type User struct {
 	Email        string
 	Name         string
 	PasswordHash string
-	// Theme é o tema de cor escolhido em Ajustes > Aparência (sistema, marfim, grafite ou contraste).
+	// Theme é o tema de cor escolhido em Ajustes > Aparência (marfim, solarized, latte, dracula, nord, gruvbox, rosepine, contraste ou sistema).
 	// `default:sistema`: ao criar um usuário com o campo vazio, o GORM grava o padrão em vez de "" (que o CHECK recusa).
 	Theme     string `gorm:"default:sistema"`
 	DeletedAt gorm.DeletedAt

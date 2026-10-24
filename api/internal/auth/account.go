@@ -20,7 +20,10 @@ import (
 // Tudo age só sobre o PRÓPRIO usuário da sessão: o id nunca vem do corpo nem da URL.
 
 // Themes são os temas de cor aceitos (o CHECK da migration 00005 repete a lista).
-var Themes = map[string]bool{"sistema": true, "marfim": true, "grafite": true, "contraste": true}
+var Themes = map[string]bool{
+	"marfim": true, "solarized": true, "latte": true, "dracula": true, "nord": true,
+	"gruvbox": true, "rosepine": true, "contraste": true, "sistema": true,
+}
 
 // AccountPatch: ponteiro nil = campo ausente (não mexe). Em PHP seria o "isset($body['name'])".
 type AccountPatch struct {
@@ -41,7 +44,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID uuid.UUID, p Account
 	}
 	if p.Theme != nil {
 		if !Themes[*p.Theme] {
-			v.Add("theme", "use sistema, marfim, grafite ou contraste")
+			v.Add("theme", "tema desconhecido: use marfim, solarized, latte, dracula, nord, gruvbox, rosepine, contraste ou sistema")
 		}
 		updates["theme"] = *p.Theme
 	}

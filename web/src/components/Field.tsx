@@ -21,7 +21,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className={`h-11 rounded-md border bg-white/40 px-3 text-base text-ink placeholder:text-ink/40 ${
+        className={`h-11 rounded-md border bg-raised/40 px-3 text-base text-ink placeholder:text-ink/40 ${
           error ? 'border-alert' : 'border-ink/25'
         }`}
         {...input}

@@ -23,7 +23,7 @@ type Props = {
 }
 
 const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
-const select = 'h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink'
+const select = 'h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink'
 
 /**
  * Favorecido: o nome que a casa escolhe ("Gás") para quem recebe o pagamento, com CNPJ opcional (serve para

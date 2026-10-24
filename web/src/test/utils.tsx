@@ -18,7 +18,7 @@ export const fail = (status: number, code: string, fields?: Record<string, strin
 })
 
 export const me: Me = {
-  id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', theme: 'sistema',
+  id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', theme: 'marfim',
   households: [{ id: 'h1', name: 'Casa do Pedro', role: 'admin' }],
 }
 /** Duas casas: a do Pedro (admin) e a da Ana, em que ele entrou como membro. */

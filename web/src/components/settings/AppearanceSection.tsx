@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 
 import { api } from '../../api/client'
-import { THEMES, useTheme, type ThemeId } from '../../lib/theme'
+import { THEMES, useTheme, type ThemeId, type ThemeInfo } from '../../lib/theme'
 import { useToast } from '../toastContext'
 import { SectionHeader } from './ui'
 
@@ -18,7 +18,7 @@ function Mini({ theme }: { theme: Exclude<ThemeId, 'sistema'> }) {
         <span className="h-1 w-2.5 rounded-sm bg-on-structure/50" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2">
-        <span className="h-2 w-3/5 rounded-sm bg-structure" />
+        <span className="h-2 w-3/5 rounded-sm bg-heading" />
         <span className="h-1.5 w-full rounded-sm bg-accent/80" />
         <div className="flex items-center gap-1 border-t border-line pt-1.5">
           <span className="font-mono text-[8px] leading-none text-accent">[ ▪ ]</span>
@@ -53,43 +53,56 @@ export function AppearanceSection() {
     }
   }
 
+  const groups: { title: string; items: ThemeInfo[] }[] = [
+    { title: 'Claros', items: THEMES.filter((t) => t.tone === 'claro') },
+    { title: 'Escuros', items: THEMES.filter((t) => t.tone === 'escuro') },
+    { title: 'Automático', items: THEMES.filter((t) => t.tone === 'auto') },
+  ]
+
+  const card = (t: ThemeInfo) => {
+    const on = t.id === theme
+    return (
+      <button
+        key={t.id}
+        type="button"
+        role="radio"
+        aria-checked={on}
+        onClick={() => void choose(t.id)}
+        className={`flex flex-col overflow-hidden rounded-md border text-left transition-colors duration-150 ${on ? 'border-structure ring-1 ring-structure' : 'border-line hover:border-ink/40'}`}
+      >
+        <div className="flex h-24 border-b border-line">
+          {t.id === 'sistema' ? (
+            <>
+              <Mini theme="marfim" />
+              <Mini theme="dracula" />
+            </>
+          ) : (
+            <Mini theme={t.id} />
+          )}
+        </div>
+        <div className="flex items-start gap-3 p-3">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">{t.label}</span>
+            <span className="block text-xs text-ink/75">{t.description}</span>
+          </span>
+          <span aria-hidden="true" className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${on ? 'border-structure bg-structure text-on-structure' : 'border-ink/30'}`}>
+            {on && <Check size={14} strokeWidth={2.5} />}
+          </span>
+        </div>
+      </button>
+    )
+  }
+
   return (
     <div>
       <SectionHeader title="Aparência" description="O tema vale para a sua conta: muda neste aparelho na hora e nos outros quando você entrar." />
-      <div role="radiogroup" aria-label="Tema" className="grid max-w-3xl gap-3 sm:grid-cols-2">
-        {THEMES.map((t) => {
-          const on = t.id === theme
-          return (
-            <button
-              key={t.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => void choose(t.id)}
-              className={`flex flex-col overflow-hidden rounded-md border text-left transition-colors duration-150 ${on ? 'border-structure ring-1 ring-structure' : 'border-line hover:border-ink/40'}`}
-            >
-              <div className="flex h-24 border-b border-line">
-                {t.id === 'sistema' ? (
-                  <>
-                    <Mini theme="marfim" />
-                    <Mini theme="grafite" />
-                  </>
-                ) : (
-                  <Mini theme={t.id} />
-                )}
-              </div>
-              <div className="flex items-start gap-3 p-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{t.label}</span>
-                  <span className="block text-xs text-ink/75">{t.description}</span>
-                </span>
-                <span aria-hidden="true" className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${on ? 'border-structure bg-structure text-on-structure' : 'border-ink/30'}`}>
-                  {on && <Check size={14} strokeWidth={2.5} />}
-                </span>
-              </div>
-            </button>
-          )
-        })}
+      <div role="radiogroup" aria-label="Tema" className="flex max-w-6xl flex-col gap-6">
+        {groups.map((g) => (
+          <section key={g.title} aria-label={g.title}>
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-ink/70">{g.title}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{g.items.map(card)}</div>
+          </section>
+        ))}
       </div>
     </div>
   )

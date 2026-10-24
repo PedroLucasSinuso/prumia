@@ -19,7 +19,7 @@ export function MonthSelector({ month, onChange }: Props) {
   const label = monthLabel(month) // "outubro de 2026"
   const [rawName, year] = label.split(' de ')
   const name = rawName.charAt(0).toUpperCase() + rawName.slice(1) // "outubro" -> "Outubro" (o título visível; o aria-label fica em minúsculas)
-  const arrow = `flex items-center justify-center rounded-md text-structure transition-colors hover:bg-ink/5 ${desktop ? "size-10" : "size-11"}`
+  const arrow = `flex items-center justify-center rounded-md text-heading transition-colors hover:bg-ink/5 ${desktop ? "size-10" : "size-11"}`
   const prev = (
     <button aria-label="Mês anterior" title={desktop ? "Mês anterior (←)" : undefined} className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, -1))}>
       {chevron('M15 5 L8 12 L15 19')}
@@ -32,7 +32,7 @@ export function MonthSelector({ month, onChange }: Props) {
   )
   const title = (
     <div className={desktop ? '' : 'flex flex-1 flex-col items-center'}>
-      <h1 aria-live="polite" aria-label={label} className="font-display font-bold leading-none tracking-tight text-structure font-stretch-condensed text-[30px] md:text-6xl">
+      <h1 aria-live="polite" aria-label={label} className="font-display font-bold leading-none tracking-tight text-heading font-stretch-condensed text-[30px] md:text-6xl">
         {name} <span className="font-semibold text-accent">{year}</span>
       </h1>
       {!isCurrent && (
