@@ -153,6 +153,10 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
 - **Aviso de VR**: ao pagar na carteira de benefício, `warnings: ["benefit_balance_insufficient"]` vira um aviso no toast (o pagamento não é bloqueado).
 - Pagar, receber ou criar invalida as listas **e** o resumo (`['summary', casa]`), então os saldos se atualizam sozinhos.
 
+## Importar em massa
+
+O miolo da importação é `components/ImportFlow.tsx` (arquivos, texto colado, revisão e lote). Ele aparece em dois lugares: a página `/importar` (`pages/ImportPage`, celular e link direto) e o `ImportModal` (`Panel variant="wide"`, aberto pelo botão **Importar** do Mês no computador, carregado sob demanda). Quem usa passa `onCreated(mês)`: a página navega para o mês, o modal fecha e troca o mês.
+
 ## Importar boleto
 
 Na criação de conta do tipo **avulsa**, o `InvoiceForm` mostra **Importar boleto** (`BoletoImport`; trocar para parcelada/fixa descarta a leitura): um `input type=file` escondido

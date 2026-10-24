@@ -601,6 +601,16 @@ describe('computador', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('"Importar" abre a importação num modal grande sobre o mês; Esc fecha', async () => {
+    mockApi({ me: ok(me) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Importar' }))
+    const modal = await screen.findByRole('dialog', { name: 'Importar contas' })
+    expect(within(modal).getByRole('button', { name: 'Colar texto' })).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('destaques: a pagar, atrasado (com valor e número), pago e total', async () => {
     withInvoices()
     renderAt(mes)

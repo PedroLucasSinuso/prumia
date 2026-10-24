@@ -16,8 +16,8 @@ export type PanelProps = {
   footer?: ReactNode
   /** Seletor do elemento que recebe o foco ao abrir (padrão: o marcado com `data-autofocus`; sem ele, o próprio painel). */
   initialFocus?: string
-  /** `side`: lateral de altura total, à direita (computador). `sheet`: sobe da base no celular e fica centralizado a partir de `sm`. */
-  variant: 'side' | 'sheet'
+  /** `side`: lateral de altura total, à direita (computador). `wide`: janela centralizada e larga (fluxos com duas colunas, no computador). `sheet`: sobe da base no celular e fica centralizado a partir de `sm`. */
+  variant: 'side' | 'sheet' | 'wide'
 }
 
 /**
@@ -82,7 +82,7 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
   }`
   const box = side
     ? `h-dvh max-h-dvh w-full max-w-[480px] border-l ${closing ? 'motion-safe:animate-slide-out' : 'motion-safe:animate-slide-in'}`
-    : `max-h-[92dvh] min-h-0 w-full max-w-md rounded-t-md border sm:rounded-md ${closing ? 'motion-safe:animate-rise-out' : 'motion-safe:animate-rise-in'}`
+    : `max-h-[92dvh] min-h-0 w-full ${variant === 'wide' ? 'max-w-6xl' : 'max-w-md'} rounded-t-md border sm:rounded-md ${closing ? 'motion-safe:animate-rise-out' : 'motion-safe:animate-rise-in'}`
 
   return (
     <div className={backdrop} onMouseDown={() => requestClose()}>

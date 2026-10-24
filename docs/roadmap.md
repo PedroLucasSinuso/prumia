@@ -49,7 +49,7 @@ DatePicker com calendário, categoria em combobox pesquisável (fim do "spam de 
 
 ## Anotado para o futuro
 
-- **Importação em massa no computador**: a página dedicada só fica boa no celular; no computador, preferir **modal sobre modal** (abrir a revisão sobre a tela atual) em vez de página cheia e vazia.
+- [feito] **Importação em massa no computador** abre num modal grande sobre o Mês (`ImportModal`); no celular continua a página `/importar`. Falta o dono avaliar no uso real se ainda quer a revisão como segundo modal sobre o primeiro.
 - **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem); padrão de lista (`descrição: valor`) e "colar texto" já cobrem listas e prints.
 - Cobrir mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x").
 
