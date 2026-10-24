@@ -5,7 +5,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-IMAGE="cloudflare/cloudflared:2026.9.0"
+IMAGE="cloudflare/cloudflared:2026.10.3"
 DIR="$PWD/.cloudflared"
 HOST="${TUNNEL_HOSTNAME:-$(grep -E '^TUNNEL_HOSTNAME=' .env 2>/dev/null | cut -d= -f2- || true)}"
 NAME="prumia"

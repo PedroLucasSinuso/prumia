@@ -5,8 +5,10 @@
 # (fora do Git, ver .gitignore), criados por scripts/tunnel-setup.sh. Não precisa de Zero Trust nem de cartão.
 services:
   cloudflared:
-    image: cloudflare/cloudflared:2026.9.0
+    image: cloudflare/cloudflared:2026.10.3
     restart: unless-stopped
+    # Roda com o seu usuário para ler as credenciais (modo 600): o make tunnel-up passa TUNNEL_UID/TUNNEL_GID.
+    user: "${TUNNEL_UID:-1000}:${TUNNEL_GID:-1000}"
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
     volumes:
       - ../.cloudflared:/etc/cloudflared:ro

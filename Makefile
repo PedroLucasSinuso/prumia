@@ -114,7 +114,7 @@ tunnel-setup: .env ## Cria o Cloudflare Tunnel (uma vez; exige TUNNEL_HOSTNAME n
 .PHONY: tunnel-up
 tunnel-up: .env ## Liga o Cloudflare Tunnel (depois do make tunnel-setup; app público via domínio)
 	@test -f .cloudflared/config.yml || { echo "Rode make tunnel-setup antes"; exit 1; }
-	$(COMPOSE) -f deploy/compose.tunnel.yaml up -d
+	TUNNEL_UID=$$(id -u) TUNNEL_GID=$$(id -g) $(COMPOSE) -f deploy/compose.tunnel.yaml up -d
 
 .PHONY: tunnel-down
 tunnel-down: .env ## Desliga o Cloudflare Tunnel (o app volta a ficar só em localhost)
