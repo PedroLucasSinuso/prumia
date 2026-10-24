@@ -150,7 +150,7 @@ func TestResumoProjetadoEAtraso(t *testing.T) {
 		t.Fatalf("pré-condição: mercado sugere benefício: %+v", cats[1])
 	}
 
-	a.newSource(c, house, ana, nil) // salário líquido 608410, previsto e NÃO recebido
+	a.newSource(c, house, ana, map[string]any{"dayOfMonth": 28}) // salário líquido 608410, cai dia 28: ainda a receber
 	atrasada, _ := a.newInvoice(c, house, moradia, map[string]any{"amountCents": 150000, "dueDate": "2026-10-10"})
 	a.newInvoice(c, house, mercado, map[string]any{"amountCents": 40000, "dueDate": "2026-10-25"})
 	// filha sem carteira padrão herda a da mãe (mercado → benefício)

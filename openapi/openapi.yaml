@@ -638,10 +638,14 @@ paths:
     get:
       tags: [incomes]
       operationId: listIncomes
-      summary: Lançamentos do mês (previstos e recebidos)
+      summary: Receitas do mês (recebidas e a receber)
       description: |
-        `month` é obrigatório (dia 1). Estende a previsão das fontes até esse mês, se ele estiver além do horizonte
+        `month` é obrigatório (dia 1). Estende a repetição até esse mês, se ele estiver além do horizonte
         (até 60 meses à frente). Todos os membros da casa veem as receitas de todos.
+
+        **Estado derivado** (não existe coluna de status): `received` é verdadeiro quando a data esperada chegou e ninguém
+        marcou `held` ("não caiu"), ou quando foi marcada como recebida antes da data. `held` verdadeiro = "não caiu".
+        Fora disso a receita está "a receber" (e "atrasada" se `held` e a data já passou).
       parameters:
         - { name: month, in: query, required: true, schema: { type: string, format: date } }
       responses:
@@ -649,12 +653,19 @@ paths:
     post:
       tags: [incomes]
       operationId: createIncome
-      summary: Lança receita avulsa
+      summary: Lança uma receita (avulsa ou que se repete todo mês)
+      description: |
+        Valor: `amountMode=fixed` (padrão; informe `grossAmountCents`) ou `per_unit` (informe `unitPriceCents`, opcionalmente
+        `quantity`, que por padrão é o número de dias úteis do mês, e `unitLabel`). O bruto por unidade é sempre
+        preço x quantidade. Data: `dateRule` (calcula a data de cada mês) e/ou `expectedDate` (data digitada; sem regra é
+        obrigatória). Com `repeats=true` (exige `dateRule`) cria a repetição a partir de `competenceMonth`, até `repeatsUntil`
+        (opcional), e devolve o lançamento do mês pedido.
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/IncomeInput' } } }
       responses:
         '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /households/{householdId}/incomes/{incomeId}:
     parameters:
       - { $ref: '#/components/parameters/HouseholdId' }
@@ -662,18 +673,52 @@ paths:
     patch:
       tags: [incomes]
       operationId: updateIncome
-      summary: Ajusta o lançamento do mês (bruto, descontos, data)
+      summary: Edita a receita. Se ela se repete, `scope` define o alcance.
+      description: |
+        `scope=this` (padrão) muda só este lançamento (inclusive pessoa, tipo, mês de competência, quantidade e data digitada).
+        `scope=following` muda também o molde da repetição e reaplica os campos enviados a este e aos seguintes que ainda
+        NÃO contam como recebidos; recebidos nunca mudam em lote. `competenceMonth`, `expectedDate` e `quantity` não valem
+        em lote (400). Mudar o tipo muda a carteira (benefit vai para a carteira de benefício). Os descontos enviados
+        substituem a lista. Sem repetição, `following` equivale a `this`.
+      parameters:
+        - { $ref: '#/components/parameters/IncomeScope' }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/IncomePatch' } } }
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
     delete:
       tags: [incomes]
       operationId: deleteIncome
-      summary: Exclusão lógica
+      summary: Exclusão lógica. Se a receita se repete, `scope` define o alcance.
+      description: |
+        `following` exclui este e os seguintes que ainda não contam como recebidos (recebidos nunca somem em lote) e encerra
+        a repetição no mês anterior. Todo o lote recebe o mesmo `deleted_at`, usado pelo Desfazer (`/restore?scope=following`).
+      parameters:
+        - { $ref: '#/components/parameters/IncomeScope' }
       responses:
         '204': { description: "Excluída" }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /households/{householdId}/incomes/{incomeId}/restore:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: incomeId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [incomes]
+      operationId: restoreIncome
+      summary: Desfaz a exclusão. `scope=following` desfaz o lote "este e os seguintes".
+      description: |
+        `following` restaura, numa transação, este e os da MESMA repetição com mês maior ou igual excluídos JUNTO com ele
+        (mesmo `deleted_at`); exclusões avulsas anteriores continuam excluídas. Devolve o fim (ou reativa) a repetição.
+        409 `series_changed` se a repetição mudou depois do lote; 409 `not_deleted` se não estava excluída.
+      parameters:
+        - { $ref: '#/components/parameters/IncomeScope' }
+      responses:
+        '200': { description: "OK (a receita escolhida)", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /households/{householdId}/incomes/{incomeId}/receive:
     parameters:
       - { $ref: '#/components/parameters/HouseholdId' }
@@ -681,35 +726,72 @@ paths:
     post:
       tags: [incomes]
       operationId: receiveIncome
-      summary: Marca como recebida (só esta competência). Receber de novo responde 409 `already_received`.
+      summary: '"Caiu": desfaz o "não caiu" (ou marca como recebida antes da data). Se já conta como recebida, 409 `already_received`.'
+      description: |
+        O recebimento é automático (a data esperada chegou). Esta rota só serve para (a) desfazer um "não caiu" e
+        (b) marcar como recebida uma receita cuja data esperada ainda não chegou.
       requestBody:
         content:
           application/json:
             schema:
               type: object
-              properties: { receivedAt: { type: string, format: date, description: "Padrão hoje" } }
+              properties: { receivedAt: { type: string, format: date, description: "Padrão hoje (só usado se a data esperada ainda não chegou)" } }
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
         '409': { $ref: '#/components/responses/Conflict' }
     delete:
       tags: [incomes]
       operationId: unreceiveIncome
-      summary: Desfaz o recebimento (volta a previsto). Se não estava recebida, 409 `not_received`.
+      summary: '"Não caiu": a receita deixa de contar como recebida e fica fora do saldo. Se não contava, 409 `not_received`.'
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Income' } } } }
         '409': { $ref: '#/components/responses/Conflict' }
+  /households/{householdId}/income-dates:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [incomes]
+      operationId: previewIncomeDates
+      summary: Prévia das datas de uma regra de data (sem gravar nada)
+      description: |
+        Para cada um dos `count` meses a partir de `month`, a data em que a regra cai (com o ajuste de fim de semana e
+        feriados nacionais) e quantos dias úteis o mês tem (a quantidade sugerida para receitas por unidade).
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, format: date } }
+        - { name: rule, in: query, required: true, schema: { $ref: '#/components/schemas/DateRuleKind' } }
+        - { name: n, in: query, description: "Dia do mês (1 a 31) ou ordem do dia útil (1 a 23). Não se aplica a last_business_day.", schema: { type: integer } }
+        - { name: weekendAdjust, in: query, schema: { $ref: '#/components/schemas/WeekendAdjust' } }
+        - { name: count, in: query, schema: { type: integer, minimum: 1, maximum: 24, default: 3 } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/IncomeDatePreview' } } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /households/{householdId}/tax/estimate:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [incomes]
+      operationId: estimateTax
+      summary: Estimativa de INSS e IRRF de um salário mensal (sugestão para preencher descontos)
+      description: |
+        Calculada pela tabela do ano de `month` (ou a mais recente, se o ano não tem tabela: veja `tableYear`). É uma
+        ESTIMATIVA (`approximate` sempre verdadeiro): confira no holerite. Não grava nada.
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, format: date } }
+        - { name: grossCents, in: query, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+        - { name: dependents, in: query, schema: { type: integer, minimum: 0, maximum: 20, default: 0 } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/TaxEstimate' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /households/{householdId}/income-sources:
     parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
     get:
       tags: [incomes]
       operationId: listIncomeSources
-      summary: Fontes recorrentes (previsão de salário e benefício)
+      summary: Receitas que se repetem (o molde de cada repetição)
       responses:
         '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/IncomeSource' } } } } }
     post:
       tags: [incomes]
       operationId: createIncomeSource
-      summary: Cria fonte e gera os lançamentos previstos até o horizonte
+      summary: Cria uma repetição e gera os lançamentos até o horizonte
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSourceInput' } } }
@@ -722,9 +804,9 @@ paths:
     patch:
       tags: [incomes]
       operationId: updateIncomeSource
-      summary: Edita a fonte. `applyFrom` reaplica o template aos meses previstos a partir dali.
+      summary: Edita o molde. `applyFrom` reaplica o molde aos meses a receber a partir dali.
       parameters:
-        - { name: applyFrom, in: query, description: "Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam.", schema: { type: string, format: date } }
+        - { name: applyFrom, in: query, description: "Mês (dia 1). Reaplica o molde aos lançamentos que ainda NÃO contam como recebidos desse mês em diante; os recebidos nunca mudam.", schema: { type: string, format: date } }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/IncomeSourcePatch' } } }
@@ -851,6 +933,13 @@ components:
     InvoiceId: { name: invoiceId, in: path, required: true, schema: { type: string, format: uuid } }
     Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
     Cursor: { name: cursor, in: query, schema: { type: string } }
+    IncomeScope:
+      name: scope
+      in: query
+      description: |
+        Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+        recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+      schema: { type: string, enum: [this, following], default: this }
     SeriesScope:
       name: scope
       in: query
@@ -1272,9 +1361,20 @@ components:
         kind: { $ref: '#/components/schemas/DeductionKind' }
         name: { type: string }
         amountCents: { $ref: '#/components/schemas/Cents' }
+    AmountMode: { type: string, enum: [fixed, per_unit], description: "fixed = valor cheio; per_unit = preço por unidade x quantidade" }
+    DateRuleKind: { type: string, enum: [day_of_month, nth_business_day, last_business_day] }
+    WeekendAdjust: { type: string, enum: [forward, backward, none], description: "Quando a data cai em fim de semana ou feriado nacional: forward = próximo dia útil (padrão), backward = dia útil anterior, none = manter" }
+    DateRule:
+      type: object
+      required: [rule]
+      description: "Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day."
+      properties:
+        rule: { $ref: '#/components/schemas/DateRuleKind' }
+        n: { type: integer, nullable: true }
+        weekendAdjust: { allOf: [ { $ref: '#/components/schemas/WeekendAdjust' } ], description: "Padrão forward" }
     Income:
       type: object
-      required: [id, userId, kind, description, wallet, competenceMonth, expectedDate, grossAmountCents, netAmountCents, deductions, received]
+      required: [id, userId, kind, description, wallet, competenceMonth, expectedDate, amountMode, grossAmountCents, netAmountCents, deductions, received, held, repeats]
       properties:
         id: { type: string, format: uuid }
         sourceId: { type: string, format: uuid, nullable: true }
@@ -1284,59 +1384,91 @@ components:
         wallet: { $ref: '#/components/schemas/Wallet' }
         competenceMonth: { $ref: '#/components/schemas/Month' }
         expectedDate: { type: string, format: date }
+        amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        unitPriceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true, description: "Só por unidade" }
+        quantity: { type: integer, nullable: true, description: "Só por unidade. Bruto = preço x quantidade" }
+        unitLabel: { type: string, nullable: true, description: "Só por unidade (ex.: dia trabalhado, hora)" }
+        dateRule: { allOf: [ { $ref: '#/components/schemas/DateRule' } ], nullable: true, description: "Regra que calculou a data (nulo = data digitada)" }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
         netAmountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Calculado = bruto - descontos (somente leitura)" }
-        received: { type: boolean, description: "`false` = previsto" }
-        receivedAt: { type: string, format: date, nullable: true }
+        received: { type: boolean, description: "Derivado: a data esperada chegou (ou foi marcada antes) e não está em `held`. Conta no saldo." }
+        receivedAt: { type: string, format: date, nullable: true, description: "Dia em que entrou (a data marcada ou, no recebimento automático, a data esperada). Nulo se não recebida." }
+        held: { type: boolean, description: '"Não caiu": o dinheiro previsto ainda não entrou; não conta como recebida até alguém dizer "caiu".' }
+        repeats: { type: boolean, description: "A repetição continua depois deste mês" }
+        repeatsUntil: { allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true, description: "Último mês da repetição (nulo = sem fim)" }
         notes: { type: string, nullable: true }
     IncomeInput:
       type: object
-      required: [userId, kind, description, competenceMonth, expectedDate, grossAmountCents]
+      required: [userId, kind, description, competenceMonth]
       properties:
         userId: { type: string, format: uuid, description: "Deve ser membro ativo da casa" }
         kind: { type: string, enum: [salary, benefit, other] }
         wallet: { allOf: [ { $ref: '#/components/schemas/Wallet' } ], description: "Opcional. Derivada do tipo (benefit => benefit; senão free). Se informada e incoerente com o tipo, 400." }
         description: { type: string }
         competenceMonth: { $ref: '#/components/schemas/Month' }
-        expectedDate: { type: string, format: date }
+        expectedDate: { type: string, format: date, description: "Data digitada. Obrigatória se não houver dateRule; com repeats vale só para o primeiro mês." }
+        amountMode: { allOf: [ { $ref: '#/components/schemas/AmountMode' } ], description: "Padrão fixed" }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        unitPriceCents: { $ref: '#/components/schemas/Cents' }
+        quantity: { type: integer, description: "Por unidade. Padrão: dias úteis do mês" }
+        unitLabel: { type: string, description: "Por unidade. Padrão: unidade" }
+        dateRule: { $ref: '#/components/schemas/DateRule' }
+        repeats: { type: boolean, description: "Repete todo mês a partir de competenceMonth (exige dateRule)" }
+        repeatsUntil: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
         notes: { type: string, nullable: true }
     IncomePatch:
       type: object
       properties:
+        userId: { type: string, format: uuid }
+        kind: { type: string, enum: [salary, benefit, other] }
         description: { type: string }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
         expectedDate: { type: string, format: date }
+        amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
+        unitPriceCents: { $ref: '#/components/schemas/Cents' }
+        quantity: { type: integer }
+        unitLabel: { type: string }
+        dateRule: { $ref: '#/components/schemas/DateRule' }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
         notes: { type: string, nullable: true }
     IncomeSource:
       type: object
-      required: [id, userId, kind, wallet, name, grossAmountCents, dayOfMonth, startMonth, deductions]
+      required: [id, userId, kind, wallet, name, amountMode, grossAmountCents, dayOfMonth, dateRule, startMonth, deductions]
       properties:
         id: { type: string, format: uuid }
         userId: { type: string, format: uuid }
         kind: { type: string, enum: [salary, benefit, other] }
         wallet: { $ref: '#/components/schemas/Wallet' }
         name: { type: string }
-        grossAmountCents: { $ref: '#/components/schemas/Cents' }
-        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        amountMode: { $ref: '#/components/schemas/AmountMode' }
+        grossAmountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade)." }
+        unitPriceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
+        unitLabel: { type: string, nullable: true }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, description: "Legado: o dia da regra day_of_month (1 nas demais regras). Use dateRule." }
+        dateRule: { $ref: '#/components/schemas/DateRule' }
         startMonth: { $ref: '#/components/schemas/Month' }
         endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
-        generatedThrough: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Último mês com lançamento previsto gerado" }
+        generatedThrough: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Último mês com lançamento gerado" }
         notes: { type: string, nullable: true }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
     IncomeSourceInput:
       type: object
-      required: [userId, kind, name, grossAmountCents, dayOfMonth, startMonth]
+      required: [userId, kind, name, startMonth]
       properties:
         userId: { type: string, format: uuid, description: "Deve ser membro ativo da casa" }
         kind: { type: string, enum: [salary, benefit, other] }
         wallet: { allOf: [ { $ref: '#/components/schemas/Wallet' } ], description: "Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400." }
         name: { type: string }
+        amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
-        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        unitPriceCents: { $ref: '#/components/schemas/Cents' }
+        quantity: { type: integer, description: "Por unidade: quantidade do primeiro mês (os demais usam os dias úteis)" }
+        unitLabel: { type: string }
+        dateRule: { $ref: '#/components/schemas/DateRule' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, description: "Atalho antigo: equivale a dateRule day_of_month com ajuste forward. Ignorado se dateRule vier." }
         startMonth: { $ref: '#/components/schemas/Month' }
         endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
         notes: { type: string, nullable: true }
@@ -1344,19 +1476,42 @@ components:
     IncomeSourcePatch:
       type: object
       properties:
+        userId: { type: string, format: uuid }
+        kind: { type: string, enum: [salary, benefit, other] }
         name: { type: string }
         notes: { type: string, nullable: true }
+        amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
-        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        unitPriceCents: { $ref: '#/components/schemas/Cents' }
+        unitLabel: { type: string }
+        dateRule: { $ref: '#/components/schemas/DateRule' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, description: "Atalho antigo: troca para a regra day_of_month mantendo o ajuste atual" }
         endMonth: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
+    IncomeDatePreview:
+      type: object
+      required: [month, expectedDate, businessDays]
+      properties:
+        month: { $ref: '#/components/schemas/Month' }
+        expectedDate: { type: string, format: date }
+        businessDays: { type: integer, description: "Dias úteis do mês (sábado, domingo e feriados nacionais não contam)" }
+    TaxEstimate:
+      type: object
+      required: [inssCents, irrfCents, tableYear, sources, checkedOn, approximate]
+      properties:
+        inssCents: { $ref: '#/components/schemas/Cents' }
+        irrfCents: { $ref: '#/components/schemas/Cents' }
+        tableYear: { type: integer, description: "Ano da tabela usada (pode ser diferente do mês pedido, se o ano não tem tabela)" }
+        sources: { type: array, items: { type: string }, description: "URLs oficiais conferidas" }
+        checkedOn: { type: string, format: date, description: "Quando as tabelas foram conferidas" }
+        approximate: { type: boolean, description: "Sempre verdadeiro: é uma estimativa" }
 
     WalletBalance:
       type: object
       required: [expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents, pendingCents, projectedCents]
       properties:
-        expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (previstas + recebidas)" }
-        receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas já recebidas" }
+        expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (a receber + recebidas)" }
+        receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)" }
         paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Valor efetivamente pago das invoices da competência pagas com esta carteira" }
         balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Recebido - pago (estimativa, não é saldo bancário)" }
         pendingCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = livre). A carteira real só é conhecida ao pagar." }

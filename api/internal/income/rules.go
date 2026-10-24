@@ -98,22 +98,6 @@ func CheckGross(gross money.Cents, v *validation.Collector) {
 	}
 }
 
-// Occurrence é um lançamento mensal previsto, já calculado (ainda não gravado).
-type Occurrence struct {
-	Month        caldate.Date // competência (dia 1)
-	ExpectedDate caldate.Date
-}
-
-// GenerateOccurrences devolve um lançamento por mês de from até through (ambos dia 1, inclusive). A data esperada é o dia
-// `day` do mês, travada no último dia em mês curto (dia 31 em abril vira 30; em fevereiro, 28 ou 29).
-func GenerateOccurrences(from, through caldate.Date, day int) []Occurrence {
-	var out []Occurrence
-	for m := from; !m.After(through); m = m.AddMonths(1) {
-		out = append(out, Occurrence{Month: m, ExpectedDate: m.WithDayClamped(day)})
-	}
-	return out
-}
-
 // horizonMonths: quantos meses à frente a previsão é gerada (a partir de hoje ou do início, o que for maior).
 const horizonMonths = 12
 

@@ -5,14 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/calendar"
 	"github.com/PedroLucasSinuso/prumia/api/internal/invoice"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
-	"github.com/PedroLucasSinuso/prumia/api/internal/platform/money"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/validation"
 )
 
@@ -20,6 +21,17 @@ var (
 	ErrNotFound        = errors.New("receita não encontrada")
 	ErrAlreadyReceived = errors.New("esta receita já foi recebida")
 	ErrNotReceived     = errors.New("esta receita não está recebida")
+	ErrNotDeleted      = errors.New("a receita não está excluída")
+	// ErrSeriesChanged: o Desfazer em lote não se aplica porque a repetição mudou depois da exclusão.
+	ErrSeriesChanged = errors.New("a repetição mudou depois desta exclusão; restaure uma a uma")
+)
+
+// Scope define o alcance de editar, excluir e restaurar numa receita que se repete: só este mês, ou este e os seguintes.
+type Scope string
+
+const (
+	ScopeThis      Scope = "this"
+	ScopeFollowing Scope = "following"
 )
 
 // Service cuida dos lançamentos mensais (incomes) e das fontes (income_sources). O "hoje" é injetável nos testes.
@@ -27,11 +39,25 @@ var (
 type Service struct {
 	db    *gorm.DB
 	today func() caldate.Date
+	cal   *calendar.Calendar
 }
 
+// NewService começa com o calendário OFFLINE (feriados calculados, sem rede): é o que os testes querem.
+// Em produção, ligue a BrasilAPI com WithCalendar.
 func NewService(db *gorm.DB, today func() caldate.Date) *Service {
-	return &Service{db: db, today: today}
+	return &Service{db: db, today: today, cal: calendar.New("off")}
 }
+
+// WithCalendar troca o calendário (por exemplo, o que consulta a BrasilAPI). Devolve o próprio serviço para encadear.
+func (s *Service) WithCalendar(c *calendar.Calendar) *Service {
+	if c != nil {
+		s.cal = c
+	}
+	return s
+}
+
+// holidays entrega a função de feriados ligada ao contexto da requisição.
+func (s *Service) holidays(ctx context.Context) calendar.HolidayFunc { return s.cal.Func(ctx) }
 
 // ---------------------------------------------------------------- helpers
 
@@ -63,15 +89,20 @@ func checkMonth(field string, m caldate.Date, v *validation.Collector) {
 	}
 }
 
-// views anexa os descontos e calcula o líquido. Uma consulta só de descontos para a lista inteira (sem N+1).
+// views anexa os descontos, calcula o líquido, o estado derivado (recebida) e se a repetição continua.
+// Duas consultas para a lista inteira (descontos e fontes), sem N+1.
 func (s *Service) views(ctx context.Context, householdID uuid.UUID, rows []Income) ([]View, error) {
 	out := make([]View, len(rows))
 	if len(rows) == 0 {
 		return out, nil
 	}
 	ids := make([]uuid.UUID, len(rows))
+	srcIDs := map[uuid.UUID]bool{}
 	for i, r := range rows {
 		ids[i] = r.ID
+		if r.SourceID != nil {
+			srcIDs[*r.SourceID] = true
+		}
 	}
 	var ds []incomeDeductionRow
 	err := s.db.WithContext(ctx).Where("household_id = ? AND income_id IN ?", householdID, ids).
@@ -83,12 +114,36 @@ func (s *Service) views(ctx context.Context, householdID uuid.UUID, rows []Incom
 	for _, d := range ds {
 		byIncome[d.IncomeID] = append(byIncome[d.IncomeID], Deduction{Kind: d.Kind, Name: d.Name, AmountCents: d.AmountCents})
 	}
+	// Fontes vivas: dizem se a repetição continua (um mapa de id para o fim; zero = sem fim).
+	alive := map[uuid.UUID]caldate.Date{}
+	if len(srcIDs) > 0 {
+		list := make([]uuid.UUID, 0, len(srcIDs))
+		for id := range srcIDs {
+			list = append(list, id)
+		}
+		var srcs []Source
+		if err := s.db.WithContext(ctx).Select("id", "end_month").Where("household_id = ? AND id IN ?", householdID, list).Find(&srcs).Error; err != nil {
+			return nil, fmt.Errorf("lendo fontes: %w", err)
+		}
+		for _, src := range srcs {
+			alive[src.ID] = src.EndMonth
+		}
+	}
+	today := s.today()
 	for i, r := range rows {
 		d := byIncome[r.ID]
 		if d == nil {
 			d = []Deduction{}
 		}
-		out[i] = View{Income: r, Deductions: d, Net: Net(r.GrossAmountCents, d)}
+		v := View{Income: r, Deductions: d, Net: Net(r.GrossAmountCents, d), Received: r.IsReceived(today)}
+		if r.SourceID != nil {
+			if end, ok := alive[*r.SourceID]; ok && (end.IsZero() || r.CompetenceMonth.Before(end)) {
+				v.Repeats, v.Until = true, end
+			} else if ok {
+				v.Until = end
+			}
+		}
+		out[i] = v
 	}
 	return out, nil
 }
@@ -100,6 +155,16 @@ func (s *Service) find(ctx context.Context, householdID, id uuid.UUID) (Income, 
 		return Income{}, ErrNotFound
 	}
 	return in, err
+}
+
+// lockFind lê o lançamento TRAVADO (FOR UPDATE) dentro de uma transação: edições simultâneas não se atropelam.
+func lockFind(tx *gorm.DB, householdID, id uuid.UUID) (Income, error) {
+	var cur Income
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("household_id = ? AND id = ?", householdID, id).First(&cur).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return Income{}, ErrNotFound
+	}
+	return cur, err
 }
 
 // Get devolve um lançamento da casa.
@@ -137,9 +202,19 @@ func insertDeductions(tx *gorm.DB, householdID uuid.UUID, ids []uuid.UUID, ds []
 	return tx.CreateInBatches(&rows, 200).Error
 }
 
+func (s *Service) deductionsOf(tx *gorm.DB, householdID, incomeID uuid.UUID) ([]Deduction, error) {
+	var rows []incomeDeductionRow
+	err := tx.Where("household_id = ? AND income_id = ?", householdID, incomeID).Order("position, id").Find(&rows).Error
+	out := make([]Deduction, len(rows))
+	for i, r := range rows {
+		out[i] = Deduction{Kind: r.Kind, Name: r.Name, AmountCents: r.AmountCents}
+	}
+	return out, err
+}
+
 // ---------------------------------------------------------------- listar
 
-// List devolve os lançamentos (previstos e recebidos) da competência `month`, só da casa, ordenados pela data esperada.
+// List devolve os lançamentos (recebidos e a receber) da competência `month`, só da casa, ordenados pela data esperada.
 // Não gera a previsão: quem chama (handler) garante o horizonte antes, via EnsureHorizon.
 func (s *Service) List(ctx context.Context, householdID uuid.UUID, month caldate.Date) ([]View, error) {
 	var v validation.Collector
@@ -156,31 +231,44 @@ func (s *Service) List(ctx context.Context, householdID uuid.UUID, month caldate
 	return s.views(ctx, householdID, rows)
 }
 
-// ---------------------------------------------------------------- criar (avulsa)
+// ---------------------------------------------------------------- criar
 
 type CreateInput struct {
-	UserID           uuid.UUID
-	Kind             string
-	Wallet           *string // opcional; derivada do tipo (se informada, tem de ser coerente)
-	Description      string
-	CompetenceMonth  caldate.Date
-	ExpectedDate     caldate.Date
-	GrossAmountCents money.Cents
-	Deductions       []Deduction
-	Notes            *string
+	UserID          uuid.UUID
+	Kind            string
+	Wallet          *string // opcional; derivada do tipo (se informada, tem de ser coerente)
+	Description     string
+	CompetenceMonth caldate.Date
+	// ExpectedDate é uma data digitada. Sem Rule ela é obrigatória. Com Rule, ela só vale se enviada (a regra continua
+	// valendo para os meses seguintes, no caso de Repeats).
+	ExpectedDate *caldate.Date
+	Amount       AmountInput
+	Rule         *DateRule
+	// Repeats cria a repetição (fonte) a partir de CompetenceMonth; RepeatUntil é o último mês (opcional). Exige Rule.
+	Repeats     bool
+	RepeatUntil *caldate.Date
+	Deductions  []Deduction
+	Notes       *string
 }
 
-// Create lança uma receita AVULSA (sem fonte).
+// Create lança uma receita. Sem Repeats, é um lançamento avulso; com Repeats, cria a repetição (a "fonte") e devolve o
+// lançamento do mês pedido. Para quem usa a tela é uma lista só: a diferença entre fonte e lançamento não aparece.
 func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, in CreateInput) (View, error) {
+	if in.Repeats {
+		return s.createRepeating(ctx, householdID, createdBy, in)
+	}
 	var v validation.Collector
 	in.Description = checkName("description", in.Description, 120, &v)
 	wallet := ResolveWallet(in.Kind, in.Wallet, &v)
 	checkMonth("competenceMonth", in.CompetenceMonth, &v)
-	if in.ExpectedDate.IsZero() {
-		v.Add("expectedDate", "informe a data esperada")
+	amount := in.Amount.Resolve(calendar.BusinessDaysInMonth(in.CompetenceMonth, s.holidays(ctx)), &v)
+	var rule *DateRule
+	if in.Rule != nil {
+		r := in.Rule.Check("dateRule", &v)
+		rule = &r
 	}
-	CheckGross(in.GrossAmountCents, &v)
-	ds := CheckDeductions(in.GrossAmountCents, in.Deductions, &v)
+	expected := s.expectedFor(ctx, in.ExpectedDate, rule, in.CompetenceMonth, &v)
+	ds := CheckDeductions(amount.GrossCents, in.Deductions, &v)
 	in.Notes = invoice.CheckNotes(in.Notes, &v)
 	if err := s.checkMember(ctx, householdID, in.UserID, &v); err != nil {
 		return View{}, err
@@ -190,8 +278,13 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 	}
 	row := Income{
 		HouseholdID: householdID, UserID: in.UserID, Kind: in.Kind, Description: in.Description, Wallet: wallet,
-		CompetenceMonth: in.CompetenceMonth, ExpectedDate: in.ExpectedDate, GrossAmountCents: in.GrossAmountCents,
+		CompetenceMonth: in.CompetenceMonth, ExpectedDate: expected, GrossAmountCents: amount.GrossCents,
+		Quantity: amount.Quantity, UnitPriceCents: amount.UnitPriceCents, UnitLabel: amount.UnitLabel,
 		Notes: in.Notes, CreatedBy: createdBy,
+	}
+	if rule != nil {
+		rs, adj := rule.Rule, string(rule.Adjust)
+		row.DateRule, row.DateRuleN, row.WeekendAdjust = &rs, rule.nPtr(), &adj
 	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&row).Error; err != nil {
@@ -205,78 +298,78 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 	return s.Get(ctx, householdID, row.ID)
 }
 
-// ---------------------------------------------------------------- editar / excluir / receber
-
-// Patch: nil = não mexer. DeductionsSet distingue "não enviado" de "lista vazia" (que remove todos os descontos).
-type Patch struct {
-	Description      *string
-	ExpectedDate     *caldate.Date
-	GrossAmountCents *money.Cents
-	DeductionsSet    bool
-	Deductions       []Deduction
-	NotesSet         bool
-	Notes            *string
+// expectedFor decide a data esperada: a digitada, ou a calculada pela regra no mês de competência.
+func (s *Service) expectedFor(ctx context.Context, typed *caldate.Date, rule *DateRule, month caldate.Date, v *validation.Collector) caldate.Date {
+	switch {
+	case typed != nil && !typed.IsZero():
+		return *typed
+	case typed != nil:
+		v.Add("expectedDate", "data inválida")
+	case rule != nil && !month.IsZero() && month.IsStartOfMonth():
+		return rule.ExpectedDate(month, s.holidays(ctx))
+	case rule == nil:
+		v.Add("expectedDate", "informe a data esperada ou uma regra de data")
+	}
+	return caldate.Date{}
 }
 
-// Update ajusta o lançamento do mês. NÃO altera a fonte (a coparticipação deste mês é só deste mês). Descontos enviados
-// SUBSTITUEM a lista inteira. A soma dos descontos é revalidada contra o bruto resultante (novo ou atual).
-func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch) (View, error) {
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var cur Income
-		// Trava a linha: edições simultâneas do mesmo lançamento não se atropelam.
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("household_id = ? AND id = ?", householdID, id).First(&cur).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrNotFound
+func (s *Service) createRepeating(ctx context.Context, householdID, createdBy uuid.UUID, in CreateInput) (View, error) {
+	var v validation.Collector
+	if in.Rule == nil {
+		v.Add("dateRule", "informe quando a receita cai para ela se repetir")
+	}
+	if err := v.Err(); err != nil {
+		return View{}, err
+	}
+	src, err := s.createSource(ctx, householdID, createdBy, SourceInput{
+		UserID: in.UserID, Kind: in.Kind, Wallet: in.Wallet, Name: in.Description, Amount: in.Amount, Rule: *in.Rule,
+		StartMonth: in.CompetenceMonth, EndMonth: in.RepeatUntil, Notes: in.Notes, Deductions: in.Deductions,
+	})
+	if err != nil {
+		return View{}, err
+	}
+	var first Income
+	err = s.db.WithContext(ctx).Where("household_id = ? AND source_id = ? AND competence_month = ?", householdID, src.ID, in.CompetenceMonth).
+		First(&first).Error
+	if err != nil {
+		return View{}, fmt.Errorf("lendo o primeiro mês da repetição: %w", err)
+	}
+	// Uma data digitada vale só para o primeiro mês (os seguintes seguem a regra).
+	if in.ExpectedDate != nil && !in.ExpectedDate.IsZero() {
+		if err := s.db.WithContext(ctx).Model(&Income{}).Where("household_id = ? AND id = ?", householdID, first.ID).
+			Update("expected_date", *in.ExpectedDate).Error; err != nil {
+			return View{}, err
 		}
+	}
+	return s.Get(ctx, householdID, first.ID)
+}
+
+// ---------------------------------------------------------------- receber / não caiu
+
+// Receive diz "caiu": desfaz o "não caiu" e, se a data esperada ainda não chegou, marca como recebida de propósito
+// (hoje, ou a data informada). O UPDATE roda com a linha travada: dois cliques simultâneos não se atropelam e o segundo
+// recebe ErrAlreadyReceived. Receber o que já conta como recebida (inclusive automaticamente) também é ErrAlreadyReceived.
+func (s *Service) Receive(ctx context.Context, householdID, id uuid.UUID, at *caldate.Date) (View, error) {
+	if at != nil && at.IsZero() {
+		return View{}, validation.New("receivedAt", "data de recebimento inválida")
+	}
+	today := s.today()
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		cur, err := lockFind(tx, householdID, id)
 		if err != nil {
 			return err
 		}
-		var v validation.Collector
-		upd := map[string]any{}
-		if p.Description != nil {
-			upd["description"] = checkName("description", *p.Description, 120, &v)
+		if cur.IsReceived(today) {
+			return ErrAlreadyReceived
 		}
-		if p.ExpectedDate != nil {
-			if p.ExpectedDate.IsZero() {
-				v.Add("expectedDate", "informe a data esperada")
-			}
-			upd["expected_date"] = *p.ExpectedDate
-		}
-		gross := cur.GrossAmountCents
-		if p.GrossAmountCents != nil {
-			gross = *p.GrossAmountCents
-			CheckGross(gross, &v)
-			upd["gross_amount_cents"] = gross
-		}
-		if p.NotesSet {
-			upd["notes"] = invoice.CheckNotes(p.Notes, &v)
-		}
-		// Descontos efetivos depois do patch: os enviados, ou os atuais (quando só o bruto muda).
-		var ds []Deduction
+		upd := map[string]any{"held_at": nil}
 		switch {
-		case p.DeductionsSet:
-			ds = CheckDeductions(gross, p.Deductions, &v)
-		case p.GrossAmountCents != nil:
-			ds, err = s.deductionsOf(tx, householdID, id)
-			if err != nil {
-				return err
-			}
-			if SumDeductions(ds) > gross {
-				v.Add("grossAmountCents", "o bruto não pode ficar menor que a soma dos descontos")
-			}
+		case at != nil:
+			upd["received_at"] = *at
+		case cur.ExpectedDate.After(today):
+			upd["received_at"] = today // recebida antes da data esperada: a pessoa disse que caiu
 		}
-		if err := v.Err(); err != nil {
-			return err
-		}
-		if len(upd) > 0 {
-			if err := tx.Model(&Income{}).Where("household_id = ? AND id = ?", householdID, id).Updates(upd).Error; err != nil {
-				return err
-			}
-		}
-		if p.DeductionsSet {
-			return replaceDeductions(tx, householdID, id, ds)
-		}
-		return nil
+		return tx.Model(&Income{}).Where("household_id = ? AND id = ?", householdID, id).Updates(upd).Error
 	})
 	if err != nil {
 		return View{}, err
@@ -284,65 +377,54 @@ func (s *Service) Update(ctx context.Context, householdID, id uuid.UUID, p Patch
 	return s.Get(ctx, householdID, id)
 }
 
-func (s *Service) deductionsOf(tx *gorm.DB, householdID, incomeID uuid.UUID) ([]Deduction, error) {
-	var rows []incomeDeductionRow
-	err := tx.Where("household_id = ? AND income_id = ?", householdID, incomeID).Order("position, id").Find(&rows).Error
-	out := make([]Deduction, len(rows))
-	for i, r := range rows {
-		out[i] = Deduction{Kind: r.Kind, Name: r.Name, AmountCents: r.AmountCents}
-	}
-	return out, err
-}
-
-// Delete faz a exclusão lógica. O índice único (source_id, competence_month) inclui excluídas, então o gerador de
-// previsão nunca recria um mês que o usuário apagou.
-func (s *Service) Delete(ctx context.Context, householdID, id uuid.UUID) error {
-	res := s.db.WithContext(ctx).Where("household_id = ? AND id = ?", householdID, id).Delete(&Income{})
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-// Receive marca como recebida. O UPDATE é condicional (`received_at IS NULL`): dois cliques simultâneos não recebem duas
-// vezes, e o segundo recebe ErrAlreadyReceived.
-func (s *Service) Receive(ctx context.Context, householdID, id uuid.UUID, at *caldate.Date) (View, error) {
-	receivedAt := s.today()
-	if at != nil {
-		if at.IsZero() {
-			return View{}, validation.New("receivedAt", "data de recebimento inválida")
-		}
-		receivedAt = *at
-	}
-	res := s.db.WithContext(ctx).Model(&Income{}).
-		Where("household_id = ? AND id = ? AND received_at IS NULL", householdID, id).Update("received_at", receivedAt)
-	if res.Error != nil {
-		return View{}, res.Error
-	}
-	if res.RowsAffected == 0 {
-		if _, err := s.find(ctx, householdID, id); err != nil {
-			return View{}, err
-		}
-		return View{}, ErrAlreadyReceived
-	}
-	return s.Get(ctx, householdID, id)
-}
-
-// Unreceive desfaz o recebimento (volta a previsto).
+// Unreceive diz "não caiu": a receita deixa de contar como recebida (volta a "a receber", ou "atrasada" se a data já
+// passou) e não conta no saldo até alguém dizer "caiu". Se já não contava como recebida, ErrNotReceived.
 func (s *Service) Unreceive(ctx context.Context, householdID, id uuid.UUID) (View, error) {
-	res := s.db.WithContext(ctx).Model(&Income{}).
-		Where("household_id = ? AND id = ? AND received_at IS NOT NULL", householdID, id).Update("received_at", nil)
-	if res.Error != nil {
-		return View{}, res.Error
-	}
-	if res.RowsAffected == 0 {
-		if _, err := s.find(ctx, householdID, id); err != nil {
-			return View{}, err
+	today := s.today()
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		cur, err := lockFind(tx, householdID, id)
+		if err != nil {
+			return err
 		}
-		return View{}, ErrNotReceived
+		if !cur.IsReceived(today) {
+			return ErrNotReceived
+		}
+		return tx.Model(&Income{}).Where("household_id = ? AND id = ?", householdID, id).
+			Updates(map[string]any{"held_at": time.Now().UTC().Truncate(time.Microsecond), "received_at": nil}).Error
+	})
+	if err != nil {
+		return View{}, err
 	}
 	return s.Get(ctx, householdID, id)
+}
+
+// ---------------------------------------------------------------- prévia da regra de data
+
+// PreviewItem é um mês da prévia: a data em que a regra cai e quantos dias úteis o mês tem (a quantidade sugerida
+// para receitas por unidade).
+type PreviewItem struct {
+	Month        caldate.Date
+	ExpectedDate caldate.Date
+	BusinessDays int
+}
+
+// Preview calcula, sem gravar nada, as datas das próximas `count` competências a partir de `from`.
+func (s *Service) Preview(ctx context.Context, rule DateRule, from caldate.Date, count int) ([]PreviewItem, error) {
+	var v validation.Collector
+	rule = rule.Check("dateRule", &v)
+	if from.IsZero() {
+		v.Add("month", "informe um mês")
+	}
+	if count < 1 || count > 24 {
+		v.Add("count", "use de 1 a 24")
+	}
+	if err := v.Err(); err != nil {
+		return nil, err
+	}
+	h := s.holidays(ctx)
+	out := make([]PreviewItem, 0, count)
+	for m, i := from.StartOfMonth(), 0; i < count; m, i = m.AddMonths(1), i+1 {
+		out = append(out, PreviewItem{Month: m, ExpectedDate: rule.ExpectedDate(m, h), BusinessDays: calendar.BusinessDaysInMonth(m, h)})
+	}
+	return out, nil
 }

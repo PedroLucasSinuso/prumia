@@ -21,6 +21,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/brasilapi"
+	"github.com/PedroLucasSinuso/prumia/api/internal/calendar"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
 	"github.com/PedroLucasSinuso/prumia/api/internal/income"
@@ -74,7 +75,7 @@ func run(args []string) error {
 	today := func() caldate.Date { return caldate.Today(cfg.Location) }
 	invoices := invoice.NewService(gdb, today)
 	recurrences := series.NewRecurrenceService(gdb, invoices, today)
-	incomes := income.NewService(gdb, today)
+	incomes := income.NewService(gdb, today).WithCalendar(calendar.New(cfg.HolidaysURL)) // feriados: BrasilAPI ou cálculo local
 
 	if len(args) > 0 && args[0] == "horizon" {
 		if err := recurrences.EnsureHorizonAll(ctx); err != nil {

@@ -52,9 +52,9 @@ func writeDomainError(c *gin.Context, log *slog.Logger, err error) {
 		problem(http.StatusConflict, "already_received")
 	case errors.Is(err, income.ErrNotReceived):
 		problem(http.StatusConflict, "not_received")
-	case errors.Is(err, invoice.ErrNotDeleted):
+	case errors.Is(err, invoice.ErrNotDeleted), errors.Is(err, income.ErrNotDeleted):
 		problem(http.StatusConflict, "not_deleted")
-	case errors.Is(err, invoice.ErrSeriesChanged):
+	case errors.Is(err, invoice.ErrSeriesChanged), errors.Is(err, income.ErrSeriesChanged):
 		problem(http.StatusConflict, "series_changed")
 	case errors.Is(err, invoice.ErrCategoryGone):
 		problem(http.StatusConflict, "category_deleted")

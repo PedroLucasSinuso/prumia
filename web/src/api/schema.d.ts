@@ -630,13 +630,24 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Lançamentos do mês (previstos e recebidos)
-         * @description `month` é obrigatório (dia 1). Estende a previsão das fontes até esse mês, se ele estiver além do horizonte
+         * Receitas do mês (recebidas e a receber)
+         * @description `month` é obrigatório (dia 1). Estende a repetição até esse mês, se ele estiver além do horizonte
          *     (até 60 meses à frente). Todos os membros da casa veem as receitas de todos.
+         *
+         *     **Estado derivado** (não existe coluna de status): `received` é verdadeiro quando a data esperada chegou e ninguém
+         *     marcou `held` ("não caiu"), ou quando foi marcada como recebida antes da data. `held` verdadeiro = "não caiu".
+         *     Fora disso a receita está "a receber" (e "atrasada" se `held` e a data já passou).
          */
         get: operations["listIncomes"];
         put?: never;
-        /** Lança receita avulsa */
+        /**
+         * Lança uma receita (avulsa ou que se repete todo mês)
+         * @description Valor: `amountMode=fixed` (padrão; informe `grossAmountCents`) ou `per_unit` (informe `unitPriceCents`, opcionalmente
+         *     `quantity`, que por padrão é o número de dias úteis do mês, e `unitLabel`). O bruto por unidade é sempre
+         *     preço x quantidade. Data: `dateRule` (calcula a data de cada mês) e/ou `expectedDate` (data digitada; sem regra é
+         *     obrigatória). Com `repeats=true` (exige `dateRule`) cria a repetição a partir de `competenceMonth`, até `repeatsUntil`
+         *     (opcional), e devolve o lançamento do mês pedido.
+         */
         post: operations["createIncome"];
         delete?: never;
         options?: never;
@@ -657,12 +668,48 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Exclusão lógica */
+        /**
+         * Exclusão lógica. Se a receita se repete, `scope` define o alcance.
+         * @description `following` exclui este e os seguintes que ainda não contam como recebidos (recebidos nunca somem em lote) e encerra
+         *     a repetição no mês anterior. Todo o lote recebe o mesmo `deleted_at`, usado pelo Desfazer (`/restore?scope=following`).
+         */
         delete: operations["deleteIncome"];
         options?: never;
         head?: never;
-        /** Ajusta o lançamento do mês (bruto, descontos, data) */
+        /**
+         * Edita a receita. Se ela se repete, `scope` define o alcance.
+         * @description `scope=this` (padrão) muda só este lançamento (inclusive pessoa, tipo, mês de competência, quantidade e data digitada).
+         *     `scope=following` muda também o molde da repetição e reaplica os campos enviados a este e aos seguintes que ainda
+         *     NÃO contam como recebidos; recebidos nunca mudam em lote. `competenceMonth`, `expectedDate` e `quantity` não valem
+         *     em lote (400). Mudar o tipo muda a carteira (benefit vai para a carteira de benefício). Os descontos enviados
+         *     substituem a lista. Sem repetição, `following` equivale a `this`.
+         */
         patch: operations["updateIncome"];
+        trace?: never;
+    };
+    "/households/{householdId}/incomes/{incomeId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                incomeId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desfaz a exclusão. `scope=following` desfaz o lote "este e os seguintes".
+         * @description `following` restaura, numa transação, este e os da MESMA repetição com mês maior ou igual excluídos JUNTO com ele
+         *     (mesmo `deleted_at`); exclusões avulsas anteriores continuam excluídas. Devolve o fim (ou reativa) a repetição.
+         *     409 `series_changed` se a repetição mudou depois do lote; 409 `not_deleted` se não estava excluída.
+         */
+        post: operations["restoreIncome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/households/{householdId}/incomes/{incomeId}/receive": {
@@ -677,10 +724,60 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Marca como recebida (só esta competência). Receber de novo responde 409 `already_received`. */
+        /**
+         * "Caiu": desfaz o "não caiu" (ou marca como recebida antes da data). Se já conta como recebida, 409 `already_received`.
+         * @description O recebimento é automático (a data esperada chegou). Esta rota só serve para (a) desfazer um "não caiu" e
+         *     (b) marcar como recebida uma receita cuja data esperada ainda não chegou.
+         */
         post: operations["receiveIncome"];
-        /** Desfaz o recebimento (volta a previsto). Se não estava recebida, 409 `not_received`. */
+        /** "Não caiu": a receita deixa de contar como recebida e fica fora do saldo. Se não contava, 409 `not_received`. */
         delete: operations["unreceiveIncome"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/income-dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Prévia das datas de uma regra de data (sem gravar nada)
+         * @description Para cada um dos `count` meses a partir de `month`, a data em que a regra cai (com o ajuste de fim de semana e
+         *     feriados nacionais) e quantos dias úteis o mês tem (a quantidade sugerida para receitas por unidade).
+         */
+        get: operations["previewIncomeDates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/tax/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Estimativa de INSS e IRRF de um salário mensal (sugestão para preencher descontos)
+         * @description Calculada pela tabela do ano de `month` (ou a mais recente, se o ano não tem tabela: veja `tableYear`). É uma
+         *     ESTIMATIVA (`approximate` sempre verdadeiro): confira no holerite. Não grava nada.
+         */
+        get: operations["estimateTax"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -695,10 +792,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Fontes recorrentes (previsão de salário e benefício) */
+        /** Receitas que se repetem (o molde de cada repetição) */
         get: operations["listIncomeSources"];
         put?: never;
-        /** Cria fonte e gera os lançamentos previstos até o horizonte */
+        /** Cria uma repetição e gera os lançamentos até o horizonte */
         post: operations["createIncomeSource"];
         delete?: never;
         options?: never;
@@ -722,7 +819,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Edita a fonte. `applyFrom` reaplica o template aos meses previstos a partir dali. */
+        /** Edita o molde. `applyFrom` reaplica o molde aos meses a receber a partir dali. */
         patch: operations["updateIncomeSource"];
         trace?: never;
     };
@@ -1267,6 +1364,25 @@ export interface components {
             name: string;
             amountCents: components["schemas"]["Cents"];
         };
+        /**
+         * @description fixed = valor cheio; per_unit = preço por unidade x quantidade
+         * @enum {string}
+         */
+        AmountMode: "fixed" | "per_unit";
+        /** @enum {string} */
+        DateRuleKind: "day_of_month" | "nth_business_day" | "last_business_day";
+        /**
+         * @description Quando a data cai em fim de semana ou feriado nacional: forward = próximo dia útil (padrão), backward = dia útil anterior, none = manter
+         * @enum {string}
+         */
+        WeekendAdjust: "forward" | "backward" | "none";
+        /** @description Quando a receita cai em cada mês. `n` é o dia (day_of_month, 1 a 31) ou a ordem do dia útil (nth_business_day, 1 a 23); não se aplica a last_business_day. */
+        DateRule: {
+            rule: components["schemas"]["DateRuleKind"];
+            n?: number | null;
+            /** @description Padrão forward */
+            weekendAdjust?: components["schemas"]["WeekendAdjust"];
+        };
         Income: {
             /** Format: uuid */
             id: string;
@@ -1281,14 +1397,32 @@ export interface components {
             competenceMonth: components["schemas"]["Month"];
             /** Format: date */
             expectedDate: string;
+            amountMode: components["schemas"]["AmountMode"];
             grossAmountCents: components["schemas"]["Cents"];
+            /** @description Só por unidade */
+            unitPriceCents?: components["schemas"]["Cents"] | null;
+            /** @description Só por unidade. Bruto = preço x quantidade */
+            quantity?: number | null;
+            /** @description Só por unidade (ex.: dia trabalhado, hora) */
+            unitLabel?: string | null;
+            /** @description Regra que calculou a data (nulo = data digitada) */
+            dateRule?: components["schemas"]["DateRule"] | null;
             deductions: components["schemas"]["Deduction"][];
             /** @description Calculado = bruto - descontos (somente leitura) */
             netAmountCents: components["schemas"]["Cents"];
-            /** @description `false` = previsto */
+            /** @description Derivado: a data esperada chegou (ou foi marcada antes) e não está em `held`. Conta no saldo. */
             received: boolean;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Dia em que entrou (a data marcada ou, no recebimento automático, a data esperada). Nulo se não recebida.
+             */
             receivedAt?: string | null;
+            /** @description "Não caiu": o dinheiro previsto ainda não entrou; não conta como recebida até alguém dizer "caiu". */
+            held: boolean;
+            /** @description A repetição continua depois deste mês */
+            repeats: boolean;
+            /** @description Último mês da repetição (nulo = sem fim) */
+            repeatsUntil?: components["schemas"]["Month"] | null;
             notes?: string | null;
         };
         IncomeInput: {
@@ -1303,17 +1437,41 @@ export interface components {
             wallet?: components["schemas"]["Wallet"];
             description: string;
             competenceMonth: components["schemas"]["Month"];
-            /** Format: date */
-            expectedDate: string;
-            grossAmountCents: components["schemas"]["Cents"];
+            /**
+             * Format: date
+             * @description Data digitada. Obrigatória se não houver dateRule; com repeats vale só para o primeiro mês.
+             */
+            expectedDate?: string;
+            /** @description Padrão fixed */
+            amountMode?: components["schemas"]["AmountMode"];
+            grossAmountCents?: components["schemas"]["Cents"];
+            unitPriceCents?: components["schemas"]["Cents"];
+            /** @description Por unidade. Padrão: dias úteis do mês */
+            quantity?: number;
+            /** @description Por unidade. Padrão: unidade */
+            unitLabel?: string;
+            dateRule?: components["schemas"]["DateRule"];
+            /** @description Repete todo mês a partir de competenceMonth (exige dateRule) */
+            repeats?: boolean;
+            repeatsUntil?: (string & components["schemas"]["Month"]) | null;
             deductions?: components["schemas"]["Deduction"][];
             notes?: string | null;
         };
         IncomePatch: {
+            /** Format: uuid */
+            userId?: string;
+            /** @enum {string} */
+            kind?: "salary" | "benefit" | "other";
             description?: string;
+            competenceMonth?: components["schemas"]["Month"];
             /** Format: date */
             expectedDate?: string;
+            amountMode?: components["schemas"]["AmountMode"];
             grossAmountCents?: components["schemas"]["Cents"];
+            unitPriceCents?: components["schemas"]["Cents"];
+            quantity?: number;
+            unitLabel?: string;
+            dateRule?: components["schemas"]["DateRule"];
             deductions?: components["schemas"]["Deduction"][];
             notes?: string | null;
         };
@@ -1326,11 +1484,17 @@ export interface components {
             kind: "salary" | "benefit" | "other";
             wallet: components["schemas"]["Wallet"];
             name: string;
+            amountMode: components["schemas"]["AmountMode"];
+            /** @description Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade). */
             grossAmountCents: components["schemas"]["Cents"];
+            unitPriceCents?: components["schemas"]["Cents"] | null;
+            unitLabel?: string | null;
+            /** @description Legado: o dia da regra day_of_month (1 nas demais regras). Use dateRule. */
             dayOfMonth: number;
+            dateRule: components["schemas"]["DateRule"];
             startMonth: components["schemas"]["Month"];
             endMonth?: (string & components["schemas"]["Month"]) | null;
-            /** @description Último mês com lançamento previsto gerado */
+            /** @description Último mês com lançamento gerado */
             generatedThrough?: components["schemas"]["Month"];
             notes?: string | null;
             deductions: components["schemas"]["Deduction"][];
@@ -1346,25 +1510,63 @@ export interface components {
             /** @description Opcional. Derivada do tipo; se informada e incoerente com o tipo (ex.: benefit em carteira free), 400. */
             wallet?: components["schemas"]["Wallet"];
             name: string;
-            grossAmountCents: components["schemas"]["Cents"];
-            dayOfMonth: number;
+            amountMode?: components["schemas"]["AmountMode"];
+            grossAmountCents?: components["schemas"]["Cents"];
+            unitPriceCents?: components["schemas"]["Cents"];
+            /** @description Por unidade: quantidade do primeiro mês (os demais usam os dias úteis) */
+            quantity?: number;
+            unitLabel?: string;
+            dateRule?: components["schemas"]["DateRule"];
+            /** @description Atalho antigo: equivale a dateRule day_of_month com ajuste forward. Ignorado se dateRule vier. */
+            dayOfMonth?: number;
             startMonth: components["schemas"]["Month"];
             endMonth?: (string & components["schemas"]["Month"]) | null;
             notes?: string | null;
             deductions?: components["schemas"]["Deduction"][];
         };
         IncomeSourcePatch: {
+            /** Format: uuid */
+            userId?: string;
+            /** @enum {string} */
+            kind?: "salary" | "benefit" | "other";
             name?: string;
             notes?: string | null;
+            amountMode?: components["schemas"]["AmountMode"];
             grossAmountCents?: components["schemas"]["Cents"];
+            unitPriceCents?: components["schemas"]["Cents"];
+            unitLabel?: string;
+            dateRule?: components["schemas"]["DateRule"];
+            /** @description Atalho antigo: troca para a regra day_of_month mantendo o ajuste atual */
             dayOfMonth?: number;
             endMonth?: (string & components["schemas"]["Month"]) | null;
             deductions?: components["schemas"]["Deduction"][];
         };
+        IncomeDatePreview: {
+            month: components["schemas"]["Month"];
+            /** Format: date */
+            expectedDate: string;
+            /** @description Dias úteis do mês (sábado, domingo e feriados nacionais não contam) */
+            businessDays: number;
+        };
+        TaxEstimate: {
+            inssCents: components["schemas"]["Cents"];
+            irrfCents: components["schemas"]["Cents"];
+            /** @description Ano da tabela usada (pode ser diferente do mês pedido, se o ano não tem tabela) */
+            tableYear: number;
+            /** @description URLs oficiais conferidas */
+            sources: string[];
+            /**
+             * Format: date
+             * @description Quando as tabelas foram conferidas
+             */
+            checkedOn: string;
+            /** @description Sempre verdadeiro: é uma estimativa */
+            approximate: boolean;
+        };
         WalletBalance: {
-            /** @description Líquido de todas as receitas da competência na carteira (previstas + recebidas) */
+            /** @description Líquido de todas as receitas da competência na carteira (a receber + recebidas) */
             expectedIncomeCents: components["schemas"]["Cents"];
-            /** @description Líquido das receitas já recebidas */
+            /** @description Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu) */
             receivedIncomeCents: components["schemas"]["Cents"];
             /** @description Valor efetivamente pago das invoices da competência pagas com esta carteira */
             paidCents: components["schemas"]["Cents"];
@@ -1481,6 +1683,11 @@ export interface components {
         InvoiceId: string;
         Limit: number;
         Cursor: string;
+        /**
+         * @description Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+         *     recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+         */
+        IncomeScope: "this" | "following";
         /**
          * @description `this` = só esta; `following` = esta e as seguintes da MESMA série (parcelas com `installmentNumber` maior ou igual;
          *     recorrência com `occurrenceMonth` maior ou igual). Em lote: só afeta as ainda NÃO pagas (as pagas ficam intactas, inclusive a
@@ -2726,11 +2933,18 @@ export interface operations {
                     "application/json": components["schemas"]["Income"];
                 };
             };
+            400: components["responses"]["BadRequest"];
         };
     };
     deleteIncome: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+                 *     recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+                 */
+                scope?: components["parameters"]["IncomeScope"];
+            };
             header?: never;
             path: {
                 householdId: components["parameters"]["HouseholdId"];
@@ -2747,11 +2961,18 @@ export interface operations {
                 };
                 content?: never;
             };
+            404: components["responses"]["NotFound"];
         };
     };
     updateIncome: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+                 *     recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+                 */
+                scope?: components["parameters"]["IncomeScope"];
+            };
             header?: never;
             path: {
                 householdId: components["parameters"]["HouseholdId"];
@@ -2774,6 +2995,39 @@ export interface operations {
                     "application/json": components["schemas"]["Income"];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    restoreIncome: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Em receita que se repete: `this` = só este mês; `following` = este e os seguintes que ainda NÃO contam como
+                 *     recebidos (recebidos nunca mudam em lote). Sem repetição equivale a `this`. Detalhes: docs/developer-guide/incomes-and-wallets.md.
+                 */
+                scope?: components["parameters"]["IncomeScope"];
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                incomeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK (a receita escolhida) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Income"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     receiveIncome: {
@@ -2791,7 +3045,7 @@ export interface operations {
                 "application/json": {
                     /**
                      * Format: date
-                     * @description Padrão hoje
+                     * @description Padrão hoje (só usado se a data esperada ainda não chegou)
                      */
                     receivedAt?: string;
                 };
@@ -2832,6 +3086,63 @@ export interface operations {
                 };
             };
             409: components["responses"]["Conflict"];
+        };
+    };
+    previewIncomeDates: {
+        parameters: {
+            query: {
+                month: string;
+                rule: components["schemas"]["DateRuleKind"];
+                /** @description Dia do mês (1 a 31) ou ordem do dia útil (1 a 23). Não se aplica a last_business_day. */
+                n?: number;
+                weekendAdjust?: components["schemas"]["WeekendAdjust"];
+                count?: number;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeDatePreview"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    estimateTax: {
+        parameters: {
+            query: {
+                month: string;
+                grossCents: number;
+                dependents?: number;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxEstimate"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
     };
     listIncomeSources: {
@@ -2885,7 +3196,7 @@ export interface operations {
     updateIncomeSource: {
         parameters: {
             query?: {
-                /** @description Mês (dia 1). Reaplica o template aos lançamentos PREVISTOS desse mês em diante; os recebidos nunca mudam. */
+                /** @description Mês (dia 1). Reaplica o molde aos lançamentos que ainda NÃO contam como recebidos desse mês em diante; os recebidos nunca mudam. */
                 applyFrom?: string;
             };
             header?: never;
