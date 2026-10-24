@@ -73,12 +73,21 @@ func novoMundo(t *testing.T) *mundo {
 		t.Fatalf("favorecido: %d %s", r.Code, r.Body)
 	}
 	r.json(&pe)
+	var tr struct {
+		Transfer struct{ Id string } `json:"transfer"`
+	}
+	r = a.do("POST", "/api/households/"+m.houseA+"/transfers", map[string]any{
+		"fromWalletId": a.free(m.houseA), "toWalletId": a.vr(m.houseA), "amountCents": 1000}, m.ana)
+	if r.Code != 201 {
+		t.Fatalf("transferência: %d %s", r.Code, r.Body)
+	}
+	r.json(&tr)
 	// a invoice paga também (exercita "desfazer pagamento")
 	a.pay(m.ana, m.houseA, p.Installments[0].ID, "free", nil)
 
 	m.ids = map[string]string{
 		"categoryId": c.Id, "payeeId": pe.Id, "invoiceId": invA.ID, "purchaseId": p.ID, "recurrenceId": rec.ID,
-		"incomeId": inc.ID, "sourceId": src.ID, "inviteId": invite.Id, "userId": m.anaID, "walletId": a.vr(m.houseA),
+		"incomeId": inc.ID, "sourceId": src.ID, "inviteId": invite.Id, "userId": m.anaID, "walletId": a.vr(m.houseA), "transferId": tr.Transfer.Id,
 	}
 	for _, rt := range a.router.Routes() {
 		if strings.HasPrefix(rt.Path, "/api/households/:householdId") {
