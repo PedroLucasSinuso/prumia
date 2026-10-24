@@ -1,64 +1,52 @@
 import type { Income, Member } from '../api/types'
-import { dayMonth, weekdayShort } from '../lib/dates'
+import { weekdayShort } from '../lib/dates'
+import { kindShort, stateMark, stateOf, stateText, stateTone } from '../lib/income'
 import { formatCents } from '../lib/money'
-import { kindLabel, sumDeductions } from '../lib/income'
+import { IncomeBadges } from './IncomeSections'
 
 type Props = {
   incomes: Income[]
   members: Member[]
-  selectedId?: string
-  canWrite: boolean
-  busy: boolean
-  onToggleReceived: (income: Income) => void
+  today: string
   onOpen: (income: Income) => void
 }
 
 /**
- * As entradas do mês, na mesma linha de prumo das contas. O nó é cobalto (entrada, não saída): oco = previsto,
- * preenchido = recebido. Tocar no nó marca como recebido (e desfaz).
+ * A lista do CELULAR: uma linha por receita, alvo de toque inteiro (≥ 56 px). Sem "check": o recebimento é automático;
+ * o estado aparece como marcador da marca (`[ ▪ ]` recebida, `[ ▫ ]` a receber, `[ ✖ ]` não caiu) e "Caiu / Não caiu" fica
+ * no detalhe. O computador usa `IncomeSections`.
  */
-export function IncomeList({ incomes, members, selectedId, canWrite, busy, onToggleReceived, onOpen }: Props) {
+export function IncomeList({ incomes, members, today, onOpen }: Props) {
   const person = (id: string) => members.find((m) => m.userId === id)?.name ?? 'Pessoa'
   return (
-    <ol className="relative">
-      <span aria-hidden="true" className="absolute bottom-0 left-[73px] top-0 w-0.5 bg-ink/20 md:left-[85px]" />
+    <ul>
       {incomes.map((i) => {
-        const discounts = sumDeductions(i.deductions)
-        const meta = [
-          person(i.userId),
-          kindLabel[i.kind],
-          discounts > 0 ? `bruto ${formatCents(i.grossAmountCents)} · descontos ${formatCents(discounts)}` : null,
-          i.received ? 'recebida' : 'prevista',
-        ].filter(Boolean).join(' · ')
+        const state = stateOf(i)
         return (
-          <li
-            key={i.id}
-            className={`grid min-h-15 grid-cols-[40px_44px_1fr] items-center border-l-4 px-3 md:grid-cols-[56px_44px_1fr] ${i.id === selectedId ? 'border-structure bg-structure/7' : 'border-transparent'}`}
-          >
-            <span className="flex flex-col items-end pr-2 leading-tight md:pr-2.5">
-              <span className="font-mono text-[15px] font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
-              <span className="text-[11px] text-ink/75">{weekdayShort(i.expectedDate)}</span>
-            </span>
-            <button
-              aria-label={i.received ? `Desfazer recebimento de ${i.description}` : `Marcar ${i.description} como recebida`}
-              disabled={!canWrite || busy}
-              onClick={() => onToggleReceived(i)}
-              className="flex h-14 w-11 items-center justify-center disabled:cursor-default"
-            >
-              <span className={`flex size-5 items-center justify-center rounded-sm border-2 border-accent outline-4 outline-surface ${i.received ? 'bg-accent' : ''}`}>
-                {i.received && <span className="size-2 rounded-[1px] bg-on-structure" />}
+          <li key={i.id} className="border-t border-line first:border-t-0">
+            <button aria-label={`Detalhes de ${i.description}`} onClick={() => onOpen(i)} className="grid min-h-16 w-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-left">
+              <span className="flex flex-col items-end leading-tight">
+                <span className="font-mono text-[15px] font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
+                <span className="text-[11px] text-ink/75">{weekdayShort(i.expectedDate)}</span>
               </span>
-            </button>
-            <button aria-label={`Detalhes de ${i.description}`} onClick={() => onOpen(i)} className="flex min-h-14 min-w-0 items-center justify-between gap-3 py-2 pl-1 text-left">
               <span className="min-w-0">
-                <span className={`block truncate text-[15px] font-medium ${i.received ? '' : 'text-ink/85'}`}>{i.description}</span>
-                <span className="block truncate text-xs text-ink/80">{meta} · dia {dayMonth(i.expectedDate)}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-[15px] font-medium">{i.description}</span>
+                  <IncomeBadges income={i} />
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-ink/80">
+                  {person(i.userId)} · {kindShort[i.kind]}
+                </span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+                  <span aria-hidden="true" className={`font-mono ${stateTone[state]}`}>{stateMark[state]}</span>
+                  {stateText(i, today)}
+                </span>
               </span>
-              <span className={`shrink-0 font-mono text-[15px] font-semibold tabular-nums ${i.received ? 'text-accent' : 'text-ink/85'}`}>{formatCents(i.netAmountCents)}</span>
+              <span className={`shrink-0 font-mono text-[15px] font-semibold tabular-nums ${state === 'received' ? 'text-accent' : ''}`}>{formatCents(i.netAmountCents)}</span>
             </button>
           </li>
         )
       })}
-    </ol>
+    </ul>
   )
 }

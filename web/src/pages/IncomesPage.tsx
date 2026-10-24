@@ -1,42 +1,71 @@
-import { useMemo, useState } from 'react'
+import { Plus, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 
-import { useIncomeActions, useIncomeSources, useIncomes, useMembers, useSourceActions } from '../api/queries'
-import type { Income, IncomeKind, IncomeSource } from '../api/types'
+import { useIncomeActions, useIncomeSources, useIncomes, useMembers, useSourceActions, useSummary } from '../api/queries'
+import type { Income, IncomeSource, SeriesScope } from '../api/types'
 import { useAuth } from '../auth/context'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
 import { Button } from '../components/Button'
+import { IncomeDetail } from '../components/IncomeDetail'
 import { IncomeForm } from '../components/IncomeForm'
 import { IncomeList } from '../components/IncomeList'
+import { IncomeSections } from '../components/IncomeSections'
 import { MonthSelector } from '../components/MonthSelector'
 import { PaidGauge } from '../components/PaidGauge'
+import { RepeatingIncomes } from '../components/RepeatingIncomes'
 import { Sheet } from '../components/Sheet'
-import { SourceForm } from '../components/SourceForm'
+import { ShortcutsHelp, type Shortcut } from '../components/ShortcutsHelp'
+import { SlideOver } from '../components/SlideOver'
 import { useToast } from '../components/toastContext'
-import { incomeTotals, kindLabel, netOf, sumDeductions } from '../lib/income'
+import { addMonths, dayMonth, monthLabel, todayISO } from '../lib/dates'
+import { incomeSections, incomeTotals, monthSurplus, personTotals, stateOf, type GroupBy, type SectionId } from '../lib/income'
+import { useHasSidePanel } from '../lib/media'
 import { formatCents } from '../lib/money'
+import { usePref } from '../lib/storage'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
 
-type Editing =
-  | { kind: 'income-new' }
-  | { kind: 'income'; id: string }
-  | { kind: 'source-new'; sourceKind: IncomeKind }
-  | { kind: 'source'; id: string }
-  | null
+/** A receita aberta: em leitura (detalhe) ou no formulário (editar). `scope` pré-marca "este e os seguintes". */
+type Panel = { id: string; mode: 'view' | 'edit'; scope?: SeriesScope } | null
 
 const label = 'text-xs font-medium uppercase tracking-wider'
+const COLLAPSED_KEY = 'prumia.receitas.secoesRecolhidas'
+const GROUP_KEY = 'prumia.receitas.agrupar'
+
+const SHORTCUTS: Shortcut[] = [
+  ['N', 'nova receita'],
+  ['← / →', 'mês anterior / próximo'],
+  ['↑ / ↓', 'andar pela lista'],
+  ['Enter', 'abrir a receita'],
+  ['Esc', 'fechar'],
+  ['?', 'mostrar estes atalhos'],
+]
+
+const isTyping = (el: Element | null) => Boolean(el?.closest('input, textarea, select, [contenteditable="true"]'))
+const rowIdOf = (el: Element | null) => (el?.closest('[data-row-id]') as HTMLElement | null)?.dataset.rowId
 
 /**
- * Receitas do mês. A ideia central: cadastre o salário UMA vez (a "fonte") e o app prevê os meses seguintes com bruto e
- * descontos; cada mês continua editável (a coparticipação varia). Ao receber, um toque no nó. O líquido é sempre bruto − descontos.
+ * Receitas do mês numa lista só. O recebimento é AUTOMÁTICO: a receita conta como recebida quando a data chega, sem
+ * ninguém marcar; a exceção é "Não caiu" (e "Caiu" desfaz). No alto: o que já foi recebido, o que falta, o total por
+ * pessoa e a sobra do mês (receitas − despesas). Computador: lista em colunas com seções recolhíveis e o detalhe num
+ * painel fixo; o formulário abre num painel lateral de altura total. Celular: lista simples e painéis que sobem.
  */
 export default function IncomesPage() {
   const { session } = useAuth()
   const [month, setMonth] = useMonthParam()
-  const [editing, setEditing] = useState<Editing>(null)
+  const [panel, setPanel] = useState<Panel>(null)
+  const [creating, setCreating] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [collapsed, setCollapsed] = usePref<SectionId[]>(COLLAPSED_KEY, [])
+  const [groupBy, setGroupBy] = usePref<GroupBy>(GROUP_KEY, 'state')
   const toast = useToast()
   const desktop = useIsDesktop()
+  const sidePanel = useHasSidePanel() && desktop
+  const [params] = useSearchParams()
+  const search = params.get('mes') ? `?mes=${params.get('mes')}` : ''
+  const today = todayISO()
 
   const me = session.status === 'authenticated' ? session.me : undefined
   const { house } = useActiveHouse()
@@ -45,111 +74,258 @@ export default function IncomesPage() {
   const incomes = useIncomes(houseId, month)
   const sources = useIncomeSources(houseId)
   const members = useMembers(houseId)
+  const summary = useSummary(houseId, month)
   const actions = useIncomeActions(houseId)
   const sourceActions = useSourceActions(houseId)
 
   const list = useMemo(() => incomes.data ?? [], [incomes.data])
+  const memberList = useMemo(() => members.data ?? [], [members.data])
   const totals = useMemo(() => incomeTotals(list), [list])
-  const byWallet = useMemo(
-    () => ({
-      free: list.filter((i) => i.wallet === 'free' && i.received).reduce((s, i) => s + i.netAmountCents, 0),
-      benefit: list.filter((i) => i.wallet === 'benefit' && i.received).reduce((s, i) => s + i.netAmountCents, 0),
-    }),
-    [list],
-  )
-
-  if (!me || !house) return null
-  const canWrite = house.role !== 'viewer'
-  const memberList = members.data ?? []
-  const fraction = totals.expected > 0 ? totals.received / totals.expected : 0
+  const people = useMemo(() => personTotals(list, memberList), [list, memberList])
+  const sections = useMemo(() => incomeSections(list, groupBy, memberList), [list, groupBy, memberList])
+  // Ordem em que as linhas aparecem (↑/↓): por seção, sem as recolhidas.
+  const order = useMemo(() => sections.filter((s) => !collapsed.includes(s.id)).flatMap((s) => s.items), [sections, collapsed])
+  const panelIncome = panel ? list.find((i) => i.id === panel.id) : undefined
+  const canWrite = house?.role !== 'viewer'
   const busy = actions.receive.isPending || actions.unreceive.isPending
-  const editingIncome = editing?.kind === 'income' ? list.find((i) => i.id === editing.id) : undefined
-  const editingSource = editing?.kind === 'source' ? (sources.data ?? []).find((s) => s.id === editing.id) : undefined
-  const personName = (id: string) => memberList.find((m) => m.userId === id)?.name ?? 'Pessoa'
 
-  function toggleReceived(inc: Income) {
-    if (inc.received) {
-      actions.unreceive.mutate(inc.id, { onError: () => toast({ message: 'Não foi possível desfazer o recebimento.' }) })
-      return
-    }
-    actions.receive.mutate(inc.id, {
-      onSuccess: () => toast({ message: `${inc.description} recebida.`, actionLabel: 'Desfazer', onAction: () => actions.unreceive.mutate(inc.id) }),
-      onError: () => toast({ message: 'Não foi possível marcar como recebida. Tente de novo.' }),
+  // ------------------------------------------------------------------ ações
+  function hold(inc: Income) {
+    actions.unreceive.mutate(inc.id, {
+      onSuccess: () => toast({ message: `${inc.description}: não caiu.`, actionLabel: 'Desfazer', onAction: () => actions.receive.mutate(inc.id) }),
+      onError: () => toast({ message: 'Não foi possível registrar. Tente de novo.' }),
     })
   }
 
-  function removeIncome(inc: Income) {
-    actions.remove.mutate(inc.id, {
+  function receiveIt(inc: Income) {
+    actions.receive.mutate(inc.id, {
+      onSuccess: () => toast({ message: `${inc.description}: caiu.`, actionLabel: 'Desfazer', onAction: () => actions.unreceive.mutate(inc.id) }),
+      onError: () => toast({ message: 'Não foi possível registrar. Tente de novo.' }),
+    })
+  }
+
+  function remove(inc: Income, scope: SeriesScope) {
+    actions.remove.mutate({ id: inc.id, scope }, {
       onSuccess: () => {
-        setEditing(null)
-        toast({ message: `${inc.description} excluída.` })
+        setPanel(null)
+        // Em lote, o Desfazer restaura o lote inteiro; exclusões avulsas anteriores continuam excluídas.
+        const batch = scope === 'following' && inc.repeats
+        toast({
+          message: batch ? 'Esta e as seguintes foram excluídas.' : `${inc.description} excluída.`,
+          actionLabel: 'Desfazer',
+          onAction: () =>
+            actions.restore.mutate(
+              { id: inc.id, scope: batch ? 'following' : 'this' },
+              { onError: () => toast({ message: 'Não foi possível desfazer. Restaure uma a uma.' }) },
+            ),
+        })
       },
       onError: () => toast({ message: 'Não foi possível excluir.' }),
     })
   }
 
-  const close = () => setEditing(null)
-  const incomeFormProps = {
-    month, members: memberList, defaultUserId: me.id, income: editingIncome, canWrite, onDone: close,
-    onCreate: (b: Parameters<typeof actions.create.mutateAsync>[0]) => actions.create.mutateAsync(b),
-    onUpdate: (id: string, body: Parameters<typeof actions.update.mutateAsync>[0]['body']) => actions.update.mutateAsync({ id, body }),
-    onDelete: removeIncome,
-    onReceive: (i: Income) => { toggleReceived(i); if (!desktop) close() },
-    onUnreceive: (i: Income) => actions.unreceive.mutate(i.id, { onSuccess: () => !desktop && close() }),
-  }
-  const sourceFormProps = {
-    month, members: memberList, defaultUserId: me.id, source: editingSource,
-    defaultKind: editing?.kind === 'source-new' ? editing.sourceKind : ('salary' as IncomeKind),
-    canWrite, onDone: close,
-    onCreate: (b: Parameters<typeof sourceActions.create.mutateAsync>[0]) => sourceActions.create.mutateAsync(b),
-    onUpdate: (id: string, body: Parameters<typeof sourceActions.update.mutateAsync>[0]['body'], applyFrom?: string) =>
-      sourceActions.update.mutateAsync({ id, body, applyFrom }),
+  function endRepetition(src: IncomeSource) {
+    sourceActions.update.mutate(
+      { id: src.id, body: { endMonth: month } },
+      {
+        onSuccess: () => toast({ message: `${src.name}: repetição encerrada depois de ${monthLabel(month)}.` }),
+        onError: () => toast({ message: 'Não foi possível encerrar a repetição.' }),
+      },
+    )
   }
 
-  const formReady = members.isSuccess && (editing?.kind === 'income-new' || editing?.kind === 'source-new' || editingIncome !== undefined || editingSource !== undefined)
-  const panelTitle =
-    editing?.kind === 'income-new' ? 'Nova receita' : editing?.kind === 'income' ? (editingIncome?.description ?? 'Receita')
-    : editing?.kind === 'source-new' ? 'Nova fonte de receita' : (editingSource?.name ?? 'Fonte de receita')
-  const form = !formReady ? null : editing?.kind === 'source-new' || editing?.kind === 'source'
-    ? <SourceForm key={editingSource?.id ?? `nova-${editing.kind === 'source-new' ? editing.sourceKind : ''}`} {...sourceFormProps} />
-    : <IncomeForm key={editingIncome?.id ?? 'nova'} {...incomeFormProps} />
+  const openNew = () => {
+    setPanel(null)
+    setCreating(true)
+  }
 
+  // ------------------------------------------------------------------ atalhos (computador)
+  const keys = useRef<(e: KeyboardEvent) => void>(() => {})
+  const onShortcut = (e: KeyboardEvent) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
+    if (document.querySelector('[role="dialog"]')) return
+    if (isTyping(document.activeElement)) return
+    const focusRow = (id: string) => document.querySelector<HTMLElement>(`[data-row-id="${id}"]`)?.focus()
+    const current = rowIdOf(document.activeElement)
+    const k = e.key
+    if ((k === 'n' || k === 'N') && canWrite) {
+      e.preventDefault()
+      openNew()
+    } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+      e.preventDefault()
+      setMonth(addMonths(month, k === 'ArrowLeft' ? -1 : 1))
+    } else if (k === '?') {
+      setHelpOpen((o) => !o)
+    } else if (k === 'Escape') {
+      if (helpOpen) setHelpOpen(false)
+      else if (panel) setPanel(null)
+    } else if (k === 'ArrowDown' || k === 'ArrowUp') {
+      if (order.length === 0) return
+      e.preventDefault()
+      const at = order.findIndex((i) => i.id === (current ?? panel?.id))
+      const next = at < 0 ? (k === 'ArrowDown' ? 0 : order.length - 1) : Math.min(order.length - 1, Math.max(0, at + (k === 'ArrowDown' ? 1 : -1)))
+      focusRow(order[next].id)
+    } else if (k === 'Enter' && current) {
+      e.preventDefault()
+      setPanel({ id: current, mode: 'view' })
+    }
+  }
+  useEffect(() => {
+    keys.current = onShortcut
+  })
+  useEffect(() => {
+    if (!desktop) return
+    const onKey = (e: KeyboardEvent) => keys.current(e)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [desktop])
+
+  if (!me || !house) return null
+
+  const surplus = summary.data ? monthSurplus(summary.data) : undefined
+  const fraction = totals.expected > 0 ? totals.received / totals.expected : 0
   const hasSources = (sources.data ?? []).length > 0
   const empty = incomes.isSuccess && list.length === 0
+  const personName = (id: string) => memberList.find((m) => m.userId === id)?.name ?? 'Pessoa'
+  const incomeOfSource = (sourceId: string) => list.find((i) => i.sourceId === sourceId)
+  const ready = members.isSuccess
+
+  const formProps = {
+    houseId, month, members: memberList, defaultUserId: me.id, canWrite,
+    onCreate: (body: Parameters<typeof actions.create.mutateAsync>[0]) => actions.create.mutateAsync(body),
+    onUpdate: (id: string, body: Parameters<typeof actions.update.mutateAsync>[0]['body'], scope: SeriesScope) => actions.update.mutateAsync({ id, body, scope }),
+  }
+  const detail = panelIncome && (
+    <IncomeDetail
+      income={panelIncome}
+      personName={personName(panelIncome.userId)}
+      today={today}
+      canWrite={canWrite}
+      busy={busy}
+      onReceive={receiveIt}
+      onHold={hold}
+      onEdit={() => setPanel({ id: panelIncome.id, mode: 'edit' })}
+      onDelete={remove}
+    />
+  )
+  const editForm = panelIncome && ready && (
+    <IncomeForm
+      key={panelIncome.id}
+      {...formProps}
+      income={panelIncome}
+      startScope={panel?.scope}
+      onDone={() => setPanel({ id: panelIncome.id, mode: 'view' })}
+      onCancel={() => setPanel({ id: panelIncome.id, mode: 'view' })}
+    />
+  )
+  const newForm = ready && <IncomeForm key="nova" {...formProps} onDone={() => setCreating(false)} />
+
+  const groupSwitch = (
+    <div role="group" aria-label="Agrupar a lista" className="flex gap-1.5">
+      {([['state', 'Por situação'], ['person', 'Por pessoa']] as const).map(([key, text]) => (
+        <button
+          key={key}
+          aria-pressed={groupBy === key}
+          onClick={() => setGroupBy(key)}
+          className={`h-9 whitespace-nowrap rounded-md border px-3 text-[13px] transition-colors ${groupBy === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium hover:bg-ink/5'}`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  )
+
+  const emptyState = empty ? (
+    <div className="mt-2 flex flex-col items-start gap-3 rounded-md border border-dashed border-ink/25 p-5">
+      <p className="text-sm text-ink/85">
+        {hasSources || !canWrite ? (
+          'Nenhuma receita neste mês.'
+        ) : (
+          <>Cadastre o seu salário <strong>uma vez</strong> e ele se repete todo mês, no dia útil certo. Você só ajusta o que mudar.</>
+        )}
+      </p>
+      {canWrite && (
+        <Button onClick={openNew} className="flex items-center gap-2">
+          <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> {hasSources ? 'Nova receita' : 'Cadastrar salário'}
+        </Button>
+      )}
+    </div>
+  ) : null
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-36 pt-2 md:max-w-none md:gap-6 md:px-10 md:pb-10 md:pt-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-6 md:px-8 md:pb-10 md:pt-8">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <MonthSelector month={month} onChange={setMonth} />
-          {desktop && canWrite && (
-            <Button onClick={() => setEditing({ kind: 'income-new' })} className="flex items-center gap-2">
-              <span aria-hidden="true" className="text-xl leading-none">+</span> Nova receita
-            </Button>
+          {desktop && (
+            <div className="flex flex-wrap items-center gap-2">
+              {canWrite && (
+                <Button onClick={openNew} title="Nova receita (N)" className="flex h-10 items-center gap-2">
+                  <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova receita
+                  <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-[10px] leading-4">N</kbd>
+                </Button>
+              )}
+              <ShortcutsHelp open={helpOpen} onToggle={() => setHelpOpen((o) => !o)} items={SHORTCUTS} />
+            </div>
           )}
         </header>
 
-        {/* Números */}
-        <section aria-label="Resumo das receitas" className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-md px-1 md:bg-structure md:px-4 md:py-4 md:text-on-structure">
+        {/* Topo: recebido (grande), a receber (pequeno), por pessoa e sobra do mês */}
+        <section aria-label="Resumo das receitas" className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="rounded-md px-1 md:bg-structure md:px-4 md:py-3.5 md:text-on-structure">
             <div className={`flex justify-between ${label} text-ink/80 md:text-on-structure/85`}>
-              <span>recebido neste mês</span>
-              <span className="font-mono">{Math.round(fraction * 100)}% do previsto</span>
+              <span>recebido</span>
+              <span className="font-mono">{Math.round(fraction * 100)}% do mês</span>
             </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading md:text-on-structure">{formatCents(totals.received)}</p>
+            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading md:text-[44px] md:text-on-structure">{formatCents(totals.received)}</p>
             <PaidGauge fraction={fraction} tone={desktop ? 'dark' : 'light'} className="mt-2" />
+            <p className="mt-2 text-[13px] text-ink/80 md:text-on-structure/85">
+              a receber <span className="font-mono font-semibold tabular-nums">{formatCents(totals.pending)}</span>
+            </p>
           </div>
-          <div className="rounded-md border border-ink/20 p-4">
-            <p className={`${label} text-ink/80`}>previsto</p>
-            <p className="font-mono text-[30px] font-semibold leading-tight tabular-nums md:text-[38px]">{formatCents(totals.expected)}</p>
-            <p className="mt-1 text-[13px] text-ink/80">falta receber {formatCents(totals.pending)}</p>
+
+          <div className="rounded-md border border-line px-3 py-3 md:px-4 md:py-3.5">
+            <p className={`${label} text-ink/80`}>por pessoa</p>
+            {people.length === 0 ? (
+              <p className="mt-1 text-sm text-ink/75">Sem receitas neste mês.</p>
+            ) : (
+              <table className="mt-1 w-full text-sm">
+                <thead className="sr-only">
+                  <tr><th scope="col">Pessoa</th><th scope="col">Recebido</th><th scope="col">A receber</th></tr>
+                </thead>
+                <tbody>
+                  {people.map((p) => (
+                    <tr key={p.userId}>
+                      <th scope="row" className="py-0.5 pr-2 text-left font-medium">{p.name}</th>
+                      <td className="py-0.5 text-right font-mono font-semibold tabular-nums text-accent">{formatCents(p.received)}</td>
+                      <td className="py-0.5 pl-3 text-right font-mono text-xs tabular-nums text-ink/75">
+                        <span className="sr-only">a receber </span>{p.pending > 0 ? `+ ${formatCents(p.pending)}` : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-          <div className="rounded-md border border-ink/20 p-4">
-            <p className={`${label} text-ink/80`}>por carteira (recebido)</p>
-            <dl className="mt-1 font-mono text-[15px] tabular-nums">
-              <div className="flex justify-between"><dt className="font-sans text-[13px]">livre</dt><dd>{formatCents(byWallet.free)}</dd></div>
-              <div className="flex justify-between"><dt className="font-sans text-[13px]">benefício</dt><dd>{formatCents(byWallet.benefit)}</dd></div>
-            </dl>
+
+          <div className="rounded-md border border-line px-3 py-3 md:px-4 md:py-3.5">
+            <p className={`${label} text-ink/80`}>sobra do mês</p>
+            {surplus ? (
+              <>
+                <p className={`font-mono text-[30px] font-semibold leading-tight tabular-nums ${surplus.surplus < 0 ? 'text-alert' : 'text-heading'}`}>
+                  {surplus.surplus < 0 && <span aria-hidden="true" className="mr-1.5 text-base">[ ✖ ]</span>}
+                  {formatCents(surplus.surplus)}
+                </p>
+                <p className="text-xs text-ink/75">
+                  receitas {formatCents(surplus.income)} − despesas {formatCents(surplus.expenses)}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-ink/75" role="status">{summary.isError ? 'Indisponível agora.' : 'calculando…'}</p>
+            )}
+            <Link to={{ pathname: '/resumo', search }} className="mt-1.5 inline-block text-[13px] font-medium text-accent underline underline-offset-2">
+              Ver no resumo
+            </Link>
           </div>
         </section>
 
@@ -161,80 +337,63 @@ export default function IncomesPage() {
           </p>
         )}
 
-        <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-6">
-            <section aria-label="Receitas do mês">
-              <h2 className="mb-1 hidden font-display text-[26px] font-bold text-heading font-stretch-condensed md:block">Receitas do mês</h2>
-              {empty && !hasSources && canWrite && (
-                <div className="rounded-md border border-dashed border-ink/25 p-4">
-                  <p className="text-sm text-ink/85">
-                    Cadastre o seu salário <strong>uma vez</strong> e o app prevê os próximos meses, já com os descontos. Você só ajusta o que mudar.
-                  </p>
-                  <Button className="mt-3" onClick={() => setEditing({ kind: 'source-new', sourceKind: 'salary' })}>
-                    Cadastrar salário
-                  </Button>
+            <section aria-label="Receitas do mês" className="@container min-w-0">
+              {desktop ? (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <h2 className="mr-auto font-display text-[26px] font-bold text-heading font-stretch-condensed">Receitas do mês</h2>
+                  {list.length > 0 && groupSwitch}
                 </div>
+              ) : (
+                <h2 className="sr-only">Receitas do mês</h2>
               )}
-              {empty && (hasSources || !canWrite) && (
-                <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">Nenhuma receita neste mês.</p>
+              {emptyState}
+              {desktop ? (
+                <IncomeSections
+                  sections={sections}
+                  collapsed={collapsed}
+                  onToggle={(id) => setCollapsed(collapsed.includes(id) ? collapsed.filter((x) => x !== id) : [...collapsed, id])}
+                  members={memberList}
+                  today={today}
+                  selectedId={panel?.id}
+                  canWrite={canWrite}
+                  busy={busy}
+                  onReceive={receiveIt}
+                  onHold={hold}
+                  onOpen={(inc) => { setCreating(false); setPanel({ id: inc.id, mode: 'view' }) }}
+                />
+              ) : (
+                <IncomeList incomes={list} members={memberList} today={today} onOpen={(inc) => setPanel({ id: inc.id, mode: 'view' })} />
               )}
-              <IncomeList
-                incomes={list}
-                members={memberList}
-                selectedId={desktop && editing?.kind === 'income' ? editing.id : undefined}
-                canWrite={canWrite}
-                busy={busy}
-                onToggleReceived={toggleReceived}
-                onOpen={(i) => setEditing({ kind: 'income', id: i.id })}
-              />
             </section>
 
-            <section aria-label="Fontes de receita" className="rounded-md border border-ink/20 p-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <h2 className={`${label} text-ink/80`}>previsão mensal · fontes</h2>
-                {canWrite && (
-                  <button onClick={() => setEditing({ kind: 'source-new', sourceKind: hasSources ? 'benefit' : 'salary' })} className="h-11 text-sm font-semibold text-accent underline underline-offset-4">
-                    + Nova fonte
-                  </button>
-                )}
-              </div>
-              {sources.isSuccess && !hasSources && <p className="mt-1 text-sm text-ink/75">Nenhuma fonte ainda. Uma fonte gera a previsão do salário (ou do vale) todo mês.</p>}
-              <ul className="mt-2 flex flex-col">
-                {(sources.data ?? []).map((s: IncomeSource) => (
-                  <li key={s.id} className="border-t border-ink/10 first:border-t-0">
-                    <button aria-label={`Editar fonte ${s.name}`} onClick={() => setEditing({ kind: 'source', id: s.id })} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
-                      <span className="min-w-0">
-                        <span className="block truncate text-[15px] font-medium">{s.name}</span>
-                        <span className="block truncate text-xs text-ink/80">
-                          {personName(s.userId)} · {kindLabel[s.kind]} · todo dia {s.dayOfMonth}
-                          {s.generatedThrough ? ` · previsto até ${s.generatedThrough.slice(5, 7)}/${s.generatedThrough.slice(0, 4)}` : ''}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-right">
-                        <span className="block font-mono text-[15px] font-semibold tabular-nums">{formatCents(netOf(s.grossAmountCents, s.deductions))}</span>
-                        <span className="block text-[11px] text-ink/75">líquido{sumDeductions(s.deductions) > 0 ? ` (bruto ${formatCents(s.grossAmountCents)})` : ''}</span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <RepeatingIncomes
+              sources={sources.data ?? []}
+              members={memberList}
+              month={month}
+              incomeOf={incomeOfSource}
+              canWrite={canWrite}
+              busy={sourceActions.update.isPending}
+              onEdit={(inc) => { setCreating(false); setPanel({ id: inc.id, mode: 'edit', scope: 'following' }) }}
+              onEnd={endRepetition}
+            />
           </div>
 
-          {desktop && (
-            <aside className="w-full shrink-0 md:sticky md:top-6 md:w-[380px] lg:w-[420px]">
-              {form ? (
-                <section aria-label="Detalhes" className="rounded-md border-2 border-structure bg-raised/30 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <h2 className="font-display text-[22px] font-bold text-heading font-stretch-condensed">{panelTitle}</h2>
-                    <button aria-label="Fechar detalhes" onClick={close} className="flex size-9 items-center justify-center rounded-md text-xl hover:bg-ink/5">×</button>
+          {sidePanel && (
+            <aside className="flex w-full shrink-0 flex-col gap-4 xl:sticky xl:top-6 xl:max-h-[calc(100dvh-3rem)] xl:w-[380px] xl:overflow-y-auto 2xl:w-[440px]">
+              {panelIncome ? (
+                <section aria-label="Detalhes da receita" className="rounded-md border-2 border-structure p-4 motion-safe:animate-fade-in">
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <h2 className="min-w-0 break-words font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{panelIncome.description}</h2>
+                    <button aria-label="Fechar detalhes" title="Fechar (Esc)" onClick={() => setPanel(null)} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
+                      <X size={20} strokeWidth={1.5} aria-hidden="true" />
+                    </button>
                   </div>
-                  {form}
+                  {detail}
                 </section>
               ) : (
-                <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
-                  Selecione uma receita para ver ou ajustar o mês{canWrite ? ', ou use Nova receita para lançar uma avulsa' : ''}.
-                </p>
+                <NextUp list={list} today={today} onOpen={(inc) => setPanel({ id: inc.id, mode: 'view' })} canWrite={canWrite} />
               )}
             </aside>
           )}
@@ -244,13 +403,85 @@ export default function IncomesPage() {
       {!desktop && canWrite && (
         <button
           aria-label="Nova receita"
-          onClick={() => setEditing({ kind: 'income-new' })}
-          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-structure text-3xl leading-none text-on-structure shadow-[0_2px_0_var(--color-ink)] hover:bg-structure/90"
+          onClick={openNew}
+          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-structure text-on-structure shadow-[0_2px_0_var(--color-ink)] transition-colors hover:bg-structure/90"
         >
-          +
+          <Plus size={28} strokeWidth={1.75} aria-hidden="true" />
         </button>
       )}
-      {!desktop && editing && form && <Sheet title={panelTitle} onClose={close}>{form}</Sheet>}
+
+      {/* Lançar: painel lateral de altura total (computador) ou painel que sobe (celular). */}
+      {creating && desktop && newForm && (
+        <SlideOver title="Nova receita" onClose={() => setCreating(false)}>
+          {newForm}
+        </SlideOver>
+      )}
+      {creating && !desktop && newForm && (
+        <Sheet title="Nova receita" onClose={() => setCreating(false)}>
+          {newForm}
+        </Sheet>
+      )}
+
+      {/* Editar: sempre num painel lateral (computador) ou no Sheet (celular). */}
+      {panelIncome && panel?.mode === 'edit' && editForm && desktop && (
+        <SlideOver title="Editar receita" onClose={() => setPanel({ id: panelIncome.id, mode: 'view' })}>
+          {editForm}
+        </SlideOver>
+      )}
+      {panelIncome && panel?.mode === 'edit' && editForm && !desktop && (
+        <Sheet title="Editar receita" onClose={() => setPanel({ id: panelIncome.id, mode: 'view' })}>
+          {editForm}
+        </Sheet>
+      )}
+
+      {/* Detalhe: computador estreito (sem painel fixo) usa o painel lateral; celular, o Sheet. */}
+      {panelIncome && panel?.mode === 'view' && desktop && !sidePanel && (
+        <SlideOver title="Detalhes da receita" onClose={() => setPanel(null)}>
+          <h3 className="mb-3 text-lg font-semibold">{panelIncome.description}</h3>
+          {detail}
+        </SlideOver>
+      )}
+      {panelIncome && panel?.mode === 'view' && !desktop && (
+        <Sheet title="Detalhes da receita" onClose={() => setPanel(null)}>
+          <h3 className="mb-3 text-lg font-semibold">{panelIncome.description}</h3>
+          {detail}
+        </Sheet>
+      )}
     </AppShell>
+  )
+}
+
+/** O painel ao lado da lista quando nenhuma receita está aberta: as próximas a cair neste mês e a dica de atalhos. */
+function NextUp({ list, today, onOpen, canWrite }: { list: Income[]; today: string; onOpen: (inc: Income) => void; canWrite: boolean }) {
+  const items = list.filter((i) => stateOf(i) !== 'received').slice(0, 8)
+  return (
+    <section aria-label="Próximas a receber" className="flex flex-col gap-3 rounded-md border border-line p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className={`${label} text-ink/80`}>a receber neste mês</h2>
+        {items.length > 0 && <span className="font-mono text-[13px] font-semibold tabular-nums">{formatCents(items.reduce((s, i) => s + i.netAmountCents, 0))}</span>}
+      </div>
+      {items.length === 0 ? (
+        <p className="flex items-center gap-2 text-sm text-ink/80">
+          <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span>
+          Tudo o que estava previsto já caiu.
+        </p>
+      ) : (
+        <ul className="-mx-2 flex flex-col">
+          {items.map((i) => (
+            <li key={i.id}>
+              <button onClick={() => onOpen(i)} className="flex min-h-9 w-full items-center gap-3 rounded-sm px-2 text-left text-sm transition-colors hover:bg-ink/5">
+                <span aria-hidden="true" className={`font-mono text-xs ${stateOf(i) === 'held' ? 'text-alert' : 'text-ink/70'}`}>{stateOf(i) === 'held' ? '[ ✖ ]' : '[ ▫ ]'}</span>
+                <span className="w-11 font-mono text-xs tabular-nums text-ink/80">{dayMonth(i.expectedDate)}</span>
+                <span className="min-w-0 flex-1 truncate">{i.description}</span>
+                <span className="font-mono text-[13px] font-semibold tabular-nums">{formatCents(i.netAmountCents)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-ink/75">
+        Selecione uma receita para ver os detalhes.{canWrite && <> Nova receita: tecla <kbd className="font-mono">N</kbd>.</>} Hoje é {dayMonth(today)}.
+      </p>
+    </section>
   )
 }
