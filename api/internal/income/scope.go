@@ -2,6 +2,7 @@ package income
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -164,4 +165,87 @@ func nilIfZero(d caldate.Date) any {
 		return nil
 	}
 	return d
+}
+
+// DeleteSource exclui a repetição inteira ("Excluir" em "Receitas que se repetem"): todos os lançamentos PREVISTOS dela
+// (que ainda não contam como recebidos) saem num lote de mesmo deleted_at, e a repetição é encerrada no mês anterior ao
+// primeiro deles (ou excluída, se não sobra mês antes do início ou se não havia nenhum previsto). Recebidos nunca somem e
+// meses passados continuam no histórico. Reaproveita o corte de `income_source_cuts` do "este e os seguintes", então
+// RestoreSource desfaz exatamente isto. Tudo numa transação, com a repetição travada.
+func (s *Service) DeleteSource(ctx context.Context, householdID, sourceID uuid.UUID) error {
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var src Source
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("household_id = ? AND id = ?", householdID, sourceID).First(&src).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		var months []caldate.Date
+		if err := s.predicted(tx, src).Order("competence_month").Pluck("competence_month", &months).Error; err != nil {
+			return err
+		}
+		if len(months) == 0 {
+			// Nada a receber: a repetição some inteira (os recebidos ficam no histórico).
+			cut := sourceCut{HouseholdID: householdID, SourceID: sourceID, BatchDeletedAt: at, PreviousEndMonth: src.EndMonth}
+			if err := tx.Model(&Source{}).Where("household_id = ? AND id = ?", householdID, sourceID).Update("deleted_at", at).Error; err != nil {
+				return err
+			}
+			return tx.Create(&cut).Error
+		}
+		// Update (e não Delete) para gravar o nosso instante; o escopo do GORM já ignora as excluídas.
+		if err := s.predicted(tx, src).Update("deleted_at", at).Error; err != nil {
+			return err
+		}
+		return endSourceBefore(tx, src, months[0], at)
+	})
+}
+
+// RestoreSource desfaz a exclusão MAIS RECENTE da repetição (DeleteSource ou "este e os seguintes"): restaura os
+// lançamentos do lote (mesmo deleted_at do corte; exclusões avulsas de outros instantes continuam excluídas) e devolve o
+// fim (ou reativa) a repetição. ErrSeriesChanged se ela mudou depois; ErrNotDeleted se não há corte a desfazer.
+func (s *Service) RestoreSource(ctx context.Context, householdID, sourceID uuid.UUID) (SourceView, error) {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var src Source
+		err := tx.Unscoped().Clauses(clause.Locking{Strength: "UPDATE"}).Where("household_id = ? AND id = ?", householdID, sourceID).First(&src).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		var cut sourceCut
+		res := tx.Where("household_id = ? AND source_id = ?", householdID, sourceID).Order("batch_deleted_at DESC").Limit(1).Find(&cut)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrNotDeleted
+		}
+		// A repetição precisa estar como o corte a deixou; senão nada muda (a transação desfaz).
+		batch := Income{HouseholdID: householdID, SourceID: &sourceID, DeletedAt: gorm.DeletedAt{Time: cut.BatchDeletedAt, Valid: true}}
+		if err := undoSourceCut(tx, batch); err != nil {
+			return err
+		}
+		return tx.Unscoped().Model(&Income{}).
+			Where("household_id = ? AND source_id = ? AND deleted_at = ?", householdID, sourceID, cut.BatchDeletedAt).
+			Update("deleted_at", nil).Error
+	})
+	if err != nil {
+		return SourceView{}, err
+	}
+	srcs := []Source{}
+	if err := s.db.WithContext(ctx).Where("household_id = ? AND id = ?", householdID, sourceID).Find(&srcs).Error; err != nil {
+		return SourceView{}, err
+	}
+	if len(srcs) == 0 {
+		return SourceView{}, ErrNotFound
+	}
+	views, err := s.sourceViews(ctx, householdID, srcs)
+	if err != nil {
+		return SourceView{}, err
+	}
+	return views[0], nil
 }

@@ -174,6 +174,15 @@ func TestRegrasDeData2026(t *testing.T) {
 		{"dia 28 em novembro (sábado) mantido", DateRule{Rule: RuleDayOfMonth, N: 28, Adjust: calendar.None}, d(2026, 11, 1), "2026-11-28"},
 		{"dia 15 de fevereiro: domingo + Carnaval", DateRule{Rule: RuleDayOfMonth, N: 15, Adjust: calendar.Forward}, d(2026, 2, 1), "2026-02-18"},
 		{"dia 31 em fevereiro trava no 28 (sábado) e vai para segunda", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.Forward}, d(2026, 2, 1), "2026-03-02"},
+		// Datas usadas pelos testes da prévia "Próximas datas" no front (web/src/lib/incomeDates.test.ts): se mudarem aqui, mude lá.
+		{"5º dia útil de dezembro", DateRule{Rule: RuleNthBusinessDay, N: 5}, d(2026, 12, 1), "2026-12-07"},
+		{"5º dia útil de janeiro (1º é feriado)", DateRule{Rule: RuleNthBusinessDay, N: 5}, d(2027, 1, 1), "2027-01-08"},
+		{"último dia útil de dezembro", DateRule{Rule: RuleLastBusiness}, d(2026, 12, 1), "2026-12-31"},
+		{"último dia útil de janeiro", DateRule{Rule: RuleLastBusiness}, d(2027, 1, 1), "2027-01-29"},
+		{"2º dia útil de dezembro", DateRule{Rule: RuleNthBusinessDay, N: 2}, d(2026, 12, 1), "2026-12-02"},
+		{"2º dia útil de janeiro (1º é feriado)", DateRule{Rule: RuleNthBusinessDay, N: 2}, d(2027, 1, 1), "2027-01-05"},
+		{"dia 31 em maio (domingo) para a frente", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.Forward}, d(2026, 5, 1), "2026-06-01"},
+		{"dia 31 em fevereiro de 2027 (domingo) mantido", DateRule{Rule: RuleDayOfMonth, N: 31, Adjust: calendar.None}, d(2027, 2, 1), "2027-02-28"},
 	}
 	for _, c := range cases {
 		if got := c.rule.ExpectedDate(c.month, h); got.String() != c.want {

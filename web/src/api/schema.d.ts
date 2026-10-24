@@ -816,11 +816,43 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Exclui a repetição e os lançamentos PREVISTOS dela (exclusão lógica)
+         * @description Exclui (logicamente) todos os lançamentos da repetição que ainda NÃO contam como recebidos, num lote com o mesmo
+         *     `deleted_at`, e encerra a repetição no mês anterior ao primeiro excluído (se não sobra mês antes do início, a
+         *     repetição inteira é excluída). Recebidos nunca somem e meses já passados continuam no histórico. O corte vai para
+         *     `income_source_cuts`; `POST .../restore` desfaz.
+         */
+        delete: operations["deleteIncomeSource"];
         options?: never;
         head?: never;
         /** Edita o molde. `applyFrom` reaplica o molde aos meses a receber a partir dali. */
         patch: operations["updateIncomeSource"];
+        trace?: never;
+    };
+    "/households/{householdId}/income-sources/{sourceId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                sourceId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desfaz a última exclusão da repetição (devolve a repetição e os lançamentos removidos no lote)
+         * @description Restaura só o lote mais recente: os lançamentos com o MESMO `deleted_at` do corte (exclusões avulsas anteriores,
+         *     de outros instantes, continuam excluídas) e devolve o fim (ou reativa) a repetição. 409 `series_changed` se a
+         *     repetição mudou depois da exclusão; 409 `not_deleted` se não há exclusão a desfazer.
+         */
+        post: operations["restoreIncomeSource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/households/{householdId}/export/invoices.csv": {
@@ -3218,6 +3250,28 @@ export interface operations {
             };
         };
     };
+    deleteIncomeSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                sourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Excluída */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     updateIncomeSource: {
         parameters: {
             query?: {
@@ -3246,6 +3300,31 @@ export interface operations {
                     "application/json": components["schemas"]["IncomeSource"];
                 };
             };
+        };
+    };
+    restoreIncomeSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                sourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeSource"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     exportInvoicesCsv: {

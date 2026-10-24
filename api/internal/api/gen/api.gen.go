@@ -1848,9 +1848,15 @@ type ServerInterface interface {
 	// CreateIncomeSource Cria uma repetição e gera os lançamentos até o horizonte
 	// (POST /households/{householdId}/income-sources)
 	CreateIncomeSource(c *gin.Context, householdId HouseholdId)
+	// DeleteIncomeSource Exclui a repetição e os lançamentos PREVISTOS dela (exclusão lógica)
+	// (DELETE /households/{householdId}/income-sources/{sourceId})
+	DeleteIncomeSource(c *gin.Context, householdId HouseholdId, sourceId openapi_types.UUID)
 	// UpdateIncomeSource Edita o molde. `applyFrom` reaplica o molde aos meses a receber a partir dali.
 	// (PATCH /households/{householdId}/income-sources/{sourceId})
 	UpdateIncomeSource(c *gin.Context, householdId HouseholdId, sourceId openapi_types.UUID, params UpdateIncomeSourceParams)
+	// RestoreIncomeSource Desfaz a última exclusão da repetição (devolve a repetição e os lançamentos removidos no lote)
+	// (POST /households/{householdId}/income-sources/{sourceId}/restore)
+	RestoreIncomeSource(c *gin.Context, householdId HouseholdId, sourceId openapi_types.UUID)
 	// ListIncomes Receitas do mês (recebidas e a receber)
 	// (GET /households/{householdId}/incomes)
 	ListIncomes(c *gin.Context, householdId HouseholdId, params ListIncomesParams)
@@ -2566,6 +2572,40 @@ func (siw *ServerInterfaceWrapper) CreateIncomeSource(c *gin.Context) {
 	siw.Handler.CreateIncomeSource(c, householdId)
 }
 
+// DeleteIncomeSource operation middleware
+func (siw *ServerInterfaceWrapper) DeleteIncomeSource(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "sourceId" -------------
+	var sourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sourceId", c.Param("sourceId"), &sourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter sourceId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteIncomeSource(c, householdId, sourceId)
+}
+
 // UpdateIncomeSource operation middleware
 func (siw *ServerInterfaceWrapper) UpdateIncomeSource(c *gin.Context) {
 
@@ -2609,6 +2649,40 @@ func (siw *ServerInterfaceWrapper) UpdateIncomeSource(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateIncomeSource(c, householdId, sourceId, params)
+}
+
+// RestoreIncomeSource operation middleware
+func (siw *ServerInterfaceWrapper) RestoreIncomeSource(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "sourceId" -------------
+	var sourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sourceId", c.Param("sourceId"), &sourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter sourceId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RestoreIncomeSource(c, householdId, sourceId)
 }
 
 // ListIncomes operation middleware
@@ -3991,7 +4065,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/households/:householdId/tax/estimate", wrapper.EstimateTax)
 	router.GET(options.BaseURL+"/households/:householdId/income-sources", wrapper.ListIncomeSources)
 	router.POST(options.BaseURL+"/households/:householdId/income-sources", wrapper.CreateIncomeSource)
+	router.DELETE(options.BaseURL+"/households/:householdId/income-sources/:sourceId", wrapper.DeleteIncomeSource)
 	router.PATCH(options.BaseURL+"/households/:householdId/income-sources/:sourceId", wrapper.UpdateIncomeSource)
+	router.POST(options.BaseURL+"/households/:householdId/income-sources/:sourceId/restore", wrapper.RestoreIncomeSource)
 	router.GET(options.BaseURL+"/households/:householdId/export/invoices.csv", wrapper.ExportInvoicesCsv)
 	router.GET(options.BaseURL+"/households/:householdId/summary", wrapper.GetMonthlySummary)
 	router.GET(options.BaseURL+"/households/:householdId/summary/categories", wrapper.GetCategoryHistory)

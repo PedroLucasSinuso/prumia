@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Check, Pencil, Trash2, X } from 'lucide-react'
 
 import type { Income, SeriesScope } from '../api/types'
@@ -5,6 +6,7 @@ import { fullDate, monthLabel, weekdayShort } from '../lib/dates'
 import { kindLabel, ruleText, stateMark, stateOf, stateText, stateTone, sumDeductions, unitText, untilText } from '../lib/income'
 import { formatCents } from '../lib/money'
 import { Button } from './Button'
+import { DeleteRepetitionConfirm } from './DeleteRepetitionConfirm'
 
 type Props = {
   income: Income
@@ -19,6 +21,8 @@ type Props = {
   onHold: (income: Income) => void
   onEdit: () => void
   onDelete: (income: Income, scope: SeriesScope) => void
+  /** Excluir a repetição inteira (os previstos somem; recebidos ficam). Só aparece em receita que vem de uma repetição. */
+  onDeleteRepetition?: (income: Income) => void
 }
 
 const label = 'text-[11px] font-medium uppercase tracking-wider text-ink/75'
@@ -27,7 +31,8 @@ const label = 'text-[11px] font-medium uppercase tracking-wider text-ink/75'
  * Detalhe da receita em modo LEITURA: o líquido, a situação (derivada: o recebimento é automático), quando cai em
  * linguagem natural, a repetição e as ações (Não caiu / Caiu, Editar, Excluir com escopo). Editar abre o formulário.
  */
-export function IncomeDetail({ income, personName, today, canWrite, busy, onReceive, onHold, onEdit, onDelete }: Props) {
+export function IncomeDetail({ income, personName, today, canWrite, busy, onReceive, onHold, onEdit, onDelete, onDeleteRepetition }: Props) {
+  const [confirming, setConfirming] = useState(false)
   const state = stateOf(income)
   const discounts = sumDeductions(income.deductions)
   const unit = unitText(income)
@@ -116,7 +121,20 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
                 Excluir este e os seguintes
               </button>
             )}
+            {income.sourceId && onDeleteRepetition && !confirming && (
+              <button type="button" onClick={() => setConfirming(true)} className="h-11 text-sm font-semibold underline underline-offset-4 md:h-9">
+                Excluir esta repetição
+              </button>
+            )}
           </div>
+          {confirming && (
+            <DeleteRepetitionConfirm
+              name={income.description}
+              busy={busy}
+              onConfirm={() => { setConfirming(false); onDeleteRepetition?.(income) }}
+              onCancel={() => setConfirming(false)}
+            />
+          )}
         </div>
       )}
     </div>

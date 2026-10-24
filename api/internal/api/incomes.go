@@ -386,6 +386,25 @@ func (h *Incomes) CreateIncomeSource(c *gin.Context, householdId gen.HouseholdId
 	c.JSON(http.StatusCreated, toGenSource(v))
 }
 
+// DeleteIncomeSource: DELETE /households/{householdId}/income-sources/{sourceId}
+func (h *Incomes) DeleteIncomeSource(c *gin.Context, householdId gen.HouseholdId, sourceId openapi_types.UUID) {
+	if err := h.Svc.DeleteSource(c.Request.Context(), householdId, sourceId); err != nil {
+		writeDomainError(c, h.Log, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// RestoreIncomeSource: POST /households/{householdId}/income-sources/{sourceId}/restore
+func (h *Incomes) RestoreIncomeSource(c *gin.Context, householdId gen.HouseholdId, sourceId openapi_types.UUID) {
+	v, err := h.Svc.RestoreSource(c.Request.Context(), householdId, sourceId)
+	if err != nil {
+		writeDomainError(c, h.Log, err)
+		return
+	}
+	c.JSON(http.StatusOK, toGenSource(v))
+}
+
 // UpdateIncomeSource: PATCH /households/{householdId}/income-sources/{sourceId}?applyFrom=
 func (h *Incomes) UpdateIncomeSource(c *gin.Context, householdId gen.HouseholdId, sourceId openapi_types.UUID, params gen.UpdateIncomeSourceParams) {
 	var body gen.IncomeSourcePatch
