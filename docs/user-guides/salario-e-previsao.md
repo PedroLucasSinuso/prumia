@@ -27,6 +27,14 @@ e quando algo mudar.
    - **Último dia útil**.
    - **Data específica** (só para receita que não se repete).
 
+   Nas três regras (dia do mês, N-ésimo dia útil e último dia útil) aparece **Mês em que cai**: **No mês da competência** (o normal)
+   ou **No mês anterior**. É para o dinheiro que entra **antes** do mês em que você o usa: o vale-refeição de outubro, calculado
+   com os dias úteis de outubro, costuma cair no último dia útil de **setembro**. Escolhendo **No mês anterior**, o prumia continua
+   contando esse vale em outubro (é nele que o dinheiro é gasto e que o resumo conta), mas a data esperada passa a ser a de
+   setembro, e uma frase confirma ("O vale de outubro cai no último dia útil de setembro."). A quantidade de dias úteis continua
+   sendo a de outubro. Quando você escolhe o tipo **Vale (VR)** numa receita nova, o campo já vem em **No mês anterior**; troque se o
+   seu cai no próprio mês.
+
    Embaixo aparecem as **próximas datas** conforme a regra, sempre a partir de hoje (se você escolheu um mês futuro, a partir dele).
    Se a data deste mês já passou, ela não entra na lista: uma linha discreta diz "Este mês: 05/10 (seg), já passou: conta como
    recebida". Sábado, domingo e feriados nacionais não contam como dia útil.
@@ -58,8 +66,12 @@ o dinheiro entrou adiantado.
 ## Mudar, excluir e voltar atrás
 
 - **Editar**: abra a receita e use **Editar**. Dá para mudar pessoa, tipo, mês, valor, quantidade, regra de data, descontos e
-  observação. Numa receita que se repete, escolha **Só este mês** ou **Este e os seguintes** (que reaplica aos próximos meses ainda
-  não recebidos; ajustes feitos neles são sobrescritos). Meses já recebidos nunca mudam em lote.
+  observação. Numa receita que se repete, o campo **Aplicar a** já vem em **Este e os seguintes**: a mudança vale para este mês e
+  para os próximos que ainda não foram recebidos (ajustes feitos neles são sobrescritos). Escolha **Só este mês** para mexer apenas
+  neste. Se o mês que você abriu já foi recebido, ele **não muda** quando você aplica aos seguintes (a tela avisa: "Este mês já foi
+  recebido e não muda; os próximos sim."); para corrigir um valor que já caiu, escolha **Só este mês**. Meses já recebidos nunca mudam
+  em lote. Alguns campos só existem em um mês (mês de competência, data específica e quantidade): ao mexer neles, o **Aplicar a**
+  volta sozinho para **Só este mês** e a tela explica por quê.
 - **Excluir**: **Excluir só este mês** ou **Excluir este e os seguintes** (encerra a repetição). Use **Desfazer** no aviso para voltar
   atrás. Meses já recebidos não são excluídos em lote.
 - **Receitas que se repetem** (no fim da página): veja a regra e o valor de cada repetição, abra **Editar**, **Encerrar** (mantém o
