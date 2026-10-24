@@ -135,26 +135,27 @@ sem instalar nada nele. O app continua rodando no seu computador; um container `
 Cloudflare e a Cloudflare entrega as requisições por ela. Não abre porta no roteador e o IP de casa não aparece. O HTTPS é da Cloudflare.
 
 ```
-navegador --HTTPS--> Cloudflare (Access: login por e-mail) --túnel--> cloudflared --HTTP--> web:8081 (nginx) --> api --> db
+navegador --HTTPS--> Cloudflare --túnel--> cloudflared --HTTP--> web:8081 (nginx) --> api --> db
 ```
 
-**Recomendação: coloque o Cloudflare Access na frente.** Ele pede um código enviado por e-mail antes de qualquer requisição chegar ao
-prumia; só os e-mails liberados passam. É grátis até 50 pessoas e deixa o app invisível para quem não é da casa.
+O túnel é **gerenciado localmente** (credenciais em `.cloudflared/`, fora do Git): só precisa de conta gratuita e do domínio na Cloudflare.
+Não precisa ativar o Zero Trust, que pede cartão ou PayPal mesmo no plano grátis.
 
 ### Passo a passo
 
-1. **Cloudflare**: crie conta e adicione o domínio (plano Free). A Cloudflare mostra dois servidores de nome (nameservers).
+1. **Domínio na Cloudflare**: crie conta, **Add a domain**, plano **Free**. Mantenha os registros que ela importar. Ela mostra dois nameservers.
 2. **Registro do domínio**: troque os servidores DNS do domínio pelos dois da Cloudflare (no Registro.br: painel do domínio >
-   "Alterar servidores DNS"). Se o DNSSEC estiver ativo no registro, desligue antes de trocar e, se quiser, ligue de novo depois pela Cloudflare
-   (ela entrega o registro DS para colocar no Registro.br). A propagação leva de minutos a algumas horas; a Cloudflare avisa quando ativar.
-3. **Túnel**: Zero Trust > Networks > Tunnels > Create a tunnel > Cloudflared. Dê um nome e copie o **token** (a Cloudflare pede um meio de
-   pagamento para ativar o Zero Trust, mesmo no plano grátis, e não cobra).
-   Em **Public Hostname**: subdomínio `app`, domínio o seu, serviço `HTTP` e URL `web:8081`.
-4. **Access**: Zero Trust > Access > Applications > Add > Self-hosted, o mesmo endereço, e uma política **Allow** com os e-mails das
-   pessoas da casa (método "One-time PIN").
-5. **No computador**: ponha o token no `.env` (`TUNNEL_TOKEN=...`, o arquivo não vai para o Git), confira `APP_ENV=production` e
-   `OPEN_REGISTRATION=false`, e rode `make tunnel-up`. Para desligar: `make tunnel-down`.
-6. Abra `https://app.seudominio.com.br`: deve pedir o código por e-mail e depois mostrar o login do prumia.
+   "Alterar servidores DNS"). Se o DNSSEC estiver ativo no registro, desligue antes de trocar. A propagação leva de minutos a algumas
+   horas; a Cloudflare manda um e-mail quando o domínio ficar **Active**. Espere isso antes do próximo passo.
+3. **`.env`**: `TUNNEL_HOSTNAME=app.seudominio.com.br`, `APP_ENV=production` e `OPEN_REGISTRATION=false`.
+4. **`make tunnel-setup`** (uma vez): abre um endereço da Cloudflare para você autorizar o domínio, cria o túnel `prumia`, cria o DNS
+   do endereço e grava `.cloudflared/config.yml`. As credenciais ficam só nessa pasta (ela está no `.gitignore`).
+5. **`make tunnel-up`**: liga o `cloudflared`. Para desligar: `make tunnel-down` (o app volta a ficar só em localhost).
+6. Abra `https://app.seudominio.com.br` de outro aparelho (rede móvel). Deve aparecer o login do prumia.
+
+**Sem a camada do Cloudflare Access** (login por e-mail antes do app, que exige o Zero Trust): o prumia fica exposto com o próprio
+login (argon2id, limite de tentativas por IP e por e-mail, cadastro fechado). Se mais tarde ativar o Zero Trust, dá para colocar o
+Access na frente sem refazer o túnel.
 
 ### Por que a porta 8081
 
@@ -169,7 +170,9 @@ tentativas com IPs diferentes forjados na 8080 foram limitadas como um cliente s
 - O app só funciona com o computador ligado e o Docker rodando. Os containers já usam `restart: unless-stopped`. Agende o `make backup`.
 - A Cloudflare termina o HTTPS e portanto vê o tráfego. Para nenhum intermediário, use o Tailscale (seção acima).
 - `WEB_BIND` fica em `127.0.0.1`: o túnel não precisa de porta publicada.
-- Nunca publique a porta 8081 (`ports:`) e nunca commite o token do túnel.
+- Nunca publique a porta 8081 (`ports:`) e nunca commite `.cloudflared/` (contém o certificado e as credenciais do túnel).
+- **Primeiro cadastro:** com `OPEN_REGISTRATION=false` só o primeiro usuário se cadastra sozinho. Se o banco já tem a casa, ninguém mais consegue; num
+  banco novo, crie a sua conta antes de divulgar o endereço.
 
 ## Fase 2 (VPS)
 

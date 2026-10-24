@@ -107,8 +107,13 @@ db-expose: .env ## Publica o Postgres em 127.0.0.1:DB_PORT (padrão 5433) para o
 db-hide: .env ## Volta o Postgres a ficar só na rede interna do compose
 	$(COMPOSE) up -d db
 
+.PHONY: tunnel-setup
+tunnel-setup: .env ## Cria o Cloudflare Tunnel (uma vez; exige TUNNEL_HOSTNAME no .env e o domínio ativo na Cloudflare)
+	@scripts/tunnel-setup.sh
+
 .PHONY: tunnel-up
-tunnel-up: .env ## Liga o Cloudflare Tunnel (exige TUNNEL_TOKEN no .env; app público via domínio)
+tunnel-up: .env ## Liga o Cloudflare Tunnel (depois do make tunnel-setup; app público via domínio)
+	@test -f .cloudflared/config.yml || { echo "Rode make tunnel-setup antes"; exit 1; }
 	$(COMPOSE) -f deploy/compose.tunnel.yaml up -d
 
 .PHONY: tunnel-down
