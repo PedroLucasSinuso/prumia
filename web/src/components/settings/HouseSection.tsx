@@ -8,7 +8,7 @@ import { useAuth } from '../../auth/context'
 import { problemMessage } from '../../auth/errors'
 import { useActiveHouse, type House } from '../../auth/useActiveHouse'
 import { inviteLink, resetLink } from '../../lib/links'
-import { roleLabel } from '../../lib/roles'
+import { roleHelp, roleLabel } from '../../lib/roles'
 import { Button } from '../Button'
 import { Field } from '../Field'
 import { LinkBox } from '../LinkBox'
@@ -203,9 +203,9 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
                   <label className="flex flex-col gap-1">
                     <span className={label}>papel</span>
                     <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={select}>
-                      <option value="member">membro — lança e paga contas</option>
-                      <option value="viewer">leitura — só vê</option>
-                      <option value="admin">admin — gerencia a casa</option>
+                      <option value="member">{roleLabel.member} — {roleHelp.member}</option>
+                      <option value="viewer">{roleLabel.viewer} — {roleHelp.viewer}</option>
+                      <option value="admin">{roleLabel.admin} — {roleHelp.admin}</option>
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">

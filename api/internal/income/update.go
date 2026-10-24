@@ -212,6 +212,11 @@ func (s *Service) updateThis(ctx context.Context, tx *gorm.DB, cur Income, p Pat
 	switch {
 	case p.DeductionsSet:
 		ds = CheckDeductions(gross, p.Deductions, &v)
+		kind := cur.Kind
+		if p.Kind != nil {
+			kind = *p.Kind
+		}
+		CheckSalaryTaxes(kind, ds, &v)
 	case amountTouched:
 		cd, err := s.deductionsOf(tx, cur.HouseholdID, cur.ID)
 		if err != nil {
