@@ -52,7 +52,14 @@ func labelsOf(line string) []labelKind {
 	if locs == nil {
 		return nil
 	}
-	rest := tableLabelRe.ReplaceAllString(line, " ")
+	// Com dois ou mais rótulos DISTINTOS a linha é cabeçalho de tabela mesmo se o OCR colou lixo do lado (texto de outra
+	// coluna): só vale o que há ENTRE o primeiro e o último rótulo, e aí não pode haver valor ("Vencimento: 10/11 Total: R$ 5").
+	// Com um rótulo só, a linha inteira tem de ser "só rótulos".
+	span := line
+	if distinctKinds(line, locs) >= 2 {
+		span = line[locs[0][0]:locs[len(locs)-1][1]]
+	}
+	rest := tableLabelRe.ReplaceAllString(span, " ")
 	// "Vencimento: 10/11/2026" não é linha de rótulos: o valor já está nela (e o rótulo em linha é lido em outro lugar).
 	if tableValueRe.MatchString(rest) || len([]rune(labelFillerRe.ReplaceAllString(rest, ""))) > 3 {
 		return nil
@@ -68,9 +75,22 @@ func labelsOf(line string) []labelKind {
 	return out
 }
 
+// distinctKinds conta quantos TIPOS diferentes de rótulo a linha tem (vencimento, competência, valor).
+func distinctKinds(line string, locs [][]int) int {
+	seen := map[labelKind]bool{}
+	for _, loc := range locs {
+		k := kindOfLabel(line[loc[0]:loc[1]])
+		if k == labelAmountWeak {
+			k = labelAmountStrong
+		}
+		seen[k] = true
+	}
+	return len(seen)
+}
+
 // Valores de uma linha da tabela, na ordem em que aparecem. A data vem antes do mês na alternância para "17/07/2026"
 // não ser lido como mês "07/2026".
-var tableValueRe = regexp.MustCompile(`(?i)\b(\d{2})/(\d{2})/(\d{4})\b|\b(\d{1,2}|[a-zç]{3,9})[ \t]*/[ \t]*(\d{4})\b|` + moneyPattern)
+var tableValueRe = regexp.MustCompile(`(?i)\b(\d{2})/(\d{2})/(\d{4})\b|\b(\d{1,2}|[a-zç]{3,9})[ \t]*(?:/|[Il|])?[ \t]*(\d{4})\b|` + moneyPattern)
 
 // moneyPattern: "R$ 1.234,56", "R$1.234,56", "1.234,56", "130,43" e o "RS 130,43" que o OCR costuma devolver.
 // Grupos: inteiro (com pontos de milhar) e centavos. Aceita ponto como decimal ("130.43", erro comum de OCR).

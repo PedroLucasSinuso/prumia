@@ -88,7 +88,7 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         aria-label={`Detalhes de ${invoice.description}`}
         data-row-id={invoice.id}
         onClick={() => onOpen(invoice)}
-        className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-1.5 pl-1 text-left outline-offset-[-2px] @lg:grid-cols-[minmax(0,1fr)_8.5rem_7.5rem] @3xl:grid-cols-[minmax(0,1fr)_minmax(0,12rem)_8.5rem_7.5rem]"
+        className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-1.5 pl-1 text-left outline-offset-[-2px] @lg:grid-cols-[minmax(0,1fr)_10.5rem_7.5rem] @3xl:grid-cols-[minmax(0,1fr)_minmax(0,12rem)_10.5rem_7.5rem]"
       >
         <span className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
@@ -102,7 +102,7 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         </span>
         <span className="hidden truncate text-[13px] text-ink/80 @3xl:block">{category ?? ''}</span>
         <span className="hidden items-center gap-1.5 text-[13px] @lg:flex">
-          <span aria-hidden="true" className={`font-mono text-xs ${status.tone}`}>{status.mark}</span>
+          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-xs ${status.tone}`}>{status.mark}</span>
           <span className="truncate">{status.text}</span>
         </span>
         <span className={`text-right font-mono text-sm font-semibold tabular-nums ${strike}`}>{formatCents(invoice.amountCents)}</span>

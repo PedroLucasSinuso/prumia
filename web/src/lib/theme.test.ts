@@ -44,15 +44,15 @@ describe('useTheme', () => {
 
   it('troca o tema, aplica no <html>, atualiza a barra e grava a preferência', () => {
     const { result } = renderHook(() => useTheme())
-    act(() => result.current.setTheme('grafite'))
-    expect(result.current.theme).toBe('grafite')
-    expect(document.documentElement.dataset.theme).toBe('grafite')
-    expect(meta()).toBe('#313638')
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('grafite')
+    act(() => result.current.setTheme('dracula'))
+    expect(result.current.theme).toBe('dracula')
+    expect(document.documentElement.dataset.theme).toBe('dracula')
+    expect(meta()).toBe('#282A36')
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dracula')
 
     // Outra montagem (ex.: recarregar a página) lê o que foi salvo.
     resetThemeForTests()
-    expect(renderHook(() => useTheme()).result.current.theme).toBe('grafite')
+    expect(renderHook(() => useTheme()).result.current.theme).toBe('dracula')
   })
 
   it('compartilha o tema entre componentes', () => {
@@ -68,8 +68,8 @@ describe('useTheme', () => {
     const { result } = renderHook(() => useTheme())
     act(() => result.current.setTheme('sistema'))
     expect(document.documentElement.dataset.theme).toBe('sistema')
-    expect(result.current.resolved).toBe('grafite')
-    expect(meta()).toBe('#313638')
+    expect(result.current.resolved).toBe('dracula')
+    expect(meta()).toBe('#282A36')
 
     act(() => sys.setDark(false))
     expect(result.current.resolved).toBe('marfim')
@@ -88,14 +88,14 @@ describe('useTheme', () => {
     })
     expect(readStoredTheme()).toBe('marfim')
     const { result } = renderHook(() => useTheme())
-    act(() => result.current.setTheme('grafite'))
-    expect(document.documentElement.dataset.theme).toBe('grafite')
+    act(() => result.current.setTheme('dracula'))
+    expect(document.documentElement.dataset.theme).toBe('dracula')
     spy.mockRestore()
     set.mockRestore()
   })
 
-  it('exporta os 4 temas com rótulo e descrição em pt-BR', () => {
-    expect(THEMES.map((t) => t.label)).toEqual(['Marfim', 'Grafite', 'Contraste', 'Sistema'])
+  it('exporta os 9 temas com rótulo e descrição em pt-BR', () => {
+    expect(THEMES.map((t) => t.label)).toEqual(['Marfim', 'Solarized', 'Latte', 'Alto contraste', 'Dracula', 'Nord', 'Gruvbox', 'Rosé Pine', 'Sistema'])
     THEMES.forEach((t) => expect(t.description.length).toBeGreaterThan(5))
   })
 })
@@ -105,10 +105,10 @@ describe('public/theme-init.js', () => {
   const run = () => new Function(initScript)()
 
   it('aplica o tema salvo antes do app', () => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'grafite')
+    localStorage.setItem(THEME_STORAGE_KEY, 'dracula')
     run()
-    expect(document.documentElement.dataset.theme).toBe('grafite')
-    expect(meta()).toBe('#313638')
+    expect(document.documentElement.dataset.theme).toBe('dracula')
+    expect(meta()).toBe('#282A36')
   })
 
   it('usa Marfim sem preferência e resolve Sistema pelo modo do aparelho', () => {
@@ -118,7 +118,7 @@ describe('public/theme-init.js', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'sistema')
     run()
     expect(document.documentElement.dataset.theme).toBe('sistema')
-    expect(meta()).toBe('#313638')
+    expect(meta()).toBe('#282A36')
   })
 
   it('usa a mesma lista de temas que src/lib/theme.ts', () => {

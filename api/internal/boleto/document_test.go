@@ -3,6 +3,7 @@ package boleto
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -256,4 +257,62 @@ func TestExtractDocumentCascata(t *testing.T) {
 			t.Errorf("erro = %v", err)
 		}
 	})
+}
+
+// Textos que o Tesseract devolve para FOTOS reais (psm 6): lixo no fim das linhas, barra do mês lida como "I",
+// cabeçalho de tabela com texto de outra coluna colado. Valores e nomes aqui são inventados.
+func TestOCRDeLista(t *testing.T) {
+	text := "\" Gás R$98,40\n' Mercado R$310,25 M\n1 Ração gatos: R$120,00 2519 ,\nqA\n"
+	d, ok := analyze(text)
+	if !ok || d.Kind != KindList || len(d.Items) != 3 {
+		t.Fatalf("lista: %+v ok=%v", d, ok)
+	}
+	want := []struct {
+		desc  string
+		cents int64
+	}{{"Gás", 9840}, {"Mercado", 31025}, {"Ração gatos", 12000}}
+	for i, w := range want {
+		if d.Items[i].Description != w.desc || d.Items[i].AmountCents != w.cents {
+			t.Errorf("item %d = %q %d, quer %q %d", i, d.Items[i].Description, d.Items[i].AmountCents, w.desc, w.cents)
+		}
+	}
+}
+
+func TestOCRDeContaComCabecalhoSujo(t *testing.T) {
+	text := "DANF3E - DOCUMENTO AUXILIAR DA NOTA\n" +
+		"REF: MÊS / ANO | VENCIMENTO TOTAL A PAGAR E rªtj;% Protocolo de autorização: 3332600044341839 - 25/06/2028 às\n" +
+		"SET/2026 | 12/10/2026 | R$ 88,15 [) RRAA\n"
+	d, ok := analyze(text)
+	if !ok || d.Kind != KindBill || len(d.Items) != 1 {
+		t.Fatalf("conta: %+v ok=%v", d, ok)
+	}
+	it := d.Items[0]
+	if it.AmountCents != 8815 || it.DueDate.Format("2006-01-02") != "2026-10-12" || it.Competence.Format("2006-01") != "2026-09" {
+		t.Errorf("campos: %d %v %v", it.AmountCents, it.DueDate, it.Competence)
+	}
+	// o mês também com a barra lida como "I" ("SETI2026")
+	d, _ = analyze(strings.Replace(text, "SET/2026", "SETI2026", 1))
+	if got := d.Items[0].Competence.Format("2006-01"); got != "2026-09" {
+		t.Errorf("mês com barra trocada: %s", got)
+	}
+}
+
+// Linha com rótulo e valor juntos NÃO é cabeçalho de tabela, mesmo com dois rótulos.
+func TestRotuloEValorNaMesmaLinhaNaoEhCabecalho(t *testing.T) {
+	if got := labelsOf("Vencimento: 10/11/2026 Total a pagar: R$ 50,00"); got != nil {
+		t.Errorf("deveria ser linha de valores, não de rótulos: %v", got)
+	}
+}
+
+func TestDescricaoPeloTipoDeServico(t *testing.T) {
+	text := "DANF3E - DOCUMENTO AUXILIAR DA NOTA\nFISCAL DE ENERGIA ELÉTRICA ELETRÔNICA\nTOTAL A PAGAR\nR$ 88,15\n"
+	d, ok := analyze(text)
+	if !ok || d.Items[0].Description != "Luz" {
+		t.Fatalf("descrição = %+v ok=%v", d, ok)
+	}
+	// com nome de empresa lido, o nome vence o tipo de serviço
+	d, _ = analyze("RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nSERVIÇO DE COMUNICAÇÃO ELETRÔNICA\nTOTAL A PAGAR R$ 50,00\n")
+	if d.Items[0].Description != "NETLINK PROVEDOR LTDA" {
+		t.Errorf("descrição = %q", d.Items[0].Description)
+	}
 }

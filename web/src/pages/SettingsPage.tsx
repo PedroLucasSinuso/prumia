@@ -61,7 +61,7 @@ function SettingsView() {
             key={s.id}
             to={`/ajustes/${s.id}`}
             className={({ isActive }) =>
-              `flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-150 ${isActive ? 'bg-structure/10 font-semibold text-structure' : 'text-ink/80 hover:bg-ink/6'}`
+              `flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-150 ${isActive ? 'bg-structure/10 font-semibold text-heading' : 'text-ink/80 hover:bg-ink/6'}`
             }
           >
             <Icon aria-hidden="true" size={18} strokeWidth={ICON.strokeWidth} className="shrink-0" />
@@ -69,7 +69,7 @@ function SettingsView() {
           </NavLink>
         ) : (
           <NavLink key={s.id} to={`/ajustes/${s.id}`} className="flex min-h-14 items-center gap-3 border-t border-line px-1 first:border-t-0">
-            <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-structure" />
+            <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-heading" />
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-base font-medium">{s.label}</span>
               <span className="truncate text-xs text-ink/75">{s.hint}</span>
@@ -86,7 +86,7 @@ function SettingsView() {
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
         {desktop || !current ? (
           <header>
-            <h1 className="font-display text-[32px] font-bold leading-none text-structure font-stretch-condensed">Ajustes</h1>
+            <h1 className="font-display text-[32px] font-bold leading-none text-heading font-stretch-condensed">Ajustes</h1>
             <p className="mt-1 text-sm text-ink/80">Molde o prumia ao jeito da sua casa.</p>
           </header>
         ) : (

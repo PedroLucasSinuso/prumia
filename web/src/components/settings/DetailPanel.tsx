@@ -30,7 +30,7 @@ export function DetailPanel({ desktop, title, onClose, children }: Props) {
       className="fixed inset-y-0 right-0 z-30 w-full max-w-md overflow-y-auto border-l border-line bg-surface p-5 shadow-xl xl:sticky xl:top-6 xl:z-auto xl:max-h-[calc(100dvh-3rem)] xl:max-w-none xl:self-start xl:rounded-md xl:border xl:shadow-none"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 id={titleId} className="min-w-0 truncate font-display text-[22px] font-bold text-structure font-stretch-condensed">
+        <h3 id={titleId} className="min-w-0 truncate font-display text-[22px] font-bold text-heading font-stretch-condensed">
           {title}
         </h3>
         <button type="button" aria-label="Fechar detalhes" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/6">

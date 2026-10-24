@@ -76,7 +76,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
     <div className="flex flex-col gap-5">
       <div>
         <p className={label}>valor</p>
-        <p className={`font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-structure ${paid ? 'line-through decoration-2' : ''}`}>
+        <p className={`font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading ${paid ? 'line-through decoration-2' : ''}`}>
           {formatCents(invoice.amountCents)}
         </p>
         <p className="mt-1 flex items-center gap-2 text-sm font-medium">

@@ -5,7 +5,7 @@ export function SectionHeader({ title, description, actions }: { title: string; 
   return (
     <header className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <h2 className="font-display text-[26px] font-bold leading-tight text-structure font-stretch-condensed">{title}</h2>
+        <h2 className="font-display text-[26px] font-bold leading-tight text-heading font-stretch-condensed">{title}</h2>
         {description && <p className="mt-1 max-w-2xl text-sm text-ink/80">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

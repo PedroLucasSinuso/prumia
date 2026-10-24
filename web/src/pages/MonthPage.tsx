@@ -482,7 +482,7 @@ export default function MonthPage() {
               <span>a pagar neste mês</span>
               <span className="font-mono">{Math.round(fraction * 100)}% pago</span>
             </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-structure">{formatCents(toPay)}</p>
+            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading">{formatCents(toPay)}</p>
             <PaidGauge fraction={fraction} className="mt-2" />
             <p className="mt-2 flex justify-between gap-3 text-xs text-ink/80">
               <span>
@@ -500,7 +500,7 @@ export default function MonthPage() {
         )}
 
         {/* Régua do mês e, no computador, "por categoria" ao lado */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
           <section aria-label="Régua do mês" className="rounded-md border border-line px-2.5 pb-1.5 pt-2.5 md:px-4 md:pb-3 md:pt-4">
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className={`${label} text-ink/80`}>régua do mês</h2>
@@ -511,7 +511,7 @@ export default function MonthPage() {
               </p>
               <p className="text-[11px] text-ink/75 md:hidden">cada barra é um dia</p>
             </div>
-            <MonthRuler invoices={list} month={month} todayDay={isCurrent ? Number(today.slice(8, 10)) : undefined} barArea={desktop ? 112 : 52} />
+            <MonthRuler invoices={list} month={month} todayDay={isCurrent ? Number(today.slice(8, 10)) : undefined} barArea={desktop ? 168 : 52} />
           </section>
           {desktop && byCategory.length > 0 && (
             <section aria-label="Por categoria" className="rounded-md border border-line p-4">
@@ -535,7 +535,7 @@ export default function MonthPage() {
           <section aria-label="Contas do mês" className="@container min-w-0 flex-1">
             {desktop ? (
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="mr-auto font-display text-[26px] font-bold text-structure font-stretch-condensed">Contas do mês</h2>
+                <h2 className="mr-auto font-display text-[26px] font-bold text-heading font-stretch-condensed">Contas do mês</h2>
                 {statusGroup}
                 {categorySelect}
                 {searchBox}
@@ -600,7 +600,7 @@ export default function MonthPage() {
                   <button
                     disabled={busy}
                     onClick={() => void payChecked()}
-                    className="h-9 rounded-md bg-on-structure px-3.5 text-sm font-semibold text-structure transition-opacity hover:opacity-90 disabled:opacity-60"
+                    className="h-9 rounded-md bg-on-structure px-3.5 text-sm font-semibold text-heading transition-opacity hover:opacity-90 disabled:opacity-60"
                   >
                     Pagar {checkedOpen.length} {checkedOpen.length === 1 ? 'selecionada' : 'selecionadas'} ({formatCents(checkedSum)})
                   </button>
@@ -698,7 +698,7 @@ function Highlight({ title, value, valueClass = '', alert = false, children }: {
 function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <div className="mb-3 flex items-start justify-between gap-2">
-      <h2 className="min-w-0 break-words font-display text-[22px] font-bold leading-tight text-structure font-stretch-condensed">{title}</h2>
+      <h2 className="min-w-0 break-words font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{title}</h2>
       <button aria-label="Fechar detalhes" title="Fechar (Esc)" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
         <X size={20} strokeWidth={1.5} aria-hidden="true" />
       </button>

@@ -22,7 +22,7 @@ export type Stack = { segments: Segment[]; bars: Bar[] }
 
 /**
  * Cores das fatias, só com os tokens da marca e opacidade, via `fill-*`/`stroke-*` (não `text-*`: no tema Grafite o
- * `text-accent` vira marfim para passar contraste de texto, e as fatias se confundiriam). Ordem FIXA: a fatia N tem sempre
+ * `text-accent` muda de cor em alguns temas para passar contraste de texto, e as fatias se confundiriam). Ordem FIXA: a fatia N tem sempre
  * a mesma cor, independente do valor. Alternam escuro/claro para separar vizinhas em qualquer tema. Acima de 4 filhas, o
  * resto é somado em "outras".
  */

@@ -136,7 +136,7 @@ export default function IncomesPage() {
               <span>recebido neste mês</span>
               <span className="font-mono">{Math.round(fraction * 100)}% do previsto</span>
             </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-structure md:text-on-structure">{formatCents(totals.received)}</p>
+            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading md:text-on-structure">{formatCents(totals.received)}</p>
             <PaidGauge fraction={fraction} tone={desktop ? 'dark' : 'light'} className="mt-2" />
           </div>
           <div className="rounded-md border border-ink/20 p-4">
@@ -164,7 +164,7 @@ export default function IncomesPage() {
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-6">
             <section aria-label="Receitas do mês">
-              <h2 className="mb-1 hidden font-display text-[26px] font-bold text-structure font-stretch-condensed md:block">Receitas do mês</h2>
+              <h2 className="mb-1 hidden font-display text-[26px] font-bold text-heading font-stretch-condensed md:block">Receitas do mês</h2>
               {empty && !hasSources && canWrite && (
                 <div className="rounded-md border border-dashed border-ink/25 p-4">
                   <p className="text-sm text-ink/85">
@@ -224,9 +224,9 @@ export default function IncomesPage() {
           {desktop && (
             <aside className="w-full shrink-0 md:sticky md:top-6 md:w-[380px] lg:w-[420px]">
               {form ? (
-                <section aria-label="Detalhes" className="rounded-md border-2 border-structure bg-white/30 p-4">
+                <section aria-label="Detalhes" className="rounded-md border-2 border-structure bg-raised/30 p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <h2 className="font-display text-[22px] font-bold text-structure font-stretch-condensed">{panelTitle}</h2>
+                    <h2 className="font-display text-[22px] font-bold text-heading font-stretch-condensed">{panelTitle}</h2>
                     <button aria-label="Fechar detalhes" onClick={close} className="flex size-9 items-center justify-center rounded-md text-xl hover:bg-ink/5">×</button>
                   </div>
                   {form}

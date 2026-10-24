@@ -23,29 +23,36 @@ func TestTemaENomeDaConta(t *testing.T) {
 	}
 
 	// só o tema: o nome não muda
-	r := a.do("PATCH", "/api/auth/me", map[string]any{"theme": "grafite"}, c)
+	r := a.do("PATCH", "/api/auth/me", map[string]any{"theme": "dracula"}, c)
 	if r.Code != http.StatusOK {
 		t.Fatalf("patch tema: %d %s", r.Code, r.Body)
 	}
 	r.json(&me)
-	if me.Theme != "grafite" || me.Name != "Pedro" {
+	if me.Theme != "dracula" || me.Name != "Pedro" {
 		t.Errorf("depois do patch: %+v", me)
 	}
 
-	// o tema vale para a conta: outro aparelho (novo login) já recebe grafite
+	// o tema vale para a conta: outro aparelho (novo login) já recebe dracula
 	var other meT
 	a.login("p@x.com", "senha-muito-segura").json(&other)
-	if other.Theme != "grafite" {
+	if other.Theme != "dracula" {
 		t.Errorf("login em outro aparelho: tema %q", other.Theme)
 	}
 
 	// só o nome (com espaços nas pontas): o tema não volta ao padrão
 	a.do("PATCH", "/api/auth/me", map[string]any{"name": "  Pedro Lucas "}, c).json(&me)
-	if me.Name != "Pedro Lucas" || me.Theme != "grafite" {
+	if me.Name != "Pedro Lucas" || me.Theme != "dracula" {
 		t.Errorf("patch nome: %+v", me)
 	}
 
 	assertField(t, a.do("PATCH", "/api/auth/me", map[string]any{"theme": "neon"}, c), 400, "theme")
+	// "grafite" foi o tema escuro antigo: deixou de existir (migration 00006); todos os atuais são aceitos
+	assertField(t, a.do("PATCH", "/api/auth/me", map[string]any{"theme": "grafite"}, c), 400, "theme")
+	for _, th := range []string{"marfim", "solarized", "latte", "dracula", "nord", "gruvbox", "rosepine", "contraste", "sistema"} {
+		if r := a.do("PATCH", "/api/auth/me", map[string]any{"theme": th}, c); r.Code != 200 {
+			t.Errorf("tema %s recusado: %d %s", th, r.Code, r.Body)
+		}
+	}
 	assertField(t, a.do("PATCH", "/api/auth/me", map[string]any{"name": "   "}, c), 400, "name")
 	if r := a.do("PATCH", "/api/auth/me", map[string]any{"theme": "marfim"}, nil); r.Code != 401 {
 		t.Errorf("sem sessão: %d", r.Code)

@@ -17,7 +17,7 @@ import { useToast } from '../toastContext'
 import { Card, SectionHeader } from './ui'
 
 const label = 'text-xs font-medium uppercase tracking-wider text-ink/75'
-const select = 'h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base md:h-9 md:text-sm'
+const select = 'h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base md:h-9 md:text-sm'
 
 const errorText = (e: unknown) => (e instanceof ApiError ? (e.network ? 'Sem conexão com o servidor.' : problemMessage(e.problem)) : 'Algo deu errado.')
 const expiry = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -161,7 +161,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] xl:items-start">
         <div className="flex flex-col gap-4">
           <Card label="Casa">
-            <h3 className="font-display text-[22px] font-bold leading-tight text-structure font-stretch-condensed">{house.name}</h3>
+            <h3 className="font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{house.name}</h3>
             {isAdmin ? (
               <form onSubmit={onRename} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="min-w-0 flex-1">

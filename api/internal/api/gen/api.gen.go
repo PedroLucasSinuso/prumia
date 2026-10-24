@@ -252,9 +252,14 @@ func (e SeriesRefKind) Valid() bool {
 // Defines values for Theme.
 const (
 	Contraste Theme = "contraste"
-	Grafite   Theme = "grafite"
+	Dracula   Theme = "dracula"
+	Gruvbox   Theme = "gruvbox"
+	Latte     Theme = "latte"
 	Marfim    Theme = "marfim"
+	Nord      Theme = "nord"
+	Rosepine  Theme = "rosepine"
 	Sistema   Theme = "sistema"
+	Solarized Theme = "solarized"
 )
 
 // Valid indicates whether the value is a known member of the Theme enum.
@@ -262,11 +267,21 @@ func (e Theme) Valid() bool {
 	switch e {
 	case Contraste:
 		return true
-	case Grafite:
+	case Dracula:
+		return true
+	case Gruvbox:
+		return true
+	case Latte:
 		return true
 	case Marfim:
 		return true
+	case Nord:
+		return true
+	case Rosepine:
+		return true
 	case Sistema:
+		return true
+	case Solarized:
 		return true
 	default:
 		return false
@@ -814,7 +829,7 @@ type Me struct {
 	Id         openapi_types.UUID `json:"id"`
 	Name       string             `json:"name"`
 
-	// Theme Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+	// Theme Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 	Theme Theme `json:"theme"`
 }
 
@@ -822,7 +837,7 @@ type Me struct {
 type MePatch struct {
 	Name *string `json:"name,omitempty"`
 
-	// Theme Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+	// Theme Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 	Theme *Theme `json:"theme,omitempty"`
 }
 
@@ -1051,7 +1066,7 @@ type SeriesRef struct {
 // SeriesRefKind defines model for SeriesRef.Kind.
 type SeriesRefKind string
 
-// Theme Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+// Theme Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 type Theme string
 
 // Wallet defines model for Wallet.

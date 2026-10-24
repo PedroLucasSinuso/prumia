@@ -68,7 +68,7 @@ export function SlideOver({ title, onClose, children, initialFocus }: Props) {
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-4">
-          <h2 id={titleId} className="font-display text-2xl font-bold text-structure font-stretch-condensed">
+          <h2 id={titleId} className="font-display text-2xl font-bold text-heading font-stretch-condensed">
             {title}
           </h2>
           <button aria-label="Fechar" title="Fechar (Esc)" onClick={() => close.current()} className="flex size-9 items-center justify-center rounded-md text-ink hover:bg-ink/5">

@@ -925,8 +925,8 @@ components:
 
     Theme:
       type: string
-      enum: [sistema, marfim, grafite, contraste]
-      description: Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+      enum: [marfim, solarized, latte, dracula, nord, gruvbox, rosepine, contraste, sistema]
+      description: Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 
     MePatch:
       type: object

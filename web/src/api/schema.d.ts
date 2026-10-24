@@ -900,10 +900,10 @@ export interface components {
             households: components["schemas"]["HouseholdRef"][];
         };
         /**
-         * @description Tema de cor da conta. `sistema` segue o modo claro/escuro do aparelho (padrão).
+         * @description Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
          * @enum {string}
          */
-        Theme: "sistema" | "marfim" | "grafite" | "contraste";
+        Theme: "marfim" | "solarized" | "latte" | "dracula" | "nord" | "gruvbox" | "rosepine" | "contraste" | "sistema";
         /** @description Só os campos presentes mudam. */
         MePatch: {
             name?: string;

@@ -429,7 +429,7 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
                   if (e.key === 'Enter') { e.preventDefault(); void createCategory() }
                   if (e.key === 'Escape') { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setNewCat(null) }
                 }}
-                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink md:h-9 md:text-sm"
+                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink md:h-9 md:text-sm"
               />
               <Button type="button" disabled={newCat.busy || !newCat.name.trim()} onClick={() => void createCategory()} className="md:h-9">
                 {newCat.busy ? 'Criando…' : 'Criar categoria'}
@@ -469,7 +469,7 @@ export function InvoiceForm({ month, categories: baseCategories, payees = [], in
             <div className="flex flex-col gap-1">
               <label htmlFor="invoice-payee" className="text-xs font-medium uppercase tracking-wider text-ink/70">Favorecido (opcional)</label>
               <select id="invoice-payee" value={payeeId} disabled={!canWrite} onChange={(e) => pickPayee(e.target.value)}
-                className="h-11 rounded-md border border-ink/25 bg-white/40 px-3 text-base text-ink">
+                className="h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink">
                 <option value="">nenhum</option>
                 {payeeOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>

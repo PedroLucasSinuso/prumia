@@ -2,7 +2,8 @@
 
 /*
  * Cores da prumia: tokens SEMÂNTICOS (papel), não nomes de cor (docs/brand/design-direction.md, seção Sistema).
- * Só existem as 5 cores da marca (manual, seção 3). Um tema não cria cor: só troca qual cor faz qual papel.
+ * A identidade (Marfim) usa só as 5 cores da marca (manual, seção 3). Os outros temas são paletas completas escolhidas pelo
+ * dono; mesmo assim o código nunca usa cor solta: sempre o papel (`bg-surface`, `text-heading`...).
  *
  *   Paleta da marca:  ivory #F3EBDD · teal #203D40 · graphite #313638 · cobalt #416A91 · signal #F06B4F
  *
@@ -19,12 +20,16 @@
   --color-surface: var(--prumia-surface);
   --color-ink: var(--prumia-ink);
   --color-structure: var(--prumia-structure);
+  /* Títulos (`text-heading`): no Marfim é o teal; nos escuros é uma cor clara (`text-structure` ficou só para painéis). */
+  --color-heading: var(--prumia-heading);
+  /* Cartões e campos (`bg-raised/40`): branco no claro, um tom acima do fundo no escuro. */
+  --color-raised: var(--prumia-raised);
   --color-on-structure: var(--prumia-on-structure);
   --color-accent: var(--prumia-accent);
   --color-alert: var(--prumia-alert);
   /* Borda padrão (= ink/15 no Marfim; mais forte no Contraste). Prefira `border-line` a `border-ink/15`. */
   --color-line: var(--prumia-line);
-  /* Só para TEXTO: `text-accent` pode usar outra cor da paleta quando o cobalto não passa 4,5:1 (tema Grafite).
+  /* Só para TEXTO: `text-accent` pode usar outra cor da paleta quando o cobalto não passa 4,5:1 (temas escuros).
      Fundo, borda e preenchimento (`bg-accent`, `border-accent`, `fill-accent`) continuam em --prumia-accent. */
   --text-color-accent: var(--prumia-accent-text);
 }
@@ -51,61 +56,160 @@
 }
 
 /* Temas (atributo data-theme no <html>, aplicado por public/theme-init.js e lib/theme.ts).
-   Os seletores são de ATRIBUTO (e não `:root[...]`) para que um contêiner com data-theme mostre outro tema dentro da
-   página: é assim que Ajustes > Aparência desenha a miniatura de cada tema. Todos têm a mesma especificidade, então
-   vale a ordem: base (Marfim) primeiro, depois Grafite, Contraste e Sistema-escuro. */
+   Cada tema é uma PALETA COMPLETA: define todos os papéis abaixo (um contêiner com data-theme dentro da página mostra
+   outro tema, é assim que Ajustes > Aparência desenha a miniatura). Papéis:
+     surface (fundo) · raised (cartões e campos) · ink (texto e bordas) · structure/on-structure (barra lateral, botão
+     primário, destaques sólidos e o texto sobre eles) · heading (títulos) · accent (dado ativo; accent-text quando é texto)
+     · alert (só alerta) · line (bordas finas).
+   O Marfim é a identidade da marca (docs/brand/manual-identidade-prumia.md); os demais são paletas conhecidas
+   (Solarized, Catppuccin Latte, Dracula, Nord, Gruvbox, Rosé Pine) com tons derivados só quando o contraste de texto
+   pedia (WCAG AA, 4,5:1: veja docs/brand/design-direction.md). Seletores de ATRIBUTO, todos com a mesma
+   especificidade: vale a ordem (Marfim primeiro; Sistema-escuro por último). */
 @layer base {
-  /* Marfim (padrão): o visual original. Contraste e Sistema partem dele (um contêiner dentro do Grafite herdaria o
-     Grafite se não redeclarasse tudo). */
+  /* Marfim: padrão. O Sistema também parte dele (de dia). */
   :root,
   [data-theme='marfim'],
-  [data-theme='contraste'],
   [data-theme='sistema'] {
     --prumia-surface: #f3ebdd;
     --prumia-ink: #313638;
     --prumia-structure: #203d40;
     --prumia-on-structure: #f3ebdd;
+    --prumia-heading: #203d40;
     --prumia-accent: #416a91;
     --prumia-accent-text: #416a91;
     --prumia-alert: #f06b4f;
+    --prumia-raised: #ffffff;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
     --prumia-focus: 2px;
     color-scheme: light;
   }
 
-  /* Grafite (escuro): fundo graphite, texto ivory. O teal sobre graphite quase não se vê (1,05:1), então o papel de
-     `structure` (títulos, botão primário, painéis) passa ao ivory e o texto sobre ele fica teal. O cobalto continua
-     nos fundos/barras; como texto (2,2:1) ele não passa, e os links (já sublinhados) usam ivory. */
-  [data-theme='grafite'] {
-    --prumia-surface: #313638;
-    --prumia-ink: #f3ebdd;
-    --prumia-structure: #f3ebdd;
-    --prumia-on-structure: #203d40;
-    --prumia-accent: #416a91;
-    --prumia-accent-text: #f3ebdd;
-    --prumia-alert: #f06b4f;
+  /* Solarized claro (Ethan Schoonover) */
+  [data-theme='solarized'] {
+    --prumia-surface: #fdf6e3;
+    --prumia-ink: #073642;
+    --prumia-structure: #073642;
+    --prumia-on-structure: #fdf6e3;
+    --prumia-heading: #073642;
+    --prumia-accent: #268bd2;
+    --prumia-accent-text: #1f6fa8;
+    --prumia-alert: #dc322f;
+    --prumia-raised: #ffffff;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    --prumia-focus: 2px;
+    color-scheme: light;
+  }
+
+  /* Latte (Catppuccin claro) */
+  [data-theme='latte'] {
+    --prumia-surface: #eff1f5;
+    --prumia-ink: #3b3d55;
+    --prumia-structure: #1a4fc0;
+    --prumia-on-structure: #eff1f5;
+    --prumia-heading: #1a4fc0;
+    --prumia-accent: #1e66f5;
+    --prumia-accent-text: #1650cc;
+    --prumia-alert: #d20f39;
+    --prumia-raised: #ffffff;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    --prumia-focus: 2px;
+    color-scheme: light;
+  }
+
+  /* Dracula (escuro) */
+  [data-theme='dracula'] {
+    --prumia-surface: #282a36;
+    --prumia-ink: #f8f8f2;
+    --prumia-structure: #7656bd;
+    --prumia-on-structure: #f8f8f2;
+    --prumia-heading: #f8f8f2;
+    --prumia-accent: #bd93f9;
+    --prumia-accent-text: #bd93f9;
+    --prumia-alert: #ff5555;
+    --prumia-raised: #44475a;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-focus: 2px;
     color-scheme: dark;
   }
 
-  /* Contraste (alto contraste): Marfim com bordas mais fortes, texto de link em teal (9,8:1) e foco mais grosso. */
-  [data-theme='contraste'] {
-    --prumia-accent-text: #203d40;
-    --prumia-line: color-mix(in oklab, var(--prumia-ink) 55%, transparent);
-    --prumia-focus: 3px;
+  /* Nord (escuro, frio) */
+  [data-theme='nord'] {
+    --prumia-surface: #2e3440;
+    --prumia-ink: #eceff4;
+    --prumia-structure: #4a6b94;
+    --prumia-on-structure: #eceff4;
+    --prumia-heading: #88c0d0;
+    --prumia-accent: #88c0d0;
+    --prumia-accent-text: #88c0d0;
+    --prumia-alert: #df8a92;
+    --prumia-raised: #3b4252;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-focus: 2px;
+    color-scheme: dark;
   }
 
-  /* Sistema: Marfim de dia, Grafite quando o sistema operacional está no modo escuro. */
+  /* Gruvbox (escuro, quente) */
+  [data-theme='gruvbox'] {
+    --prumia-surface: #282828;
+    --prumia-ink: #ebdbb2;
+    --prumia-structure: #8a5a12;
+    --prumia-on-structure: #fbf1c7;
+    --prumia-heading: #fabd2f;
+    --prumia-accent: #83a598;
+    --prumia-accent-text: #83a598;
+    --prumia-alert: #fb4934;
+    --prumia-raised: #3c3836;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-focus: 2px;
+    color-scheme: dark;
+  }
+
+  /* Rosé Pine (escuro) */
+  [data-theme='rosepine'] {
+    --prumia-surface: #191724;
+    --prumia-ink: #e0def4;
+    --prumia-structure: #907aa9;
+    --prumia-on-structure: #191724;
+    --prumia-heading: #c4a7e7;
+    --prumia-accent: #c4a7e7;
+    --prumia-accent-text: #c4a7e7;
+    --prumia-alert: #eb6f92;
+    --prumia-raised: #26233a;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-focus: 2px;
+    color-scheme: dark;
+  }
+
+  /* Alto contraste (preto e branco, bordas e foco fortes) */
+  [data-theme='contraste'] {
+    --prumia-surface: #ffffff;
+    --prumia-ink: #000000;
+    --prumia-structure: #000000;
+    --prumia-on-structure: #ffffff;
+    --prumia-heading: #000000;
+    --prumia-accent: #0b3d91;
+    --prumia-accent-text: #0b3d91;
+    --prumia-alert: #b00020;
+    --prumia-raised: #f2f2f2;
+    --prumia-line: color-mix(in oklab, var(--prumia-ink) 60%, transparent);
+    --prumia-focus: 3px;
+    color-scheme: light;
+  }
+
+  /* Sistema: Marfim de dia, Dracula quando o sistema operacional está no modo escuro. */
   @media (prefers-color-scheme: dark) {
     [data-theme='sistema'] {
-      --prumia-surface: #313638;
-      --prumia-ink: #f3ebdd;
-      --prumia-structure: #f3ebdd;
-      --prumia-on-structure: #203d40;
-      --prumia-accent: #416a91;
-      --prumia-accent-text: #f3ebdd;
-      --prumia-alert: #f06b4f;
-      --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+      --prumia-surface: #282a36;
+      --prumia-ink: #f8f8f2;
+      --prumia-structure: #7656bd;
+      --prumia-on-structure: #f8f8f2;
+      --prumia-heading: #f8f8f2;
+      --prumia-accent: #bd93f9;
+      --prumia-accent-text: #bd93f9;
+      --prumia-alert: #ff5555;
+      --prumia-raised: #44475a;
+      --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+      --prumia-focus: 2px;
       color-scheme: dark;
     }
   }

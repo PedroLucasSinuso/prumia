@@ -95,7 +95,7 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   (sem modal; padrão = a categoria que mais pesa). Celular: o histórico abre no `Sheet`.
 - **Gráficos** (`components/BarChart`, `components/HistoryPanel`, `lib/history.ts`): SVG próprio, sem biblioteca. Barras por mês
   (6 ou 12), mãe = filhas empilhadas (até 4 fatias + "outras"; cor por POSIÇÃO, fixa, só tokens com opacidade via `fill-*`/`stroke-*`:
-  `accent`, `structure`, `accent/45`, `ink/45`, `ink/20`; nunca `text-accent`, que no Grafite vira marfim), **pago sólido e a pagar tracejado** (`<pattern>` a 45° + contorno, mesma cor da fatia). Eixo em mono com valor curto (`R$ 1,5 mil`), rótulo `out/26`, largura medida por `ResizeObserver`. Acessível:
+  `accent`, `structure`, `accent/45`, `ink/45`, `ink/20`; nunca `text-accent`, que em alguns temas escuros muda de cor e confundiria as fatias), **pago sólido e a pagar tracejado** (`<pattern>` a 45° + contorno, mesma cor da fatia). Eixo em mono com valor curto (`R$ 1,5 mil`), rótulo `out/26`, largura medida por `ResizeObserver`. Acessível:
   `role="img"` com resumo dos valores, grupo focável (setas/Home/End mostram o valor exato numa dica `aria-live`) e tabela `sr-only`.
   Média do período e variação do último mês contra o anterior em números simples. As funções de `lib/history.ts` são puras e testadas.
 - **`pages/IncomesPage`**: receitas do mês numa linha de prumo de entradas (`IncomeList`: nó cobalto, oco = previsto, cheio = recebido;
@@ -162,36 +162,44 @@ no detalhe de uma conta que já tem `boleto`. Testes: `components/BoletoImport.t
 ## Marca no código
 
 As cores são **tokens semânticos** (papel, não nome de cor) em `src/index.css` (`@theme inline`) e viram classes do Tailwind.
-Nunca use as classes antigas `ivory`/`teal`/`graphite`/`cobalt`/`signal` (não existem mais).
+Nunca use as classes antigas `ivory`/`teal`/`graphite`/`cobalt`/`signal` (não existem mais) nem `bg-white` ou cor solta.
 
 | Token | Classe | Uso | Marfim |
 |---|---|---|---|
 | `surface` | `bg-surface` | fundo da página, folhas, menus | ivory |
+| `raised` | `bg-raised/40` | cartões e campos de formulário | branco |
 | `ink` | `text-ink`, `border-ink/25`, `bg-ink/5` | texto e bordas (tons por opacidade) | graphite |
-| `line` | `border-line` | borda padrão (= `ink/15`; mais forte no tema Contraste) | graphite 15% |
-| `structure` | `bg-structure` / `text-structure` | títulos, valores em destaque, botão primário, painéis, barra lateral | teal |
+| `line` | `border-line` | borda padrão (= `ink/15`; forte no Alto contraste) | graphite 15% |
+| `heading` | `text-heading` | títulos e valores em destaque | teal |
+| `structure` | `bg-structure` | botão primário, barra lateral, destaques sólidos, chips selecionados | teal |
 | `on-structure` | `text-on-structure` | texto/ícone sobre `bg-structure` | ivory |
-| `accent` | `text-accent` / `bg-accent` | dado ativo, links, seleção | cobalt |
+| `accent` | `text-accent` / `bg-accent` | dado ativo, links, seleção, barras | cobalt |
 | `alert` | `text-alert` / `bg-alert` | só alerta (atraso, hoje, erro; ≤10%) | signal |
 
 **Como funciona.** Cada token aponta para uma variável `--prumia-*` (`@theme inline { --color-ink: var(--prumia-ink) }`), e
-o tema troca essas variáveis pelo atributo `data-theme` do `<html>` (`marfim`, `grafite`, `contraste`, `sistema`). Como o
-Tailwind escreve `var(--prumia-ink)` direto na classe, opacidade funciona em qualquer tema (`bg-ink/15` vira
-`color-mix(in oklab, var(--prumia-ink) 15%, transparent)`). `text-accent` tem variável própria (`--prumia-accent-text`)
-porque no Grafite o cobalto não passa 4,5:1 como texto; `bg-accent`/`border-accent` seguem cobalto. Em valor arbitrário,
-use a variável do token (`shadow-[0_2px_0_var(--color-ink)]`). Pares que sempre funcionam: `bg-surface text-ink`,
-`bg-structure text-on-structure`, `bg-ink text-surface` (avisos invertidos).
+o tema troca essas variáveis pelo atributo `data-theme` do `<html>`. Como o Tailwind escreve `var(--prumia-ink)` direto na
+classe, opacidade funciona em qualquer tema (`bg-ink/15` vira `color-mix(in oklab, var(--prumia-ink) 15%, transparent)`).
+`text-accent` tem variável própria (`--prumia-accent-text`) porque em alguns temas a cor de destaque não passa 4,5:1 como
+texto; `bg-accent`/`border-accent` usam a cor cheia. Pares que sempre funcionam: `bg-surface text-ink`,
+`bg-structure text-on-structure`, `bg-ink text-surface` (avisos invertidos). Nunca presuma "structure = escuro": no Rosé Pine
+o painel é malva claro com texto escuro.
+
+**Temas** (9: marfim, solarized, latte, dracula, nord, gruvbox, rosepine, contraste e sistema): cada bloco
+`[data-theme='...']` em `index.css` define **todos** os papéis (assim a miniatura em Ajustes > Aparência, que põe
+`data-theme` num contêiner, mostra o tema certo dentro da página). Veja a tabela e o contraste em
+`docs/brand/design-direction.md`. **Para criar um tema:** (1) novo bloco em `index.css` com todos os papéis; (2) `THEMES`
+e `THEME_COLOR` em `src/lib/theme.ts` e a lista em `public/theme-init.js`; (3) o id em `openapi.yaml` (`Theme`),
+em `auth.Themes` (Go) e numa migration que atualize o `CHECK` de `users.theme`; (4) `python3 scripts/contraste-temas.py`
+(precisa passar); (5) abra o app no tema e confira Mês, Resumo, Ajustes e Importar.
 
 **Tema no código.** `src/lib/theme.ts`:
-- `useTheme()` → `{ theme, resolved, setTheme }` (compartilhado entre componentes; `resolved` diz se `sistema` está claro ou escuro);
-- `THEMES` (id, rótulo e descrição em pt-BR, para a tela de escolha), `DEFAULT_THEME` (`marfim`), `THEME_STORAGE_KEY`;
-- preferência por aparelho em `localStorage` (`prumia.theme`, com try/catch); `setTheme` aplica `data-theme` e a
-  `<meta name="theme-color">`.
+- `useTheme()` → `{ theme, resolved, setTheme }` (compartilhado entre componentes; `resolved` diz qual tema `sistema` virou);
+- `THEMES` (id, rótulo, descrição e tom `claro`/`escuro`/`auto`, para a tela de escolha), `DEFAULT_THEME` (`marfim`);
+- preferência por aparelho em `localStorage` (`prumia.theme`, com try/catch) e na conta (`users.theme`, `PATCH /auth/me`);
+  `setTheme` aplica `data-theme` e a `<meta name="theme-color">`.
 
 `public/theme-init.js` aplica o tema salvo **antes** do bundle (sem piscar); é arquivo externo porque a CSP só aceita
-scripts de `'self'`. Mantenha-o em sincronia com `theme.ts` (há teste que confere). `main.tsx` chama `startThemeSync()`, que
-atualiza a cor da barra quando o aparelho troca de modo no tema `sistema`. Ao criar um tema novo: só as 5 cores, defina o
-bloco `:root[data-theme='...']` em `index.css`, acrescente em `THEMES`/`THEME_COLOR` e no `theme-init.js`, e meça o contraste.
+scripts de `'self'`. Mantenha-o em sincronia com `theme.ts` (há teste que confere). `main.tsx` chama `startThemeSync()`.
 
 Regras (manual de identidade): sem gradientes nem `rounded-full`; raio de 4–6px (`rounded-sm`/`rounded-md`); bordas finas
 `border-line`; números com `tabular-nums` (já global) e `font-mono` nos saldos; textos em pt-BR; marca sempre

@@ -67,8 +67,10 @@ Não aceita o mesmo nome nem o mesmo CNPJ duas vezes na casa.
 
 ## Aparência
 
-Em **Ajustes > Aparência** escolha o tema: **Sistema** (segue o claro/escuro do aparelho), **Marfim**, **Grafite** (escuro) ou **Contraste**.
+Em **Ajustes > Aparência** escolha o tema. Há **claros** (Marfim, que é o padrão da marca, Solarized, Latte e Alto contraste),
+**escuros** (Dracula, Nord, Gruvbox e Rosé Pine) e **Sistema** (Marfim de dia e Dracula quando o aparelho está no modo escuro).
 Cada opção mostra uma prévia. O tema muda na hora e fica salvo na sua conta: vale nos outros aparelhos quando você entrar.
+**Alto contraste** (preto e branco, bordas e foco mais fortes) ajuda quem tem dificuldade de leitura.
 
 ## Minha conta
 

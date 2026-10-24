@@ -157,15 +157,15 @@ describe('ajustes · categorias no computador', () => {
 
 describe('ajustes · aparência e tema da conta', () => {
   it('usa o tema da conta ao entrar', async () => {
-    mockApi({ me: ok({ ...me, theme: 'grafite' }) })
+    mockApi({ me: ok({ ...me, theme: 'dracula' }) })
     renderAt('/')
-    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('grafite'))
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('dracula'))
   })
 
   it('falha ao gravar o tema: avisa, mas o tema vale neste aparelho', async () => {
     mockApi({ me: ok(me), updateMe: fail(500, 'internal') })
     renderAt('/ajustes/aparencia')
-    await userEvent.click(await screen.findByRole('radio', { name: /Contraste/ }))
+    await userEvent.click(await screen.findByRole('radio', { name: /Alto contraste/ }))
     expect(document.documentElement.dataset.theme).toBe('contraste')
     expect(await screen.findByText(/não deu para salvar na sua conta/)).toBeInTheDocument()
   })
