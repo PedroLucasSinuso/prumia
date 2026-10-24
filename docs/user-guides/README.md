@@ -9,7 +9,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 | [cadastrar-e-pagar-contas.md](cadastrar-e-pagar-contas.md) | pronto | Lançar uma conta e marcar como paga em poucos toques |
 | [parcelas-e-contas-fixas.md](parcelas-e-contas-fixas.md) | pronto | Registrar compra parcelada e contas que se repetem |
 | [salario-e-previsao.md](salario-e-previsao.md) | pronto | Receitas: salário, VR, regras de data (dia útil), valor por dia trabalhado, recebimento automático |
-| [carteiras.md](carteiras.md) | pronto | Criar carteiras e entender o saldo (que continua entre os meses) |
+| [carteiras.md](carteiras.md) | pronto | Criar carteiras, entender o saldo (que continua entre os meses) e transferir entre carteiras |
 | [resumo-do-mes.md](resumo-do-mes.md) | pronto | Ler o resumo e o saldo do mês |
 | [importar-boleto.md](importar-boleto.md) | pronto | Cadastrar contas a partir de PDF, foto, print ou lista (vários arquivos) |
 | [categorias-e-ajustes.md](categorias-e-ajustes.md) | pronto | Painel de Ajustes: categorias, favorecidos, aparência (tema), minha conta (senha), exportar CSV |
