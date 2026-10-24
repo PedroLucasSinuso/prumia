@@ -1,5 +1,5 @@
 import { FileUp, Layers, Plus, Search, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvoiceActions, useInvoices, usePayees, usePurchase } from '../api/queries'
@@ -33,6 +33,7 @@ import { useMonthParam } from '../lib/useMonthParam'
 /** A conta aberta: em leitura (detalhe) ou no formulário (editar). */
 type Panel = { id: string; mode: 'view' | 'edit' } | null
 
+const ImportModal = lazy(() => import('../components/ImportModal'))
 const walletLabel = { free: 'carteira livre', benefit: 'carteira de benefício' } as const
 const label = 'text-xs font-medium uppercase tracking-wider'
 const COLLAPSED_KEY = 'prumia.mes.secoesRecolhidas'
@@ -57,6 +58,7 @@ export default function MonthPage() {
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [anchor, setAnchor] = useState<string>() // última marcada (Shift+clique marca o intervalo até ela)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [importing, setImporting] = useState(false) // computador: a importação abre num modal grande sobre o mês
   const [collapsed, setCollapsed] = usePref<SectionId[]>(COLLAPSED_KEY, [])
   const searchRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
@@ -441,12 +443,13 @@ export default function MonthPage() {
             <div className="flex flex-wrap items-center gap-2">
               {seriesLink}
               {canWrite && (
-                <Link
-                  to={{ pathname: '/importar', search }}
+                <button
+                  type="button"
+                  onClick={() => setImporting(true)}
                   className="ml-2 flex h-10 items-center gap-2 rounded-md border border-ink/30 px-3.5 text-sm font-semibold transition-colors hover:bg-ink/5"
                 >
                   <FileUp size={18} strokeWidth={1.5} aria-hidden="true" /> Importar
-                </Link>
+                </button>
               )}
               {canWrite && (
                 <Button onClick={openNew} title="Nova conta (N)" className="flex h-10 items-center gap-2">
@@ -652,6 +655,18 @@ export default function MonthPage() {
         >
           <Plus size={28} strokeWidth={1.75} aria-hidden="true" />
         </button>
+      )}
+
+      {importing && desktop && (
+        <Suspense fallback={null}>
+          <ImportModal
+            onClose={() => setImporting(false)}
+            onCreated={(m) => {
+              setImporting(false)
+              setMonth(m)
+            }}
+          />
+        </Suspense>
       )}
 
       {/* Lançar conta: painel lateral (computador) ou painel que sobe (celular). */}
