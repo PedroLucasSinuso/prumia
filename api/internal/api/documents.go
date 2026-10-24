@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
+	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
@@ -39,6 +42,62 @@ func (h *Boletos) ExtractDocument(c *gin.Context, householdId gen.HouseholdId) {
 		h.writeError(c, err)
 		return
 	}
+	h.writeDocument(c, ctx, householdId, doc)
+}
+
+// maxParseText: tamanho máximo do texto colado, em caracteres (não em bytes: "ç" são 2 bytes e conta como 1).
+const maxParseText = 20000
+
+// ParseDocumentText: POST /households/{householdId}/documents/parse-text
+//
+// Texto escrito ou colado no lugar de arquivo: mesma saída do ExtractDocument (boleto, bill ou list), sem OCR e sem
+// disco. Divide o limite por usuário com a leitura de arquivos, mas não usa o semáforo (não sobe Ghostscript nem
+// Tesseract: é só texto e regex).
+func (h *Boletos) ParseDocumentText(c *gin.Context, householdId gen.HouseholdId) {
+	if !h.limiter.Allow(auth.CurrentUser(c).ID.String()) {
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusTooManyRequests, Code: "too_many_requests"})
+		return
+	}
+	var body struct {
+		Text string `json:"text"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		var mbe *http.MaxBytesError // errors.As: "este erro é (ou embrulha) um *MaxBytesError?"
+		if errors.As(err, &mbe) {
+			textTooLarge(c)
+			return
+		}
+		badJSON(c)
+		return
+	}
+	if utf8.RuneCountInString(body.Text) > maxParseText {
+		textTooLarge(c)
+		return
+	}
+	if strings.TrimSpace(body.Text) == "" {
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "bad_request", Detail: "envie o texto no campo \"text\""})
+		return
+	}
+	doc, err := h.Extractor.ExtractText(body.Text)
+	if errors.Is(err, boleto.ErrNotFound) {
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusUnprocessableEntity, Code: "boleto_not_found", Detail: "não encontrei boleto nem valor de conta neste texto"})
+		return
+	}
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), extractTimeout)
+	defer cancel()
+	h.writeDocument(c, ctx, householdId, doc)
+}
+
+func textTooLarge(c *gin.Context) {
+	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusRequestEntityTooLarge, Code: "text_too_large", Detail: "o texto passa de 20.000 caracteres"})
+}
+
+// writeDocument responde 200 com o documento lido (arquivo ou texto), resolvendo favorecido e duplicidade de cada item.
+func (h *Boletos) writeDocument(c *gin.Context, ctx context.Context, householdId gen.HouseholdId, doc boleto.Document) {
 	// Só o tipo, o método e quantos itens: nunca os valores, nomes ou números lidos.
 	h.Log.Info("documento lido", "tipo", string(doc.Kind), "metodo", string(doc.Method), "itens", len(doc.Items))
 

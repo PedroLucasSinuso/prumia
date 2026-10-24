@@ -111,6 +111,8 @@ type Routes = {
   extract?: Reply | ((body: { file: File; password?: string }) => Reply)
   /** Leitura de documento (tela Importar e formulário): fixa ou calculada pelo corpo (nome do arquivo, senha). */
   extractDocument?: Reply | ((body: { file: File; password?: string }) => Reply)
+  /** Leitura de texto colado (POST /documents/parse-text): fixa ou calculada pelo corpo. */
+  parseText?: Reply | ((body: { text: string }) => Reply)
   /** POST /invoices/batch: fixa ou calculada pelos itens enviados. */
   createBatch?: Reply | ((body: { items: unknown[] }) => Reply)
   invoiceDetail?: Reply
@@ -170,6 +172,10 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/boletos/extract') {
       const body = init?.body as { file: File; password?: string }
       return (typeof r.extract === 'function' ? r.extract(body) : r.extract) ?? fail(422, 'boleto_not_found')
+    }
+    if (url === '/households/{householdId}/documents/parse-text') {
+      const body = init?.body as { text: string }
+      return (typeof r.parseText === 'function' ? r.parseText(body) : r.parseText) ?? fail(422, 'boleto_not_found')
     }
     if (url === '/households/{householdId}/documents/extract') {
       const body = init?.body as { file: File; password?: string }

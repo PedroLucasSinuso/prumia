@@ -1,8 +1,8 @@
-import { FileUp, ListChecks, Receipt, ScanText } from 'lucide-react'
+import { ClipboardPaste, FileUp, ListChecks, Receipt, ScanText } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { extractDocument, useCategories, useInvoiceActions, usePayees } from '../api/queries'
+import { extractDocument, MAX_PARSE_TEXT, parseDocumentText, useCategories, useInvoiceActions, usePayees } from '../api/queries'
 import { ApiError } from '../api/errors'
 import type { Category, DocumentExtraction } from '../api/types'
 import { boletoErrorMessage, networkErrorMessage, problemMessage } from '../auth/errors'
@@ -26,6 +26,8 @@ type FileEntry = {
   id: string
   name: string
   file?: File
+  /** Texto colado (no lugar de arquivo): fica só na memória até a leitura dar certo. */
+  text?: string
   /** object URL da imagem, para a pré-visualização (revogada ao sair da tela). */
   url?: string
   isPdf: boolean
@@ -58,7 +60,7 @@ let fileSeq = 0
 const examples = [
   { Icon: Receipt, title: 'Boleto ou fatura', text: 'Linha digitável, valor, vencimento e quem recebe. Reconhece o favorecido pelo CNPJ.' },
   { Icon: ScanText, title: 'Conta em foto, sem código de barras', text: 'Lê valor, vencimento e mês de referência direto da imagem.' },
-  { Icon: ListChecks, title: 'Lista ou print de conversa', text: 'Várias contas de uma vez: "Gás R$ 98,40 / Mercado R$ 310,25".' },
+  { Icon: ListChecks, title: 'Lista, print de conversa ou texto', text: 'Uma conta por linha, "descrição: valor": Gás: R$ 150,00 / Mercado: 310,25. Pode colar o texto.' },
 ]
 
 export default function ImportPage() {
@@ -78,6 +80,8 @@ export default function ImportPage() {
   const [errors, setErrors] = useState<Record<string, Record<string, string>>>({})
   const [error, setError] = useState<string>()
   const [dragging, setDragging] = useState(false)
+  const [pasting, setPasting] = useState(false)
+  const [pasted, setPasted] = useState('')
 
   // O laço de leitura é assíncrono e longo: lê o estado mais recente por refs (o estado do React "congela" no closure).
   const filesRef = useRef<FileEntry[]>([])
@@ -125,11 +129,11 @@ export default function ImportPage() {
       const password = passwords.current.get(entry.id)
       passwords.current.delete(entry.id)
       try {
-        const ext = await extractDocument(houseId, entry.file as File, password)
+        const ext = entry.text !== undefined ? await parseDocumentText(houseId, entry.text) : await extractDocument(houseId, entry.file as File, password)
         if (!alive.current) return
         const found = rowsFrom(ext, entry.id, todayISO(), cats, payees.data ?? [])
         setRows((rs) => markRepeated([...rs, ...found]))
-        patch(entry.id, { status: 'done', found: found.length })
+        patch(entry.id, { status: 'done', found: found.length, text: undefined })
         setSelected((s) => s ?? entry.id)
         return
       } catch (err) {
@@ -148,7 +152,7 @@ export default function ImportPage() {
           patch(entry.id, { status: 'password', wrongPassword: code === 'wrong_password' })
           return
         }
-        patch(entry.id, { status: 'error', message: api?.network ? networkErrorMessage : documentError(code) })
+        patch(entry.id, { status: 'error', message: api?.network ? networkErrorMessage : documentError(code, entry.text !== undefined) })
         return
       }
     }
@@ -184,6 +188,19 @@ export default function ImportPage() {
     if (added.length === 0) return
     setAll([...filesRef.current, ...added])
     setSelected((s) => s ?? added[0].id)
+    void run()
+  }
+
+  /** "Colar texto": o texto entra na MESMA fila dos arquivos e cai na mesma tabela de revisão. */
+  function addText() {
+    const text = pasted.trim()
+    if (!text) return
+    const n = filesRef.current.filter((f) => f.text !== undefined || f.name.startsWith('texto')).length
+    const entry: FileEntry = { id: `f${++fileSeq}`, name: n === 0 ? 'texto' : `texto ${n + 1}`, text, isPdf: false, status: 'waiting' }
+    setAll([...filesRef.current, entry])
+    setSelected((s) => s ?? entry.id)
+    setPasted('')
+    setPasting(false)
     void run()
   }
 
@@ -271,7 +288,8 @@ export default function ImportPage() {
         <header>
           <h1 className="font-display text-3xl font-semibold font-stretch-condensed text-heading">Importar contas</h1>
           <p className="mt-1 text-sm text-ink/75">
-            Boleto, conta sem código de barras ou print de uma lista ("Gás R$ 157,82"). Você confere tudo antes de criar.
+            Boleto, conta sem código de barras, print de uma lista ou texto colado. Uma conta por linha: <strong>descrição: valor</strong>. Você
+            confere tudo antes de criar.
           </p>
         </header>
 
@@ -310,9 +328,45 @@ export default function ImportPage() {
               <p className="hidden text-ink/75 md:block">Arraste os arquivos para cá ou escolha no computador.</p>
               <p className="text-ink/75 md:hidden">Tire uma foto, escolha da galeria ou dos arquivos.</p>
             </div>
-            <Button type="button" disabled={!ready} onClick={() => picker.current?.click()} className="w-full md:h-9 md:w-auto">
-              {files.length ? 'Adicionar arquivos' : 'Escolher arquivos'}
-            </Button>
+            <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
+              <Button type="button" disabled={!ready} onClick={() => picker.current?.click()} className="w-full md:h-9 md:w-auto">
+                {files.length ? 'Adicionar arquivos' : 'Escolher arquivos'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={!ready}
+                aria-expanded={pasting}
+                onClick={() => setPasting((v) => !v)}
+                className="w-full md:h-9 md:w-auto"
+              >
+                <ClipboardPaste aria-hidden="true" size={16} strokeWidth={1.5} className="mr-2 inline" />
+                Colar texto
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {canWrite && pasting && (
+          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md border border-line bg-surface p-4">
+            <label htmlFor="texto-contas" className={label}>Texto das contas</label>
+            <textarea
+              id="texto-contas"
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              maxLength={MAX_PARSE_TEXT}
+              rows={6}
+              autoFocus
+              placeholder={'Gás: R$ 150,00\nMercado: 310,25\nInternet: 119,90'}
+              className="w-full rounded-md border border-line bg-surface p-2 font-mono text-sm text-ink"
+            />
+            <p className="text-xs text-ink/70">
+              Uma conta por linha: <strong>descrição: valor</strong>. Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" disabled={!pasted.trim()} onClick={addText} className="md:h-9">Ler texto</Button>
+              <Button type="button" variant="ghost" onClick={() => { setPasting(false); setPasted('') }} className="md:h-9">Cancelar</Button>
+            </div>
           </section>
         )}
 
@@ -400,7 +454,8 @@ export default function ImportPage() {
   )
 }
 
-function documentError(code: string | undefined): string {
+function documentError(code: string | undefined, isText = false): string {
+  if (code === 'boleto_not_found' && isText) return 'Não encontrei contas neste texto. Use uma conta por linha, "descrição: valor".'
   if (code === 'boleto_not_found') return 'Não encontrei boleto nem valor neste arquivo. Tente uma foto mais nítida ou lance à mão.'
   return boletoErrorMessage(code ? { title: code, status: 422, code } : undefined)
 }
@@ -436,7 +491,7 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
       {file.status === 'error' && file.message && (
         <div className="flex flex-col gap-1">
           <p className="text-xs">{file.message}</p>
-          {file.file && file.file.size <= MAX_BOLETO_BYTES && (
+          {((file.file && file.file.size <= MAX_BOLETO_BYTES) || file.text !== undefined) && (
             <button type="button" className={`${link} self-start text-xs`} onClick={onRetry}>
               Tentar de novo
             </button>

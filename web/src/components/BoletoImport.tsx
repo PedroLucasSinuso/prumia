@@ -232,14 +232,14 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
           {first.boleto ? (
             <BoletoBox
               boleto={{ ...first.boleto, beneficiaryName: first.beneficiaryName, beneficiaryVerified: first.beneficiaryVerified }}
-              method={step.extraction.method}
+              method={step.extraction.method === 'text' ? undefined : step.extraction.method}
             />
           ) : (
             <p className="text-xs">
               <span aria-hidden="true" className={`font-mono ${step.extraction.method === 'ocr' ? 'text-alert' : 'text-accent'}`}>
                 {step.extraction.method === 'ocr' ? '[ ✖ ]' : '[ ▪ ]'}
               </span>{' '}
-              {step.extraction.method === 'ocr' ? 'conta lida por OCR: confira os números' : 'conta lida do texto do PDF'}
+              {step.extraction.method === 'ocr' ? 'conta lida por OCR: confira os números' : (step.extraction.method === 'text' ? 'conta lida do texto colado' : 'conta lida do texto do PDF')}
               {first.beneficiaryName && <> · {first.beneficiaryName}</>}
             </p>
           )}
