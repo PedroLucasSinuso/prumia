@@ -52,10 +52,14 @@ DatePicker com calendário, categoria em combobox pesquisável (fim do "spam de 
 - [feito] **Importação em massa no computador** abre num modal grande sobre o Mês (`ImportModal`); no celular continua a página `/importar`. Falta o dono avaliar no uso real se ainda quer a revisão como segundo modal sobre o primeiro.
 - **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem); padrão de lista (`descrição: valor`) e "colar texto" já cobrem listas e prints.
 - Cobrir mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x").
+- **Convite de cadastro**: link de uso único e com validade para a pessoa criar a **própria conta e a própria casa** (hoje o convite só leva a uma casa existente e o cadastro sem convite vale só para o primeiro usuário). Mesmo mecanismo do convite atual (token só em hash, validade, uso único) com um tipo novo. Quem gera: só o "dono do sistema" (a primeira conta), com tela em Ajustes (gerar, pendentes, revogar) e teto de links pendentes. Útil para ter um usuário e uma casa de testes em produção. Ponto em aberto: passar a condição de dono do sistema para outra pessoa. Mudança de autenticação: branch separada e testada.
+- **Aviso do mês depois de importar**: ao criar as contas, o app vai para a competência da primeira conta; pode ficar no mês que a pessoa estava olhando ou avisar para onde foi.
 
-## Carteiras configuráveis: backend feito (PR `feat/carteiras-api`), front pendente
+## Feito: carteiras configuráveis (#50); em andamento: transferência entre carteiras
 
-**Backend pronto**: tabela `wallets` (migration `00008` com backfill `free`/`benefit` → "Geral"/"Benefício"), rotas `/wallets` (listar, criar, editar, arquivar, restaurar; só admin escreve), `walletId` em receita, fonte, pagamento e categoria (`defaultWalletId`), resumo com lista de carteiras e **saldo anterior transportado** entre meses, aviso `wallet_balance_insufficient`. Ver [incomes-and-wallets.md](developer-guide/incomes-and-wallets.md). **Falta o front** (telas de carteiras em Ajustes, escolha de carteira em receita/pagamento/categoria, resumo em lista, aviso novo) e o guia do usuário.
+**Pronto (#50)**: tabela `wallets` (migration `00008` com backfill `free`/`benefit` → "Geral"/"Benefício"), Ajustes > Carteiras (só o Responsável escreve), `walletId` em receita, fonte, pagamento e categoria (`defaultWalletId`), resumo com um cartão por carteira e **saldo anterior transportado** entre meses, aviso `wallet_balance_insufficient`. Ver [incomes-and-wallets.md](developer-guide/incomes-and-wallets.md) e [carteiras.md](user-guides/carteiras.md).
+
+**Em andamento**: **transferência entre carteiras** (guardar na Reserva e tirar de lá): não é receita nem despesa, só move saldo; criar, excluir e desfazer; aviso de saldo na origem.
 
 Registro do desenho original (o que estava em aberto na época):
 
@@ -103,6 +107,10 @@ Já previsto desde o início; novas tabelas, sem backfill.
 - **Taxas de referência pela BrasilAPI** (`/taxas`: CDI, Selic, IPCA): comparar rendimento com o CDI e mostrar inflação do período. Confirmar a documentação da API antes de desenhar.
 - Cotação de ações e fundos: a BrasilAPI não cobre; escolher outra fonte quando a fase começar.
 - Regras para qualquer API de terceiros: chamada só pelo servidor, cache, degradação graciosa (o app nunca depende dela) e nenhum dado pessoal na requisição.
+
+## Feito: acesso por domínio com Cloudflare Tunnel (#51)
+
+`make tunnel-setup` e `make tunnel-up` publicam o app por `https://app.<domínio>` a partir do computador, sem abrir porta e sem Zero Trust (túnel gerenciado localmente). O nginx tem uma porta interna (8081) só para o túnel, onde o IP do cliente vem de `CF-Connecting-IP`. Pendente: o Cloudflare Access (login por e-mail antes do app) exige ativar o Zero Trust (cartão ou PayPal). Guia: [deployment.md](developer-guide/deployment.md).
 
 ## Fase 2 de infraestrutura
 
