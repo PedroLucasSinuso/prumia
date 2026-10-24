@@ -66,7 +66,13 @@ export function resolveTheme(theme: ThemeId): ResolvedTheme {
 
 /** Põe o tema no <html> e atualiza a cor da barra do sistema. As cores mudam pelo CSS (seletor data-theme). */
 export function applyTheme(theme: ThemeId): void {
-  document.documentElement.dataset.theme = theme
+  const root = document.documentElement
+  // Só anima quando já havia um tema (não no primeiro carregamento): a classe liga a transição de cor do CSS por 200 ms.
+  if (root.dataset.theme && root.dataset.theme !== theme) {
+    root.classList.add('theme-fade')
+    window.setTimeout(() => root.classList.remove('theme-fade'), 200)
+  }
+  root.dataset.theme = theme
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', THEME_COLOR[resolveTheme(theme)])
 }

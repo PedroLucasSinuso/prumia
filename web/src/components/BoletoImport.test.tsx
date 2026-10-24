@@ -49,9 +49,9 @@ describe('importar boleto', () => {
     expect(within(review).getByText(/Companhia de Luz/)).toBeInTheDocument()
     expect(within(review).getByText(/lido do texto do PDF/)).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Companhia de Luz')
-    expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('2026-10-28')
+    expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('28/10/2026')
     expect(within(dialog).getByLabelText('Valor')).toHaveValue('R$ 189,90')
-    expect(within(dialog).getByLabelText(/Mês de competência/)).toHaveValue('2026-10')
+    expect(within(dialog).getByLabelText(/Mês de competência/)).toHaveTextContent('outubro de 2026')
 
     const [, init] = extractCalls()[0] as [string, { body: { file: File; password?: string } }]
     expect(init.body.file.name).toBe('boleto.pdf')
@@ -149,7 +149,8 @@ describe('importar boleto', () => {
       await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
       await within(dialog).findByLabelText(/Como vocês chamam/)
       // sem favorecido reconhecido e com algum cadastrado, "Mais opções" já vem aberto
-      await user.selectOptions(within(dialog).getByLabelText('Favorecido (opcional)'), 'p9')
+      await user.click(within(dialog).getByRole('combobox', { name: 'Favorecido (opcional)' }))
+      await user.click(screen.getByRole('option', { name: 'Gás de rua' }))
       expect(within(dialog).queryByLabelText(/Como vocês chamam/)).not.toBeInTheDocument()
       expect(within(dialog).getByText(/CNPJ deste boleto será associado/)).toBeInTheDocument()
       await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
@@ -169,12 +170,12 @@ describe('importar boleto', () => {
     await user.upload(within(dialog).getByLabelText('Arquivo do boleto'), pdf())
     await within(dialog).findByRole('region', { name: 'Conferir antes de salvar' })
 
-    await user.click(within(dialog).getByRole('button', { name: 'parcelada' }))
+    await user.click(within(dialog).getByRole('radio', { name: 'parcelada' }))
     expect(within(dialog).queryByRole('region', { name: 'Conferir antes de salvar' })).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Importar boleto' })).not.toBeInTheDocument()
 
     // de volta à avulsa: o botão volta, sem o boleto anterior
-    await user.click(within(dialog).getByRole('button', { name: 'avulsa' }))
+    await user.click(within(dialog).getByRole('radio', { name: 'avulsa' }))
     expect(within(dialog).getByRole('button', { name: 'Importar boleto' })).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
     await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))
@@ -329,7 +330,7 @@ describe('importar conta sem boleto e lista', () => {
     expect(within(review).getByText(/Conta sem código de barras/)).toBeInTheDocument()
     expect(within(review).queryByRole('button', { name: 'Copiar linha digitável' })).not.toBeInTheDocument()
     expect(within(dialog).getByLabelText('Valor')).toHaveValue('R$ 130,43')
-    expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('2026-07-17')
+    expect(within(dialog).getByLabelText('Data de vencimento')).toHaveValue('17/07/2026')
     expect(within(dialog).getByLabelText('Descrição')).toHaveValue('Gasco Distribuidora SA')
     await user.click(within(dialog).getByRole('button', { name: 'Adicionar conta' }))
     await waitFor(() => expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invoices', expect.anything()))

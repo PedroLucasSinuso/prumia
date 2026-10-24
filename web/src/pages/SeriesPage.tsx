@@ -158,6 +158,7 @@ export default function SeriesPage() {
           <InvoiceForm
             key={creating}
             month={currentMonth()}
+            houseId={houseId}
             categories={categories.data.filter((c) => !c.archived)}
             payees={payees.data}
             canWrite={canWrite}

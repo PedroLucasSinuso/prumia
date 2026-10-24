@@ -216,24 +216,25 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       { id: 'l1', name: 'Luz', isEssential: true, sortOrder: 1, archived: false, parentId: 'c1' },
     ]
 
-    it('sem subcategorias nada muda: uma linha só de botões', async () => {
+    it('sem subcategorias a lista do combobox tem só as categorias principais', async () => {
       mockApi({ me: ok(me) })
       renderAt('/?mes=2026-05')
       await abrir()
-      expect(screen.queryByRole('group', { name: /Detalhe de/ })).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('combobox', { name: 'Categoria' }))
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moradia', 'MercadoVR', 'Nova categoria'])
     })
 
-    it('tocar numa categoria com filhas abre a 2ª linha; escolher a filha manda a filha; "geral" volta para a mãe', async () => {
+    it('o combobox agrupa "Mãe › filha"; escolher a filha manda a filha e a mãe continua escolhível', async () => {
       mockApi({ me: ok(me), categories: ok(subcats), create: ok(invoice({ id: 'novo', description: 'Gás' })) })
       renderAt('/?mes=2026-05')
       await abrir()
-      // abre já com a 1ª categoria (Moradia): a 2ª linha aparece com geral · Gás · Luz
-      const detalhe = screen.getByRole('group', { name: 'Detalhe de Moradia' })
-      expect(within(detalhe).getByRole('button', { name: 'geral' })).toHaveAttribute('aria-pressed', 'true')
-      await userEvent.click(within(detalhe).getByRole('button', { name: 'Gás' }))
-      expect(within(detalhe).getByRole('button', { name: 'Gás' })).toHaveAttribute('aria-pressed', 'true')
-      // a mãe continua marcada na 1ª linha
-      expect(screen.getByRole('button', { name: 'Moradia' })).toHaveAttribute('aria-pressed', 'true')
+      // abre já com a 1ª categoria (Moradia); a lista traz Moradia, Moradia › Gás, Moradia › Luz e Mercado
+      const combo = screen.getByRole('combobox', { name: 'Categoria' })
+      expect(combo).toHaveValue('Moradia')
+      await userEvent.click(combo)
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moradia', 'Moradia › Gás', 'Moradia › Luz', 'MercadoVR', 'Nova categoria'])
+      await userEvent.click(screen.getByRole('option', { name: 'Moradia › Gás' }))
+      expect(combo).toHaveValue('Moradia › Gás')
       await userEvent.type(screen.getByRole('textbox', { name: /O que é|Descrição/ }), 'Gás')
       await userEvent.type(screen.getByLabelText('Valor'), '15000')
       await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
@@ -242,12 +243,12 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       )
     })
 
-    it('trocar para outra categoria esconde a 2ª linha', async () => {
+    it('digitar filtra a lista (sem acento) e Enter escolhe a primeira', async () => {
       mockApi({ me: ok(me), categories: ok(subcats) })
       renderAt('/?mes=2026-05')
       await abrir()
-      await userEvent.click(screen.getByRole('button', { name: /Mercado/ }))
-      expect(screen.queryByRole('group', { name: /Detalhe de/ })).not.toBeInTheDocument()
+      await userEvent.type(screen.getByRole('combobox', { name: 'Categoria' }), 'gas{Enter}')
+      expect(screen.getByRole('combobox', { name: 'Categoria' })).toHaveValue('Moradia › Gás')
     })
 
     it('ao editar, a conta numa subcategoria mostra mãe e filha marcadas', async () => {
@@ -256,8 +257,7 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       renderAt(mes)
       await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Gás' }))
       await userEvent.click(screen.getByRole('button', { name: 'Editar' }))
-      const detalhe = await screen.findByRole('group', { name: 'Detalhe de Moradia' })
-      expect(within(detalhe).getByRole('button', { name: 'Gás' })).toHaveAttribute('aria-pressed', 'true')
+      expect(await screen.findByRole('combobox', { name: 'Categoria' })).toHaveValue('Moradia › Gás')
     })
 
     it('"Por categoria" soma as filhas na mãe', async () => {
@@ -281,9 +281,9 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     renderAt('/?mes=2026-05')
     await abrir()
     await userEvent.click(screen.getByText('Mais opções'))
-    const select = screen.getByLabelText('Favorecido (opcional)')
-    expect(within(select).queryByRole('option', { name: 'Antigo' })).not.toBeInTheDocument()
-    await userEvent.selectOptions(select, 'p1')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Favorecido (opcional)' }))
+    expect(screen.queryByRole('option', { name: 'Antigo' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: 'Gás' }))
     expect(screen.getByLabelText('Descrição')).toHaveValue('Gás')
     expect(screen.getByRole('button', { name: /Mercado/ })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.type(screen.getByLabelText('Valor'), '12345')
@@ -300,9 +300,9 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     mockApi({ me: ok(me), create: ok(invoice({ id: 'novo', description: 'Luz' })) })
     renderAt(mes)
     await abrir()
-    expect(screen.getByRole('button', { name: /hoje · 20\/10/ })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByRole('button', { name: /amanhã · 21\/10/ }))
-    expect(screen.getByRole('button', { name: /amanhã · 21\/10/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('radio', { name: 'Hoje, 20/10' })).toBeChecked()
+    await userEvent.click(screen.getByRole('radio', { name: 'Amanhã, 21/10' }))
+    expect(screen.getByRole('radio', { name: 'Amanhã, 21/10' })).toBeChecked()
     await userEvent.type(screen.getByLabelText('Descrição'), 'Luz')
     await userEvent.type(screen.getByLabelText('Valor'), '100')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar conta' }))
@@ -315,8 +315,8 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
     mockApi({ me: ok(me) })
     renderAt(mes)
     await abrir()
-    await userEvent.click(screen.getByRole('button', { name: 'outra data' }))
-    expect(screen.getByLabelText('Data de vencimento')).toHaveValue('2026-10-20')
+    await userEvent.click(screen.getByRole('radio', { name: 'Outra data' }))
+    expect(screen.getByLabelText('Data de vencimento')).toHaveValue('20/10/2026')
   })
 
   it('a categoria é escolhida por botões, e Mercado mostra a marca de benefício', async () => {
@@ -676,22 +676,23 @@ describe('computador', () => {
     })
     renderAt('/?mes=2026-05')
     await userEvent.click(await screen.findByRole('button', { name: /Nova conta/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'nova' }))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Categoria' }))
+    await userEvent.click(screen.getByRole('option', { name: /Nova categoria/ }))
     await userEvent.type(screen.getByLabelText('Nome da nova categoria'), 'Água')
     await userEvent.click(screen.getByRole('checkbox', { name: /dentro de Moradia/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Criar categoria' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/categories', expect.objectContaining({ body: { name: 'Água', isEssential: true, parentId: 'c1' } })),
     )
-    const detalhe = await screen.findByRole('group', { name: 'Detalhe de Moradia' })
-    expect(within(detalhe).getByRole('button', { name: 'Água' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('combobox', { name: 'Categoria' })).toHaveValue('Moradia › Água')
   })
 
   it('categoria repetida avisa no próprio campo', async () => {
     mockApi({ me: ok(me), createCategory: fail(409, 'category_exists') })
     renderAt('/?mes=2026-05')
     await userEvent.click(await screen.findByRole('button', { name: /Nova conta/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'nova' }))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Categoria' }))
+    await userEvent.click(screen.getByRole('option', { name: /Nova categoria/ }))
     await userEvent.type(screen.getByLabelText('Nome da nova categoria'), 'Moradia{Enter}')
     expect(await screen.findByText('Já existe uma categoria com esse nome.')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Nova conta' })).toBeInTheDocument()

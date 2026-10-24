@@ -21,6 +21,7 @@ import { SlideOver } from '../components/SlideOver'
 import { Timeline } from '../components/Timeline'
 import { useToast } from '../components/toastContext'
 import { buildTree, categoryPath, rollup } from '../lib/categories'
+import { pulsePaid } from '../lib/flash'
 import { addMonths, currentMonth, dayMonth, todayISO } from '../lib/dates'
 import { dueSoon, filterInvoices, repeatsCategory, sectionsOf, type SectionId, type StatusFilter } from '../lib/monthList'
 import { useHasSidePanel } from '../lib/media'
@@ -126,7 +127,8 @@ export default function MonthPage() {
     actions.pay.mutate(
       { id: inv.id, wallet },
       {
-        onSuccess: (result) =>
+        onSuccess: (result) => {
+          pulsePaid(inv.id)
           toast({
             // O servidor avisa (sem bloquear) quando o saldo de benefício do mês fica negativo.
             message: result?.warnings?.includes('benefit_balance_insufficient')
@@ -134,7 +136,8 @@ export default function MonthPage() {
               : `${inv.description} paga na ${walletLabel[wallet]}.`,
             actionLabel: 'Desfazer',
             onAction: () => actions.unpay.mutate(inv.id),
-          }),
+          })
+        },
         onError: () => toast({ message: 'Não foi possível marcar como paga. Tente de novo.' }),
       },
     )
@@ -148,6 +151,7 @@ export default function MonthPage() {
       try {
         await actions.pay.mutateAsync({ id: inv.id, wallet: walletFor(inv) })
         done.push(inv)
+        pulsePaid(inv.id)
       } catch {
         // segue com as outras; o aviso diz quantas falharam
       }
@@ -305,6 +309,7 @@ export default function MonthPage() {
 
   const formProps = {
     month,
+    houseId,
     categories: activeCategories,
     payees: payees.data,
     canWrite,
