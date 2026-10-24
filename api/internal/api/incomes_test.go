@@ -53,6 +53,7 @@ type ruleT struct {
 	Rule          string `json:"rule"`
 	N             *int   `json:"n"`
 	WeekendAdjust string `json:"weekendAdjust"`
+	MonthOffset   *int   `json:"monthOffset"`
 }
 
 type srcT struct {

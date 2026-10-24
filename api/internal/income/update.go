@@ -196,12 +196,13 @@ func (s *Service) updateThis(ctx context.Context, tx *gorm.DB, cur Income, p Pat
 		r := p.Rule.Check("dateRule", &v)
 		rule = &r
 		cols["date_rule"], cols["date_rule_n"], cols["weekend_adjust"] = r.Rule, r.nPtr(), string(r.Adjust)
+		cols["date_rule_offset"] = r.Offset
 	} else if cur.DateRule != nil {
 		adj := ""
 		if cur.WeekendAdjust != nil {
 			adj = *cur.WeekendAdjust
 		}
-		r := ruleFromCols(*cur.DateRule, cur.DateRuleN, adj)
+		r := ruleFromCols(*cur.DateRule, cur.DateRuleN, adj, cur.DateRuleOffset)
 		rule = &r
 	}
 	switch {

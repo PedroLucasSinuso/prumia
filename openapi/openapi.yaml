@@ -883,11 +883,14 @@ paths:
       description: |
         Para cada um dos `count` meses a partir de `month`, a data em que a regra cai (com o ajuste de fim de semana e
         feriados nacionais) e quantos dias úteis o mês tem (a quantidade sugerida para receitas por unidade).
+        Com `monthOffset=-1` a regra é aplicada ao mês anterior de cada competência (a data devolvida pode ser do mês
+        anterior), mas `businessDays` continua sendo os dias úteis da COMPETÊNCIA.
       parameters:
         - { name: month, in: query, required: true, schema: { type: string, format: date } }
         - { name: rule, in: query, required: true, schema: { $ref: '#/components/schemas/DateRuleKind' } }
         - { name: n, in: query, description: "Dia do mês (1 a 31) ou ordem do dia útil (1 a 23). Não se aplica a last_business_day.", schema: { type: integer } }
         - { name: weekendAdjust, in: query, schema: { $ref: '#/components/schemas/WeekendAdjust' } }
+        - { name: monthOffset, in: query, schema: { $ref: '#/components/schemas/MonthOffset' } }
         - { name: count, in: query, schema: { type: integer, minimum: 1, maximum: 24, default: 3 } }
       responses:
         '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/IncomeDatePreview' } } } } }
@@ -1563,6 +1566,7 @@ components:
     AmountMode: { type: string, enum: [fixed, per_unit], description: "fixed = valor cheio; per_unit = preço por unidade x quantidade" }
     DateRuleKind: { type: string, enum: [day_of_month, nth_business_day, last_business_day] }
     WeekendAdjust: { type: string, enum: [forward, backward, none], description: "Quando a data cai em fim de semana ou feriado nacional: forward = próximo dia útil (padrão), backward = dia útil anterior, none = manter" }
+    MonthOffset: { type: integer, enum: [-1, 0], default: 0, description: "Em que mês, em relação à competência, a regra de data é aplicada: 0 = no mês da competência (padrão); -1 = no mês anterior (ex.: o vale de outubro cai no último dia útil de setembro). A competência não muda, só a data." }
     DateRule:
       type: object
       required: [rule]
@@ -1571,6 +1575,7 @@ components:
         rule: { $ref: '#/components/schemas/DateRuleKind' }
         n: { type: integer, nullable: true }
         weekendAdjust: { allOf: [ { $ref: '#/components/schemas/WeekendAdjust' } ], description: "Padrão forward" }
+        monthOffset: { $ref: '#/components/schemas/MonthOffset' }
     Income:
       type: object
       required: [id, userId, kind, description, walletId, competenceMonth, expectedDate, amountMode, grossAmountCents, netAmountCents, deductions, received, held, repeats]

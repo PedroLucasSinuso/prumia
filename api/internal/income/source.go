@@ -22,7 +22,7 @@ const maxStartAwayMonths = 120
 
 // rule devolve a regra de data da fonte.
 func (src Source) rule() DateRule {
-	return ruleFromCols(src.DateRule, src.DateRuleN, src.WeekendAdjust)
+	return ruleFromCols(src.DateRule, src.DateRuleN, src.WeekendAdjust, src.DateRuleOffset)
 }
 
 // dayMirror é o valor da coluna legada day_of_month (1 a 31): o dia da regra "dia N" e 1 nas demais (ela não é usada).
@@ -72,7 +72,7 @@ func newOccurrence(src Source, o Occurrence, h calendar.HolidayFunc, qtyOverride
 		HouseholdID: src.HouseholdID, SourceID: &sid, UserID: src.UserID, Kind: src.Kind, Description: src.Name,
 		WalletID: src.WalletID, CompetenceMonth: o.Month, ExpectedDate: o.ExpectedDate,
 		GrossAmountCents: src.GrossAmountCents, Notes: src.Notes, CreatedBy: src.CreatedBy,
-		DateRule: &rs, DateRuleN: src.DateRuleN, WeekendAdjust: &adj,
+		DateRule: &rs, DateRuleN: src.DateRuleN, WeekendAdjust: &adj, DateRuleOffset: src.DateRuleOffset,
 	}
 	if src.AmountMode == AmountPerUnit && src.UnitPriceCents != nil {
 		qty := calendar.BusinessDaysInMonth(o.Month, h) // quantidade sugerida: dias úteis do mês (a pessoa ajusta depois)
@@ -197,7 +197,7 @@ func (s *Service) createSource(ctx context.Context, householdID, createdBy uuid.
 	src := Source{
 		HouseholdID: householdID, UserID: in.UserID, Kind: in.Kind, Name: in.Name, WalletID: walletID,
 		GrossAmountCents: moldGross, AmountMode: amount.Mode, UnitLabel: amount.UnitLabel, UnitPriceCents: amount.UnitPriceCents,
-		DateRule: rule.Rule, DateRuleN: rule.nPtr(), WeekendAdjust: string(rule.Adjust), DayOfMonth: dayMirror(rule),
+		DateRule: rule.Rule, DateRuleN: rule.nPtr(), WeekendAdjust: string(rule.Adjust), DateRuleOffset: rule.Offset, DayOfMonth: dayMirror(rule),
 		StartMonth: in.StartMonth, EndMonth: end, Notes: in.Notes, CreatedBy: createdBy,
 	}
 	src.GeneratedThrough = DefaultThrough(src.StartMonth, src.EndMonth, s.today())
@@ -504,14 +504,16 @@ func (s *Service) patchMold(ctx context.Context, tx *gorm.DB, cur *Source, p Sou
 		if *p.DayOfMonth < 1 || *p.DayOfMonth > 31 {
 			v.Add("dayOfMonth", "informe um dia de 1 a 31")
 		} else {
-			r := DateRule{Rule: RuleDayOfMonth, N: *p.DayOfMonth, Adjust: calendar.Adjust(cur.WeekendAdjust)}
+			r := DateRule{Rule: RuleDayOfMonth, N: *p.DayOfMonth, Adjust: calendar.Adjust(cur.WeekendAdjust), Offset: cur.DateRuleOffset}
 			newRule = &r
 		}
 	}
 	if newRule != nil {
 		cur.DateRule, cur.DateRuleN, cur.WeekendAdjust, cur.DayOfMonth = newRule.Rule, newRule.nPtr(), string(newRule.Adjust), dayMirror(*newRule)
+		cur.DateRuleOffset = newRule.Offset
 		out.cols["date_rule"], out.cols["date_rule_n"], out.cols["weekend_adjust"], out.cols["day_of_month"] =
 			cur.DateRule, cur.DateRuleN, cur.WeekendAdjust, cur.DayOfMonth
+		out.cols["date_rule_offset"] = cur.DateRuleOffset
 		out.touch.Rule = true
 	}
 	// Soma dos descontos contra o bruto do molde (por unidade: preço x dias úteis do mês corrente, a quantidade típica).
@@ -590,6 +592,7 @@ func (s *Service) applyMoldRows(ctx context.Context, tx *gorm.DB, src Source, tm
 		if touch.Rule {
 			rs, adj := rule.Rule, string(rule.Adjust)
 			upd["date_rule"], upd["date_rule_n"], upd["weekend_adjust"] = rs, rule.nPtr(), adj
+			upd["date_rule_offset"] = rule.Offset
 			upd["expected_date"] = rule.ExpectedDate(r.CompetenceMonth, h)
 		}
 		if len(upd) == 0 {

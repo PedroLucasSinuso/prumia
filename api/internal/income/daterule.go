@@ -18,11 +18,19 @@ const (
 	maxNthBusinessDay = 23 // nenhum mês tem mais que 23 dias úteis
 )
 
-// DateRule é a regra de data completa. N não se aplica ao último dia útil (fica 0).
+// Deslocamento de mês da regra: em que mês, em relação à competência, a data é calculada.
+const (
+	OffsetSameMonth     = 0  // no mês da competência (padrão)
+	OffsetPreviousMonth = -1 // no mês anterior (ex.: o vale de outubro cai no último dia útil de setembro)
+)
+
+// DateRule é a regra de data completa. N não se aplica ao último dia útil (fica 0). Offset diz em que mês a regra é
+// aplicada: 0 = o da competência, -1 = o anterior (a competência, e com ela o resumo, não muda; só a data).
 type DateRule struct {
 	Rule   string
 	N      int
 	Adjust calendar.Adjust
+	Offset int
 }
 
 // DefaultAdjust é o ajuste de uma regra nova: o dinheiro não cai em fim de semana nem feriado, então vai para a frente.
@@ -35,6 +43,9 @@ func (r DateRule) Check(field string, v *validation.Collector) DateRule {
 	}
 	if !calendar.ValidAdjust(r.Adjust) {
 		v.Add(field+".weekendAdjust", "use forward, backward ou none")
+	}
+	if r.Offset != OffsetSameMonth && r.Offset != OffsetPreviousMonth {
+		v.Add(field+".monthOffset", "use 0 (mês da competência) ou -1 (mês anterior)")
 	}
 	switch r.Rule {
 	case RuleDayOfMonth:
@@ -53,10 +64,11 @@ func (r DateRule) Check(field string, v *validation.Collector) DateRule {
 	return r
 }
 
-// ExpectedDate calcula a data de recebimento no mês de `month` (qualquer dia do mês; usa o dia 1).
+// ExpectedDate calcula a data de recebimento da competência `month` (qualquer dia do mês; usa o dia 1), aplicando a regra
+// ao mês `month + Offset` (feriados do ano certo, inclusive na virada: janeiro com offset -1 = dezembro anterior).
 // Só o "dia N do mês" precisa de ajuste: os dias úteis já caem em dia útil.
 func (r DateRule) ExpectedDate(month caldate.Date, h calendar.HolidayFunc) caldate.Date {
-	month = month.StartOfMonth()
+	month = month.StartOfMonth().AddMonths(r.Offset)
 	switch r.Rule {
 	case RuleNthBusinessDay:
 		return calendar.NthBusinessDay(month, r.N, h)
@@ -76,8 +88,8 @@ func (r DateRule) nPtr() *int {
 	return &n
 }
 
-func ruleFromCols(rule string, n *int, adjust string) DateRule {
-	r := DateRule{Rule: rule, Adjust: calendar.Adjust(adjust)}
+func ruleFromCols(rule string, n *int, adjust string, offset int) DateRule {
+	r := DateRule{Rule: rule, Adjust: calendar.Adjust(adjust), Offset: offset}
 	if n != nil {
 		r.N = *n
 	}
