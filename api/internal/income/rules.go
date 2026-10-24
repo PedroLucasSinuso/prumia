@@ -91,6 +91,18 @@ func CheckDeductions(gross money.Cents, ds []Deduction, v *validation.Collector)
 	return out
 }
 
+// CheckSalaryTaxes: INSS e IRRF incidem sobre o salário bruto; benefício (VR) e outras receitas não os têm.
+func CheckSalaryTaxes(kind string, ds []Deduction, v *validation.Collector) {
+	if kind == KindSalary {
+		return
+	}
+	for i, d := range ds {
+		if d.Kind == "inss" || d.Kind == "irrf" {
+			v.Add(fmt.Sprintf("deductions[%d].kind", i), "INSS e IRRF só valem para salário")
+		}
+	}
+}
+
 // CheckGross valida o valor bruto.
 func CheckGross(gross money.Cents, v *validation.Collector) {
 	if gross <= 0 || gross > MaxAmount {

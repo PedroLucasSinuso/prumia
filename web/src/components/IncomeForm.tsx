@@ -241,6 +241,8 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           label="Tipo" value={kind}
           onChange={(k) => {
             setKind(k)
+            // INSS e IRRF só valem para salário: ao trocar o tipo, saem da lista.
+            if (k !== 'salary') setDeductions((ds) => ds.filter((d) => d.kind !== 'inss' && d.kind !== 'irrf'))
             if (!repeatsTouched.current && !editing) setRepeats(k !== 'other')
           }}
           options={[{ value: 'salary', label: 'Salário' }, { value: 'benefit', label: 'Vale (VR)' }, { value: 'other', label: 'Outra' }]}
@@ -355,7 +357,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
 
       {/* Descontos */}
       <div className={group}>
-        <DeductionsEditor value={deductions} onChange={(d) => { setDeductions(d); clear('deductions'); setTaxNote(undefined) }} errors={fields} disabled={dis} />
+        <DeductionsEditor salary={kind === 'salary'} value={deductions} onChange={(d) => { setDeductions(d); clear('deductions'); setTaxNote(undefined) }} errors={fields} disabled={dis} />
         {kind === 'salary' && canWrite && (
           <div className="flex flex-col gap-2 rounded-md border border-line p-3">
             <div className="flex flex-wrap items-end gap-3">

@@ -269,6 +269,7 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 	}
 	expected := s.expectedFor(ctx, in.ExpectedDate, rule, in.CompetenceMonth, &v)
 	ds := CheckDeductions(amount.GrossCents, in.Deductions, &v)
+	CheckSalaryTaxes(in.Kind, ds, &v)
 	in.Notes = invoice.CheckNotes(in.Notes, &v)
 	if err := s.checkMember(ctx, householdID, in.UserID, &v); err != nil {
 		return View{}, err

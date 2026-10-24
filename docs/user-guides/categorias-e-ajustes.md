@@ -91,5 +91,5 @@ Deixaram o menu principal: abra pelo Mês ou pelo Resumo. Na tela **Parcelas e c
 
 - **Não achei "casa", "configurações" ou "parcelas" no menu**: casa e configurações viraram seções de **Ajustes**; parcelas abre pelo Mês e pelo Resumo.
 - **Aparece "Já existe uma categoria com este nome"**: já há uma com esse nome (maiúsculas não contam). Escolha outro ou restaure a arquivada.
-- **Não vejo os botões**: quem tem papel **leitura** só vê as categorias; peça a um membro ou admin para mudar.
+- **Não vejo os botões**: quem tem papel **Só leitura** só vê as categorias; peça a um Participante ou Responsável para mudar.
 - **"Não foi possível carregar as categorias"**: verifique a conexão e toque em **Tentar de novo**.

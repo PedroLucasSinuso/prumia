@@ -322,3 +322,19 @@ func TestHorizonte(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckSalaryTaxes(t *testing.T) {
+	ds := []Deduction{{Kind: "health_plan", Name: "Plano", AmountCents: 100}, {Kind: "inss", Name: "INSS", AmountCents: 100}}
+	var v validation.Collector
+	CheckSalaryTaxes(KindSalary, ds, &v)
+	if v.Err() != nil {
+		t.Fatalf("salário aceita INSS: %v", v)
+	}
+	for _, k := range []string{KindBenefit, KindOther} {
+		var v validation.Collector
+		CheckSalaryTaxes(k, ds, &v)
+		if v.Err() == nil {
+			t.Fatalf("%s não pode ter INSS", k)
+		}
+	}
+}

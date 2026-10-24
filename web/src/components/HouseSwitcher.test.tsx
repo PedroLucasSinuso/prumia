@@ -33,7 +33,7 @@ describe('seletor de casa', () => {
 
     await userEvent.click(trigger)
     const sheet = screen.getByRole('dialog', { name: 'Trocar de casa' })
-    expect(within(sheet).getByText('membro')).toBeInTheDocument() // o papel aparece em cada casa
+    expect(within(sheet).getByText('Participante')).toBeInTheDocument() // o papel aparece em cada casa
     await userEvent.click(within(sheet).getByRole('button', { name: /Casa da Ana/ }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

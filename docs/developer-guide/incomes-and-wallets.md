@@ -19,7 +19,7 @@ coluna de status.
 |---|---|
 | Líquido | `bruto - soma(descontos)`, **calculado a cada leitura** (`income.Net`) e nunca gravado. |
 | Modo de valor | `fixed` (valor cheio, `grossAmountCents`) ou `per_unit`: preço por unidade (`unitPriceCents`) x `quantity`, com rótulo livre (`unitLabel`: "dia trabalhado", "hora"...). O bruto por unidade é **sempre recalculado** (preço x quantidade), nunca digitado. Quantidade 1 a 999; quando não vem, vale o **número de dias úteis do mês**. |
-| Descontos | Tipos `inss`, `irrf`, `health_plan`, `health_copay`, `other`; cada um com `name` (1 a 60) e `amountCents > 0`. No máximo 20. **Opcionais**; o servidor só os calcula em `GET /tax/estimate` (sugestão, seção 6.2). |
+| Descontos | Tipos `inss`, `irrf`, `health_plan`, `health_copay`, `other`; cada um com `name` (1 a 60) e `amountCents > 0`. No máximo 20. **Opcionais**; `inss` e `irrf` só valem em receita do tipo salário (`CheckSalaryTaxes`; vale e outras recusam); o servidor só os calcula em `GET /tax/estimate` (sugestão, seção 6.2). |
 | Soma <= bruto | A soma dos descontos não pode ultrapassar o bruto. Erros por campo: `deductions`, `deductions[2].amountCents`... |
 | Teto | Bruto e cada desconto até R$ 10 bilhões (`invoice.MaxAmount`). |
 | Carteira | Derivada do tipo: `benefit` vai para a carteira `benefit`; `salary` e `other` para a `free`. Trocar o tipo troca a carteira. O campo `wallet` na entrada é opcional; incoerente = 400 no campo `wallet`. O banco reforça com `CHECK`. |

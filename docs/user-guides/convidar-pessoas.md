@@ -15,7 +15,7 @@ Toda casa tem sempre pelo menos um administrador.
 Só administradores convidam.
 
 1. Abra **Ajustes** e escolha **Casa e pessoas**.
-2. Em **convidar alguém**, escolha o **papel** (membro, leitura ou admin) e por quanto tempo o convite **vale** (1, 2 ou 7 dias).
+2. Em **convidar alguém**, escolha o **papel** (**Participante**, **Só leitura** ou **Responsável**; quem cuida das finanças da casa costuma ser o Responsável) e por quanto tempo o convite **vale** (1, 2 ou 7 dias).
 3. Toque em **Gerar link de convite**.
 4. Toque em **Copiar link** e envie para a pessoa (WhatsApp, por exemplo).
 
@@ -60,7 +60,7 @@ Se você é a única pessoa administradora, o app não deixa você se rebaixar. 
 
 Quem sai perde o acesso na hora, mas as contas que já foram lançadas continuam na casa, com o nome da pessoa.
 
-Você não troca o seu próprio papel: se é o único administrador, o app não deixa você sair nem deixar de ser admin. Torne outra pessoa administradora ou, se a casa não é mais necessária, exclua a casa.
+Você não troca o seu próprio papel: se é o único Responsável, o app não deixa você sair nem deixar de ser Responsável. Torne outra pessoa Responsável ou, se a casa não é mais necessária, exclua a casa.
 
 ## Mudar o nome ou excluir a casa
 

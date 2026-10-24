@@ -159,6 +159,7 @@ func (s *Service) createSource(ctx context.Context, householdID, createdBy uuid.
 		v.Add("unitPriceCents", "o preço por unidade é alto demais")
 	}
 	ds := CheckDeductions(amount.GrossCents, in.Deductions, &v)
+	CheckSalaryTaxes(in.Kind, ds, &v)
 	thisMonth := s.today().StartOfMonth()
 	switch {
 	case !startOK:
@@ -506,6 +507,7 @@ func (s *Service) patchMold(ctx context.Context, tx *gorm.DB, cur *Source, p Sou
 	}
 	if p.DeductionsSet {
 		out.tmpl = CheckDeductions(moldGross, p.Deductions, v)
+		CheckSalaryTaxes(cur.Kind, out.tmpl, v)
 		out.tmplSet, out.touch.Deductions = true, true
 	} else if out.touch.Amount && SumDeductions(out.tmpl) > moldGross {
 		v.Add("grossAmountCents", "o valor não pode ficar menor que a soma dos descontos")
