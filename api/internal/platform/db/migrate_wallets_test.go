@@ -146,7 +146,7 @@ func TestMigracaoCarteirasConverteFreeEBenefit(t *testing.T) {
 
 	// 4) Down da 00008: volta ao texto (benefício pelo NOME da carteira; receitas pelo tipo). Antes, desce a 00009
 	// (transferências), que depende de wallets.
-	for _, v := range []string{"00009", "00008"} {
+	for _, v := range []string{"00010", "00009", "00008"} {
 		if err := db.Rollback(ctx, sqlDB); err != nil {
 			t.Fatalf("down %s: %v", v, err)
 		}

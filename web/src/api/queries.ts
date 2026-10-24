@@ -407,7 +407,7 @@ export function useIncomeActions(houseId: string) {
 /** Prévia das datas de uma regra de data (próximos meses) e os dias úteis de cada mês. Não grava nada. */
 export function useIncomeDatePreview(houseId: string, rule: DateRule | undefined, month: string, count = 3) {
   return useQuery({
-    queryKey: ['income-dates', houseId, month, rule?.rule, rule?.n ?? null, rule?.weekendAdjust ?? null, count] as const,
+    queryKey: ['income-dates', houseId, month, rule?.rule, rule?.n ?? null, rule?.weekendAdjust ?? null, rule?.monthOffset ?? 0, count] as const,
     enabled: houseId !== '' && rule !== undefined,
     staleTime: 5 * 60_000,
     queryFn: (): Promise<IncomeDatePreview[]> =>
@@ -415,7 +415,7 @@ export function useIncomeDatePreview(houseId: string, rule: DateRule | undefined
         api.GET('/households/{householdId}/income-dates', {
           params: {
             path: { householdId: houseId },
-            query: { month, rule: rule!.rule, ...(rule!.n != null ? { n: rule!.n } : {}), ...(rule!.weekendAdjust ? { weekendAdjust: rule!.weekendAdjust } : {}), count },
+            query: { month, rule: rule!.rule, ...(rule!.n != null ? { n: rule!.n } : {}), ...(rule!.weekendAdjust ? { weekendAdjust: rule!.weekendAdjust } : {}), ...(rule!.monthOffset ? { monthOffset: rule!.monthOffset } : {}), count },
           },
         }),
       ),

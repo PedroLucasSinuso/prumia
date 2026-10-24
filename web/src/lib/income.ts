@@ -1,5 +1,5 @@
 import type { Deduction, DeductionKind, Income, IncomeKind, Member } from '../api/types'
-import { dayMonth, daysBetween } from './dates'
+import { addMonths, dayMonth, daysBetween, monthName } from './dates'
 import { formatCents } from './money'
 
 // Regras de receita espelhadas do backend, só para mostrar o líquido e os textos enquanto a pessoa digita.
@@ -51,14 +51,30 @@ export function stateText(i: Income, today: string): string {
 
 type Rule = NonNullable<Income['dateRule']>
 
-/** "2º dia útil", "último dia útil", "dia 28, ou o próximo dia útil". */
+/** Em que mês a regra é aplicada, em relação à competência: 0 = o da competência, -1 = o anterior (ex.: o VR de outubro cai em setembro). */
+export type MonthOffset = 0 | -1
+
+export const offsetOf = (rule: Rule | null | undefined): MonthOffset => (rule?.monthOffset === -1 ? -1 : 0)
+
+/** "2º dia útil", "último dia útil do mês anterior", "dia 28, ou o próximo dia útil". */
 export function ruleText(rule: Rule | null | undefined): string {
   if (!rule) return 'data escolhida'
-  if (rule.rule === 'nth_business_day') return `${rule.n ?? 1}º dia útil`
-  if (rule.rule === 'last_business_day') return 'último dia útil'
-  const base = `dia ${rule.n ?? 1}`
+  const prev = offsetOf(rule) === -1 ? ' do mês anterior' : ''
+  if (rule.rule === 'nth_business_day') return `${rule.n ?? 1}º dia útil${prev}`
+  if (rule.rule === 'last_business_day') return `último dia útil${prev}`
+  const base = `dia ${rule.n ?? 1}${prev}`
   if (rule.weekendAdjust === 'none') return `${base}, mesmo em fim de semana ou feriado`
   return rule.weekendAdjust === 'backward' ? `${base}, ou o dia útil anterior` : `${base}, ou o próximo dia útil`
+}
+
+/**
+ * Frase de apoio do "Mês em que cai": "O vale de outubro cai no último dia útil de setembro." `competence` é "AAAA-MM-01".
+ * Para "dia N" o ajuste de fim de semana não entra na frase (ele aparece logo acima, no próprio campo).
+ */
+export function offsetSentence(kind: IncomeKind, competence: string, rule: Pick<Rule, 'rule' | 'n'>, offset: MonthOffset): string {
+  const subject = kind === 'benefit' ? 'O vale' : kind === 'salary' ? 'O salário' : 'A receita'
+  const when = rule.rule === 'last_business_day' ? 'no último dia útil' : rule.rule === 'nth_business_day' ? `no ${rule.n ?? 1}º dia útil` : `no dia ${rule.n ?? 1}`
+  return `${subject} de ${monthName(competence)} cai ${when} de ${monthName(addMonths(competence, offset))}.`
 }
 
 /** "21 × R$ 65,00 · dia trabalhado" para receita por unidade; nada para valor cheio. */

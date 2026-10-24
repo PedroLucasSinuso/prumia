@@ -55,8 +55,10 @@ func TestMigracaoTransferenciasUpDownUpComDados(t *testing.T) {
 	mustFail("origem de outra casa", f.houseA, geralB, reservaA, 5000, "2026-10-01", f.userA)
 
 	// Down: remove a tabela e preserva o resto
-	if err := db.Rollback(ctx, sqlDB); err != nil {
-		t.Fatalf("down 00009: %v", err)
+	for _, v := range []string{"00010", "00009"} { // a 00010 é mais nova: desce primeiro
+		if err := db.Rollback(ctx, sqlDB); err != nil {
+			t.Fatalf("down %s: %v", v, err)
+		}
 	}
 	var tables, wallets, paid int
 	gdb.Raw(`SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='wallet_transfers'`).Scan(&tables)

@@ -20,6 +20,11 @@ const vrPedro = income({
   expectedDate: '2026-10-28', repeats: true, sourceId: 's2', dateRule: { rule: 'day_of_month', n: 28, weekendAdjust: 'forward' },
   amountMode: 'per_unit', quantity: 21, unitPriceCents: 6500, unitLabel: 'dia trabalhado',
 })
+// Vale que cai no último dia útil do mês ANTERIOR à competência (o de outubro cai em setembro).
+const vrMesAnterior = income({
+  id: 'r5', description: 'VR do mês seguinte', kind: 'benefit', walletId: 'w2', grossAmountCents: 80000, netAmountCents: 80000,
+  expectedDate: '2026-09-30', received: true, receivedAt: '2026-09-30', repeats: true, sourceId: 's5', dateRule: { rule: 'last_business_day', monthOffset: -1 },
+})
 const salarioAna = income({
   id: 'r3', description: 'Salário Ana', userId: 'u2', grossAmountCents: 300000, netAmountCents: 300000, expectedDate: '2026-10-05',
   held: true, repeats: true, sourceId: 's3', dateRule: { rule: 'day_of_month', n: 5, weekendAdjust: 'forward' },
@@ -167,6 +172,15 @@ describe('detalhe em leitura e "não caiu"', () => {
       expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}/receive', expect.objectContaining({ params: { path: { householdId: 'h1', incomeId: 'r3' } } })),
     )
     expect(await screen.findByText('Salário Ana: caiu.')).toBeInTheDocument()
+  })
+})
+
+describe('detalhe: receita que cai no mês anterior', () => {
+  it('diz "último dia útil do mês anterior" na regra', async () => {
+    mockApi({ me: ok(me), incomes: ok([vrMesAnterior]), summary: ok(summaryWith()) })
+    renderAt(mes)
+    await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de VR do mês seguinte' }))
+    expect(await screen.findByText('último dia útil do mês anterior')).toBeInTheDocument()
   })
 })
 
@@ -365,6 +379,67 @@ describe('formulário: criar', () => {
     )
   })
 
+  it('vale novo já vem em "No mês anterior", mostra a frase, a prévia com a data real e manda o monthOffset', async () => {
+    mockApi({
+      me: ok(me),
+      incomeDates: (q) =>
+        ok(
+          q.monthOffset === -1
+            ? [
+                { month: '2026-10-01', expectedDate: '2026-09-30', businessDays: 21 },
+                { month: '2026-11-01', expectedDate: '2026-10-30', businessDays: 19 },
+                { month: '2026-12-01', expectedDate: '2026-11-30', businessDays: 22 },
+                { month: '2027-01-01', expectedDate: '2026-12-31', businessDays: 20 },
+              ]
+            : [{ month: '2026-10-01', expectedDate: '2026-10-30', businessDays: 21 }],
+        ),
+    })
+    const form = await openNew()
+    expect(within(form).getByRole('radio', { name: 'No mês da competência' })).toBeChecked() // salário: no mês
+    await userEvent.click(within(form).getByRole('radio', { name: 'Vale (VR)' }))
+    expect(within(form).getByRole('radio', { name: 'No mês anterior' })).toBeChecked()
+    await userEvent.click(within(form).getByRole('radio', { name: 'Último dia útil' }))
+    expect(within(form).getByText(/O vale de outubro cai no último dia útil de setembro\./)).toBeInTheDocument()
+    expect(await within(form).findByText(/30\/10 \(sex\) · 30\/11 \(seg\) · 31\/12 \(qui\)/)).toBeInTheDocument()
+    expect(within(form).getByText(/Competência de outubro: 30\/09 \(qua\), já passou: conta como recebida/)).toBeInTheDocument()
+    await waitFor(() =>
+      expect(api.GET).toHaveBeenCalledWith(
+        '/households/{householdId}/income-dates',
+        expect.objectContaining({ params: expect.objectContaining({ query: expect.objectContaining({ rule: 'last_business_day', monthOffset: -1 }) }) }),
+      ),
+    )
+    await userEvent.type(within(form).getByLabelText('Descrição'), 'Vale-alimentação')
+    await userEvent.type(within(form).getByLabelText('Valor bruto'), '80000')
+    await userEvent.click(within(form).getByRole('button', { name: 'Adicionar receita' }))
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        '/households/{householdId}/incomes',
+        expect.objectContaining({ body: expect.objectContaining({ kind: 'benefit', dateRule: { rule: 'last_business_day', monthOffset: -1 }, repeats: true }) }),
+      ),
+    )
+  })
+
+  it('trocar o tipo depois de a pessoa escolher o mês não sobrescreve a escolha', async () => {
+    mockApi({ me: ok(me) })
+    const form = await openNew()
+    await userEvent.click(within(form).getByRole('radio', { name: 'No mês anterior' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Vale (VR)' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Salário' }))
+    expect(within(form).getByRole('radio', { name: 'No mês anterior' })).toBeChecked()
+    // e o oposto: escolheu "no mês da competência" e depois trocou para Vale
+    await userEvent.click(within(form).getByRole('radio', { name: 'No mês da competência' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Vale (VR)' }))
+    expect(within(form).getByRole('radio', { name: 'No mês da competência' })).toBeChecked()
+  })
+
+  it('data específica não tem "Mês em que cai"', async () => {
+    mockApi({ me: ok(me) })
+    const form = await openNew()
+    await userEvent.click(within(form).getByLabelText('Repete todo mês')) // desmarca para liberar a data específica
+    await userEvent.click(within(form).getByRole('radio', { name: 'Data específica' }))
+    expect(within(form).queryByRole('radiogroup', { name: 'Mês em que cai' })).not.toBeInTheDocument()
+  })
+
   it('mostra o erro do servidor no campo certo', async () => {
     mockApi({ me: ok(me), createIncome: fail(400, 'validation_error', { 'dateRule.n': 'informe um dia de 1 a 31' }) })
     const form = await openNew()
@@ -496,17 +571,15 @@ describe('formulário: editar com escopo', () => {
     return screen.findByRole('dialog', { name: 'Editar receita' })
   }
 
-  it('numa receita que se repete e ainda não caiu, pergunta o escopo e manda só o que mudou', async () => {
+  it('numa receita que se repete, o escopo já vem em "este e os seguintes" e manda só o que mudou', async () => {
     withIncomes()
     const form = await openEdit('Vale-refeição')
-    expect(within(form).getByRole('radio', { name: /Só este mês/ })).toBeChecked()
+    expect(within(form).getByRole('radio', { name: /Este e os seguintes/ })).toBeChecked()
     expect(within(form).getByLabelText('Preço por unidade')).toHaveValue('R$ 65,00')
     expect(within(form).getByLabelText('Quantidade')).toHaveValue(21)
     const preco = within(form).getByLabelText('Preço por unidade')
     await userEvent.clear(preco)
     await userEvent.type(preco, '7200')
-    await userEvent.click(within(form).getByRole('radio', { name: /Este e os seguintes/ }))
-    expect(within(form).getByLabelText('Quantidade')).toBeDisabled() // cada mês tem a sua quantidade
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', {
@@ -516,12 +589,15 @@ describe('formulário: editar com escopo', () => {
     )
   })
 
-  it('só este mês: pode ajustar a quantidade e o mês de competência', async () => {
+  it('mexer na quantidade (de um mês só) volta o escopo sozinho para "só este mês" e explica', async () => {
     withIncomes()
     const form = await openEdit('Vale-refeição')
     const qtd = within(form).getByLabelText('Quantidade')
+    expect(qtd).toBeEnabled()
     await userEvent.clear(qtd)
     await userEvent.type(qtd, '19')
+    expect(within(form).getByRole('radio', { name: /Só este mês/ })).toBeChecked()
+    expect(within(form).getByText(/Você mudou a quantidade, que vale só para um mês: o escopo voltou para "Só este mês"/)).toBeInTheDocument()
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', {
@@ -538,7 +614,6 @@ describe('formulário: editar com escopo', () => {
     const ordem = within(form).getByLabelText('Ordem do dia útil (1 = primeiro)')
     await userEvent.clear(ordem)
     await userEvent.type(ordem, '5')
-    await userEvent.click(within(form).getByRole('radio', { name: /Este e os seguintes/ }))
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', {
@@ -548,7 +623,7 @@ describe('formulário: editar com escopo', () => {
     )
   })
 
-  it('trocar pessoa e tipo vale para este mês', async () => {
+  it('trocar pessoa e tipo vale para os seguintes, como o resto', async () => {
     withIncomes()
     const form = await openEdit('Vale-refeição')
     await userEvent.click(within(form).getByRole('combobox', { name: 'Pessoa' }))
@@ -556,21 +631,82 @@ describe('formulário: editar com escopo', () => {
     await userEvent.click(within(form).getByRole('radio', { name: 'Salário' }))
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
-      expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', expect.objectContaining({ body: { userId: 'u2', kind: 'salary' } })),
+      expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', expect.objectContaining({ body: { userId: 'u2', kind: 'salary' }, params: expect.objectContaining({ query: { scope: 'following' } }) })),
     )
   })
 
-  it('numa receita já recebida a edição vale só para este mês (sem escolha de escopo)', async () => {
+  it('"Só este mês" continua disponível e manda scope=this', async () => {
+    withIncomes()
+    const form = await openEdit('Vale-refeição')
+    await userEvent.click(within(form).getByRole('radio', { name: /Só este mês/ }))
+    expect(within(form).getByText('Os outros meses não mudam.')).toBeInTheDocument()
+    const preco = within(form).getByLabelText('Preço por unidade')
+    await userEvent.clear(preco)
+    await userEvent.type(preco, '7200')
+    await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', expect.objectContaining({ params: expect.objectContaining({ query: { scope: 'this' } }) })),
+    )
+  })
+
+  it('mudar o mês de competência ou escolher "Data específica" também volta para "só este mês"', async () => {
+    withIncomes()
+    const form = await openEdit('Vale-refeição')
+    await userEvent.click(within(form).getByRole('radio', { name: 'Data específica' }))
+    expect(within(form).getByRole('radio', { name: /Só este mês/ })).toBeChecked()
+    expect(within(form).getByText(/Você mudou uma data específica, que vale só para um mês/)).toBeInTheDocument()
+    // voltar para "este e os seguintes" descarta a data específica e devolve a regra da receita
+    await userEvent.click(within(form).getByRole('radio', { name: /Este e os seguintes/ }))
+    expect(within(form).getByRole('radio', { name: 'Dia do mês' })).toBeChecked()
+    expect(within(form).queryByText(/Você mudou/)).not.toBeInTheDocument()
+    await userEvent.click(within(form).getByRole('button', { name: /Mês de competência/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'novembro de 2026' }))
+    expect(within(form).getByRole('radio', { name: /Só este mês/ })).toBeChecked()
+    expect(within(form).getByText(/Você mudou o mês de competência/)).toBeInTheDocument()
+  })
+
+  it('numa receita que se repete e já foi recebida, "Aplicar a" aparece em "este e os seguintes" e avisa que o mês não muda', async () => {
     withIncomes()
     const form = await openEdit('Salário Pedro')
-    expect(within(form).queryByRole('radiogroup', { name: 'Aplicar a' })).not.toBeInTheDocument()
-    expect(within(form).getByText(/já recebida: a edição vale só para este mês/)).toBeInTheDocument()
+    expect(within(form).getByRole('radiogroup', { name: 'Aplicar a' })).toBeInTheDocument()
+    expect(within(form).getByRole('radio', { name: /Este e os seguintes/ })).toBeChecked()
+    expect(within(form).getByText('Este mês já foi recebido e não muda; os próximos sim.')).toBeInTheDocument()
+    const bruto = within(form).getByLabelText('Valor bruto')
+    await userEvent.clear(bruto)
+    await userEvent.type(bruto, '510000')
+    await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', expect.objectContaining({ body: { amountMode: 'fixed', grossAmountCents: 510000 }, params: expect.objectContaining({ query: { scope: 'following' } }) })),
+    )
+  })
+
+  it('numa receita já recebida, escolher "só este mês" corrige o valor só dela', async () => {
+    withIncomes()
+    const form = await openEdit('Salário Pedro')
+    expect(within(form).getByText(/ · já recebida/)).toBeInTheDocument()
+    await userEvent.click(within(form).getByRole('radio', { name: /Só este mês/ }))
     const bruto = within(form).getByLabelText('Valor bruto')
     await userEvent.clear(bruto)
     await userEvent.type(bruto, '510000')
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', expect.objectContaining({ body: { amountMode: 'fixed', grossAmountCents: 510000 }, params: expect.objectContaining({ query: { scope: 'this' } }) })),
+    )
+  })
+
+  it('vale do mês anterior abre com o mês marcado e trocar para "no mês da competência" manda a regra sem offset', async () => {
+    mockApi({ me: ok(me), incomes: ok([vrMesAnterior]), summary: ok(summaryWith()) })
+    const form = await openEdit('VR do mês seguinte')
+    expect(within(form).getByRole('radio', { name: 'No mês anterior' })).toBeChecked()
+    expect(within(form).getByText(/O vale de outubro cai no último dia útil de setembro\./)).toBeInTheDocument()
+    await userEvent.click(within(form).getByRole('radio', { name: 'No mês da competência' }))
+    expect(within(form).getByText(/O vale de outubro cai no último dia útil de outubro\./)).toBeInTheDocument()
+    await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', {
+        params: { path: { householdId: 'h1', incomeId: 'r5' }, query: { scope: 'following' } },
+        body: { dateRule: { rule: 'last_business_day' } },
+      }),
     )
   })
 

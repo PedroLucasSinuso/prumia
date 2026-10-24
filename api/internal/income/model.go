@@ -40,12 +40,13 @@ type Source struct {
 	UnitLabel      *string
 	UnitPriceCents *money.Cents
 	// Regra de data (ver rules.go): dia N, N-ésimo dia útil ou último dia útil, com o ajuste de fim de semana/feriado.
-	DateRule      string
-	DateRuleN     *int // nil só em last_business_day
-	WeekendAdjust string
-	Notes         *string
-	CreatedBy     uuid.UUID `gorm:"type:uuid"`
-	DeletedAt     gorm.DeletedAt
+	DateRule       string
+	DateRuleN      *int // nil só em last_business_day
+	WeekendAdjust  string
+	DateRuleOffset int // 0 = mês da competência; -1 = mês anterior
+	Notes          *string
+	CreatedBy      uuid.UUID `gorm:"type:uuid"`
+	DeletedAt      gorm.DeletedAt
 }
 
 func (Source) TableName() string { return "income_sources" }
@@ -74,9 +75,11 @@ type Income struct {
 	DateRule      *string
 	DateRuleN     *int
 	WeekendAdjust *string
-	Notes         *string
-	CreatedBy     uuid.UUID `gorm:"type:uuid"`
-	DeletedAt     gorm.DeletedAt
+	// DateRuleOffset acompanha a regra: 0 = mês da competência; -1 = mês anterior. Sem regra (data digitada) fica 0.
+	DateRuleOffset int
+	Notes          *string
+	CreatedBy      uuid.UUID `gorm:"type:uuid"`
+	DeletedAt      gorm.DeletedAt
 }
 
 func (Income) TableName() string { return "incomes" }
