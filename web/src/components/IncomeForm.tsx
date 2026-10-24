@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { ApiError } from '../api/errors'
 import { estimateTax, useIncomeDatePreview } from '../api/queries'
@@ -10,6 +10,11 @@ import { formatCents } from '../lib/money'
 import { Button } from './Button'
 import { DeductionsEditor } from './DeductionsEditor'
 import { Field } from './Field'
+import { Combobox } from './ui/Combobox'
+import { DatePicker } from './ui/DatePicker'
+import { MonthPicker } from './ui/MonthPicker'
+import { PanelFooter } from './ui/Panel'
+import { Segmented } from './ui/Segmented'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
 
@@ -32,19 +37,15 @@ type Props = {
 
 type RuleChoice = 'date' | DateRule['rule']
 
-const kinds: IncomeKind[] = ['salary', 'benefit', 'other']
-const chip = (on: boolean) =>
-  `flex min-h-11 items-center justify-center rounded-md border px-3 text-[13px] ${on ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium hover:bg-ink/5'}`
 const legend = 'mb-2 p-0 text-xs font-semibold uppercase tracking-wider text-ink/80'
-const select = 'h-11 w-full rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink'
 const group = 'border-t border-line pt-4'
 const inner = 'flex flex-col gap-3'
 
-const adjustLabel: Record<WeekendAdjust, string> = {
-  forward: 'Próximo dia útil (padrão)',
-  backward: 'Dia útil anterior',
-  none: 'Manter a data',
-}
+const adjustOptions: Array<{ value: WeekendAdjust; label: string }> = [
+  { value: 'forward', label: 'Próximo dia útil' },
+  { value: 'backward', label: 'Dia útil anterior' },
+  { value: 'none', label: 'Manter a data' },
+]
 
 const sameDeductions = (a: Deduction[], b: Deduction[]) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -207,37 +208,24 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
   const dis = !canWrite
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={onSubmit} className="flex min-h-full flex-col gap-4" noValidate>
       <FormError message={error} />
 
       {/* Quem e o quê */}
       <fieldset className={inner} disabled={dis}>
         <legend className={legend}>Quem e o quê</legend>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="pessoa" className="text-xs font-medium uppercase tracking-wider text-ink/70">Pessoa</label>
-          <select id="pessoa" value={userId} onChange={(e) => { setUserId(e.target.value); clear('userId') }} className={select}>
-            {members.map((m) => (
-              <option key={m.userId} value={m.userId}>{m.name}</option>
-            ))}
-          </select>
-          {fields.userId && <p className="text-xs text-alert">{fields.userId}</p>}
-        </div>
-        <div role="group" aria-label="Tipo" className="grid grid-cols-3 gap-2">
-          {kinds.map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={kind === k}
-              onClick={() => {
-                setKind(k)
-                if (!repeatsTouched.current && !editing) setRepeats(k !== 'other')
-              }}
-              className={chip(kind === k)}
-            >
-              {k === 'benefit' ? 'Vale (VR)' : k === 'salary' ? 'Salário' : 'Outra'}
-            </button>
-          ))}
-        </div>
+        <Combobox
+          label="Pessoa" value={userId} onChange={(v) => { if (v) { setUserId(v); clear('userId') } }}
+          options={members.map((m) => ({ value: m.userId, label: m.name }))} error={fields.userId}
+        />
+        <Segmented
+          label="Tipo" value={kind}
+          onChange={(k) => {
+            setKind(k)
+            if (!repeatsTouched.current && !editing) setRepeats(k !== 'other')
+          }}
+          options={[{ value: 'salary', label: 'Salário' }, { value: 'benefit', label: 'Vale (VR)' }, { value: 'other', label: 'Outra' }]}
+        />
         <p className="text-xs text-ink/75">{kind === 'benefit' ? 'Entra na carteira de benefício.' : 'Entra na carteira livre.'}</p>
         <Field label="Descrição" name="description" autoComplete="off" data-autofocus="" autoFocus={!editing} required value={description}
           placeholder={kind === 'benefit' ? 'Ex.: Vale-refeição' : 'Ex.: Salário'} onChange={(e) => { setDescription(e.target.value); clear('description') }} error={fields.description} />
@@ -247,10 +235,10 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       <div className={group}>
         <fieldset className={inner} disabled={dis}>
         <legend className={legend}>Valor</legend>
-        <div role="group" aria-label="Como o valor é calculado" className="grid grid-cols-2 gap-2">
-          <button type="button" aria-pressed={mode === 'fixed'} onClick={() => setMode('fixed')} className={chip(mode === 'fixed')}>Valor cheio</button>
-          <button type="button" aria-pressed={mode === 'per_unit'} onClick={() => setMode('per_unit')} className={chip(mode === 'per_unit')}>Por unidade</button>
-        </div>
+        <Segmented
+          label="Como o valor é calculado" hideLabel value={mode} onChange={setMode}
+          options={[{ value: 'fixed', label: 'Valor cheio' }, { value: 'per_unit', label: 'Por unidade' }]}
+        />
         {mode === 'fixed' ? (
           <MoneyInput hero label="Valor bruto" value={gross} onChange={(c) => { setGross(c); clear('grossAmountCents') }} error={fields.grossAmountCents} />
         ) : (
@@ -276,15 +264,16 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       <div className={group}>
         <fieldset className={inner} disabled={dis}>
         <legend className={legend}>Quando cai</legend>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="regra" className="text-xs font-medium uppercase tracking-wider text-ink/70">Regra da data</label>
-          <select id="regra" value={rule} onChange={(e) => { setRule(e.target.value as RuleChoice); clear('dateRule.rule'); clear('dateRule.n') }} className={select}>
-            <option value="day_of_month">Dia do mês</option>
-            <option value="nth_business_day">N-ésimo dia útil do mês</option>
-            <option value="last_business_day">Último dia útil do mês</option>
-            {(!repeats || editing) && !following && <option value="date">Uma data específica</option>}
-          </select>
-        </div>
+        <Segmented
+          label="Regra da data" wrap value={rule}
+          onChange={(r) => { setRule(r); clear('dateRule.rule'); clear('dateRule.n') }}
+          options={[
+            { value: 'day_of_month', label: 'Dia do mês' },
+            { value: 'nth_business_day', label: 'N-ésimo dia útil' },
+            { value: 'last_business_day', label: 'Último dia útil' },
+            ...((!repeats || editing) && !following ? [{ value: 'date' as const, label: 'Data específica' }] : []),
+          ]}
+        />
         {(rule === 'day_of_month' || rule === 'nth_business_day') && (
           <Field
             label={rule === 'day_of_month' ? 'Dia' : 'Ordem do dia útil (1 = primeiro)'} name="ruleN" type="number" inputMode="numeric"
@@ -294,17 +283,10 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           />
         )}
         {rule === 'day_of_month' && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="ajuste" className="text-xs font-medium uppercase tracking-wider text-ink/70">Se cair em fim de semana ou feriado</label>
-            <select id="ajuste" value={adjust} onChange={(e) => setAdjust(e.target.value as WeekendAdjust)} className={select}>
-              {(Object.keys(adjustLabel) as WeekendAdjust[]).map((a) => (
-                <option key={a} value={a}>{adjustLabel[a]}</option>
-              ))}
-            </select>
-          </div>
+          <Segmented label="Se cair em fim de semana ou feriado" wrap value={adjust} onChange={setAdjust} options={adjustOptions} />
         )}
         {rule === 'date' && (
-          <Field label="Data" type="date" name="expectedDate" required value={exact} onChange={(e) => { setExact(e.target.value); clear('expectedDate') }} error={fields.expectedDate} />
+          <DatePicker label="Data" name="expectedDate" required value={exact} onChange={(d) => { setExact(d); clear('expectedDate') }} error={fields.expectedDate} />
         )}
         {currentRule && preview.data && (
           <p className="rounded-md border border-line px-3 py-2 text-[13px] text-ink/85" aria-live="polite">
@@ -315,8 +297,8 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           </p>
         )}
         {editing && !following && (
-          <Field label="Mês de competência" type="month" name="competenceMonth" value={competenceInput}
-            hint="Mude só se a receita pertence a outro mês." onChange={(e) => { setCompetenceInput(e.target.value); clear('competenceMonth') }} error={fields.competenceMonth} />
+          <MonthPicker label="Mês de competência" value={competenceInput}
+            hint="Mude só se a receita pertence a outro mês." onChange={(m) => { setCompetenceInput(m); clear('competenceMonth') }} error={fields.competenceMonth} />
         )}
       </fieldset>
       </div>
@@ -340,8 +322,8 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
             Repete todo mês
           </label>
           {repeats && (
-            <Field label="Até (opcional)" type="month" name="repeatsUntil" value={until} min={month.slice(0, 7)} hint="Sem data, repete até você encerrar."
-              onChange={(e) => { setUntil(e.target.value); clear('endMonth') }} error={fields.endMonth} />
+            <MonthPicker label="Até (opcional)" clearable value={until} min={month.slice(0, 7)} hint="Sem data, repete até você encerrar."
+              onChange={(m) => { setUntil(m); clear('endMonth') }} error={fields.endMonth} />
           )}
           </fieldset>
         </div>
@@ -384,42 +366,30 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       )}
 
       {canAskScope && canWrite && (
-        <fieldset className="flex flex-col gap-1 rounded-md border border-line p-3">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-ink/80">Aplicar a</legend>
-          <ScopeOption checked={scope === 'this'} onChange={() => setScope('this')} label="Só este mês" hint="Os outros meses não mudam." />
-          <ScopeOption
-            checked={scope === 'following'}
-            onChange={chooseFollowing}
-            label="Este e os seguintes"
-            hint="Vale para os próximos meses que ainda não foram recebidos. Ajustes feitos neles são sobrescritos."
+        <div className="flex flex-col gap-1.5">
+          <Segmented
+            label="Aplicar a" wrap value={scope}
+            onChange={(v) => (v === 'following' ? chooseFollowing() : setScope('this'))}
+            options={[{ value: 'this', label: 'Só este mês' }, { value: 'following', label: 'Este e os seguintes' }]}
           />
-        </fieldset>
+          <p className="text-xs text-ink/75">
+            {following ? 'Vale para os próximos meses que ainda não foram recebidos. Ajustes feitos neles são sobrescritos.' : 'Os outros meses não mudam.'}
+          </p>
+        </div>
       )}
 
       {canWrite && (
-        <div className="flex flex-col gap-1.5">
-          <Button type="submit" disabled={busy || !valid}>
-            {busy ? 'Salvando…' : editing ? 'Salvar alterações' : 'Adicionar receita'}
+        <PanelFooter>
+          <Button type="submit" loading={busy} disabled={!valid}>
+            {editing ? 'Salvar alterações' : 'Adicionar receita'}
           </Button>
           {editing && onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel}>
               Cancelar
             </Button>
           )}
-        </div>
+        </PanelFooter>
       )}
     </form>
-  )
-}
-
-function ScopeOption({ checked, onChange, label, hint }: { checked: boolean; onChange: () => void; label: string; hint: ReactNode }) {
-  return (
-    <label className="flex min-h-11 cursor-pointer items-start gap-3 py-1 text-sm">
-      <input type="radio" name="escopo" checked={checked} onChange={onChange} className="mt-1 size-4 accent-structure" />
-      <span>
-        <span className="font-medium">{label}</span>
-        <span className="block text-xs text-ink/75">{hint}</span>
-      </span>
-    </label>
   )
 }

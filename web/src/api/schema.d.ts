@@ -1425,7 +1425,7 @@ export interface components {
             amountMode: components["schemas"]["AmountMode"];
             grossAmountCents: components["schemas"]["Cents"];
             /** @description Só por unidade */
-            unitPriceCents?: components["schemas"]["Cents"] | null;
+            unitPriceCents?: (number & components["schemas"]["Cents"]) | null;
             /** @description Só por unidade. Bruto = preço x quantidade */
             quantity?: number | null;
             /** @description Só por unidade (ex.: dia trabalhado, hora) */
@@ -1447,7 +1447,7 @@ export interface components {
             /** @description A repetição continua depois deste mês */
             repeats: boolean;
             /** @description Último mês da repetição (nulo = sem fim) */
-            repeatsUntil?: components["schemas"]["Month"] | null;
+            repeatsUntil?: (string & components["schemas"]["Month"]) | null;
             notes?: string | null;
         };
         IncomeInput: {
@@ -1512,7 +1512,7 @@ export interface components {
             amountMode: components["schemas"]["AmountMode"];
             /** @description Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade). */
             grossAmountCents: components["schemas"]["Cents"];
-            unitPriceCents?: components["schemas"]["Cents"] | null;
+            unitPriceCents?: (number & components["schemas"]["Cents"]) | null;
             unitLabel?: string | null;
             /** @description Legado: o dia da regra day_of_month (1 nas demais regras). Use dateRule. */
             dayOfMonth: number;

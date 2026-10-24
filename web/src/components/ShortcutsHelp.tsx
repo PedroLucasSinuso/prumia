@@ -4,7 +4,7 @@ import { Tooltip } from './ui/Tooltip'
 
 /** Atalhos de teclado da tela do mês (computador). A mesma lista serve para a ajuda "?" e para a documentação. */
 export type Shortcut = [keys: string, action: string]
-export const MONTH_SHORTCUTS: Shortcut[] = [
+const MONTH_SHORTCUTS: Shortcut[] = [
   ['N', 'nova conta'],
   ['← / →', 'mês anterior / próximo'],
   ['/', 'buscar'],

@@ -37,8 +37,8 @@ dela para a que sugere a carteira certa (ou use outra conta). A escolha manual d
 Se você pagar com **benefício** e o saldo do mês ficar **negativo**, o aviso mostra: **"Atenção: o saldo de benefício deste mês ficou
 negativo"**. O pagamento é feito mesmo assim; o app só avisa, porque o saldo é uma estimativa.
 
-Dica: marque o VR como **recebido** assim que ele cair. Se ele ainda estiver como "previsto", o app considera que você não tem saldo
-e avisa à toa.
+Dica: o VR conta como recebido sozinho quando a data chega. Antes disso o app considera que você ainda não tem saldo e pode avisar à toa;
+se o dinheiro entrou adiantado, abra a receita e use **Caiu**.
 
 ## Onde ver os saldos
 
@@ -47,10 +47,11 @@ pago**, e uma barra com a parte do que entrou que já foi gasta. Veja [resumo-do
 
 ## Cadastrar o VR
 
-Em **receitas**, toque em **+ Nova fonte**, escolha **Vale (VR)**, informe o valor e o dia em que cai. Detalhes em
-[salario-e-previsao.md](salario-e-previsao.md). Quando o VR cair, toque no quadradinho dele para marcar como **recebido**.
+Em **Receitas**, use **Nova receita**, escolha **Vale (VR)**, informe o valor (cheio ou por dia trabalhado) e quando cai. Detalhes em
+[salario-e-previsao.md](salario-e-previsao.md). O recebimento é automático: o VR conta como recebido quando a data chega. Se ele não
+caiu, abra a receita e use **Não caiu**.
 
 ## E se...
 
 - **Quero colocar VR na carteira livre.** Não dá: o VR sempre fica na carteira de benefício.
-- **O saldo está negativo ("falta").** Veja se o VR do mês foi marcado como recebido. Se foi, você gastou mais do que recebeu naquela carteira.
+- **O saldo está negativo ("falta").** Veja se o VR do mês está como **Não caiu**. Se não está, você gastou mais do que recebeu naquela carteira.

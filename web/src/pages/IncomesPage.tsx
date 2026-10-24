@@ -19,6 +19,7 @@ import { Sheet } from '../components/Sheet'
 import { ShortcutsHelp, type Shortcut } from '../components/ShortcutsHelp'
 import { SlideOver } from '../components/SlideOver'
 import { useToast } from '../components/toastContext'
+import { Tooltip } from '../components/ui/Tooltip'
 import { addMonths, dayMonth, monthLabel, todayISO } from '../lib/dates'
 import { incomeSections, incomeTotals, monthSurplus, personTotals, stateOf, type GroupBy, type SectionId } from '../lib/income'
 import { useHasSidePanel } from '../lib/media'
@@ -260,10 +261,12 @@ export default function IncomesPage() {
           {desktop && (
             <div className="flex flex-wrap items-center gap-2">
               {canWrite && (
-                <Button onClick={openNew} title="Nova receita (N)" className="flex h-10 items-center gap-2">
-                  <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova receita
-                  <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-[10px] leading-4">N</kbd>
-                </Button>
+                <Tooltip label="Nova receita" shortcut="N">
+                  <Button onClick={openNew} className="flex items-center gap-2">
+                    <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova receita
+                    <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-[10px] leading-4">N</kbd>
+                  </Button>
+                </Tooltip>
               )}
               <ShortcutsHelp open={helpOpen} onToggle={() => setHelpOpen((o) => !o)} items={SHORTCUTS} />
             </div>
@@ -386,9 +389,11 @@ export default function IncomesPage() {
                 <section aria-label="Detalhes da receita" className="rounded-md border-2 border-structure p-4 motion-safe:animate-fade-in">
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <h2 className="min-w-0 break-words font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{panelIncome.description}</h2>
-                    <button aria-label="Fechar detalhes" title="Fechar (Esc)" onClick={() => setPanel(null)} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
-                      <X size={20} strokeWidth={1.5} aria-hidden="true" />
-                    </button>
+                    <Tooltip label="Fechar" shortcut="Esc">
+                      <button aria-label="Fechar detalhes" onClick={() => setPanel(null)} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
+                        <X size={20} strokeWidth={1.5} aria-hidden="true" />
+                      </button>
+                    </Tooltip>
                   </div>
                   {detail}
                 </section>

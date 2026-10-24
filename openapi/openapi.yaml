@@ -1414,17 +1414,17 @@ components:
         expectedDate: { type: string, format: date }
         amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { $ref: '#/components/schemas/Cents' }
-        unitPriceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true, description: "Só por unidade" }
+        unitPriceCents: { type: integer, allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true, description: "Só por unidade" }
         quantity: { type: integer, nullable: true, description: "Só por unidade. Bruto = preço x quantidade" }
         unitLabel: { type: string, nullable: true, description: "Só por unidade (ex.: dia trabalhado, hora)" }
-        dateRule: { allOf: [ { $ref: '#/components/schemas/DateRule' } ], nullable: true, description: "Regra que calculou a data (nulo = data digitada)" }
+        dateRule: { type: object, allOf: [ { $ref: '#/components/schemas/DateRule' } ], nullable: true, description: "Regra que calculou a data (nulo = data digitada)" }
         deductions: { type: array, items: { $ref: '#/components/schemas/Deduction' } }
         netAmountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Calculado = bruto - descontos (somente leitura)" }
         received: { type: boolean, description: "Derivado: a data esperada chegou (ou foi marcada antes) e não está em `held`. Conta no saldo." }
         receivedAt: { type: string, format: date, nullable: true, description: "Dia em que entrou (a data marcada ou, no recebimento automático, a data esperada). Nulo se não recebida." }
         held: { type: boolean, description: '"Não caiu": o dinheiro previsto ainda não entrou; não conta como recebida até alguém dizer "caiu".' }
         repeats: { type: boolean, description: "A repetição continua depois deste mês" }
-        repeatsUntil: { allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true, description: "Último mês da repetição (nulo = sem fim)" }
+        repeatsUntil: { type: string, allOf: [ { $ref: '#/components/schemas/Month' } ], nullable: true, description: "Último mês da repetição (nulo = sem fim)" }
         notes: { type: string, nullable: true }
     IncomeInput:
       type: object
@@ -1473,7 +1473,7 @@ components:
         name: { type: string }
         amountMode: { $ref: '#/components/schemas/AmountMode' }
         grossAmountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Fixo: o valor. Por unidade: espelha o preço (o bruto de cada mês é preço x quantidade)." }
-        unitPriceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
+        unitPriceCents: { type: integer, allOf: [ { $ref: '#/components/schemas/Cents' } ], nullable: true }
         unitLabel: { type: string, nullable: true }
         dayOfMonth: { type: integer, minimum: 1, maximum: 31, description: "Legado: o dia da regra day_of_month (1 nas demais regras). Use dateRule." }
         dateRule: { $ref: '#/components/schemas/DateRule' }

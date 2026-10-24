@@ -245,7 +245,7 @@ describe('formulário: criar', () => {
     await userEvent.type(within(form).getByLabelText('Valor bruto'), '500000')
     expect(within(form).getByLabelText('Repete todo mês')).toBeChecked()
     expect(await within(form).findByText(/05\/10 \(seg\) · 05\/11 \(qui\) · 07\/12 \(seg\)/)).toBeInTheDocument()
-    expect(within(form).getByLabelText('Se cair em fim de semana ou feriado')).toHaveValue('forward')
+    expect(within(form).getByRole('radio', { name: 'Próximo dia útil' })).toBeChecked()
     await userEvent.click(within(form).getByRole('button', { name: 'Adicionar receita' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
@@ -263,8 +263,8 @@ describe('formulário: criar', () => {
   it('"N-ésimo dia útil" esconde o ajuste de fim de semana e pede a prévia dessa regra', async () => {
     mockApi({ me: ok(me) })
     const form = await openNew()
-    await userEvent.selectOptions(within(form).getByLabelText('Regra da data'), 'nth_business_day')
-    expect(within(form).queryByLabelText('Se cair em fim de semana ou feriado')).not.toBeInTheDocument()
+    await userEvent.click(within(form).getByRole('radio', { name: 'N-ésimo dia útil' }))
+    expect(within(form).queryByRole('radiogroup', { name: 'Se cair em fim de semana ou feriado' })).not.toBeInTheDocument()
     const ordem = within(form).getByLabelText('Ordem do dia útil (1 = primeiro)')
     await userEvent.clear(ordem)
     await userEvent.type(ordem, '2')
@@ -288,7 +288,7 @@ describe('formulário: criar', () => {
   it('último dia útil não pede número', async () => {
     mockApi({ me: ok(me) })
     const form = await openNew()
-    await userEvent.selectOptions(within(form).getByLabelText('Regra da data'), 'last_business_day')
+    await userEvent.click(within(form).getByRole('radio', { name: 'Último dia útil' }))
     expect(within(form).queryByLabelText('Dia')).not.toBeInTheDocument()
     await userEvent.type(within(form).getByLabelText('Descrição'), 'Aluguel recebido')
     await userEvent.type(within(form).getByLabelText('Valor bruto'), '150000')
@@ -301,8 +301,8 @@ describe('formulário: criar', () => {
   it('por unidade: sugere os dias úteis do mês como quantidade e mostra o total', async () => {
     mockApi({ me: ok(me) })
     const form = await openNew()
-    await userEvent.click(within(form).getByRole('button', { name: 'Vale (VR)' }))
-    await userEvent.click(within(form).getByRole('button', { name: 'Por unidade' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Vale (VR)' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Por unidade' }))
     expect(within(form).getByLabelText('Quantidade')).toHaveValue(21)
     expect(await within(form).findByText(/Sugerida: 21 dias úteis em outubro de 2026/)).toBeInTheDocument()
     await userEvent.type(within(form).getByLabelText('Preço por unidade'), '6500')
@@ -328,12 +328,12 @@ describe('formulário: criar', () => {
   it('sem repetir, aceita uma data específica', async () => {
     mockApi({ me: ok(me) })
     const form = await openNew()
-    await userEvent.click(within(form).getByRole('button', { name: 'Outra' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Outra' }))
     expect(within(form).getByLabelText('Repete todo mês')).not.toBeChecked()
-    await userEvent.selectOptions(within(form).getByLabelText('Regra da data'), 'date')
+    await userEvent.click(within(form).getByRole('radio', { name: 'Data específica' }))
     await userEvent.type(within(form).getByLabelText('Descrição'), 'Freela')
     await userEvent.type(within(form).getByLabelText('Valor bruto'), '120000')
-    await userEvent.type(within(form).getByLabelText('Data'), '2026-10-25')
+    await userEvent.type(within(form).getByLabelText('Data'), '25102026')
     await userEvent.click(within(form).getByRole('button', { name: 'Adicionar receita' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(
@@ -347,11 +347,11 @@ describe('formulário: criar', () => {
   it('marcar "repete" troca "data específica" por uma regra', async () => {
     mockApi({ me: ok(me) })
     const form = await openNew()
-    await userEvent.click(within(form).getByRole('button', { name: 'Outra' }))
-    await userEvent.selectOptions(within(form).getByLabelText('Regra da data'), 'date')
+    await userEvent.click(within(form).getByRole('radio', { name: 'Outra' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Data específica' }))
     await userEvent.click(within(form).getByLabelText('Repete todo mês'))
-    expect(within(form).getByLabelText('Regra da data')).toHaveValue('day_of_month')
-    expect(within(form).queryByRole('option', { name: 'Uma data específica' })).not.toBeInTheDocument()
+    expect(within(form).getByRole('radio', { name: 'Dia do mês' })).toBeChecked()
+    expect(within(form).queryByRole('radio', { name: 'Data específica' })).not.toBeInTheDocument()
   })
 
   it('"Repete até" vai como o primeiro dia do mês escolhido', async () => {
@@ -359,10 +359,11 @@ describe('formulário: criar', () => {
     const form = await openNew()
     await userEvent.type(within(form).getByLabelText('Descrição'), 'Temporário')
     await userEvent.type(within(form).getByLabelText('Valor bruto'), '100000')
-    await userEvent.type(within(form).getByLabelText('Até (opcional)'), '2027-03')
+    await userEvent.click(within(form).getByRole('button', { name: /Até \(opcional\)/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'dezembro de 2026' }))
     await userEvent.click(within(form).getByRole('button', { name: 'Adicionar receita' }))
     await waitFor(() =>
-      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/incomes', expect.objectContaining({ body: expect.objectContaining({ repeats: true, repeatsUntil: '2027-03-01' }) })),
+      expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/incomes', expect.objectContaining({ body: expect.objectContaining({ repeats: true, repeatsUntil: '2026-12-01' }) })),
     )
   })
 
@@ -418,7 +419,7 @@ describe('sugestão de INSS e IRRF (opcional)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Nova receita' }))
     const form = await screen.findByRole('dialog', { name: 'Nova receita' })
     expect(within(form).queryByLabelText('Valor do desconto 1')).not.toBeInTheDocument()
-    await userEvent.click(within(form).getByRole('button', { name: 'Vale (VR)' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Vale (VR)' }))
     expect(within(form).queryByRole('button', { name: 'Sugerir INSS e IRRF' })).not.toBeInTheDocument()
   })
 
@@ -480,7 +481,7 @@ describe('formulário: editar com escopo', () => {
   it('mudar a regra de data manda a regra nova (o servidor recalcula a data)', async () => {
     withIncomes()
     const form = await openEdit('Vale-refeição')
-    await userEvent.selectOptions(within(form).getByLabelText('Regra da data'), 'nth_business_day')
+    await userEvent.click(within(form).getByRole('radio', { name: 'N-ésimo dia útil' }))
     const ordem = within(form).getByLabelText('Ordem do dia útil (1 = primeiro)')
     await userEvent.clear(ordem)
     await userEvent.type(ordem, '5')
@@ -497,8 +498,9 @@ describe('formulário: editar com escopo', () => {
   it('trocar pessoa e tipo vale para este mês', async () => {
     withIncomes()
     const form = await openEdit('Vale-refeição')
-    await userEvent.selectOptions(within(form).getByLabelText('Pessoa'), 'u2')
-    await userEvent.click(within(form).getByRole('button', { name: 'Salário' }))
+    await userEvent.click(within(form).getByRole('combobox', { name: 'Pessoa' }))
+    await userEvent.click(screen.getByRole('option', { name: 'Ana' }))
+    await userEvent.click(within(form).getByRole('radio', { name: 'Salário' }))
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() =>
       expect(api.PATCH).toHaveBeenCalledWith('/households/{householdId}/incomes/{incomeId}', expect.objectContaining({ body: { userId: 'u2', kind: 'salary' } })),
@@ -508,7 +510,7 @@ describe('formulário: editar com escopo', () => {
   it('numa receita já recebida a edição vale só para este mês (sem escolha de escopo)', async () => {
     withIncomes()
     const form = await openEdit('Salário Pedro')
-    expect(within(form).queryByRole('radio')).not.toBeInTheDocument()
+    expect(within(form).queryByRole('radiogroup', { name: 'Aplicar a' })).not.toBeInTheDocument()
     expect(within(form).getByText(/já recebida: a edição vale só para este mês/)).toBeInTheDocument()
     const bruto = within(form).getByLabelText('Valor bruto')
     await userEvent.clear(bruto)
