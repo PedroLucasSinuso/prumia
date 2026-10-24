@@ -38,7 +38,7 @@ export function WalletCard({ title, hint, balance, tone = 'light' }: Props) {
         {formatCents(Math.abs(projected))}
       </p>
       <p className={`text-[11px] ${soft}`}>
-        hoje: <span className="font-mono tabular-nums">{formatCents(balance.balanceCents)}</span> (saldo anterior + recebido − pago)
+        hoje: <span className="font-mono tabular-nums">{formatCents(balance.balanceCents)}</span> (saldo anterior + recebido − pago ± transferências)
       </p>
       <PaidGauge fraction={Math.min(1, paidFraction)} tone={dark ? 'dark' : 'light'} className="mt-3" />
       <p className={`mt-1 text-[11px] ${soft}`}>{Math.round(paidFraction * 100)}% do previsto já foi pago</p>
@@ -47,6 +47,18 @@ export function WalletCard({ title, hint, balance, tone = 'light' }: Props) {
           <div className={row}>
             <dt>saldo que veio dos meses anteriores</dt>
             <dd className="font-mono tabular-nums">{formatCents(balance.carryOverCents)}</dd>
+          </div>
+        )}
+        {balance.transfersInCents !== 0 && (
+          <div className={row}>
+            <dt>transferências recebidas</dt>
+            <dd className="font-mono tabular-nums">{formatCents(balance.transfersInCents)}</dd>
+          </div>
+        )}
+        {balance.transfersOutCents !== 0 && (
+          <div className={row}>
+            <dt>transferências enviadas</dt>
+            <dd className="font-mono tabular-nums">{formatCents(balance.transfersOutCents)}</dd>
           </div>
         )}
         <div className={row}>

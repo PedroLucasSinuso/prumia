@@ -1,20 +1,28 @@
+import { ArrowLeftRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState, type ReactNode } from 'react'
 
-import { useCategories, useCategoryHistory, useMembers, useSummary } from '../api/queries'
+import { useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
+import type { Transfer, TransferInput, TransferResult } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
+import { Button } from '../components/Button'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
 import { Sheet } from '../components/Sheet'
+import { SlideOver } from '../components/SlideOver'
+import { useToast } from '../components/toastContext'
+import { TransferForm } from '../components/TransferForm'
+import { TransfersSection } from '../components/TransfersSection'
 import { WalletCard } from '../components/WalletCard'
 import { rollup } from '../lib/categories'
-import { addMonths } from '../lib/dates'
+import { addMonths, monthLabel } from '../lib/dates'
 import { commitments, monthShort } from '../lib/history'
 import { formatCents } from '../lib/money'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
+import { walletName } from '../lib/wallets'
 
 const label = 'text-xs font-medium uppercase tracking-wider text-ink/80'
 const card = 'rounded-md border border-line p-4'
@@ -45,10 +53,39 @@ export default function SummaryPage() {
   const categories = useCategories(houseId)
   const members = useMembers(houseId)
   const future = useCategoryHistory(houseId, addMonths(month, 1), addMonths(month, 3))
+  const wallets = useWallets(houseId)
+  const transfers = useTransfers(houseId, month)
+  const transferActions = useTransferActions(houseId)
+  const toast = useToast()
   const desktop = useIsDesktop()
   const [picked, setPicked] = useState<string | null>(null)
+  const [transferring, setTransferring] = useState(false)
 
   if (!house) return null
+  const canWrite = house.role !== 'viewer'
+  const walletList = wallets.data ?? []
+  const nameOf = (id: string) => walletName(walletList, id)
+  const canTransfer = canWrite && walletList.filter((w) => !w.archived).length >= 2
+
+  function deleteTransfer(t: Transfer) {
+    transferActions.remove.mutate(t.id, {
+      onSuccess: () =>
+        toast({ message: 'Transferência excluída.', actionLabel: 'Desfazer', onAction: () => transferActions.restore.mutate(t.id) }),
+      onError: () => toast({ message: 'Não foi possível excluir a transferência. Tente de novo.' }),
+    })
+  }
+  // No computador o formulário abre na lateral; no celular, sobe da base (como os outros formulários).
+  const TransferPanel = desktop ? SlideOver : Sheet
+
+  function afterTransfer(result: TransferResult, sent: TransferInput) {
+    setTransferring(false)
+    const warn = result.warnings?.includes('wallet_balance_insufficient') ? ' Atenção: o saldo dela ficou negativo.' : ''
+    toast({
+      message: `${formatCents(sent.amountCents)} transferidos de ${nameOf(sent.fromWalletId)} para ${nameOf(sent.toWalletId)}.${warn}`,
+      actionLabel: 'Desfazer',
+      onAction: () => transferActions.remove.mutate(result.transfer.id),
+    })
+  }
   const s = summary.data
   const cats = categories.data ?? []
   const noIncome = s !== undefined && s.wallets.every((w) => w.expectedIncomeCents === 0)
@@ -64,7 +101,14 @@ export default function SummaryPage() {
     <AppShell>
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-5 md:px-8 md:pb-10 md:pt-8">
         <header>
-          <MonthSelector month={month} onChange={setMonth} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <MonthSelector month={month} onChange={setMonth} />
+            {canTransfer && (
+              <Button variant="ghost" onClick={() => setTransferring(true)} className="flex items-center gap-2">
+                <ArrowLeftRight aria-hidden="true" size={18} strokeWidth={1.5} /> Transferir
+              </Button>
+            )}
+          </div>
           <p className="mt-2 hidden text-sm text-ink/75 md:block">Resumo do mês: o que entra, o que sai e para onde vai.</p>
         </header>
 
@@ -134,6 +178,7 @@ export default function SummaryPage() {
                 <WalletCard key={w.walletId} title={w.name} hint={w.isDefault ? 'carteira padrão' : (members.data?.find((m) => m.userId === w.ownerUserId)?.name ?? '')} balance={w} tone={w.isDefault ? 'dark' : 'light'} />
               ))}
             </div>
+            <TransfersSection transfers={transfers.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteTransfer} />
             {desktop && (
               <div className={card}>
                 <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} />
@@ -185,6 +230,12 @@ export default function SummaryPage() {
                   ))}
                 </ul>
               </section>
+            )}
+
+            {transferring && (
+              <TransferPanel title="Transferir entre carteiras" subtitle={monthLabel(month)} onClose={() => setTransferring(false)}>
+                <TransferForm wallets={walletList} month={month} onCreate={(body) => transferActions.create.mutateAsync(body)} onDone={afterTransfer} />
+              </TransferPanel>
             )}
 
             {!desktop && selected && (
