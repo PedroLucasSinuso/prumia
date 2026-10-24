@@ -25,6 +25,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
+	"github.com/PedroLucasSinuso/prumia/api/internal/transfer"
 	"github.com/PedroLucasSinuso/prumia/api/internal/wallet"
 )
 
@@ -81,6 +82,7 @@ func newApp(t *testing.T, o opts) *app {
 		&Categories{Svc: category.NewService(gdb), Log: log},
 		&Payees{Svc: payeeSvc, Log: log},
 		&Wallets{Svc: wallet.NewService(gdb), Log: log},
+		&Transfers{Svc: transfer.NewService(gdb, today), Log: log, Balance: sumSvc},
 		NewCNPJLookups(o.company, log),
 		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},

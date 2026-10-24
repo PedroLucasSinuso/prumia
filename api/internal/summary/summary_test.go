@@ -62,6 +62,7 @@ func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
 		[]incomeRow{{WalletID: geral.ID, Expected: 600000, Received: 400000}, {WalletID: vr.ID, Expected: 80000, Received: 80000}},
 		[]paidRow{{WalletID: geral.ID, Paid: 150000}, {WalletID: vr.ID, Paid: 90000}},
 		[]pendingRow{{WalletID: geral.ID, Pending: 90000, Overdue: 40000, OverdueCount: 1}, {WalletID: vr.ID, Pending: 50000, Overdue: 50000, OverdueCount: 2}},
+		nil,
 		[]categoryRow{
 			{CategoryID: b, Total: 50000, Paid: 50000},
 			{CategoryID: a, Total: 240000, Paid: 150000, Pending: 90000},
@@ -99,7 +100,7 @@ func TestAssembleSaldoAnteriorCarregaInicialRecebidoEPago(t *testing.T) {
 	geral := mkWallet(1, "Geral", true, 100000, false) // saldo inicial R$ 1.000,00
 	got := assemble(oct, []wallet.Wallet{geral},
 		[]incomeRow{{WalletID: geral.ID, Expected: 500000, Received: 500000, Carry: 300000}},
-		[]paidRow{{WalletID: geral.ID, Paid: 200000, Carry: 450000}}, nil, nil)
+		[]paidRow{{WalletID: geral.ID, Paid: 200000, Carry: 450000}}, nil, nil, nil)
 	w := got.Wallets[0]
 	// anterior = 1000 + 3000 - 4500 = -500 (negativo); saldo = -500 + 5000 - 2000
 	if w.Opening != 100000 || w.CarryOver != -50000 || w.Balance() != 250000 || w.MonthBalance() != 300000 {
@@ -113,7 +114,7 @@ func TestAssembleArquivadaSoApareceComSaldoOuMovimento(t *testing.T) {
 	comSaldo := mkWallet(3, "Poupança velha", false, 5000, true)
 	comMovimento := mkWallet(4, "VR velho", false, 0, true)
 	got := assemble(oct, []wallet.Wallet{ativa, vazia, comSaldo, comMovimento},
-		[]incomeRow{{WalletID: comMovimento.ID, Expected: 1000, Received: 1000}}, nil, nil, nil)
+		[]incomeRow{{WalletID: comMovimento.ID, Expected: 1000, Received: 1000}}, nil, nil, nil, nil)
 	var names []string
 	for _, w := range got.Wallets {
 		names = append(names, w.Name)
@@ -125,14 +126,14 @@ func TestAssembleArquivadaSoApareceComSaldoOuMovimento(t *testing.T) {
 
 func TestAssembleIgnoraCarteiraDesconhecida(t *testing.T) {
 	geral := mkWallet(1, "Geral", true, 0, false)
-	got := assemble(oct, []wallet.Wallet{geral}, []incomeRow{{WalletID: uid(77), Received: 5}}, nil, nil, nil)
+	got := assemble(oct, []wallet.Wallet{geral}, []incomeRow{{WalletID: uid(77), Received: 5}}, nil, nil, nil, nil)
 	if got.Wallets[0].Received != 0 {
 		t.Errorf("linha de outra carteira não deveria somar: %+v", got.Wallets[0])
 	}
 }
 
 func TestAssembleMesVazio(t *testing.T) {
-	got := assemble(oct, nil, nil, nil, nil, nil)
+	got := assemble(oct, nil, nil, nil, nil, nil, nil)
 	if got.ByCategory == nil || len(got.ByCategory) != 0 || got.Wallets == nil || len(got.Wallets) != 0 || got.TotalPaid != 0 {
 		t.Errorf("mês vazio: %+v", got)
 	}
@@ -158,5 +159,34 @@ func TestProjetadoIgnoraSeAReceitaJaFoiMarcada(t *testing.T) {
 	}
 	if w.Projected() != 247319 {
 		t.Errorf("projetado: %d", w.Projected())
+	}
+}
+
+func TestAssembleTransferenciasMexemSoNosSaldos(t *testing.T) {
+	geral, reserva := mkWallet(1, "Geral", true, 0, false), mkWallet(2, "Reserva", false, 0, false)
+	antiga := mkWallet(3, "Antiga", false, 0, true)
+	got := assemble(oct, []wallet.Wallet{geral, reserva, antiga},
+		[]incomeRow{{WalletID: geral.ID, Expected: 500000, Received: 500000}},
+		[]paidRow{{WalletID: geral.ID, Paid: 100000}},
+		[]pendingRow{{WalletID: geral.ID, Pending: 50000}},
+		[]transferRow{
+			{WalletID: geral.ID, Out: 30000, Carry: -20000}, // guardou 300 no mês e 200 antes
+			{WalletID: reserva.ID, In: 30000, Carry: 20000},
+			{WalletID: antiga.ID, In: 1000}, // arquivada com transferência no mês aparece
+		}, nil)
+	if len(got.Wallets) != 3 {
+		t.Fatalf("carteiras: %+v", got.Wallets)
+	}
+	g, r := got.Wallets[0], got.Wallets[1]
+	// geral: anterior -200; saldo = -200 + 5000 - 1000 - 300 = 3500; projetado = -200 + 5000 - 1000 - 500 - 300 = 3000
+	if g.CarryOver != -20000 || g.Balance() != 350000 || g.MonthBalance() != 370000 || g.Projected() != 300000 {
+		t.Errorf("geral: %+v (saldo %d, mês %d, projetado %d)", g, g.Balance(), g.MonthBalance(), g.Projected())
+	}
+	if r.CarryOver != 20000 || r.Balance() != 50000 || r.TransfersIn != 30000 || r.Projected() != 50000 {
+		t.Errorf("reserva: %+v", r)
+	}
+	// transferência não é receita nem despesa
+	if g.Expected != 500000 || g.Received != 500000 || g.Paid != 100000 || got.TotalPaid != 0 || got.TotalPending != 0 || len(got.ByCategory) != 0 {
+		t.Errorf("transferência vazou para receita/despesa: %+v", got)
 	}
 }

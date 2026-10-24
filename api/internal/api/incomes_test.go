@@ -82,6 +82,8 @@ type walletT struct {
 	ExpectedIncomeCents int64  `json:"expectedIncomeCents"`
 	ReceivedIncomeCents int64  `json:"receivedIncomeCents"`
 	PaidCents           int64  `json:"paidCents"`
+	TransfersInCents    int64  `json:"transfersInCents"`
+	TransfersOutCents   int64  `json:"transfersOutCents"`
 	BalanceCents        int64  `json:"balanceCents"`
 	MonthBalanceCents   int64  `json:"monthBalanceCents"`
 	PendingCents        int64  `json:"pendingCents"`

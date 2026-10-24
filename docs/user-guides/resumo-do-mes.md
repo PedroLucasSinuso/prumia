@@ -28,11 +28,19 @@ Há um bloco para cada carteira da casa (a **padrão** em destaque; veja [cartei
 - Logo abaixo, **hoje**: o que já foi recebido menos o que já foi pago (o "realizado"). Pode estar negativo sem ser problema, se o
   salário ainda vai cair.
 - A barra mostra quanto **do previsto** já foi pago.
-- Por fim: **previsto para entrar**, **já recebido**, **já pago** e **a pagar (estimado)**.
+- Por fim: **previsto para entrar**, **já recebido**, **já pago** e **a pagar (estimado)**. Se houve transferência entre carteiras no mês, aparecem também **transferências recebidas** e **transferências enviadas** (e entram no saldo de hoje e no projetado).
 
 "A pagar (estimado)": a carteira de uma conta só é conhecida quando você paga. Até lá, o app usa a carteira sugerida da
 categoria (ex.: Mercado → Benefício; veja [categorias-e-ajustes.md](categorias-e-ajustes.md)). Sem sugestão, conta na carteira padrão. O
 saldo projetado **da casa** (nos destaques) não depende dessa estimativa. Veja também [carteiras.md](carteiras.md).
+
+## Transferir entre carteiras
+
+O botão **Transferir**, no topo do Resumo, move dinheiro de uma carteira para outra: por exemplo, guardar R$ 500,00 do Geral na Reserva
+ou tirar de lá. Escolha o valor, **De**, **Para**, a data e (se quiser) uma observação. Depois de salvar, aparece um aviso com **Desfazer**.
+
+Mais abaixo, **Transferências do mês** lista cada uma (data, de → para, valor, observação) com o botão de excluir. Transferência **não é
+receita nem conta**: não entra em "pago", "a pagar" nem em "para onde vai o dinheiro", só muda o saldo das carteiras. Passo a passo em [carteiras.md](carteiras.md).
 
 ## Para onde vai o dinheiro
 

@@ -168,9 +168,11 @@ Carteira = um **rótulo com saldo inicial** (não é conta bancária): "Geral", 
 O saldo agora **é transportado**: o que sobra (ou falta) num mês entra como **saldo anterior** do seguinte.
 
 ```
-anterior(carteira, mês) = saldo inicial + soma, nos meses ANTERIORES ao consultado, de (receitas RECEBIDAS líquidas - despesas PAGAS)
-saldo(carteira, mês)    = anterior + receitas RECEBIDAS do mês - despesas PAGAS do mês        (REALIZADO)
-do mês                  = receitas RECEBIDAS do mês - despesas PAGAS do mês
+anterior(carteira, mês) = saldo inicial + soma, nos meses ANTERIORES ao consultado, de (receitas RECEBIDAS líquidas - despesas PAGAS
+                          + transferências recebidas - transferências enviadas)
+saldo(carteira, mês)    = anterior + receitas RECEBIDAS do mês - despesas PAGAS do mês
+                          + transferências recebidas do mês - enviadas do mês           (REALIZADO)
+do mês                  = receitas RECEBIDAS do mês - despesas PAGAS do mês + transferências recebidas - enviadas
 ```
 
 Definições (decisão deste módulo, onde a spec era aberta):
@@ -191,12 +193,38 @@ critérios (uma invoice de setembro paga em outubro pertence a setembro). Conseq
 - Receita **a receber** (data futura) ou **"não caiu"** não entra no saldo (só em `expectedIncomeCents`). Como o recebimento é automático,
   ninguém precisa marcar o salário/VR; o saldo só fica menor se alguém disser "não caiu".
 - Uma invoice paga com uma carteira conta para a competência **da invoice**, não do dia do pagamento.
-- Não é saldo bancário: não há transferência entre carteiras nem conciliação (pós-MVP).
+- Não é saldo bancário: não há conciliação com o banco (pós-MVP). Mover dinheiro entre carteiras é a **transferência** (seção 5.3).
+
+### 5.3 Transferências entre carteiras
+
+Mover dinheiro de uma carteira para outra (guardar R$ 500 do Geral na Reserva, ou tirar de lá). **Não é receita nem despesa**: só
+altera o saldo das duas carteiras. Código em `api/internal/transfer` (`model.go`, `service.go`) e `api/internal/api/transfers.go`;
+tabela `wallet_transfers` (migration `00009`, ver [schema.md](schema.md)).
+
+| Regra | Detalhe |
+|---|---|
+| Campos | `fromWalletId`, `toWalletId`, `amountCents` (`> 0`, até R$ 10 bilhões, o mesmo teto das contas), `transferDate` (padrão hoje), `competenceMonth` (dia 1; padrão = mês da data), `notes` (opcional, até 500, `invoice.CheckNotes`). |
+| Validação | Origem = destino: 400 em `toWalletId`. Carteira inexistente, **de outra casa** ou **arquivada**: 400 no campo (`wallet.CheckUsable`; a FK composta do banco é a segunda barreira). Arquivada só vale para transferências **antigas**: elas seguem nos saldos. |
+| Sem edição | Só criar, excluir (`deleted_at`) e restaurar (o Desfazer). Para corrigir, exclui e cria outra. Excluir uma já excluída = 404; restaurar uma ativa = 409 `not_deleted`. |
+| Autorização | Listar = qualquer membro. Criar/excluir/restaurar = `admin` e `member`; `viewer` nunca escreve (403 `read_only` no porteiro, como em todas as rotas de escrita). `household_id` sempre da rota. |
+| Rotas | `GET /transfers?month=` (lista da competência, `transfer_date DESC`), `POST /transfers`, `DELETE /transfers/{id}` (204), `POST /transfers/{id}/restore`. |
+
+**Efeito nos saldos** (`summary.transfersByWallet`, uma consulta a mais no resumo, agora **6**, sem N+1): origem e destino entram na mesma
+agregação (`UNION ALL` com o sinal certo) e cada `WalletBalance` ganha `transfersInCents` e `transfersOutCents` (do mês, por
+`competence_month`). `balanceCents`, `monthBalanceCents` e `projectedCents` somam `transfersIn - transfersOut`; `carryOverCents`
+inclui o líquido das transferências de **todos os meses anteriores**. Carteira arquivada aparece também se tiver transferência no mês.
+Transferência **nunca** entra em `byCategory`, `totalPaidCents`, `totalPendingCents`, nem em `expectedIncomeCents/receivedIncomeCents/paidCents`.
+
+**Aviso de saldo**: depois de gravar, o handler chama `summary.OverdraftWarning(origem, competência)` (o mesmo do pagamento, já com a
+transferência). Se a **origem** tem `warnOnOverdraft` e o saldo realizado acumulado ficou `< 0`, a resposta 201 (`TransferResult`) traz
+`warnings: ["wallet_balance_insufficient"]` e `warningDetails: [{code, walletId}]`. **Nunca bloqueia**.
+
+A exportação CSV (`invoice/export.go`) lista só contas, então não muda.
 
 ## 6. Resumo mensal (`GET /summary?month=`)
 
-Escopado por `household_id`, tudo por competência, em **5 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses
-anteriores, com `FILTER`), pagos por carteira (idem), pendentes por carteira estimada (com o atraso) e invoices por categoria. O saldo
+Escopado por `household_id`, tudo por competência, em **6 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses
+anteriores, com `FILTER`), pagos por carteira (idem), pendentes por carteira estimada (com o atraso), transferências por carteira (idem) e invoices por categoria. O saldo
 anterior sai da **mesma agregação** (`competence_month < mês`), sem consulta por carteira. A montagem (`summary.assemble`) é pura e
 testada em tabela.
 
@@ -208,13 +236,14 @@ testada em tabela.
 | `openingBalanceCents` | saldo inicial da carteira |
 | `carryOverCents` | saldo anterior (seção 5.2) |
 | `expectedIncomeCents / receivedIncomeCents / paidCents` | do mês, ver seção 5.2 |
-| `balanceCents` | **realizado acumulado**: `carryOver + receivedIncomeCents - paidCents` (pode ser negativo) |
-| `monthBalanceCents` | só o mês: `receivedIncomeCents - paidCents` |
+| `transfersInCents / transfersOutCents` | transferências recebidas / enviadas na competência (seção 5.3) |
+| `balanceCents` | **realizado acumulado**: `carryOver + receivedIncomeCents - paidCents + transfersInCents - transfersOutCents` (pode ser negativo) |
+| `monthBalanceCents` | só o mês: `receivedIncomeCents - paidCents + transfersInCents - transfersOutCents` |
 | `pendingCents` | **estimativa** do que falta pagar com a carteira (ver "saldo projetado" abaixo) |
-| `projectedCents` | **saldo projetado**: `carryOver + expectedIncomeCents - paidCents - pendingCents` |
+| `projectedCents` | **saldo projetado**: `carryOver + expectedIncomeCents - paidCents - pendingCents + transfersInCents - transfersOutCents` |
 
-**Carteira arquivada** só entra na lista se tem `carryOver` diferente de zero **ou** algum movimento no mês (previsto, recebido, pago ou a
-pagar). As ativas sempre entram.
+**Carteira arquivada** só entra na lista se tem `carryOver` diferente de zero **ou** algum movimento no mês (previsto, recebido, pago, a
+pagar ou transferência). As ativas sempre entram.
 
 | Outros campos | Cálculo |
 |---|---|
@@ -322,6 +351,9 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 | Carteira: nome já usado por outra ativa (criar, renomear, restaurar) | 409 `wallet_exists` |
 | Carteira: arquivar a padrão | 409 `wallet_is_default` |
 | Carteira inexistente ou de outra casa (na URL) | 404 `not_found` |
+| Transferência: origem = destino, valor ≤ 0, carteira de outra casa/arquivada, competência fora do dia 1 | 400 `validation_error` com `fields` (`toWalletId`, `fromWalletId`, `amountCents`, `competenceMonth`) |
+| Transferência inexistente, já excluída (ao excluir) ou de outra casa | 404 `not_found` |
+| Restaurar transferência que não está excluída | 409 `not_deleted` |
 | Corpo JSON inválido | 400 `bad_request` |
 
 ## 11. Testes
@@ -339,4 +371,5 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
   móvel, excluir/restaurar com escopo incluindo lotes empilhados e recebidos intocados, editar com escopo, prévia e impostos, isolamento
   entre casas e `viewer`). As varreduras de `security_test.go` cobrem as rotas novas sozinhas.
 - Datas da prévia: `income/rules_test.go` (`TestRegrasDeData2026`) fixa as datas reais usadas pelos testes do front (virada de ano, feriados, mês curto, ajustes).
+- Transferências: `api/transfers_test.go` (padrões, validações, papéis, isolamento entre casas, excluir/restaurar, efeito nos saldos do mês, saldo anterior acumulando e projetado, nada muda em categorias/totais, arquivadas, aviso de saldo), `summary/summary_test.go` (`assemble` com transferências) e `platform/db/migrate_transfers_test.go` (Up/Down/Up com dados e as garantias do banco). `security_test.go` cria uma transferência no cenário e varre a rota nova.
 - Manual: pasta **8. Receitas, fontes de receita e resumo do mês** da coleção em [postman/](postman/prumia.postman_collection.json).

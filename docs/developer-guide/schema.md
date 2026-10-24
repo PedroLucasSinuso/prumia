@@ -130,6 +130,24 @@ remove as colunas de texto e os `CHECK`s `kind`/`wallet`. O `Down` volta ao text
 Saldo = saldo inicial + receitas recebidas na carteira − invoices pagas com ela, **acumulado entre os meses**. Saldo insuficiente
 **só avisa**, não bloqueia (é estimativa, não controle bancário). Definições exatas em [incomes-and-wallets.md](incomes-and-wallets.md).
 
+### wallet_transfers (migration 00009)
+
+Transferências entre carteiras da casa. **Não é receita nem despesa**: só entra no cálculo do saldo (ver [incomes-and-wallets.md](incomes-and-wallets.md), seção 5.3).
+
+| Coluna | Detalhe |
+|---|---|
+| `id`, `household_id` | PK uuid; FK para `households` |
+| `from_wallet_id`, `to_wallet_id` | FKs **compostas** `(household_id, ...)` para `wallets`: as duas carteiras são da mesma casa da transferência. `CHECK (from_wallet_id <> to_wallet_id)` |
+| `amount_cents` | `bigint`, `CHECK (> 0)` |
+| `transfer_date` | `date` (dia da transferência) |
+| `competence_month` | `date`, `CHECK` dia 1; é o mês em que ela conta nos saldos |
+| `notes` | opcional |
+| `created_by`, `created_at` | quem criou (FK `users`) e quando |
+| `deleted_at` | exclusão lógica (o Desfazer limpa); sem `updated_at`, porque não há edição |
+
+Índices parciais (`WHERE deleted_at IS NULL`): `(household_id, competence_month)` para o resumo e `(household_id, from_wallet_id)` /
+`(household_id, to_wallet_id)` para o saldo por carteira. O `Down` apaga a tabela (as transferências se perdem; contas, receitas e carteiras ficam).
+
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 
 Reserva de emergência e investimentos. Previsto como **novas tabelas** (ex.: `goals`, `goal_contributions`), referenciando

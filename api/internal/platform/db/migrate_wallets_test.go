@@ -145,9 +145,12 @@ func TestMigracaoCarteirasConverteFreeEBenefit(t *testing.T) {
 	}
 	gdb.Exec(`UPDATE incomes SET wallet_id = (SELECT id FROM wallets WHERE household_id = ? AND name = 'Benefício') WHERE id = ?`, f.houseA, incVRA)
 
-	// 4) Down da 00008: volta ao texto (benefício pelo NOME da carteira; receitas pelo tipo)
-	if err := db.Rollback(ctx, sqlDB); err != nil {
-		t.Fatalf("down 00008: %v", err)
+	// 4) Down da 00008: volta ao texto (benefício pelo NOME da carteira; receitas pelo tipo). Antes, desce a 00009
+	// (transferências), que depende de wallets.
+	for _, v := range []string{"00009", "00008"} {
+		if err := db.Rollback(ctx, sqlDB); err != nil {
+			t.Fatalf("down %s: %v", v, err)
+		}
 	}
 	text := func(table, col, id string) string {
 		var s *string

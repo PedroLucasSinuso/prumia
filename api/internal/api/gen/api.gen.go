@@ -1408,6 +1408,48 @@ type TaxEstimate struct {
 // Theme Tema de cor da conta (padrão `marfim`, a identidade da marca). `sistema` usa o Marfim de dia e o Dracula no modo escuro do aparelho.
 type Theme string
 
+// Transfer defines model for Transfer.
+type Transfer struct {
+	// AmountCents Valor em centavos (BRL)
+	AmountCents Cents `json:"amountCents"`
+
+	// CompetenceMonth Primeiro dia do mês
+	CompetenceMonth Month              `json:"competenceMonth"`
+	FromWalletId    openapi_types.UUID `json:"fromWalletId"`
+	Id              openapi_types.UUID `json:"id"`
+	Notes           *string            `json:"notes,omitempty"`
+	ToWalletId      openapi_types.UUID `json:"toWalletId"`
+	TransferDate    caldate.Date       `json:"transferDate"`
+}
+
+// TransferInput defines model for TransferInput.
+type TransferInput struct {
+	// AmountCents Maior que zero, até o teto dos demais valores
+	AmountCents Cents `json:"amountCents"`
+
+	// CompetenceMonth Padrão = mês da data da transferência
+	CompetenceMonth *Month `json:"competenceMonth,omitempty"`
+
+	// FromWalletId Carteira ativa da casa (senão 400 no campo)
+	FromWalletId openapi_types.UUID `json:"fromWalletId"`
+	Notes        *string            `json:"notes,omitempty"`
+
+	// ToWalletId Carteira ativa da casa, diferente da origem (senão 400 no campo)
+	ToWalletId openapi_types.UUID `json:"toWalletId"`
+
+	// TransferDate Padrão hoje
+	TransferDate *caldate.Date `json:"transferDate,omitempty"`
+}
+
+// TransferResult defines model for TransferResult.
+type TransferResult struct {
+	Transfer       Transfer      `json:"transfer"`
+	WarningDetails *[]PayWarning `json:"warningDetails,omitempty"`
+
+	// Warnings Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (carteira de origem; veja `warningDetails`).
+	Warnings *[]string `json:"warnings,omitempty"`
+}
+
 // Wallet defines model for Wallet.
 type Wallet struct {
 	Archived bool               `json:"archived"`
@@ -1430,20 +1472,20 @@ type Wallet struct {
 
 // WalletBalance defines model for WalletBalance.
 type WalletBalance struct {
-	// Archived Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento no mês
+	// Archived Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento (inclusive transferência) no mês
 	Archived bool `json:"archived"`
 
-	// BalanceCents Saldo REALIZADO acumulado: saldo anterior + recebido - pago (não é saldo bancário)
+	// BalanceCents Saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas (não é saldo bancário)
 	BalanceCents Cents `json:"balanceCents"`
 
-	// CarryOverCents Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas) da carteira, por competência
+	// CarryOverCents Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência
 	CarryOverCents Cents `json:"carryOverCents"`
 
 	// ExpectedIncomeCents Líquido de todas as receitas da competência na carteira (a receber + recebidas)
 	ExpectedIncomeCents Cents `json:"expectedIncomeCents"`
 	IsDefault           bool  `json:"isDefault"`
 
-	// MonthBalanceCents Só o mês: recebido - pago
+	// MonthBalanceCents Só o mês: recebido - pago + transferências recebidas - enviadas
 	MonthBalanceCents Cents  `json:"monthBalanceCents"`
 	Name              string `json:"name"`
 
@@ -1457,12 +1499,18 @@ type WalletBalance struct {
 	// PendingCents Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar.
 	PendingCents Cents `json:"pendingCents"`
 
-	// ProjectedCents Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar). Negativo = vai faltar.
+	// ProjectedCents Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar) + transferências recebidas - enviadas do mês. Negativo = vai faltar.
 	ProjectedCents Cents `json:"projectedCents"`
 
 	// ReceivedIncomeCents Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)
-	ReceivedIncomeCents Cents              `json:"receivedIncomeCents"`
-	WalletId            openapi_types.UUID `json:"walletId"`
+	ReceivedIncomeCents Cents `json:"receivedIncomeCents"`
+
+	// TransfersInCents Transferências recebidas de outras carteiras na competência
+	TransfersInCents Cents `json:"transfersInCents"`
+
+	// TransfersOutCents Transferências enviadas para outras carteiras na competência
+	TransfersOutCents Cents              `json:"transfersOutCents"`
+	WalletId          openapi_types.UUID `json:"walletId"`
 }
 
 // WalletInput defines model for WalletInput.
@@ -1755,6 +1803,11 @@ type EstimateTaxParams struct {
 	Dependents *int         `form:"dependents,omitempty" json:"dependents,omitempty"`
 }
 
+// ListTransfersParams defines parameters for ListTransfers.
+type ListTransfersParams struct {
+	Month caldate.Date `form:"month" json:"month"`
+}
+
 // ListWalletsParams defines parameters for ListWallets.
 type ListWalletsParams struct {
 	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
@@ -1848,6 +1901,9 @@ type CreateRecurrenceJSONRequestBody = RecurrenceInput
 
 // UpdateRecurrenceJSONRequestBody defines body for UpdateRecurrence for application/json ContentType.
 type UpdateRecurrenceJSONRequestBody = RecurrencePatch
+
+// CreateTransferJSONRequestBody defines body for CreateTransfer for application/json ContentType.
+type CreateTransferJSONRequestBody = TransferInput
 
 // CreateWalletJSONRequestBody defines body for CreateWallet for application/json ContentType.
 type CreateWalletJSONRequestBody = WalletInput
@@ -2049,6 +2105,18 @@ type ServerInterface interface {
 	// EstimateTax Estimativa de INSS e IRRF de um salário mensal (sugestão para preencher descontos)
 	// (GET /households/{householdId}/tax/estimate)
 	EstimateTax(c *gin.Context, householdId HouseholdId, params EstimateTaxParams)
+	// ListTransfers Transferências do mês (qualquer membro), da data mais recente para a mais antiga
+	// (GET /households/{householdId}/transfers)
+	ListTransfers(c *gin.Context, householdId HouseholdId, params ListTransfersParams)
+	// CreateTransfer Move dinheiro de uma carteira para outra (admin e member)
+	// (POST /households/{householdId}/transfers)
+	CreateTransfer(c *gin.Context, householdId HouseholdId)
+	// DeleteTransfer Exclui (logicamente) a transferência; os saldos voltam ao que eram. Não há edição.
+	// (DELETE /households/{householdId}/transfers/{transferId})
+	DeleteTransfer(c *gin.Context, householdId HouseholdId, transferId openapi_types.UUID)
+	// RestoreTransfer Desfaz a exclusão. 409 `not_deleted` se a transferência não está excluída.
+	// (POST /households/{householdId}/transfers/{transferId}/restore)
+	RestoreTransfer(c *gin.Context, householdId HouseholdId, transferId openapi_types.UUID)
 	// ListWallets Carteiras da casa (qualquer membro). A padrão vem primeiro, depois por sortOrder e nome.
 	// (GET /households/{householdId}/wallets)
 	ListWallets(c *gin.Context, householdId HouseholdId, params ListWalletsParams)
@@ -4072,6 +4140,135 @@ func (siw *ServerInterfaceWrapper) EstimateTax(c *gin.Context) {
 	siw.Handler.EstimateTax(c, householdId, params)
 }
 
+// ListTransfers operation middleware
+func (siw *ServerInterfaceWrapper) ListTransfers(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTransfersParams
+
+	// ------------- Required query parameter "month" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "month", c.Request.URL.Query(), &params.Month, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter month: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListTransfers(c, householdId, params)
+}
+
+// CreateTransfer operation middleware
+func (siw *ServerInterfaceWrapper) CreateTransfer(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateTransfer(c, householdId)
+}
+
+// DeleteTransfer operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTransfer(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "transferId" -------------
+	var transferId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "transferId", c.Param("transferId"), &transferId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter transferId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteTransfer(c, householdId, transferId)
+}
+
+// RestoreTransfer operation middleware
+func (siw *ServerInterfaceWrapper) RestoreTransfer(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "transferId" -------------
+	var transferId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "transferId", c.Param("transferId"), &transferId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter transferId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RestoreTransfer(c, householdId, transferId)
+}
+
 // ListWallets operation middleware
 func (siw *ServerInterfaceWrapper) ListWallets(c *gin.Context) {
 
@@ -4309,6 +4506,10 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PATCH(options.BaseURL+"/households/:householdId/wallets/:walletId", wrapper.UpdateWallet)
 	router.POST(options.BaseURL+"/households/:householdId/wallets/:walletId/archive", wrapper.ArchiveWallet)
 	router.POST(options.BaseURL+"/households/:householdId/wallets/:walletId/restore", wrapper.RestoreWallet)
+	router.GET(options.BaseURL+"/households/:householdId/transfers", wrapper.ListTransfers)
+	router.POST(options.BaseURL+"/households/:householdId/transfers", wrapper.CreateTransfer)
+	router.DELETE(options.BaseURL+"/households/:householdId/transfers/:transferId", wrapper.DeleteTransfer)
+	router.POST(options.BaseURL+"/households/:householdId/transfers/:transferId/restore", wrapper.RestoreTransfer)
 	router.GET(options.BaseURL+"/households/:householdId/invoices", wrapper.ListInvoices)
 	router.POST(options.BaseURL+"/households/:householdId/invoices", wrapper.CreateInvoice)
 	router.POST(options.BaseURL+"/households/:householdId/invoices/batch", wrapper.CreateInvoiceBatch)

@@ -495,6 +495,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Transferências do mês (qualquer membro), da data mais recente para a mais antiga
+         * @description `month` é obrigatório (dia 1) e filtra pela competência. Não inclui as excluídas.
+         */
+        get: operations["listTransfers"];
+        put?: never;
+        /**
+         * Move dinheiro de uma carteira para outra (admin e member)
+         * @description Não é receita nem despesa: só muda os saldos das duas carteiras. Origem e destino devem ser carteiras ATIVAS e
+         *     diferentes da casa (senão 400 no campo). Se a origem tem o aviso de saldo ligado e o saldo realizado dela, até a
+         *     competência, fica negativo, a resposta traz `warnings: ["wallet_balance_insufficient"]` (não bloqueia).
+         */
+        post: operations["createTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/transfers/{transferId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                transferId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Exclui (logicamente) a transferência; os saldos voltam ao que eram. Não há edição. */
+        delete: operations["deleteTransfer"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/transfers/{transferId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                transferId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desfaz a exclusão. 409 `not_deleted` se a transferência não está excluída. */
+        post: operations["restoreTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/invoices": {
         parameters: {
             query?: never;
@@ -1804,6 +1872,47 @@ export interface components {
             isDefault?: boolean;
             sortOrder?: number;
         };
+        Transfer: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fromWalletId: string;
+            /** Format: uuid */
+            toWalletId: string;
+            amountCents: components["schemas"]["Cents"];
+            /** Format: date */
+            transferDate: string;
+            competenceMonth: components["schemas"]["Month"];
+            notes?: string | null;
+        };
+        TransferInput: {
+            /**
+             * Format: uuid
+             * @description Carteira ativa da casa (senão 400 no campo)
+             */
+            fromWalletId: string;
+            /**
+             * Format: uuid
+             * @description Carteira ativa da casa, diferente da origem (senão 400 no campo)
+             */
+            toWalletId: string;
+            /** @description Maior que zero, até o teto dos demais valores */
+            amountCents: components["schemas"]["Cents"];
+            /**
+             * Format: date
+             * @description Padrão hoje
+             */
+            transferDate?: string;
+            /** @description Padrão = mês da data da transferência */
+            competenceMonth?: components["schemas"]["Month"];
+            notes?: string | null;
+        };
+        TransferResult: {
+            transfer: components["schemas"]["Transfer"];
+            /** @description Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (carteira de origem; veja `warningDetails`). */
+            warnings?: string[];
+            warningDetails?: components["schemas"]["PayWarning"][];
+        };
         WalletBalance: {
             /** Format: uuid */
             walletId: string;
@@ -1811,11 +1920,11 @@ export interface components {
             /** Format: uuid */
             ownerUserId?: string | null;
             isDefault: boolean;
-            /** @description Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento no mês */
+            /** @description Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento (inclusive transferência) no mês */
             archived: boolean;
             /** @description Saldo inicial da carteira */
             openingBalanceCents: components["schemas"]["Cents"];
-            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas) da carteira, por competência */
+            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência */
             carryOverCents: components["schemas"]["Cents"];
             /** @description Líquido de todas as receitas da competência na carteira (a receber + recebidas) */
             expectedIncomeCents: components["schemas"]["Cents"];
@@ -1823,13 +1932,17 @@ export interface components {
             receivedIncomeCents: components["schemas"]["Cents"];
             /** @description Valor efetivamente pago das invoices da competência pagas com esta carteira */
             paidCents: components["schemas"]["Cents"];
-            /** @description Saldo REALIZADO acumulado: saldo anterior + recebido - pago (não é saldo bancário) */
+            /** @description Transferências recebidas de outras carteiras na competência */
+            transfersInCents: components["schemas"]["Cents"];
+            /** @description Transferências enviadas para outras carteiras na competência */
+            transfersOutCents: components["schemas"]["Cents"];
+            /** @description Saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas (não é saldo bancário) */
             balanceCents: components["schemas"]["Cents"];
-            /** @description Só o mês: recebido - pago */
+            /** @description Só o mês: recebido - pago + transferências recebidas - enviadas */
             monthBalanceCents: components["schemas"]["Cents"];
             /** @description Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar. */
             pendingCents: components["schemas"]["Cents"];
-            /** @description Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar). Negativo = vai faltar. */
+            /** @description Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar) + transferências recebidas - enviadas do mês. Negativo = vai faltar. */
             projectedCents: components["schemas"]["Cents"];
         };
         MonthlySummary: {
@@ -2847,6 +2960,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Wallet"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listTransfers: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Transfer"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    createTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferInput"];
+            };
+        };
+        responses: {
+            /** @description Criada */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                transferId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Excluída */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    restoreTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                transferId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Transfer"];
                 };
             };
             403: components["responses"]["Forbidden"];

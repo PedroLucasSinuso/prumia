@@ -23,6 +23,7 @@ tags:
   - { name: categories, description: "Categorias de despesa" }
   - { name: payees, description: "Favorecidos (apelido + CNPJ opcional)" }
   - { name: wallets, description: "Carteiras da casa (saldo por carteira)" }
+  - { name: transfers, description: "Transferências entre carteiras" }
   - { name: invoices, description: "Despesas (contas, parcelas, recorrências)" }
   - { name: incomes, description: "Receitas (salário, benefício)" }
   - { name: summary, description: "Resumo mensal" }
@@ -510,6 +511,61 @@ paths:
       summary: Restaura a carteira arquivada (só admin). 409 `wallet_exists` se já há outra ativa com o mesmo nome.
       responses:
         '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Wallet' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # --------------------------------------------------------------- transfers
+  /households/{householdId}/transfers:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [transfers]
+      operationId: listTransfers
+      summary: Transferências do mês (qualquer membro), da data mais recente para a mais antiga
+      description: |
+        `month` é obrigatório (dia 1) e filtra pela competência. Não inclui as excluídas.
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Transfer' } } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    post:
+      tags: [transfers]
+      operationId: createTransfer
+      summary: Move dinheiro de uma carteira para outra (admin e member)
+      description: |
+        Não é receita nem despesa: só muda os saldos das duas carteiras. Origem e destino devem ser carteiras ATIVAS e
+        diferentes da casa (senão 400 no campo). Se a origem tem o aviso de saldo ligado e o saldo realizado dela, até a
+        competência, fica negativo, a resposta traz `warnings: ["wallet_balance_insufficient"]` (não bloqueia).
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TransferInput' } } }
+      responses:
+        '201': { description: "Criada", content: { application/json: { schema: { $ref: '#/components/schemas/TransferResult' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /households/{householdId}/transfers/{transferId}:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: transferId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [transfers]
+      operationId: deleteTransfer
+      summary: Exclui (logicamente) a transferência; os saldos voltam ao que eram. Não há edição.
+      responses:
+        '204': { description: "Excluída" }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /households/{householdId}/transfers/{transferId}/restore:
+    parameters:
+      - { $ref: '#/components/parameters/HouseholdId' }
+      - { name: transferId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [transfers]
+      operationId: restoreTransfer
+      summary: Desfaz a exclusão. 409 `not_deleted` se a transferência não está excluída.
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/Transfer' } } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
@@ -1681,24 +1737,59 @@ components:
         openingBalanceCents: { $ref: '#/components/schemas/Cents' }
         isDefault: { type: boolean, description: "true troca a carteira padrão da casa; false = 400" }
         sortOrder: { type: integer }
+    Transfer:
+      type: object
+      required: [id, fromWalletId, toWalletId, amountCents, transferDate, competenceMonth]
+      properties:
+        id: { type: string, format: uuid }
+        fromWalletId: { type: string, format: uuid }
+        toWalletId: { type: string, format: uuid }
+        amountCents: { $ref: '#/components/schemas/Cents' }
+        transferDate: { type: string, format: date }
+        competenceMonth: { $ref: '#/components/schemas/Month' }
+        notes: { type: string, nullable: true }
+    TransferInput:
+      type: object
+      required: [fromWalletId, toWalletId, amountCents]
+      properties:
+        fromWalletId: { type: string, format: uuid, description: "Carteira ativa da casa (senão 400 no campo)" }
+        toWalletId: { type: string, format: uuid, description: "Carteira ativa da casa, diferente da origem (senão 400 no campo)" }
+        amountCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Maior que zero, até o teto dos demais valores" }
+        transferDate: { type: string, format: date, description: "Padrão hoje" }
+        competenceMonth: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Padrão = mês da data da transferência" }
+        notes: { type: string, nullable: true, maxLength: 500 }
+    TransferResult:
+      type: object
+      required: [transfer]
+      properties:
+        transfer: { $ref: '#/components/schemas/Transfer' }
+        warnings:
+          type: array
+          description: Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (carteira de origem; veja `warningDetails`).
+          items: { type: string }
+        warningDetails:
+          type: array
+          items: { $ref: '#/components/schemas/PayWarning' }
     WalletBalance:
       type: object
-      required: [walletId, name, isDefault, archived, openingBalanceCents, carryOverCents, expectedIncomeCents, receivedIncomeCents, paidCents, balanceCents, monthBalanceCents, pendingCents, projectedCents]
+      required: [walletId, name, isDefault, archived, openingBalanceCents, carryOverCents, expectedIncomeCents, receivedIncomeCents, paidCents, transfersInCents, transfersOutCents, balanceCents, monthBalanceCents, pendingCents, projectedCents]
       properties:
         walletId: { type: string, format: uuid }
         name: { type: string }
         ownerUserId: { type: string, format: uuid, nullable: true }
         isDefault: { type: boolean }
-        archived: { type: boolean, description: "Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento no mês" }
+        archived: { type: boolean, description: "Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento (inclusive transferência) no mês" }
         openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo inicial da carteira" }
-        carryOverCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas) da carteira, por competência" }
+        carryOverCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado, de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência" }
         expectedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido de todas as receitas da competência na carteira (a receber + recebidas)" }
         receivedIncomeCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Líquido das receitas que contam como recebidas (data esperada chegou e ninguém disse não caiu)" }
         paidCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Valor efetivamente pago das invoices da competência pagas com esta carteira" }
-        balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo REALIZADO acumulado: saldo anterior + recebido - pago (não é saldo bancário)" }
-        monthBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Só o mês: recebido - pago" }
+        transfersInCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Transferências recebidas de outras carteiras na competência" }
+        transfersOutCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Transferências enviadas para outras carteiras na competência" }
+        balanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas (não é saldo bancário)" }
+        monthBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Só o mês: recebido - pago + transferências recebidas - enviadas" }
         pendingCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar." }
-        projectedCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar). Negativo = vai faltar." }
+        projectedCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar) + transferências recebidas - enviadas do mês. Negativo = vai faltar." }
     MonthlySummary:
       type: object
       required: [month, wallets, totalPaidCents, totalPendingCents, overdueCents, overdueCount, byCategory]

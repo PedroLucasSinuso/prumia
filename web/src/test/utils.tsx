@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 
 import App from '../App'
 import { api } from '../api/client'
-import type { BoletoExtraction, Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem, Wallet, WalletBalance } from '../api/types'
+import type { BoletoExtraction, Category, Income, IncomeSource, Invoice, Me, Member, MonthlySummary, Problem, Transfer, Wallet, WalletBalance } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { addMonths } from '../lib/dates'
 import { ToastProvider } from '../components/Toast'
@@ -41,7 +41,7 @@ export function walletBalance(walletId: string, over: Partial<WalletBalance> = {
   const w = wallets.find((x) => x.id === walletId)!
   return {
     walletId, name: w.name, isDefault: w.isDefault, archived: false, openingBalanceCents: 0, carryOverCents: 0,
-    expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, balanceCents: 0, monthBalanceCents: 0, pendingCents: 0, projectedCents: 0, ...over,
+    expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, transfersInCents: 0, transfersOutCents: 0, balanceCents: 0, monthBalanceCents: 0, pendingCents: 0, projectedCents: 0, ...over,
   }
 }
 
@@ -59,6 +59,11 @@ export const emptySummary: MonthlySummary = {
   month: '2026-10-01',
   wallets: [walletBalance('w1'), walletBalance('w2')],
   totalPaidCents: 0, totalPendingCents: 0, overdueCents: 0, overdueCount: 0, byCategory: [],
+}
+
+/** Transferência sintética de um mês (Geral -> Benefício por padrão). */
+export function transfer(over: Partial<Transfer> & Pick<Transfer, 'id'>): Transfer {
+  return { fromWalletId: 'w1', toWalletId: 'w2', amountCents: 50000, transferDate: '2026-10-12', competenceMonth: '2026-10-01', ...over }
 }
 
 export function income(over: Partial<Income> & Pick<Income, 'id' | 'description'>): Income {
@@ -103,6 +108,11 @@ type Routes = {
   payees?: Reply
   wallets?: Reply
   createWallet?: Reply
+  /** GET /transfers (lista do mês). Padrão: vazia. */
+  transfers?: Reply
+  createTransfer?: Reply
+  removeTransfer?: Reply
+  restoreTransfer?: Reply
   updateWallet?: Reply
   /** GET /cnpj/{cnpj} (BrasilAPI). Padrão: 503, a consulta fora do ar. */
   cnpj?: Reply
@@ -175,6 +185,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/cnpj/{cnpj}') return r.cnpj ?? fail(503, 'lookup_unavailable')
     if (url === '/households/{householdId}/payees') return r.payees ?? ok([])
     if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
+    if (url === '/households/{householdId}/transfers') return r.transfers ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
@@ -241,6 +252,8 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/categories': r.createCategory,
       '/households/{householdId}/payees': r.createPayee,
       '/households/{householdId}/wallets': r.createWallet,
+      '/households/{householdId}/transfers': r.createTransfer,
+      '/households/{householdId}/transfers/{transferId}/restore': r.restoreTransfer,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
       '/auth/password': r.changePassword,
@@ -251,6 +264,7 @@ export function mockApi(r: Routes = {}) {
     if (reply instanceof Error) throw reply
     // o pagamento devolve { invoice, warnings }, como a API de verdade
     if (!reply && url.endsWith('/pay')) return ok({ invoice: {}, warnings: [] })
+    if (!reply && url === '/households/{householdId}/transfers') return ok({ transfer: transfer({ id: 't-new' }), warnings: [] })
     return reply ?? ok()
   }) as never)
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
@@ -269,6 +283,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/members/{userId}') return r.removeMember ?? { response: { ok: true } }
     if (url.endsWith('/pay')) return r.unpay ?? ok()
     if (url.endsWith('/receive')) return r.unreceive ?? ok()
+    if (url === '/households/{householdId}/transfers/{transferId}') return r.removeTransfer ?? { response: { ok: true } }
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.removeIncome ?? { response: { ok: true } }
     return r.remove ?? { response: { ok: true } }
   }) as never)

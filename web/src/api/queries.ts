@@ -2,13 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
   categories: (house: string) => ['categories', house] as const,
   payees: (house: string) => ['payees', house] as const,
   wallets: (house: string) => ['wallets', house] as const,
+  transfers: (house: string, month: string) => ['transfers', house, month] as const,
+  allTransfers: (house: string) => ['transfers', house] as const,
   invoices: (house: string, month: string) => ['invoices', house, month] as const,
   allInvoices: (house: string) => ['invoices', house] as const,
   incomes: (house: string, month: string) => ['incomes', house, month] as const,
@@ -117,6 +119,41 @@ export function useWalletActions(houseId: string) {
     onSettled: refresh,
   })
   return { create, update, archive, restore }
+}
+
+/** Transferências entre carteiras de uma competência (a lista do mês, da data mais recente para a mais antiga). */
+export function useTransfers(houseId: string, month: string) {
+  return useQuery({
+    queryKey: keys.transfers(houseId, month),
+    enabled: houseId !== '',
+    queryFn: (): Promise<Transfer[]> =>
+      unwrap(api.GET('/households/{householdId}/transfers', { params: { path: { householdId: houseId }, query: { month } } })),
+  })
+}
+
+/**
+ * Criar, excluir e restaurar (Desfazer) transferências. Elas só mexem nos saldos: ao terminar, a lista e o resumo são refeitos.
+ * Não há edição (para corrigir: exclui e cria outra).
+ */
+export function useTransferActions(houseId: string) {
+  const qc = useQueryClient()
+  const refresh = () =>
+    Promise.all([qc.invalidateQueries({ queryKey: keys.allTransfers(houseId) }), qc.invalidateQueries({ queryKey: keys.summary(houseId) })])
+  const path = (transferId: string) => ({ params: { path: { householdId: houseId, transferId } } })
+  const create = useMutation({
+    mutationFn: (body: TransferInput): Promise<TransferResult> =>
+      unwrap(api.POST('/households/{householdId}/transfers', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+  const remove = useMutation({
+    mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/transfers/{transferId}', path(id))),
+    onSettled: refresh,
+  })
+  const restore = useMutation({
+    mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/transfers/{transferId}/restore', path(id))),
+    onSettled: refresh,
+  })
+  return { create, remove, restore }
 }
 
 /** Todas as invoices de um mês de competência (segue o cursor se passar de uma página). */

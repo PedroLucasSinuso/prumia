@@ -27,7 +27,7 @@ Quem é **Responsável** pela casa cria, renomeia e arquiva carteiras. Os demais
 
 Para cada carteira:
 
-> **saldo = saldo anterior + o que você já recebeu nela no mês − o que você já pagou com ela no mês**
+> **saldo = saldo anterior + o que você já recebeu nela no mês − o que você já pagou com ela no mês ± transferências**
 
 - **O saldo continua de um mês para o outro**: o que sobrou (ou faltou) até o mês anterior aparece como "saldo que veio dos meses
   anteriores". Ele soma o saldo inicial e todos os meses anteriores.
@@ -35,7 +35,26 @@ Para cada carteira:
 - O valor da receita é o **líquido** (já sem os descontos). O valor da despesa é o que você **efetivamente pagou**.
 - O "mês" é o **mês de competência**. Uma conta de setembro paga em outubro conta em **setembro**.
 
+- **Transferências** (próxima seção) somam na carteira que recebe e subtraem na que envia.
+
 É uma estimativa para você se organizar, não o saldo do banco.
+
+## Guardar dinheiro na Reserva (ou tirar de lá)
+
+Para mover dinheiro de uma carteira para outra, abra o **Resumo** e toque em **Transferir**:
+
+1. Digite o **valor** (por exemplo, R$ 500,00).
+2. Em **De**, escolha de onde o dinheiro sai (a carteira padrão já vem escolhida). Em **Para**, escolha onde ele entra (por exemplo, a Reserva).
+3. Confira a **data** (começa em hoje) e, se quiser, escreva uma **observação**.
+4. Toque em **Transferir**.
+
+Para **tirar** dinheiro da Reserva, é o mesmo caminho ao contrário: **De** = Reserva, **Para** = Geral.
+
+- Transferir **não é receita nem conta**: não muda o que você ganhou nem o que você gastou, só o saldo das duas carteiras.
+- Se a carteira de onde o dinheiro sai tiver o aviso ligado e ficar com saldo negativo, aparece "Atenção: o saldo dela ficou negativo". A transferência é feita mesmo assim.
+- Errou? No aviso que aparece depois, toque em **Desfazer**. Mais tarde, a lista **Transferências do mês** (no Resumo) tem o botão de excluir, que também oferece **Desfazer**. Não dá para editar: exclua e faça outra.
+- Carteira arquivada não recebe nem envia transferências novas; as que já existiam continuam valendo no saldo.
+- Quem só tem permissão de leitura vê as transferências, mas não cria nem exclui.
 
 ## Qual carteira recebe a receita
 
@@ -61,7 +80,7 @@ avisar à toa; se o dinheiro entrou adiantado, abra a receita e use **Caiu**.
 ## Onde ver os saldos
 
 Abra **Resumo** (no menu). Cada carteira mostra **sobra** ou **falta**, o saldo que veio dos meses anteriores, quanto foi **previsto**,
-**já recebido** e **já pago**. Veja [resumo-do-mes.md](resumo-do-mes.md).
+**já recebido**, **já pago** e, quando houve, as **transferências recebidas e enviadas**. Veja [resumo-do-mes.md](resumo-do-mes.md).
 
 ## E se...
 
