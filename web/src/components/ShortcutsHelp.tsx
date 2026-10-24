@@ -1,5 +1,7 @@
 import { Keyboard, X } from 'lucide-react'
 
+import { Tooltip } from './ui/Tooltip'
+
 /** Atalhos de teclado da tela do mês (computador). A mesma lista serve para a ajuda "?" e para a documentação. */
 export type Shortcut = [keys: string, action: string]
 export const MONTH_SHORTCUTS: Shortcut[] = [
@@ -20,15 +22,16 @@ const kbd = 'inline-flex min-w-6 justify-center rounded-sm border border-ink/30 
 export function ShortcutsHelp({ open, onToggle, items = MONTH_SHORTCUTS }: { open: boolean; onToggle: () => void; items?: Shortcut[] }) {
   return (
     <div className="relative">
-      <button
-        aria-label="Atalhos de teclado"
-        aria-expanded={open}
-        title="Atalhos de teclado (?)"
-        onClick={onToggle}
-        className="flex size-9 items-center justify-center rounded-md border border-ink/30 text-ink transition-colors hover:bg-ink/5"
-      >
-        <Keyboard size={18} strokeWidth={1.5} aria-hidden="true" />
-      </button>
+      <Tooltip label="Atalhos de teclado" shortcut="?">
+        <button
+          aria-label="Atalhos de teclado"
+          aria-expanded={open}
+          onClick={onToggle}
+          className="flex size-9 items-center justify-center rounded-md border border-ink/30 text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
+        >
+          <Keyboard size={18} strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </Tooltip>
       {open && (
         <section aria-label="Lista de atalhos" className="absolute right-0 top-11 z-30 w-72 rounded-md border border-line bg-surface p-4 motion-safe:animate-fade-in">
           <div className="mb-2 flex items-center justify-between">

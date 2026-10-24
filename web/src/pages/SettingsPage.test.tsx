@@ -40,7 +40,7 @@ describe('ajustes · categorias', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Nova categoria/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova categoria' })
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Pets')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'livre' }))
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'livre' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar categoria' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/categories', expect.objectContaining({ body: { name: 'Pets', defaultWallet: 'free', isEssential: false } })),
@@ -56,8 +56,8 @@ describe('ajustes · categorias', () => {
     const name = within(dialog).getByLabelText('Nome')
     await userEvent.clear(name)
     await userEvent.type(name, 'Supermercado')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'nenhuma' }))
-    await userEvent.click(within(dialog).getByRole('button', { name: 'não' }))
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'nenhuma' }))
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'não' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
     await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Supermercado', defaultWallet: null, isEssential: false }))
   })
@@ -151,7 +151,7 @@ describe('ajustes · subcategorias', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Ações de Moradia' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Nova subcategoria' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova subcategoria' })
-    expect(within(dialog).getByLabelText('dentro de')).toHaveValue('c1')
+    expect(within(dialog).getByRole('combobox', { name: 'dentro de' })).toHaveValue('Moradia')
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Água')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar categoria' }))
     await waitFor(() =>
@@ -167,13 +167,15 @@ describe('ajustes · subcategorias', () => {
     renderAt('/ajustes/categorias')
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Lazer' }))
     let dialog = await screen.findByRole('dialog', { name: 'Lazer' })
-    await userEvent.selectOptions(within(dialog).getByLabelText('dentro de'), 'c1')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: 'dentro de' }))
+    await userEvent.click(screen.getByRole('option', { name: 'Moradia' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
     await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Lazer', defaultWallet: null, isEssential: false, parentId: 'c1' }))
 
     await userEvent.click(await screen.findByRole('button', { name: 'Abrir Gás' }))
     dialog = await screen.findByRole('dialog', { name: 'Gás' })
-    await userEvent.selectOptions(within(dialog).getByLabelText('dentro de'), '')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: 'dentro de' }))
+    await userEvent.click(screen.getByRole('option', { name: 'nenhuma (categoria principal)' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar categoria' }))
     await waitFor(() => expect(patchCalls()).toContainEqual({ name: 'Gás', defaultWallet: null, isEssential: true, parentId: null }))
   })
@@ -220,7 +222,8 @@ describe('ajustes · favorecidos', () => {
     await userEvent.type(within(dialog).getByLabelText('Apelido'), 'Gás')
     await userEvent.type(within(dialog).getByLabelText('CNPJ (opcional)'), '11222333000181')
     expect(within(dialog).getByLabelText('CNPJ (opcional)')).toHaveValue('11.222.333/0001-81')
-    await userEvent.selectOptions(within(dialog).getByLabelText(/categoria sugerida/), 'c1')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /categoria sugerida/ }))
+    await userEvent.click(screen.getByRole('option', { name: 'Moradia' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Criar favorecido' }))
     await waitFor(() =>
       expect(api.POST).toHaveBeenCalledWith(

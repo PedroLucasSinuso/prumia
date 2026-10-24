@@ -128,6 +128,7 @@ const (
 	DocumentExtractionMethodBarcodeImage DocumentExtractionMethod = "barcode_image"
 	DocumentExtractionMethodOcr          DocumentExtractionMethod = "ocr"
 	DocumentExtractionMethodPdfText      DocumentExtractionMethod = "pdf_text"
+	DocumentExtractionMethodText         DocumentExtractionMethod = "text"
 )
 
 // Valid indicates whether the value is a known member of the DocumentExtractionMethod enum.
@@ -138,6 +139,8 @@ func (e DocumentExtractionMethod) Valid() bool {
 	case DocumentExtractionMethodOcr:
 		return true
 	case DocumentExtractionMethodPdfText:
+		return true
+	case DocumentExtractionMethodText:
 		return true
 	default:
 		return false
@@ -742,14 +745,14 @@ type DocumentExtraction struct {
 	// Kind `boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)
 	Kind DocumentExtractionKind `json:"kind"`
 
-	// Method Como foi lido
+	// Method Como foi lido (`text` = texto escrito ou colado)
 	Method DocumentExtractionMethod `json:"method"`
 }
 
 // DocumentExtractionKind `boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)
 type DocumentExtractionKind string
 
-// DocumentExtractionMethod Como foi lido
+// DocumentExtractionMethod Como foi lido (`text` = texto escrito ou colado)
 type DocumentExtractionMethod string
 
 // DocumentItem Uma conta encontrada no arquivo. Tudo é sugestão para revisar; campos ausentes não foram lidos.
@@ -1501,6 +1504,12 @@ type ExtractDocumentMultipartBody struct {
 	Password *string            `json:"password,omitempty"`
 }
 
+// ParseDocumentTextJSONBody defines parameters for ParseDocumentText.
+type ParseDocumentTextJSONBody struct {
+	// Text Até 20.000 caracteres (acima disso, 413)
+	Text string `json:"text"`
+}
+
 // ExportInvoicesCsvParams defines parameters for ExportInvoicesCsv.
 type ExportInvoicesCsvParams struct {
 	// From Vencimento a partir de (inclusive)
@@ -1708,6 +1717,9 @@ type UpdateCategoryJSONRequestBody = CategoryPatch
 // ExtractDocumentMultipartRequestBody defines body for ExtractDocument for multipart/form-data ContentType.
 type ExtractDocumentMultipartRequestBody ExtractDocumentMultipartBody
 
+// ParseDocumentTextJSONRequestBody defines body for ParseDocumentText for application/json ContentType.
+type ParseDocumentTextJSONRequestBody ParseDocumentTextJSONBody
+
 // CreateIncomeSourceJSONRequestBody defines body for CreateIncomeSource for application/json ContentType.
 type CreateIncomeSourceJSONRequestBody = IncomeSourceInput
 
@@ -1821,6 +1833,9 @@ type ServerInterface interface {
 	// ExtractDocument Lê contas de um arquivo (boleto, conta sem boleto ou lista). Nada é salvo; o usuário revisa antes de criar.
 	// (POST /households/{householdId}/documents/extract)
 	ExtractDocument(c *gin.Context, householdId HouseholdId)
+	// ParseDocumentText Lê contas de um texto escrito ou colado (mesmo resultado do `extractDocument`). Nada é salvo; o usuário revisa antes de criar.
+	// (POST /households/{householdId}/documents/parse-text)
+	ParseDocumentText(c *gin.Context, householdId HouseholdId)
 	// ExportInvoicesCsv Exporta as contas da casa em CSV (planilha). Todos os membros, inclusive leitura, podem exportar.
 	// (GET /households/{householdId}/export/invoices.csv)
 	ExportInvoicesCsv(c *gin.Context, householdId HouseholdId, params ExportInvoicesCsvParams)
@@ -2362,6 +2377,31 @@ func (siw *ServerInterfaceWrapper) ExtractDocument(c *gin.Context) {
 	}
 
 	siw.Handler.ExtractDocument(c, householdId)
+}
+
+// ParseDocumentText operation middleware
+func (siw *ServerInterfaceWrapper) ParseDocumentText(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ParseDocumentText(c, householdId)
 }
 
 // ExportInvoicesCsv operation middleware
@@ -3957,4 +3997,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/households/:householdId/summary/categories", wrapper.GetCategoryHistory)
 	router.POST(options.BaseURL+"/households/:householdId/boletos/extract", wrapper.ExtractBoleto)
 	router.POST(options.BaseURL+"/households/:householdId/documents/extract", wrapper.ExtractDocument)
+	router.POST(options.BaseURL+"/households/:householdId/documents/parse-text", wrapper.ParseDocumentText)
 }

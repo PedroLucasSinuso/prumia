@@ -942,6 +942,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/documents/parse-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lê contas de um texto escrito ou colado (mesmo resultado do `extractDocument`). Nada é salvo; o usuário revisa antes de criar.
+         * @description Padrão de lista: UMA conta por linha, `descrição: valor` (ex.: `Gás: R$ 150,00`, `Mercado: 310,25`). Linha digitável no texto
+         *     = `boleto`; senão as mesmas regras do `extractDocument` (`bill` ou `list`). Item forte = com `R$` ou valor com vírgula e 2 casas
+         *     (com `:`, `=` ou `-`); item fraco = inteiro sem `R$` (`Teste: 567`), só vale com 2+ itens fortes. Sem OCR, sem disco, sem log
+         *     do conteúdo. Mesmo limite de taxa por usuário do `extractDocument`. Resposta com `method: text`.
+         */
+        post: operations["parseDocumentText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1268,10 +1293,10 @@ export interface components {
         };
         DocumentExtraction: {
             /**
-             * @description Como foi lido
+             * @description Como foi lido (`text` = texto escrito ou colado)
              * @enum {string}
              */
-            method: "pdf_text" | "barcode_image" | "ocr";
+            method: "pdf_text" | "barcode_image" | "ocr" | "text";
             /**
              * @description `boleto` = linha digitável válida; `bill` = conta sem linha digitável (só valor/vencimento); `list` = várias contas (ex.: print de conversa)
              * @enum {string}
@@ -3419,6 +3444,56 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    parseDocumentText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Até 20.000 caracteres (acima disso, 413) */
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Lido */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentExtraction"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            /** @description Texto maior que 20.000 caracteres */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Não encontrei boleto nem valor de conta no texto (`code=boleto_not_found`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
         };
     };
 }

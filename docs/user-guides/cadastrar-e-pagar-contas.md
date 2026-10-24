@@ -35,13 +35,13 @@ Para mudar de mês, use as setas **‹** e **›**. Em outro mês, aparece o ata
 1. Toque no botão **+** (no computador, em **Nova conta**, no alto da tela).
 2. Digite o **Valor**. Basta digitar os números: ao digitar `9990`, o campo mostra `R$ 99,90`.
 3. Escreva **Descrição** (por exemplo, "Aluguel").
-4. Escolha quando **vence**: **hoje**, **amanhã**, **em 7 dias** ou **outra data**.
-5. Toque na **Categoria**. As que mostram **VR** sugerem a carteira de benefício.
-6. Toque em **Adicionar conta**. Para lançar várias seguidas, use **Adicionar e lançar outra**: a categoria e o vencimento ficam, e o cursor volta para o começo.
+4. Escolha quando **vence**: **Hoje**, **Amanhã**, **Em 7 dias** ou **Outra data**. Em "Outra data" aparece um campo de data: digite `dd/mm/aaaa` (as barras entram sozinhas) ou abra o **calendário** no ícone ao lado (no teclado, `↓` abre). No calendário, as setas do teclado andam pelos dias, `PageUp`/`PageDown` trocam o mês, `Enter` escolhe e `Esc` fecha; os botões **Hoje** e **Amanhã** escolhem direto.
+5. Escolha a **Categoria**: os botões no alto são as **últimas que você usou** (até 4, separadas por casa, neste aparelho). Para outra, clique no campo e **digite para filtrar** (`↑`/`↓` e `Enter` no teclado). As subcategorias aparecem como **Moradia › Gás**. As que mostram **VR** sugerem a carteira de benefício.
+6. Clique em **Adicionar conta**. Para lançar várias seguidas, use **Adicionar e lançar outra**: a categoria e o vencimento ficam, e o cursor volta para o começo. O botão principal fica sempre visível no rodapé do painel, mesmo com o formulário comprido, e mostra "Salvando…" enquanto grava. A conta nova pisca de leve na lista.
 
-Se a categoria que você precisa não existe, use **+ nova** no fim dos botões de categoria: ela é criada na hora e já fica escolhida (dentro de uma categoria principal aberta, vira subcategoria).
+Se a categoria que você precisa não existe, abra a lista e use **+ Nova categoria** no fim (se você já digitou um nome, ele vem preenchido): ela é criada na hora e já fica escolhida (marcando "dentro de …", vira subcategoria).
 
-Em **Mais opções** você pode informar o **Mês de competência** e uma **Observação**. A competência é o mês a que o gasto pertence. Por exemplo, a conta de luz de outubro que vence em novembro conta como outubro. Se deixar em branco, vale o mês do vencimento.
+Em **Mais opções** você pode informar o **Favorecido** (também uma lista pesquisável), o **Mês de competência** (um seletor de mês; **Limpar** deixa em branco) e uma **Observação**. A competência é o mês a que o gasto pertence. Por exemplo, a conta de luz de outubro que vence em novembro conta como outubro. Se deixar em branco, vale o mês do vencimento.
 
 ## Marcar como paga (um toque)
 

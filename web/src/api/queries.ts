@@ -223,6 +223,32 @@ export async function extractDocument(houseId: string, file: File, password?: st
   throw new ApiError({ title: code, ...problem, status, code })
 }
 
+/** Limite de caracteres do texto colado (o servidor responde 413 acima disso). */
+export const MAX_PARSE_TEXT = 20000
+
+const textStatusCode: Record<number, string> = { 413: 'text_too_large', 422: 'boleto_not_found', 429: 'too_many_requests' }
+
+/**
+ * Lê um texto escrito ou colado ("Gás: R$ 150,00" uma conta por linha): mesma resposta de `extractDocument`, sem arquivo.
+ * Nada é salvo; a pessoa revisa antes de criar. Falha vira ApiError com `problem.code` preenchido.
+ */
+export async function parseDocumentText(houseId: string, text: string): Promise<DocumentExtraction> {
+  let result
+  try {
+    result = await api.POST('/households/{householdId}/documents/parse-text', {
+      params: { path: { householdId: houseId } },
+      body: { text },
+    })
+  } catch {
+    throw new ApiError(undefined, true)
+  }
+  if (result.data) return result.data
+  const problem = typeof result.error === 'object' && result.error !== null ? (result.error as Problem) : undefined
+  const status = problem?.status ?? result.response?.status ?? 0
+  const code = problem?.code ?? textStatusCode[status] ?? 'boleto_not_found'
+  throw new ApiError({ title: code, ...problem, status, code })
+}
+
 export function useMembers(houseId: string) {
   return useQuery({
     queryKey: keys.members(houseId),

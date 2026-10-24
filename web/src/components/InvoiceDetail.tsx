@@ -5,6 +5,7 @@ import { daysBetween, fullDate, monthLabel, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { BoletoBox } from './BoletoBox'
 import { Button } from './Button'
+import { Tooltip } from './ui/Tooltip'
 
 type Props = {
   invoice: Invoice
@@ -115,9 +116,11 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
       {canWrite && (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {!paid && (
-            <Button type="button" disabled={busy} onClick={() => onPay(invoice)} title="Atalho: P">
-              Pagar · {walletName[payWallet]}
-            </Button>
+            <Tooltip label="Pagar" shortcut="P" className="flex w-full">
+              <Button type="button" disabled={busy} onClick={() => onPay(invoice)} className="w-full">
+                Pagar · {walletName[payWallet]}
+              </Button>
+            </Tooltip>
           )}
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="ghost" onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 md:h-9">

@@ -85,3 +85,27 @@ com os valores; razão social aceita SA/S.A/Ltda/ME/EIRELI em qualquer caixa e o
 `POST /households/{id}/invoices/batch {items: InvoiceInput[]}` (1 a 50) cria tudo numa só transação (tudo ou nada); erros de validação
 vêm por índice (`items.3.amountCents`); aceita `boleto`/`newPayee`/`payeeId` por item; linha digitável repetida dentro do lote é recusada. Viewer = 403.
 No front, `pages/ImportPage.tsx` lê os arquivos em sequência (backoff em 429) e `lib/importing.ts` sugere categoria e monta o lote.
+
+## Padrão de lista (foto ou texto) e `parse-text`
+
+Código em `internal/boleto/list.go` (parser) e `documents.go` (rota). **Uma conta por linha: `descrição: valor`.**
+
+Por linha, `parseListLine`: tira a hora do fim (`14:32 ✓✓`); descarta a linha com `://`, `www.`, `@`, `token=`, hora no meio, data `dd/mm/aaaa`
+ou CPF/CNPJ; casa `listLineRe` (descrição preguiçosa, separador `:`/`=`/`-`/`–`, `R$` opcional, número, até 3 "palavras" de lixo curto no fim).
+O número passa por `parseMoney` (`150` = 15000, `150,5` = 15050, `R$150`, `1.234,56`; ponto decimal só com `R$`, erro comum de OCR).
+Sem `R$` a regra é mais dura: separador obrigatório, descrição de até 40 caracteres, sem número solto e que não termine em dígito, `/` ou `.`.
+
+| Tipo | Condição |
+|---|---|
+| **Forte** | tem `R$` (com ou sem centavos) **ou** vírgula com 2 casas (`154,72`) com separador |
+| **Fraco** | inteiro (ou vírgula com 1 casa) sem `R$`, com separador; teto R$ 100.000 |
+
+`findListItems` só devolve os fracos se o texto tem **2 ou mais itens fortes** (contexto de lista). Assim "Medidor: 3789363" ou "Cliente: 46198"
+de uma fatura nunca viram conta. Várias contas na mesma linha (`/`, `;`, `|`) só são divididas se ao menos 2 partes forem itens. A ordem de
+decisão de `analyze` não mudou (bill por rótulo forte/vencimento, depois lista, depois 1 item = conta). Testes em tabela: `list_test.go`.
+
+`POST /households/{id}/documents/parse-text {text}` (até 20.000 caracteres; 413 `text_too_large`, 400 sem texto, 422 `boleto_not_found`):
+`Extractor.ExtractText` tenta `FindInText` (linha digitável = boleto) e senão `analyze`; resposta `DocumentExtraction` com `method: "text"`.
+Sem OCR, sem disco, sem log do conteúdo (só tipo, método e quantidade). Compartilha o limiter por usuário do `/documents/extract`
+(429), não usa o semáforo (não sobe processos externos); viewer = 403 pelo middleware. Está nas varreduras de segurança
+(`security_test.go`: isolamento por casa e viewer). No front, "Colar texto" em `ImportPage.tsx` põe o texto na mesma fila dos arquivos.

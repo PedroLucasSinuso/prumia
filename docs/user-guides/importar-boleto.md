@@ -15,7 +15,37 @@ Use quando chegaram várias contas juntas, ou uma foto de lista.
 Fotos de lista ("Gás R$ 157,82", "Mercado R$ 568,99", uma por linha) viram uma conta por linha. Contas de consumo sem código de barras
 (só "total a pagar" e vencimento) viram uma conta sem linha digitável. Quando o documento traz o CNPJ, a linha oferece cadastrar o favorecido.
 
+Sem arquivo? Toque em **Colar texto**, cole ou escreva as contas e toque em **Ler texto**: elas caem na mesma tabela de revisão
+(o texto aparece como um "arquivo" `[ ▪ ] texto`). Vale até 20.000 caracteres.
+
 No formulário de conta, o botão de importar também aceita conta sem boleto; se o arquivo for uma lista, aparece **Abrir em Importar**.
+
+## Padrão para listas (foto ou texto)
+
+**Uma conta por linha: `descrição: valor`.** Vale para print de lista, foto de caderno e texto colado.
+
+Valores aceitos: `R$ 1.234,56`, `R$1234,56`, `R$150` (sem centavos), `1234,56`, `154,72`, `150` e `150,5` (= R$ 150,50).
+Separador entre a descrição e o valor: `:`, `=` ou `-`; só um espaço também serve quando o valor tem `R$`.
+A descrição precisa de ao menos uma letra e tem até uns 40 caracteres, sem número solto no meio ("Gás 2 botijões: 50" não vale; "Gás: 50" vale).
+
+| Funciona | Por quê |
+|---|---|
+| `Gás: R$ 150,00` | com R$ |
+| `Mercado: 310,25` | vírgula com 2 casas |
+| `Gás - 98,40`, `• Mercado: 310,25` | marcador e hífen são aceitos |
+| `Ração gatos R$24,99` | R$ dispensa o separador |
+| `Gás: 98,40 / Luz: R$ 120` | várias contas na mesma linha, separadas por `/`, `;` ou `|` |
+| `Teste: 567` **junto de 2 ou mais** linhas com R$ ou vírgula | número inteiro só vale dentro de uma lista |
+
+| Não funciona | Por quê |
+|---|---|
+| `Teste: 567` sozinho (ou com só 1 linha com R$) | inteiro sem R$ é ambíguo (pode ser número de medidor ou de cliente): precisa de 2 contas "fortes" |
+| `Gás 150` | sem R$ e sem separador |
+| `Estava aparecendo westgroup 727` | número solto na descrição |
+| Links, e-mails, horas (`22:45`), datas (`10/11/2026`), CNPJ/CPF | ignorados de propósito (por isso um print inteiro de conversa funciona) |
+| `Total: R$ 926,80` | "total" e "saldo" não são contas |
+
+Com **uma** só linha válida, vira uma conta comum (não lista). Sempre confira a tabela antes de criar.
 
 ## Importar boleto (no formulário de conta)
 
@@ -63,6 +93,7 @@ o prumia guarda esse favorecido e, **nos próximos boletos dessa empresa, já ve
   existe, ou em **Fechar aviso** se quiser lançar assim mesmo.
 - **Aparece "Não consegui ler este boleto".** Toque em **Tentar de novo** para escolher outro arquivo (o PDF original costuma
   funcionar melhor que uma foto) ou em **Preencher manualmente** para digitar você mesmo.
+- **Aparece "Não encontrei contas neste texto".** Escreva uma conta por linha no formato `descrição: valor` (veja o padrão acima).
 - **Aparece "Senha incorreta".** Confira a senha (muitos bancos usam parte do CPF) e toque em **Abrir PDF** de novo. Para desistir,
   toque em **Cancelar**.
 - **Aparece "Este arquivo não é PDF, PNG ou JPG".** Escolha o PDF do boleto, uma foto ou um print.

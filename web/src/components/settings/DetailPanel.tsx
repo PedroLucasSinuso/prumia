@@ -3,6 +3,7 @@ import { useEffect, useId, type ReactNode } from 'react'
 
 import { ICON } from '../../lib/navigation'
 import { Sheet } from '../Sheet'
+import { Tooltip } from '../ui/Tooltip'
 
 type Props = { desktop: boolean; title: string; onClose: () => void; children: ReactNode }
 
@@ -27,15 +28,17 @@ export function DetailPanel({ desktop, title, onClose, children }: Props) {
   return (
     <section
       aria-labelledby={titleId}
-      className="fixed inset-y-0 right-0 z-30 w-full max-w-md overflow-y-auto border-l border-line bg-surface p-5 shadow-xl xl:sticky xl:top-6 xl:z-auto xl:max-h-[calc(100dvh-3rem)] xl:max-w-none xl:self-start xl:rounded-md xl:border xl:shadow-none"
+      className="fixed inset-y-0 right-0 z-30 w-full max-w-md motion-safe:animate-slide-in xl:animate-none overflow-y-auto border-l border-line bg-surface p-5 shadow-xl xl:sticky xl:top-6 xl:z-auto xl:max-h-[calc(100dvh-3rem)] xl:max-w-none xl:self-start xl:rounded-md xl:border xl:shadow-none"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 id={titleId} className="min-w-0 truncate font-display text-[22px] font-bold text-heading font-stretch-condensed">
           {title}
         </h3>
-        <button type="button" aria-label="Fechar detalhes" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/6">
-          <X aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} />
-        </button>
+        <Tooltip label="Fechar" shortcut="Esc">
+          <button type="button" aria-label="Fechar detalhes" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-ink/8 active:bg-ink/12">
+            <X aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} />
+          </button>
+        </Tooltip>
       </div>
       {children}
     </section>
