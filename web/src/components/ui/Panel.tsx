@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { canAnimate, EXIT_MS } from '../../lib/motion'
+import { useBodyScrollLock } from '../../lib/scrollLock'
 import { trapTab } from './focus'
 import { Tooltip } from './Tooltip'
 
@@ -41,6 +42,7 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
   useEffect(() => {
     close.current = onClose
   })
+  useBodyScrollLock()
   const exit = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   function requestClose() {
@@ -75,12 +77,12 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
   }, [initialFocus])
 
   const side = variant === 'side'
-  const backdrop = `fixed inset-0 z-40 flex bg-ink/40 ${closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'} ${
+  const backdrop = `fixed inset-0 z-40 flex bg-scrim/50 ${closing ? 'motion-safe:animate-fade-out' : 'motion-safe:animate-fade-in'} ${
     side ? 'justify-end' : 'items-end justify-center sm:items-center'
   }`
   const box = side
-    ? `h-dvh w-full max-w-[480px] border-l ${closing ? 'motion-safe:animate-slide-out' : 'motion-safe:animate-slide-in'}`
-    : `max-h-[92dvh] w-full max-w-md rounded-t-md border sm:rounded-md ${closing ? 'motion-safe:animate-rise-out' : 'motion-safe:animate-rise-in'}`
+    ? `h-dvh max-h-dvh w-full max-w-[480px] border-l ${closing ? 'motion-safe:animate-slide-out' : 'motion-safe:animate-slide-in'}`
+    : `max-h-[92dvh] min-h-0 w-full max-w-md rounded-t-md border sm:rounded-md ${closing ? 'motion-safe:animate-rise-out' : 'motion-safe:animate-rise-in'}`
 
   return (
     <div className={backdrop} onMouseDown={() => requestClose()}>
@@ -112,21 +114,33 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
             </button>
           </Tooltip>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
-        {footer && <div className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row-reverse sm:justify-start">{footer}</div>}
+        {/* ÚNICO contêiner que rola: min-h-0 deixa o flex encolher, overscroll-contain impede a rolagem de vazar para a
+            página e scroll-pb-24 faz o foco num campo do fim rolar até ele ficar acima do rodapé fixo. */}
+        <div
+          data-panel-body
+          className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain scroll-pb-24 px-5 py-5"
+          onFocus={(e) => e.target.scrollIntoView?.({ block: 'nearest' })}
+        >
+          {children}
+        </div>
+        {footer && (
+          <div className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_8px_-6px] shadow-ink/15 sm:flex-row-reverse sm:justify-start">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 /**
- * Rodapé de formulário que gruda no fim do painel (dentro do corpo rolável): a ação primária fica sempre à vista, mesmo
+ * Rodapé de formulário que gruda no fim do painel (`sticky` dentro do corpo rolável, nunca `fixed` sobre a página; ocupa espaço no fluxo, então não cobre o último campo): a ação primária fica sempre à vista, mesmo
  * com o formulário comprido. Coloque como último filho de um `<form className="min-h-full flex flex-col …">`.
  * Fora de um painel (página comum) é só uma barra comum.
  */
 export function PanelFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-5 -mb-5 mt-auto flex flex-col gap-2 border-t border-line bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+    <div className="sticky bottom-0 z-10 -mx-5 -mb-5 mt-auto flex flex-col gap-2 border-t border-line bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_8px_-6px] shadow-ink/15">
       {children}
     </div>
   )

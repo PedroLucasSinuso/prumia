@@ -27,10 +27,14 @@ e quando algo mudar.
    - **Último dia útil**.
    - **Data específica** (só para receita que não se repete).
 
-   Embaixo aparecem as **próximas datas** conforme a regra. Sábado, domingo e feriados nacionais não contam como dia útil.
+   Embaixo aparecem as **próximas datas** conforme a regra, sempre a partir de hoje (se você escolheu um mês futuro, a partir dele).
+   Se a data deste mês já passou, ela não entra na lista: uma linha discreta diz "Este mês: 05/10 (seg), já passou: conta como
+   recebida". Sábado, domingo e feriados nacionais não contam como dia útil.
 5. **Repete todo mês**: deixe marcado para salário e vale. Se quiser, escolha até qual mês (**Até**).
 6. **Descontos** (opcional): adicione INSS, IRRF, plano de saúde etc. Para salário, **Sugerir INSS e IRRF** preenche INSS e IRRF
-   com uma **estimativa pela tabela do ano** (e pelo número de dependentes). Confira no seu holerite e edite os valores. Se o
+   com uma **estimativa pela tabela do ano** (e pelo número de dependentes). A nota embaixo diz o que foi preenchido (por exemplo "INSS R$ 501,51 · IRRF R$ 0,00 (isento nesta faixa)"): IRRF zero não é
+   falha, é isenção (salários até R$ 5.000 pela Lei 15.270/2025). Se você já tinha digitado INSS ou IRRF, eles são substituídos e a
+   nota avisa; os outros descontos ficam. Confira no seu holerite e edite os valores. Se o
    imposto do seu caso for diferente (pensão, outras rendas), digite o do holerite.
 7. Confira o **líquido** e use **Adicionar receita**.
 
@@ -58,8 +62,10 @@ o dinheiro entrou adiantado.
   não recebidos; ajustes feitos neles são sobrescritos). Meses já recebidos nunca mudam em lote.
 - **Excluir**: **Excluir só este mês** ou **Excluir este e os seguintes** (encerra a repetição). Use **Desfazer** no aviso para voltar
   atrás. Meses já recebidos não são excluídos em lote.
-- **Receitas que se repetem** (no fim da página): veja a regra e o valor de cada repetição, abra **Editar** ou **Encerrar** (mantém o
-  mês exibido e tira os seguintes que ainda não caíram).
+- **Receitas que se repetem** (no fim da página): veja a regra e o valor de cada repetição, abra **Editar**, **Encerrar** (mantém o
+  mês exibido e tira os seguintes que ainda não caíram) ou **Excluir**. Excluir pergunta antes ("Os meses já recebidos ficam; os
+  próximos somem") e o aviso tem **Desfazer**, que traz de volta a repetição e os meses removidos nessa exclusão (meses que você
+  tinha excluído antes continuam excluídos). O mesmo vale em **Excluir esta repetição**, no detalhe de uma receita que se repete.
 
 ## E se...
 

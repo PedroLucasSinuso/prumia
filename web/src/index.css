@@ -19,6 +19,7 @@
 @theme inline {
   --color-surface: var(--prumia-surface);
   --color-ink: var(--prumia-ink);
+  --color-scrim: var(--prumia-scrim);
   --color-structure: var(--prumia-structure);
   /* Títulos (`text-heading`): no Marfim é o teal; nos escuros é uma cor clara (`text-structure` ficou só para painéis). */
   --color-heading: var(--prumia-heading);
@@ -121,6 +122,7 @@
   [data-theme='sistema'] {
     --prumia-surface: #f3ebdd;
     --prumia-ink: #313638;
+    --prumia-scrim: var(--prumia-ink);
     --prumia-structure: #203d40;
     --prumia-on-structure: #f3ebdd;
     --prumia-heading: #203d40;
@@ -137,6 +139,7 @@
   [data-theme='solarized'] {
     --prumia-surface: #fdf6e3;
     --prumia-ink: #073642;
+    --prumia-scrim: var(--prumia-ink);
     --prumia-structure: #073642;
     --prumia-on-structure: #fdf6e3;
     --prumia-heading: #073642;
@@ -153,6 +156,7 @@
   [data-theme='latte'] {
     --prumia-surface: #eff1f5;
     --prumia-ink: #3b3d55;
+    --prumia-scrim: var(--prumia-ink);
     --prumia-structure: #1a4fc0;
     --prumia-on-structure: #eff1f5;
     --prumia-heading: #1a4fc0;
@@ -169,6 +173,7 @@
   [data-theme='dracula'] {
     --prumia-surface: #282a36;
     --prumia-ink: #f8f8f2;
+    --prumia-scrim: #000000;
     --prumia-structure: #7656bd;
     --prumia-on-structure: #f8f8f2;
     --prumia-heading: #f8f8f2;
@@ -185,6 +190,7 @@
   [data-theme='nord'] {
     --prumia-surface: #2e3440;
     --prumia-ink: #eceff4;
+    --prumia-scrim: #000000;
     --prumia-structure: #4a6b94;
     --prumia-on-structure: #eceff4;
     --prumia-heading: #88c0d0;
@@ -201,6 +207,7 @@
   [data-theme='gruvbox'] {
     --prumia-surface: #282828;
     --prumia-ink: #ebdbb2;
+    --prumia-scrim: #000000;
     --prumia-structure: #8a5a12;
     --prumia-on-structure: #fbf1c7;
     --prumia-heading: #fabd2f;
@@ -217,6 +224,7 @@
   [data-theme='rosepine'] {
     --prumia-surface: #191724;
     --prumia-ink: #e0def4;
+    --prumia-scrim: #000000;
     --prumia-structure: #907aa9;
     --prumia-on-structure: #191724;
     --prumia-heading: #c4a7e7;
@@ -233,6 +241,7 @@
   [data-theme='contraste'] {
     --prumia-surface: #ffffff;
     --prumia-ink: #000000;
+    --prumia-scrim: var(--prumia-ink);
     --prumia-structure: #000000;
     --prumia-on-structure: #ffffff;
     --prumia-heading: #000000;
@@ -250,6 +259,7 @@
     [data-theme='sistema'] {
       --prumia-surface: #282a36;
       --prumia-ink: #f8f8f2;
+      --prumia-scrim: #000000;
       --prumia-structure: #7656bd;
       --prumia-on-structure: #f8f8f2;
       --prumia-heading: #f8f8f2;

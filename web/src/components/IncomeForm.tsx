@@ -4,8 +4,8 @@ import { ApiError } from '../api/errors'
 import { estimateTax, useIncomeDatePreview } from '../api/queries'
 import type { AmountMode, DateRule, Deduction, Income, IncomeInput, IncomeKind, IncomePatch, Member, SeriesScope, WeekendAdjust } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { dayMonth, monthLabel, weekdayShort } from '../lib/dates'
-import { deductionLabel, kindLabel, netOf, sumDeductions } from '../lib/income'
+import { dayMonth, monthLabel, monthOf, todayISO, weekdayShort } from '../lib/dates'
+import { deductionLabel, kindLabel, netOf, PREVIEW_FETCH, sumDeductions, upcomingDates } from '../lib/income'
 import { formatCents } from '../lib/money'
 import { Button } from './Button'
 import { DeductionsEditor } from './DeductionsEditor'
@@ -29,6 +29,8 @@ type Props = {
   /** Abre o escopo já marcado em "este e os seguintes" (vindo de "Receitas que se repetem"). */
   startScope?: SeriesScope
   canWrite: boolean
+  /** "Hoje" (AAAA-MM-DD) para a prévia de datas; só os testes passam (relógio fixo). */
+  today?: string
   onDone: () => void
   onCancel?: () => void
   onCreate: (body: IncomeInput) => Promise<unknown>
@@ -55,7 +57,7 @@ const sameDeductions = (a: Deduction[], b: Deduction[]) => JSON.stringify(a) ===
  * diferença entre "fonte" e "lançamento": numa receita que se repete, a edição pergunta se vale só para este mês ou
  * para este e os seguintes. O líquido aparece enquanto a pessoa digita; a fonte da verdade é o servidor.
  */
-export function IncomeForm({ houseId, month, members, defaultUserId, income, startScope, canWrite, onDone, onCancel, onCreate, onUpdate }: Props) {
+export function IncomeForm({ houseId, month, members, defaultUserId, income, startScope, canWrite, today = todayISO(), onDone, onCancel, onCreate, onUpdate }: Props) {
   const editing = income !== undefined
   const competence = income?.competenceMonth ?? month
 
@@ -111,8 +113,13 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
     rule === 'date' || !nValid ? undefined : { rule, ...(rule === 'last_business_day' ? {} : { n: nNumber }), ...(rule === 'day_of_month' ? { weekendAdjust: adjust } : {}) }
   // A prévia também serve para sugerir a quantidade (dias úteis do mês): sem regra válida usa o último dia útil só para contar.
   const previewRule: DateRule = currentRule ?? { rule: 'last_business_day' }
-  const preview = useIncomeDatePreview(houseId, previewRule, competence, 3)
-  const businessDays = preview.data?.[0]?.businessDays
+  // Dias úteis do mês da receita (sugestão de quantidade).
+  const monthInfo = useIncomeDatePreview(houseId, previewRule, competence, PREVIEW_FETCH)
+  const businessDays = monthInfo.data?.[0]?.businessDays
+  // A prévia "Próximas datas" parte de hoje (ou do mês escolhido, se for futuro): nunca abre com uma data que já passou.
+  const previewFrom = competence > monthOf(today) ? competence : monthOf(today)
+  const preview = useIncomeDatePreview(houseId, previewRule, previewFrom, PREVIEW_FETCH)
+  const dates = preview.data ? upcomingDates(preview.data, today) : undefined
 
   // Receita nova por unidade: sugere a quantidade = dias úteis do mês, até a pessoa mexer no campo.
   useEffect(() => {
@@ -129,6 +136,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
     setTaxNote(undefined)
     try {
       const est = await estimateTax(houseId, competence, total, Math.max(0, Math.min(20, Number(dependents) || 0)))
+      const hadTax = deductions.some((d) => d.kind === 'inss' || d.kind === 'irrf')
       const keep = deductions.filter((d) => d.kind !== 'inss' && d.kind !== 'irrf')
       const suggested: Deduction[] = [
         ...(est.inssCents > 0 ? [{ kind: 'inss' as const, name: deductionLabel.inss, amountCents: est.inssCents }] : []),
@@ -137,9 +145,20 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       setDeductions([...suggested, ...keep])
       clear('deductions')
       const other = est.tableYear !== Number(competence.slice(0, 4)) ? ` (tabela de ${est.tableYear}, a mais recente que temos)` : ''
-      setTaxNote(`Estimativa pela tabela de ${est.tableYear}${other}; confira no seu holerite.`)
-    } catch {
-      setTaxNote('Não foi possível calcular agora. Digite os valores do holerite.')
+      // Sempre diz o que foi preenchido; valor zero não vira desconto, então a nota explica o porquê (não parece falha).
+      const inss = est.inssCents > 0 ? `INSS ${formatCents(est.inssCents)}` : 'INSS R$ 0,00 (sem contribuição calculada)'
+      const irrf = est.irrfCents > 0 ? `IRRF ${formatCents(est.irrfCents)}` : `IRRF R$ 0,00 (isento nesta faixa${total <= 500000 ? ': até R$ 5.000 pela Lei 15.270/2025' : ', pela tabela'})`
+      const replaced = hadTax ? ' Substituiu o INSS e o IRRF que estavam digitados; os outros descontos ficaram.' : ''
+      setTaxNote(`${inss} · ${irrf}. Estimativa pela tabela de ${est.tableYear}${other}; confira no seu holerite.${replaced}`)
+    } catch (e) {
+      // Mostra a causa (rede ou status HTTP), não só "não foi possível".
+      const cause =
+        e instanceof ApiError
+          ? e.network
+            ? networkErrorMessage
+            : `${e.problem?.detail || problemMessage(e.problem)} (erro ${e.problem?.status ?? '?'})`
+          : 'erro inesperado'
+      setTaxNote(`Não foi possível calcular agora: ${cause}. Digite os valores do holerite.`)
     } finally {
       setTaxBusy(false)
     }
@@ -288,13 +307,18 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
         {rule === 'date' && (
           <DatePicker label="Data" name="expectedDate" required value={exact} onChange={(d) => { setExact(d); clear('expectedDate') }} error={fields.expectedDate} />
         )}
-        {currentRule && preview.data && (
-          <p className="rounded-md border border-line px-3 py-2 text-[13px] text-ink/85" aria-live="polite">
+        {currentRule && dates && (
+          <div className="rounded-md border border-line px-3 py-2 text-[13px] text-ink/85" aria-live="polite">
             <span className="text-xs font-medium uppercase tracking-wider text-ink/70">Próximas datas</span>
             <span className="mt-0.5 block font-mono tabular-nums">
-              {preview.data.map((p) => `${dayMonth(p.expectedDate)} (${weekdayShort(p.expectedDate)})`).join(' · ')}
+              {dates.upcoming.map((d) => `${dayMonth(d)} (${weekdayShort(d)})`).join(' · ')}
             </span>
-          </p>
+            {dates.passedThisMonth && (
+              <span className="mt-1 block text-xs text-ink/70">
+                Este mês: {dayMonth(dates.passedThisMonth)} ({weekdayShort(dates.passedThisMonth)}), já passou: conta como recebida.
+              </span>
+            )}
+          </div>
         )}
         {editing && !following && (
           <MonthPicker label="Mês de competência" value={competenceInput}

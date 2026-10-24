@@ -386,7 +386,16 @@ export function useSourceActions(houseId: string) {
       ),
     onSettled: refresh,
   })
-  return { create, update }
+  // Excluir a repetição: os previstos somem, recebidos ficam. Desfazer devolve o lote (a API acha o corte mais recente).
+  const remove = useMutation({
+    mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/income-sources/{sourceId}', { params: { path: { householdId: houseId, sourceId: id } } })),
+    onSettled: refresh,
+  })
+  const restore = useMutation({
+    mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/income-sources/{sourceId}/restore', { params: { path: { householdId: houseId, sourceId: id } } })),
+    onSettled: refresh,
+  })
+  return { create, update, remove, restore }
 }
 
 /** Ações da casa: renomear, excluir, papéis, remover/sair, convites e link de redefinição de senha (as de admin o servidor confere). */

@@ -6,6 +6,7 @@ import { monthLabel } from '../lib/dates'
 import { kindShort, netOf, ruleText, untilText } from '../lib/income'
 import { formatCents } from '../lib/money'
 import { Button } from './Button'
+import { DeleteRepetitionConfirm } from './DeleteRepetitionConfirm'
 
 type Props = {
   sources: IncomeSource[]
@@ -18,15 +19,18 @@ type Props = {
   busy: boolean
   onEdit: (income: Income) => void
   onEnd: (source: IncomeSource) => void
+  /** Exclui a repetição: os próximos meses (previstos) somem, os já recebidos ficam. A tela mostra o Desfazer. */
+  onDelete: (source: IncomeSource) => void
 }
 
 /**
  * Acordeão discreto no fim da página: as receitas que se repetem todo mês (o "molde"). Dá para ver a regra e o valor de
  * cada uma, abrir a edição (o formulário normal, já em "este e os seguintes") e encerrar a repetição.
  */
-export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, busy, onEdit, onEnd }: Props) {
+export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, busy, onEdit, onEnd, onDelete }: Props) {
   const [open, setOpen] = useState(false)
   const [ending, setEnding] = useState<string>()
+  const [deleting, setDeleting] = useState<string>()
   const panelId = useId()
   const person = (id: string) => members.find((m) => m.userId === id)?.name ?? 'Pessoa'
   if (sources.length === 0) return null
@@ -70,19 +74,26 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                   </div>
                   <span className="shrink-0 text-right font-mono text-sm font-semibold tabular-nums">{value}</span>
                 </div>
-                {canWrite && !finished && (
+                {canWrite && (
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <button
-                      disabled={!current}
-                      title={current ? undefined : 'Esta repetição não tem receita neste mês: troque de mês para editar.'}
-                      onClick={() => current && onEdit(current)}
-                      className="h-9 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-ink/40 disabled:no-underline"
-                    >
-                      Editar
-                    </button>
+                    {!finished && (
+                      <button
+                        disabled={!current}
+                        title={current ? undefined : 'Esta repetição não tem receita neste mês: troque de mês para editar.'}
+                        onClick={() => current && onEdit(current)}
+                        className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-ink/40 disabled:no-underline md:h-9"
+                      >
+                        Editar
+                      </button>
+                    )}
                     {canEnd && ending !== s.id && (
-                      <button onClick={() => setEnding(s.id)} className="h-9 text-sm font-semibold underline underline-offset-4">
+                      <button onClick={() => { setEnding(s.id); setDeleting(undefined) }} className="h-11 text-sm font-semibold underline underline-offset-4 md:h-9">
                         Encerrar
+                      </button>
+                    )}
+                    {deleting !== s.id && (
+                      <button onClick={() => { setDeleting(s.id); setEnding(undefined) }} aria-label={`Excluir ${s.name}`} className="h-11 text-sm font-semibold underline underline-offset-4 md:h-9">
+                        Excluir
                       </button>
                     )}
                     {ending === s.id && (
@@ -99,6 +110,9 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                           </Button>
                         </div>
                       </div>
+                    )}
+                    {deleting === s.id && (
+                      <DeleteRepetitionConfirm name={s.name} busy={busy} onConfirm={() => { onDelete(s); setDeleting(undefined) }} onCancel={() => setDeleting(undefined)} />
                     )}
                   </div>
                 )}
