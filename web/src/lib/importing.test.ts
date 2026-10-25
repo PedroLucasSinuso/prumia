@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Category, DocumentExtraction, Payee } from '../api/types'
-import { markRepeated, normalize, progressMarks, rowErrors, rowsFrom, suggestCategory, toInput } from './importing'
+import { markRepeated, monthsText, normalize, progressMarks, rowErrors, rowsFrom, suggestCategory, toInput } from './importing'
 
 const cats: Category[] = [
   { id: 'mor', name: 'Moradia', isEssential: true, sortOrder: 0, archived: false },
@@ -61,5 +61,14 @@ describe('rowErrors e progressMarks', () => {
   it('desenha um marcador por arquivo', () => {
     expect(progressMarks(2, 5)).toBe('[ ▪ ▪ ▫ ▫ ▫ ]')
     expect(progressMarks(0, 0)).toBe('[  ]')
+  })
+})
+
+describe('monthsText (aviso depois de importar)', () => {
+  it('lista os meses em português, com o ano só quando ele é outro', () => {
+    expect(monthsText(['2026-10-01'], '2026-10-01')).toBe('outubro')
+    expect(monthsText(['2026-10-01', '2026-11-01'], '2026-10-01')).toBe('outubro e novembro')
+    expect(monthsText(['2026-06-01', '2026-07-01', '2026-10-01'], '2026-10-01')).toBe('junho, julho e outubro')
+    expect(monthsText(['2026-12-01', '2027-01-01'], '2026-12-01')).toBe('dezembro e janeiro de 2027')
   })
 })

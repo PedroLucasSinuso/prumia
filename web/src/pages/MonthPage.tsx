@@ -600,13 +600,7 @@ export default function MonthPage() {
 
       {importing && desktop && (
         <Suspense fallback={null}>
-          <ImportModal
-            onClose={() => setImporting(false)}
-            onCreated={(m) => {
-              setImporting(false)
-              setMonth(m)
-            }}
-          />
+          <ImportModal month={month} onClose={() => setImporting(false)} onCreated={() => setImporting(false)} onView={setMonth} />
         </Suspense>
       )}
 
