@@ -16,8 +16,10 @@ type User struct {
 	PasswordHash string
 	// Theme é o tema de cor escolhido em Ajustes > Aparência (marfim, solarized, latte, dracula, nord, gruvbox, rosepine, contraste ou sistema).
 	// `default:sistema`: ao criar um usuário com o campo vazio, o GORM grava o padrão em vez de "" (que o CHECK recusa).
-	Theme     string `gorm:"default:sistema"`
-	DeletedAt gorm.DeletedAt
+	Theme string `gorm:"default:sistema"`
+	// IsSystemOwner: a primeira conta criada. Só ela gera convites de cadastro (ver signup.go). No máximo uma (índice do banco).
+	IsSystemOwner bool
+	DeletedAt     gorm.DeletedAt
 }
 
 func (User) TableName() string { return "users" }

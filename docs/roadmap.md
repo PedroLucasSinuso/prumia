@@ -42,7 +42,7 @@ Receitas v2 (detalhes na seção "Feito: receitas v2" abaixo) e o acabamento da 
 - [feito] **Importação em massa no computador** abre num modal grande sobre o Mês (`ImportModal`); no celular continua a página `/importar`. Falta o dono avaliar no uso real se ainda quer a revisão como segundo modal sobre o primeiro.
 - **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem). Só vale fazer se melhorar em imagens sintéticas sem piorar os casos atuais; falta montar esse conjunto de imagens de teste.
 - [feito no #61] Mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x") e aviso do mês depois de importar (a pessoa fica no mês em que estava; o aviso diz onde as contas caíram, com "Ver").
-- **Convite de cadastro**: PT-3 do [plano](plano-proximas-etapas.md). Ponto em aberto: passar a condição de dono do sistema para outra pessoa (sem decisão, não implementar).
+- [feito] **Convite de cadastro** (PT-3): link de uso único para alguém criar a própria conta e casa, gerado pelo dono do sistema em Ajustes > Minha conta. Ponto em aberto: passar a condição de dono do sistema para outra pessoa (sem decisão, não implementado).
 
 ## Feito: carteiras configuráveis, transferência e Conferir saldo (#50, #54, #56, #60)
 

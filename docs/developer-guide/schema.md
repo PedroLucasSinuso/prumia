@@ -171,6 +171,23 @@ entra no cálculo do saldo (ver [incomes-and-wallets.md](incomes-and-wallets.md)
 Índices parciais (`WHERE deleted_at IS NULL`): `(household_id, competence_month)` e `(household_id, wallet_id)`. O `Down` apaga a
 tabela (os ajustes se perdem; contas, receitas, transferências e carteiras ficam).
 
+### signup_invites e users.is_system_owner (migration 00013)
+
+Convites de **cadastro** (conta e casa próprias), gerados pelo dono do sistema (ver [authentication.md](authentication.md), "Convite de cadastro").
+
+| Coluna | Detalhe |
+|---|---|
+| `users.is_system_owner` | `boolean NOT NULL DEFAULT false`; índice único parcial `users_one_system_owner` (no máximo um dono). Backfill: a conta mais antiga não excluída |
+| `id` | PK uuid |
+| `token_hash` | `bytea NOT NULL UNIQUE` (SHA-256 do token; o token em claro nunca é gravado) |
+| `created_by` | FK `users`: o dono do sistema que gerou |
+| `created_at`, `expires_at` | `CHECK (expires_at > created_at)` |
+| `used_at`, `used_by` | uso único; `CHECK ((used_at IS NULL) = (used_by IS NULL))`; `used_by` é a conta criada |
+| `revoked_at` | revogação |
+
+Índice parcial `(created_by) WHERE used_at IS NULL AND revoked_at IS NULL` para contar os pendentes. O `Down` apaga a tabela e a coluna
+(o cadastro volta a valer só para o primeiro usuário).
+
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 
 Reserva de emergência e investimentos. Previsto como **novas tabelas** (ex.: `goals`, `goal_contributions`), referenciando

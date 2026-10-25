@@ -26,6 +26,27 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
 - `PUBLIC_URL` (opcional) define o endereço que vai nos links de convite e de nova senha; sem ele o front usa o endereço do navegador de quem gera o link.
 - `OPEN_REGISTRATION=true` no `.env` libera cadastro sem convite para qualquer um. Mantenha `false`.
 - Com `inviteToken` o cadastro **não cria casa**: o usuário entra na casa do convite, com o papel do convite (ver [Convites](#convites)). Nesse caso o cadastro funciona mesmo com o cadastro livre fechado.
+- Com `signupToken` (convite de **cadastro**, abaixo) o cadastro funciona com o cadastro livre fechado e **cria casa própria**, como o do primeiro usuário. `inviteToken` e `signupToken` juntos = 400 em `signupToken`.
+- O primeiro usuário vira o **dono do sistema** (`users.is_system_owner`, migration `00013`, no máximo um por índice único parcial; o backfill marcou a conta mais antiga). `GET /auth/me` devolve `isSystemOwner`.
+
+## Convite de cadastro (conta e casa próprias)
+
+Para alguém criar a **própria conta e a própria casa** (e para ter um usuário de testes em produção) sem abrir o cadastro livre.
+Código em `internal/auth/signup.go`; tabela `signup_invites` (migration `00013`, ver [schema.md](schema.md)).
+
+| Regra | Detalhe |
+|---|---|
+| Quem gera | **Só o dono do sistema** (a primeira conta). A checagem é no serviço (`requireSystemOwner`), não só na tela. Outros usuários: 403 `forbidden`. |
+| Rotas | `GET /auth/signup-invites` (pendentes), `POST /auth/signup-invites {expiresInHours?}` (201 com o token **uma vez**), `DELETE /auth/signup-invites/{id}` (revogar; idempotente; usado ou de outra pessoa = 404). |
+| Token | Aleatório, guardado só em hash SHA-256 (`platform/token`), como os convites de casa e os links de nova senha. Vai no link `/cadastro#token=…` (fragmento: não chega ao servidor ao abrir o link). |
+| Validade | De 1 a 168 horas (padrão 48); fora disso, 400 em `expiresInHours`. |
+| Teto | No máximo **5 pendentes** (não usados, não revogados, não vencidos). O 6º: 409 `signup_invite_limit`. A contagem e a gravação ficam numa transação com trava de aplicação (`pg_advisory_xact_lock(7102)`). |
+| Uso único | No cadastro, um `UPDATE … WHERE pendente` consome o token **na mesma transação** que cria usuário e casa. Token inválido, vencido, usado ou revogado = 400 `invalid_signup_invite` e nada é gravado; cadastro que falha por outro motivo (e-mail repetido) não consome o token. |
+| Limites | O cadastro continua com o limite por IP (5 seguidas, depois 1 a cada 12 s). |
+
+**O que um link vazado permite**: criar **uma** conta com uma casa própria e vazia (carteiras e categorias padrão), dentro da validade e antes de alguém usar o link. **Não** dá acesso a nenhuma casa existente, a dados de ninguém nem a outros convites. O dono do sistema revoga um link pendente a qualquer momento (Ajustes > Minha conta).
+**Enumeração de e-mail**: com um link válido, um e-mail já cadastrado responde 409 `email_taken` (o link não é consumido). Sem envio de e-mail não há como confirmar a posse do endereço, então a mensagem continua dizendo que o e-mail existe; o risco fica limitado a quem tem um link válido e ao limite por IP do cadastro.
+**Em aberto (decisão do dono)**: passar a condição de dono do sistema para outra pessoa. Não implementado: hoje só por SQL (`UPDATE users SET is_system_owner = …`, um de cada vez, por causa do índice único).
 
 ## Validade absoluta da sessão
 
@@ -127,7 +148,8 @@ do corpo da requisição: ele vem da rota autorizada. O banco reforça o isolame
 - `make test`: testes de ponta a ponta contra Postgres real (`internal/api/*_test.go`): cadastro, sessão (com relógio
   controlado), isolamento entre casas, `viewer`, CSRF, rate limit, cookie `Secure`. `convites_test.go` cobre convites
   (hash no banco, uso único e corrida, expiração, revogação), papéis, último admin, saída/reentrada, casa e redefinição
-  de senha (escopo multi-casa, sessões encerradas).
+  de senha (escopo multi-casa, sessões encerradas). `signup_invites_test.go` cobre o convite de cadastro (dono do sistema,
+  hash no banco, uso único, vencido, revogado, teto de 5, validações, nada gravado quando falha).
 - **Postman**: importe `docs/developer-guide/postman/prumia.postman_collection.json` (66 requisições com asserções).
   Variável `base_url` = `http://localhost:8080`. Rode as pastas em ordem; o Postman guarda o cookie sozinho (a pasta 6 alterna entre Pedro e Ana trocando de login).
   Contra um banco já usado, o limite de tentativas de login (5 seguidas por e-mail) pode dar 429 em execuções seguidas: espere um minuto. Em linha de

@@ -61,8 +61,10 @@ paths:
       summary: Cria usuário a partir de um convite ou cria uma nova casa
       description: |
         Sem `inviteToken`, cria o usuário e uma casa nova (o usuário é admin). Com `inviteToken`, entra na casa do convite.
-        O cadastro **sem convite** só é aceito para o primeiro usuário do sistema, salvo se o servidor tiver
-        `OPEN_REGISTRATION=true`; depois disso responde 403 (`registration_closed`). Define o cookie de sessão.
+        O cadastro **sem convite** só é aceito para o primeiro usuário do sistema (que vira o dono do sistema), salvo se o
+        servidor tiver `OPEN_REGISTRATION=true` ou se vier um `signupToken` (convite de cadastro gerado pelo dono do sistema:
+        conta e casa próprias); sem nada disso responde 403 (`registration_closed`). `signupToken` inválido, vencido, usado ou
+        revogado responde 400 (`invalid_signup_invite`) e nada é gravado. Define o cookie de sessão.
       security: []
       requestBody:
         required: true
@@ -157,6 +159,43 @@ paths:
                 properties:
                   ended: { type: integer, description: "Quantas sessões foram encerradas" }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/signup-invites:
+    get:
+      tags: [auth]
+      operationId: listSignupInvites
+      summary: Convites de cadastro pendentes (só o dono do sistema)
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/SignupInvite' } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [auth]
+      operationId: createSignupInvite
+      summary: Gera um convite de cadastro (conta e casa próprias) de uso único (só o dono do sistema)
+      description: |
+        O token em claro vem só nesta resposta; no banco fica o hash SHA-256. Validade de 1 a 168 horas (padrão 48).
+        Até 5 pendentes ao mesmo tempo (409 `signup_invite_limit`).
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/SignupInviteInput' } } }
+      responses:
+        '201': { description: "Criado", content: { application/json: { schema: { $ref: '#/components/schemas/SignupInviteCreated' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/signup-invites/{inviteId}:
+    parameters:
+      - { name: inviteId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [auth]
+      operationId: revokeSignupInvite
+      summary: Revoga um convite de cadastro pendente (só o dono do sistema). Já revogado = 204
+      responses:
+        '204': { description: "Revogado" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /auth/password-reset:
     post:
       tags: [auth]
@@ -1236,8 +1275,9 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         password: { type: string, minLength: 10 }
-        householdName: { type: string, description: "Usado quando não há convite" }
-        inviteToken: { type: string }
+        householdName: { type: string, description: "Usado quando não há convite de casa" }
+        inviteToken: { type: string, description: "Convite de casa: entra na casa de quem convidou" }
+        signupToken: { type: string, description: "Convite de cadastro (do dono do sistema): cria conta e casa próprias. Não combina com inviteToken" }
     LoginRequest:
       type: object
       required: [email, password]
@@ -1246,12 +1286,13 @@ components:
         password: { type: string }
     Me:
       type: object
-      required: [id, name, email, theme, households]
+      required: [id, name, email, theme, households, isSystemOwner]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         email: { type: string, format: email }
         theme: { $ref: '#/components/schemas/Theme' }
+        isSystemOwner: { type: boolean, description: "Dono do sistema (a primeira conta): só ele gera convites de cadastro" }
         publicUrl:
           type: string
           format: uri
@@ -1298,6 +1339,24 @@ components:
         email: { type: string, format: email }
         role: { $ref: '#/components/schemas/Role' }
         joinedAt: { type: string, format: date-time }
+    SignupInvite:
+      type: object
+      required: [id, createdAt, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    SignupInviteInput:
+      type: object
+      properties:
+        expiresInHours: { type: integer, minimum: 1, maximum: 168, description: "Padrão 48" }
+    SignupInviteCreated:
+      type: object
+      required: [id, token, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        token: { type: string, description: "Só nesta resposta" }
+        expiresAt: { type: string, format: date-time }
     InviteCreated:
       type: object
       required: [id, token, role, expiresAt]

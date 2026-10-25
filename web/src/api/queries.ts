@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult, WalletAdjustment, WalletAdjustmentInput } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult, WalletAdjustment, WalletAdjustmentInput, SignupInvite, SignupInviteCreated } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -541,6 +541,29 @@ export function useHouseActions(houseId: string) {
 /** Cria uma casa nova (quem cria vira admin). Passou do limite de casas: ApiError com code=household_limit. */
 export function useCreateHousehold() {
   return useMutation({ mutationFn: (name: string) => unwrap(api.POST('/households', { body: { name } })) })
+}
+
+/** Convites de cadastro (conta e casa próprias): só o dono do sistema vê e gera (`enabled` = me.isSystemOwner). */
+export function useSignupInvites(enabled: boolean) {
+  return useQuery({
+    queryKey: ['signup-invites'] as const,
+    enabled,
+    queryFn: (): Promise<SignupInvite[]> => unwrap(api.GET('/auth/signup-invites')),
+  })
+}
+
+export function useSignupInviteActions() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: ['signup-invites'] })
+  const create = useMutation({
+    mutationFn: (expiresInHours: number): Promise<SignupInviteCreated> => unwrap(api.POST('/auth/signup-invites', { body: { expiresInHours } })),
+    onSettled: refresh,
+  })
+  const revoke = useMutation({
+    mutationFn: (inviteId: string) => unwrap(api.DELETE('/auth/signup-invites/{inviteId}', { params: { path: { inviteId } } })),
+    onSettled: refresh,
+  })
+  return { create, revoke }
 }
 
 /** Aceita um convite com a conta já logada: a pessoa entra na casa do convite. */

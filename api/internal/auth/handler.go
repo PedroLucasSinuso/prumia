@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/PedroLucasSinuso/prumia/api/internal/api/gen"
 	"github.com/PedroLucasSinuso/prumia/api/internal/household"
@@ -67,6 +68,14 @@ func (h *Handler) writeError(c *gin.Context, err error) {
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusConflict, Code: "email_taken", Detail: err.Error()})
 	case errors.Is(err, ErrRegistrationClosed):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusForbidden, Code: "registration_closed", Detail: err.Error()})
+	case errors.Is(err, ErrSignupInviteInvalid):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "invalid_signup_invite", Detail: err.Error()})
+	case errors.Is(err, ErrSignupInviteLimit):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusConflict, Code: "signup_invite_limit", Detail: err.Error()})
+	case errors.Is(err, ErrNotSystemOwner):
+		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: err.Error()})
+	case errors.Is(err, ErrSignupInviteNotFound):
+		httpx.NotFound(c)
 	case errors.Is(err, household.ErrInviteInvalid):
 		httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "invalid_invite", Detail: err.Error()})
 	case errors.Is(err, ErrInvalidResetToken):
@@ -88,7 +97,8 @@ func (h *Handler) me(c *gin.Context, user User) (gen.Me, error) {
 	if err != nil {
 		return gen.Me{}, err
 	}
-	out := gen.Me{Id: user.ID, Name: user.Name, Email: user.Email, Theme: gen.Theme(user.Theme), Households: make([]gen.HouseholdRef, len(refs))}
+	out := gen.Me{Id: user.ID, Name: user.Name, Email: user.Email, Theme: gen.Theme(user.Theme), IsSystemOwner: user.IsSystemOwner,
+		Households: make([]gen.HouseholdRef, len(refs))}
 	if h.publicURL != "" {
 		out.PublicUrl = &h.publicURL
 	}
@@ -114,6 +124,9 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 	if body.InviteToken != nil {
 		in.InviteToken = *body.InviteToken
+	}
+	if body.SignupToken != nil {
+		in.SignupToken = *body.SignupToken
 	}
 	user, token, err := h.svc.Register(c.Request.Context(), in, meta(c))
 	if err != nil {
@@ -201,6 +214,53 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		return
 	}
 	if err := h.svc.ResetPassword(c.Request.Context(), body.Token, body.NewPassword); err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ListSignupInvites: GET /auth/signup-invites (só o dono do sistema; o serviço confere).
+func (h *Handler) ListSignupInvites(c *gin.Context) {
+	rows, err := h.svc.ListSignupInvites(c.Request.Context(), CurrentUser(c).ID)
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	out := make([]gen.SignupInvite, len(rows))
+	for i, r := range rows {
+		out[i] = gen.SignupInvite{Id: r.ID, CreatedAt: r.CreatedAt, ExpiresAt: r.ExpiresAt}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// CreateSignupInvite: POST /auth/signup-invites. O corpo é opcional (sem corpo = validade padrão).
+func (h *Handler) CreateSignupInvite(c *gin.Context) {
+	var body gen.SignupInviteInput
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&body); err != nil {
+			httpx.WriteProblem(c, httpx.Problem{Status: http.StatusBadRequest, Code: "bad_request", Detail: "corpo JSON inválido"})
+			return
+		}
+	}
+	hours := 0
+	if body.ExpiresInHours != nil {
+		hours = *body.ExpiresInHours
+		if hours == 0 { // 0 explícito não é "padrão": é inválido
+			hours = -1
+		}
+	}
+	inv, tok, err := h.svc.CreateSignupInvite(c.Request.Context(), CurrentUser(c).ID, hours)
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gen.SignupInviteCreated{Id: inv.ID, Token: tok, ExpiresAt: inv.ExpiresAt})
+}
+
+// RevokeSignupInvite: DELETE /auth/signup-invites/{inviteId}.
+func (h *Handler) RevokeSignupInvite(c *gin.Context, inviteId openapi_types.UUID) {
+	if err := h.svc.RevokeSignupInvite(c.Request.Context(), CurrentUser(c).ID, inviteId); err != nil {
 		h.writeError(c, err)
 		return
 	}

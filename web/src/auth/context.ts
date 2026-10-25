@@ -11,7 +11,7 @@ export type ActionResult = { ok: true } | { ok: false; problem?: Problem; networ
 export type AuthValue = {
   session: Session
   login: (email: string, password: string) => Promise<ActionResult>
-  register: (input: { name: string; email: string; password: string; householdName?: string; inviteToken?: string }) => Promise<ActionResult>
+  register: (input: { name: string; email: string; password: string; householdName?: string; inviteToken?: string; signupToken?: string }) => Promise<ActionResult>
   logout: () => Promise<void>
   /** Relê /auth/me (ex.: depois de entrar numa casa ou renomeá-la). Devolve o Me novo (ou undefined sem rede). */
   refresh: () => Promise<Me | undefined>

@@ -9,11 +9,12 @@ import { Field } from '../Field'
 import { useToast } from '../toastContext'
 import { Card, SectionHeader } from './ui'
 import { Notice } from '../ui/Notice'
+import { SignupInvitesCard } from './SignupInvitesCard'
 
 const MIN_PASSWORD = 10 // igual ao cadastro (openapi: newPassword.minLength)
 
 /**
- * Ajustes > Minha conta: nome, troca de senha e "sair dos outros aparelhos".
+ * Ajustes > Minha conta: nome, troca de senha, "sair dos outros aparelhos" e, só para o dono do sistema, os convites de cadastro.
  * Trocar a senha encerra as OUTRAS sessões (a atual continua). Nenhuma senha vai para log ou para o estado global:
  * ela só vive nos campos enquanto o formulário está aberto e é limpa depois do envio.
  */
@@ -25,6 +26,7 @@ export function AccountSection({ me }: { me: Me }) {
         <NameCard me={me} />
         <PasswordCard />
         <SessionsCard />
+        <SignupInvitesCard me={me} />
       </div>
     </div>
   )

@@ -71,6 +71,8 @@ type RegisterInput struct {
 	Name, Email, Password string
 	HouseholdName         string
 	InviteToken           string
+	// SignupToken: convite de cadastro (conta e casa próprias), gerado pelo dono do sistema. Exclusivo com InviteToken.
+	SignupToken string
 }
 
 // NormalizeEmail limpa e valida o e-mail. Guardamos em minúsculas; o índice único do banco também ignora caixa.
@@ -101,6 +103,9 @@ func validateRegister(in RegisterInput) (RegisterInput, error) {
 	if in.HouseholdName == "" {
 		in.HouseholdName = "Minha casa"
 	}
+	if in.InviteToken != "" && in.SignupToken != "" {
+		fields["signupToken"] = "use um convite só: de casa ou de cadastro"
+	}
 	// Com convite o nome da casa é ignorado (o usuário entra na casa do convite), então não o validamos.
 	if _, err := household.NormalizeName(in.HouseholdName); err != nil && in.InviteToken == "" {
 		fields["householdName"] = err.Error()
@@ -112,7 +117,9 @@ func validateRegister(in RegisterInput) (RegisterInput, error) {
 }
 
 // Register cria o usuário. Sem convite, cria também uma casa nova (o usuário é admin). Tudo numa transação.
-// O cadastro sem convite só é aceito para o PRIMEIRO usuário do sistema, salvo OpenRegistration.
+// O cadastro sem convite só é aceito para o PRIMEIRO usuário do sistema (que vira o dono do sistema), salvo
+// OpenRegistration ou um convite de CADASTRO (SignupToken): ele libera o cadastro com casa própria e é consumido na
+// mesma transação (token inválido desfaz tudo).
 // Com convite, NÃO cria casa: o usuário entra na casa do convite (com o papel dele) e o convite é consumido na
 // mesma transação; se qualquer passo falhar (e-mail repetido, convite inválido), nada é gravado.
 func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (User, string, error) {
@@ -128,7 +135,8 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (Us
 	var user User
 	var token string
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if in.InviteToken == "" {
+		firstUser := false
+		if in.InviteToken == "" && in.SignupToken == "" {
 			// Trava de aplicação (liberada ao fim da transação): impede dois "primeiros usuários" simultâneos.
 			if err := tx.Exec("SELECT pg_advisory_xact_lock(7101)").Error; err != nil {
 				return err
@@ -140,14 +148,20 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (Us
 			if users > 0 && !s.cfg.OpenRegistration {
 				return ErrRegistrationClosed
 			}
+			firstUser = users == 0
 		}
 
-		user = User{Email: in.Email, Name: in.Name, PasswordHash: hash}
+		user = User{Email: in.Email, Name: in.Name, PasswordHash: hash, IsSystemOwner: firstUser}
 		if err := tx.Create(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
 				return ErrEmailTaken
 			}
 			return fmt.Errorf("criando usuário: %w", err)
+		}
+		if in.SignupToken != "" {
+			if err := s.claimSignupInvite(tx, in.SignupToken, user.ID); err != nil {
+				return err
+			}
 		}
 		if in.InviteToken != "" {
 			if _, err := s.households.AcceptWithin(tx, in.InviteToken, user.ID); err != nil {
