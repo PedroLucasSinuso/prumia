@@ -59,7 +59,7 @@ func TestReservaMetaEProgresso(t *testing.T) {
 	sep := mk(moradia, "2026-09-10", 130000)
 	a.pay(c, house, sep.ID, a.free(house), map[string]any{"amountCents": 120000}) // pagou com desconto: vale o pago
 	mk(lazer, "2026-09-15", 50000)                                                // não essencial: fora da média
-	mk(moradia, "2026-03-10", 999999)                                             // fora da janela de 6 meses
+	mk(moradia, "2026-01-10", 999999)                                             // fora da janela de 6 meses de agosto e de outubro
 
 	reserva, r := a.newWallet(c, house, map[string]any{"name": "Reserva", "openingBalanceCents": 330000})
 	if r.Code != 201 {
