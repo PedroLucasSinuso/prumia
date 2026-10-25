@@ -28,6 +28,9 @@ afterEach(() => {
   delete window.matchMedia
 })
 
+/** A lista do mês (o destaque do topo repete as contas que pedem atenção, então as buscas por nome ficam aqui dentro). */
+const lista = () => within(screen.getByRole('region', { name: 'Contas do mês' }))
+
 /** Computador com mouse: telas largas casam; ponteiro de toque e movimento reduzido, não. */
 function mockDesktop() {
   window.matchMedia = ((query: string) => ({
@@ -76,18 +79,18 @@ describe('visão do mês', () => {
     renderAt(mes)
     await screen.findByText('Feira')
     await userEvent.click(screen.getByRole('button', { name: /A pagar/ }))
-    expect(screen.queryByText('Feira')).not.toBeInTheDocument()
-    expect(screen.getByText('Aluguel')).toBeInTheDocument()
+    expect(lista().queryByText('Feira')).not.toBeInTheDocument()
+    expect(lista().getByText('Aluguel')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /A pagar/ })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(screen.getByRole('button', { name: /Pagas/ }))
-    expect(screen.getByText('Feira')).toBeInTheDocument()
-    expect(screen.queryByText('Aluguel')).not.toBeInTheDocument()
+    expect(lista().getByText('Feira')).toBeInTheDocument()
+    expect(lista().queryByText('Aluguel')).not.toBeInTheDocument()
   })
 
   it('em outro mês não há separador "hoje"', async () => {
     mockApi({ me: ok(me), invoices: ok({ items: [invoice({ id: 'x', description: 'Seguro', dueDate: '2026-11-10' })] }) })
     renderAt('/?mes=2026-11')
-    await screen.findByText('Seguro')
+    await screen.findByRole('button', { name: 'Detalhes de Seguro' })
     expect(screen.queryByText(/HOJE/)).not.toBeInTheDocument()
   })
 
@@ -258,17 +261,6 @@ describe('nova conta e edição (celular: painel que sobe)', () => {
       await userEvent.click(await screen.findByRole('button', { name: 'Detalhes de Gás' }))
       await userEvent.click(screen.getByRole('button', { name: 'Editar' }))
       expect(await screen.findByRole('combobox', { name: 'Categoria' })).toHaveValue('Moradia › Gás')
-    })
-
-    it('"Por categoria" soma as filhas na mãe', async () => {
-      mockDesktop()
-      const gas = invoice({ id: 'ig', description: 'Gás', amountCents: 15000, categoryId: 'g1', dueDate: '2026-10-12', status: 'pending' })
-      const luz2 = invoice({ id: 'il', description: 'Luz', amountCents: 9000, categoryId: 'l1', dueDate: '2026-10-15', status: 'pending' })
-      mockApi({ me: ok(me), categories: ok(subcats), invoices: ok({ items: [gas, luz2] }) })
-      renderAt(mes)
-      const bloco = await screen.findByRole('region', { name: 'Por categoria' })
-      expect(await within(bloco).findByText('R$ 240,00')).toBeInTheDocument()
-      expect(within(bloco).getByRole('list', { name: 'Detalhe de Moradia' })).toBeInTheDocument()
     })
   })
 
@@ -511,12 +503,12 @@ describe('lista: filtro e busca', () => {
     expect(screen.queryByLabelText('Buscar contas')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Buscar e filtrar por categoria' }))
     await userEvent.type(screen.getByLabelText('Buscar contas'), 'alug')
-    expect(screen.getByText('Aluguel')).toBeInTheDocument()
-    expect(screen.queryByText('Luz')).not.toBeInTheDocument()
+    expect(lista().getByText('Aluguel')).toBeInTheDocument()
+    expect(lista().queryByText('Luz')).not.toBeInTheDocument()
     await userEvent.clear(screen.getByLabelText('Buscar contas'))
     await userEvent.selectOptions(screen.getByLabelText('Filtrar por categoria'), 'c2')
-    expect(screen.getByText('Feira')).toBeInTheDocument()
-    expect(screen.queryByText('Aluguel')).not.toBeInTheDocument()
+    expect(lista().getByText('Feira')).toBeInTheDocument()
+    expect(lista().queryByText('Aluguel')).not.toBeInTheDocument()
   })
 
   it('a categoria mãe inclui as filhas', async () => {
@@ -576,11 +568,11 @@ describe('computador', () => {
   it('abrir uma conta mostra o detalhe em leitura no painel lateral, sem janela por cima; Editar abre o formulário ali', async () => {
     withInvoices()
     renderAt(mes)
-    // sem conta aberta, o painel mostra os próximos vencimentos (as atrasadas primeiro), não um aviso vazio
-    const resumo = await screen.findByRole('region', { name: 'Próximos vencimentos' })
-    expect(await within(resumo).findByText('Aluguel')).toBeInTheDocument()
-    expect(within(resumo).getByText('Luz')).toBeInTheDocument()
-    expect(screen.queryByText(/Toque/)).not.toBeInTheDocument()
+    // sem conta aberta, o destaque do topo mostra o que pede atenção (as atrasadas primeiro) e não há painel vazio
+    const destaque = await screen.findByRole('region', { name: 'Destaque do mês' })
+    expect(await within(destaque).findByText('Aluguel')).toBeInTheDocument()
+    expect(within(destaque).getByText('Luz')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Detalhes da conta' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Detalhes de Luz' }))
     const painel = await screen.findByRole('region', { name: 'Detalhes da conta' })
     expect(within(painel).getByRole('heading', { name: 'Luz' })).toBeInTheDocument()
@@ -611,22 +603,26 @@ describe('computador', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('destaques: a pagar, atrasado (com valor e número), pago e total', async () => {
+  it('resumo: um destaque (atrasadas, com valor e número) e, ao lado, a pagar, pago e total', async () => {
     withInvoices()
     renderAt(mes)
     const resumo = await screen.findByRole('region', { name: 'Resumo do mês' })
-    expect(await within(resumo).findByText('1 conta atrasada')).toBeInTheDocument()
-    expect(within(resumo).getByText('R$ 1.500,00')).toBeInTheDocument()
+    const destaque = within(resumo).getByRole('region', { name: 'Destaque do mês' })
+    expect(await within(destaque).findByText('1 conta atrasada')).toBeInTheDocument()
+    expect(within(destaque).getAllByText('R$ 1.500,00')[0]).toHaveAttribute('data-emphasis', 'alert')
+    expect(within(resumo).getByText('R$ 1.700,00')).toBeInTheDocument()
     expect(within(resumo).getByText('R$ 2.020,00')).toBeInTheDocument()
-    const bloco = screen.getByRole('region', { name: 'Por categoria' })
-    expect(within(bloco).getByText('Moradia')).toBeInTheDocument()
+    expect(within(resumo).getByText('1 de 3 contas')).toBeInTheDocument()
+    // "por categoria" saiu do mês (fica no Resumo)
+    expect(screen.queryByRole('region', { name: 'Por categoria' })).not.toBeInTheDocument()
   })
 
-  it('sem atraso, o cartão de atrasado não usa o coral', async () => {
+  it('sem atraso, o destaque passa para os próximos 7 dias e não usa o coral', async () => {
     mockApi({ me: ok(me), invoices: ok({ items: [invoice({ id: 'l', description: 'Luz', dueDate: '2026-10-25' })] }) })
     renderAt(mes)
     const resumo = await screen.findByRole('region', { name: 'Resumo do mês' })
-    expect(await within(resumo).findByText('nenhuma conta atrasada')).toBeInTheDocument()
+    expect(await within(resumo).findByText('próximos 7 dias')).toBeInTheDocument()
+    expect(within(resumo).getByText('1 conta vence nesta semana')).toBeInTheDocument()
     expect(within(resumo).queryByText('[ ✖ ]')).not.toBeInTheDocument()
   })
 
@@ -728,8 +724,9 @@ describe('papel viewer', () => {
   it('só lê: sem botão de nova conta e sem pagar', async () => {
     mockApi({ me: ok(viewerMe), invoices: ok({ items: [luz] }) })
     renderAt(mes)
-    expect(await screen.findByText('Luz')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Detalhes de Luz' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Nova conta' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Pagar Luz,/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pagar Luz' })).toBeDisabled()
   })
 })

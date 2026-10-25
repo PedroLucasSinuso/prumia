@@ -16,7 +16,7 @@ const daysIn = (month: string) => new Date(Number(month.slice(0, 4)), Number(mon
 
 /**
  * A régua do mês: uma barra por dia. Altura = valor das contas do dia; cor = estado
- * (teal = paga, cobalto = a vencer, coral = atrasada). O "prumo" (linha com losango) marca hoje.
+ * (`done` = paga, discreta; `accent` = a vencer; `alert` = atrasada). O "prumo" (linha com losango) marca hoje.
  * Mostra de relance onde o peso das contas cai. Alt textual resume o dia mais pesado.
  */
 export function MonthRuler({ invoices, month, todayDay, barArea = 56, className = '' }: Props) {
@@ -41,11 +41,11 @@ export function MonthRuler({ invoices, month, todayDay, barArea = 56, className 
         {Array.from({ length: days }, (_, i) => {
           const day = i + 1
           const list = byDay.get(day)
-          if (!list) return <span key={day} className="min-h-[3px] flex-1 bg-ink/30" style={{ height: 3 }} />
+          if (!list) return <span key={day} className="min-h-[3px] flex-1 bg-line-strong" style={{ height: 3 }} />
           const sum = list.reduce((s, x) => s + x.amountCents, 0)
           const overdue = list.some((x) => x.status === 'overdue')
           const allPaid = list.every((x) => x.status === 'paid')
-          const tone = overdue ? 'bg-alert' : allPaid ? 'bg-structure' : 'bg-accent'
+          const tone = overdue ? 'bg-alert' : allPaid ? 'bg-done' : 'bg-accent'
           return <span key={day} className={`flex-1 rounded-t-xs ${tone}`} style={{ height: Math.max(10, Math.round((sum / max) * barArea)) }} />
         })}
         {todayDay !== undefined && (

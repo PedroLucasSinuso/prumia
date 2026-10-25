@@ -45,7 +45,7 @@ export function SectionRule({ title, count, total, tone = 'default', as: Tag = '
   return (
     <Tag className={className}>
       {onToggle ? (
-        <button type="button" aria-expanded={expanded} aria-controls={controls} onClick={onToggle} className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-ink/4 md:min-h-9">
+        <button type="button" aria-expanded={expanded} aria-controls={controls} onClick={onToggle} className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-raised md:min-h-9">
           {body}
         </button>
       ) : (

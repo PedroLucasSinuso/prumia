@@ -5,6 +5,7 @@ import { useFlash, usePaidPulse } from '../lib/flash'
 import { seriesTag } from '../lib/series'
 import { useWalletName } from '../lib/useWalletName'
 import { InvoiceRow } from './InvoiceRow'
+import { Tag } from './ui/Tag'
 
 type Props = {
   invoices: Invoice[]
@@ -48,7 +49,7 @@ export function Timeline({ invoices, categoryName, today, marker = true, selecte
 
   return (
     <ol className="relative">
-      <span aria-hidden="true" className={`absolute bottom-0 top-0 w-0.5 bg-ink/20 ${line}`} />
+      <span aria-hidden="true" className={`absolute bottom-0 top-0 w-0.5 bg-line ${line}`} />
       {items.map((item, idx) =>
         item.kind === 'today' ? (
           <li key={`hoje-${idx}`} className={`grid min-h-9 items-center ${todayGrid}`}>
@@ -107,7 +108,7 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
 }) {
   const paid = invoice.status === 'paid'
   const overdue = invoice.status === 'overdue'
-  const node = paid ? 'border-structure bg-structure' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
+  const node = paid ? 'border-done bg-done' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
   const tag = seriesTag(invoice)
   const nameOf = useWalletName()
   const flashing = useFlash(invoice.id)
@@ -122,7 +123,7 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
       : `vence dia ${invoice.dueDate.slice(8, 10)}`
 
   return (
-    <li className={`grid min-h-16 grid-cols-[40px_44px_1fr] items-center border-l-4 px-3 transition-colors md:grid-cols-[56px_44px_1fr] ${flashing ? 'motion-safe:animate-flash' : ''} ${selected ? 'border-structure bg-structure/7' : 'border-transparent'}`}>
+    <li className={`grid min-h-16 grid-cols-[40px_44px_1fr] items-center border-l-4 px-3 transition-colors md:grid-cols-[56px_44px_1fr] ${flashing ? 'motion-safe:animate-flash' : ''} ${selected ? 'border-accent bg-raised' : 'border-transparent'}`}>
       <span className="flex flex-col items-end pr-2 leading-tight md:pr-2.5">
         <span className="font-mono text-body font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
         <span className="text-caption text-muted">{weekdayShort(invoice.dueDate)}</span>
@@ -134,14 +135,14 @@ function Row({ invoice, category, today, selected, canWrite, busy, onTogglePaid,
         className="group/node flex h-14 w-11 items-center justify-center disabled:cursor-default"
       >
         <span className={`flex size-5 items-center justify-center rounded-sm border-2 outline-4 outline-surface transition-colors motion-safe:group-active/node:scale-90 ${node} ${pulsing ? 'motion-safe:animate-fill' : ''}`}>
-          {paid && <span className="size-2 rounded-[1px] bg-on-structure" />}
+          {paid && <span className="size-2 rounded-[1px] bg-surface" />}
         </span>
       </button>
       <button aria-label={`Detalhes de ${invoice.description}`} onClick={() => onOpen(invoice)} className="flex min-h-14 min-w-0 items-center justify-between gap-3 py-2.5 pl-1.5 text-left">
         <span className="min-w-0">
           <span className={`block truncate text-body font-medium ${strike}`}>{invoice.description}</span>
-          <span className="mt-0.5 block truncate text-xs text-muted">
-            {tag && <span className="mr-1 rounded-xs border border-line-strong px-1 font-mono text-caption text-muted">{tag}</span>}
+          <span className="mt-0.5 block truncate text-meta text-muted">
+            {tag && <Tag className="mr-1">{tag}</Tag>}
             {category ? `${category} · ` : ''}{meta}
           </span>
         </span>
