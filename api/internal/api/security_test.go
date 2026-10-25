@@ -82,12 +82,20 @@ func novoMundo(t *testing.T) *mundo {
 		t.Fatalf("transferência: %d %s", r.Code, r.Body)
 	}
 	r.json(&tr)
+	var adj struct{ Id string }
+	r = a.do("POST", "/api/households/"+m.houseA+"/wallet-adjustments", map[string]any{
+		"walletId": a.free(m.houseA), "competenceMonth": "2026-10-01", "actualBalanceCents": 123456789}, m.ana)
+	if r.Code != 201 {
+		t.Fatalf("ajuste de saldo: %d %s", r.Code, r.Body)
+	}
+	r.json(&adj)
 	// a invoice paga também (exercita "desfazer pagamento")
 	a.pay(m.ana, m.houseA, p.Installments[0].ID, "free", nil)
 
 	m.ids = map[string]string{
 		"categoryId": c.Id, "payeeId": pe.Id, "invoiceId": invA.ID, "purchaseId": p.ID, "recurrenceId": rec.ID,
 		"incomeId": inc.ID, "sourceId": src.ID, "inviteId": invite.Id, "userId": m.anaID, "walletId": a.vr(m.houseA), "transferId": tr.Transfer.Id,
+		"adjustmentId": adj.Id,
 	}
 	for _, rt := range a.router.Routes() {
 		if strings.HasPrefix(rt.Path, "/api/households/:householdId") {
@@ -134,7 +142,8 @@ var corpoGenerico = map[string]any{
 func (m *mundo) impressaoDigital(t *testing.T) string {
 	t.Helper()
 	tables := []string{"households", "household_members", "household_invites", "categories", "payees", "invoices", "purchases",
-		"recurrences", "wallets", "invoice_boletos", "income_sources", "income_source_deductions", "incomes", "income_deductions"}
+		"recurrences", "wallets", "invoice_boletos", "income_sources", "income_source_deductions", "incomes", "income_deductions",
+		"wallet_adjustments"}
 	var parts []string
 	for _, tb := range tables {
 		col := "household_id"
