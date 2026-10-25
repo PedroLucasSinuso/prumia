@@ -17,6 +17,7 @@ import (
 	"time"
 	_ "time/tzdata" // embute o banco de fusos: imagens mínimas (Alpine) não têm /usr/share/zoneinfo
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/adjustment"
 	"github.com/PedroLucasSinuso/prumia/api/internal/api"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
@@ -109,6 +110,7 @@ func run(args []string) error {
 		&api.Payees{Svc: payeeSvc, Log: log},
 		&api.Wallets{Svc: wallet.NewService(gdb), Log: log},
 		&api.Transfers{Svc: transfer.NewService(gdb, today), Log: log, Balance: summaries},
+		&api.Adjustments{Svc: adjustment.NewService(gdb, summaries, today), Log: log},
 		api.NewCNPJLookups(cnpjClient, log),
 		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},

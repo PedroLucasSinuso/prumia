@@ -563,6 +563,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/wallet-adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Ajustes de saldo do mês (qualquer membro), do mais recente para o mais antigo
+         * @description `month` é obrigatório (dia 1) e filtra pela competência. Não inclui os excluídos.
+         */
+        get: operations["listWalletAdjustments"];
+        put?: never;
+        /**
+         * Confere o saldo de uma carteira (admin e member)
+         * @description A pessoa informa o saldo REAL da carteira no fim do mês (`actualBalanceCents`); o servidor calcula o saldo
+         *     realizado até o fim daquele mês (o mesmo `balanceCents` do resumo) e grava a diferença como ajuste. O ajuste não é
+         *     receita nem despesa: só altera o saldo da carteira no mês e, pelo saldo anterior, nos meses seguintes.
+         *     400 no campo quando: a carteira não é ativa da casa (`walletId`), o mês é futuro ou anterior ao mês de início da
+         *     carteira (`competenceMonth`), ou o saldo já confere, isto é, a diferença é zero (`actualBalanceCents`).
+         */
+        post: operations["createWalletAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/wallet-adjustments/{adjustmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                adjustmentId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Exclui (logicamente) o ajuste; o saldo volta ao calculado. Não há edição. */
+        delete: operations["deleteWalletAdjustment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/households/{householdId}/wallet-adjustments/{adjustmentId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                adjustmentId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desfaz a exclusão (a mesma diferença, sem recalcular). 409 `not_deleted` se o ajuste não está excluído. */
+        post: operations["restoreWalletAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/invoices": {
         parameters: {
             query?: never;
@@ -1931,6 +2001,30 @@ export interface components {
             competenceMonth?: components["schemas"]["Month"];
             notes?: string | null;
         };
+        WalletAdjustment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            walletId: string;
+            competenceMonth: components["schemas"]["Month"];
+            /** @description A diferença gravada, com sinal: positivo = havia mais do que o calculado; negativo = menos */
+            amountCents: components["schemas"]["Cents"];
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WalletAdjustmentInput: {
+            /**
+             * Format: uuid
+             * @description Carteira ativa da casa (senão 400 no campo)
+             */
+            walletId: string;
+            /** @description Mês conferido; padrão = mês atual. Futuro ou anterior ao mês de início da carteira = 400 */
+            competenceMonth?: components["schemas"]["Month"];
+            /** @description Saldo real da carteira no fim do mês (pode ser negativo). Igual ao calculado = 400 */
+            actualBalanceCents: components["schemas"]["Cents"];
+            notes?: string | null;
+        };
         TransferResult: {
             transfer: components["schemas"]["Transfer"];
             /** @description Avisos que não bloqueiam. Hoje só `wallet_balance_insufficient` (carteira de origem; veja `warningDetails`). */
@@ -1953,7 +2047,7 @@ export interface components {
              * @description Mês (dia 1) a partir do qual o saldo inicial vale; null = desde o início. Em meses anteriores a ele, carryOverCents é 0
              */
             openingBalanceMonth?: string | null;
-            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início, se houver), de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas) da carteira, por competência. Antes do mês de início = 0 */
+            /** @description Saldo anterior: saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início, se houver), de (receitas recebidas líquidas - despesas pagas + transferências recebidas - transferências enviadas + ajustes de saldo) da carteira, por competência. Antes do mês de início = 0 */
             carryOverCents: components["schemas"]["Cents"];
             /** @description Líquido de todas as receitas da competência na carteira (a receber + recebidas) */
             expectedIncomeCents: components["schemas"]["Cents"];
@@ -1965,13 +2059,15 @@ export interface components {
             transfersInCents: components["schemas"]["Cents"];
             /** @description Transferências enviadas para outras carteiras na competência */
             transfersOutCents: components["schemas"]["Cents"];
-            /** @description Saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas (não é saldo bancário) */
+            /** @description Soma (com sinal) dos ajustes de saldo (Conferir saldo) da competência. Não é receita nem despesa */
+            adjustmentsCents: components["schemas"]["Cents"];
+            /** @description Saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas + ajustes (não é saldo bancário) */
             balanceCents: components["schemas"]["Cents"];
-            /** @description Só o mês: recebido - pago + transferências recebidas - enviadas */
+            /** @description Só o mês: recebido - pago + transferências recebidas - enviadas + ajustes */
             monthBalanceCents: components["schemas"]["Cents"];
             /** @description Estimativa do que falta pagar com esta carteira: invoices pendentes da competência atribuídas pela carteira padrão da categoria (ou da categoria principal; sem padrão = carteira padrão da casa). A carteira real só é conhecida ao pagar. */
             pendingCents: components["schemas"]["Cents"];
-            /** @description Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar) + transferências recebidas - enviadas do mês. Negativo = vai faltar. */
+            /** @description Saldo projetado: saldo anterior + previsto para entrar - (pago + a pagar) + transferências recebidas - enviadas + ajustes do mês. Negativo = vai faltar. */
             projectedCents: components["schemas"]["Cents"];
         };
         MonthlySummary: {
@@ -3091,6 +3187,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Transfer"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listWalletAdjustments: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletAdjustment"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    createWalletAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletAdjustmentInput"];
+            };
+        };
+        responses: {
+            /** @description Criado */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletAdjustment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteWalletAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                adjustmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Excluído */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    restoreWalletAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+                adjustmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletAdjustment"];
                 };
             };
             403: components["responses"]["Forbidden"];

@@ -62,7 +62,7 @@ func TestAssembleSeparaCarteirasEOrdenaCategorias(t *testing.T) {
 		[]incomeRow{{WalletID: geral.ID, Expected: 600000, Received: 400000}, {WalletID: vr.ID, Expected: 80000, Received: 80000}},
 		[]paidRow{{WalletID: geral.ID, Paid: 150000}, {WalletID: vr.ID, Paid: 90000}},
 		[]pendingRow{{WalletID: geral.ID, Pending: 90000, Overdue: 40000, OverdueCount: 1}, {WalletID: vr.ID, Pending: 50000, Overdue: 50000, OverdueCount: 2}},
-		nil,
+		nil, nil,
 		[]categoryRow{
 			{CategoryID: b, Total: 50000, Paid: 50000},
 			{CategoryID: a, Total: 240000, Paid: 150000, Pending: 90000},
@@ -100,7 +100,7 @@ func TestAssembleSaldoAnteriorCarregaInicialRecebidoEPago(t *testing.T) {
 	geral := mkWallet(1, "Geral", true, 100000, false) // saldo inicial R$ 1.000,00
 	got := assemble(oct, []wallet.Wallet{geral},
 		[]incomeRow{{WalletID: geral.ID, Expected: 500000, Received: 500000, Carry: 300000}},
-		[]paidRow{{WalletID: geral.ID, Paid: 200000, Carry: 450000}}, nil, nil, nil)
+		[]paidRow{{WalletID: geral.ID, Paid: 200000, Carry: 450000}}, nil, nil, nil, nil)
 	w := got.Wallets[0]
 	// anterior = 1000 + 3000 - 4500 = -500 (negativo); saldo = -500 + 5000 - 2000
 	if w.Opening != 100000 || w.CarryOver != -50000 || w.Balance() != 250000 || w.MonthBalance() != 300000 {
@@ -114,7 +114,7 @@ func TestAssembleArquivadaSoApareceComSaldoOuMovimento(t *testing.T) {
 	comSaldo := mkWallet(3, "Poupança velha", false, 5000, true)
 	comMovimento := mkWallet(4, "VR velho", false, 0, true)
 	got := assemble(oct, []wallet.Wallet{ativa, vazia, comSaldo, comMovimento},
-		[]incomeRow{{WalletID: comMovimento.ID, Expected: 1000, Received: 1000}}, nil, nil, nil, nil)
+		[]incomeRow{{WalletID: comMovimento.ID, Expected: 1000, Received: 1000}}, nil, nil, nil, nil, nil)
 	var names []string
 	for _, w := range got.Wallets {
 		names = append(names, w.Name)
@@ -126,14 +126,14 @@ func TestAssembleArquivadaSoApareceComSaldoOuMovimento(t *testing.T) {
 
 func TestAssembleIgnoraCarteiraDesconhecida(t *testing.T) {
 	geral := mkWallet(1, "Geral", true, 0, false)
-	got := assemble(oct, []wallet.Wallet{geral}, []incomeRow{{WalletID: uid(77), Received: 5}}, nil, nil, nil, nil)
+	got := assemble(oct, []wallet.Wallet{geral}, []incomeRow{{WalletID: uid(77), Received: 5}}, nil, nil, nil, nil, nil)
 	if got.Wallets[0].Received != 0 {
 		t.Errorf("linha de outra carteira não deveria somar: %+v", got.Wallets[0])
 	}
 }
 
 func TestAssembleMesVazio(t *testing.T) {
-	got := assemble(oct, nil, nil, nil, nil, nil, nil)
+	got := assemble(oct, nil, nil, nil, nil, nil, nil, nil)
 	if got.ByCategory == nil || len(got.ByCategory) != 0 || got.Wallets == nil || len(got.Wallets) != 0 || got.TotalPaid != 0 {
 		t.Errorf("mês vazio: %+v", got)
 	}
@@ -173,7 +173,7 @@ func TestAssembleTransferenciasMexemSoNosSaldos(t *testing.T) {
 			{WalletID: geral.ID, Out: 30000, Carry: -20000}, // guardou 300 no mês e 200 antes
 			{WalletID: reserva.ID, In: 30000, Carry: 20000},
 			{WalletID: antiga.ID, In: 1000}, // arquivada com transferência no mês aparece
-		}, nil)
+		}, nil, nil)
 	if len(got.Wallets) != 3 {
 		t.Fatalf("carteiras: %+v", got.Wallets)
 	}
@@ -199,7 +199,7 @@ func TestAssembleMesDeInicioDoSaldoInicial(t *testing.T) {
 	w.OpeningBalanceMonth = &start
 	run := func(month caldate.Date, carry int64) WalletBalance {
 		got := assemble(month, []wallet.Wallet{w},
-			[]incomeRow{{WalletID: w.ID, Received: 20000, Expected: 20000, Carry: money.Cents(carry)}}, nil, nil, nil, nil)
+			[]incomeRow{{WalletID: w.ID, Received: 20000, Expected: 20000, Carry: money.Cents(carry)}}, nil, nil, nil, nil, nil)
 		return got.Wallets[0]
 	}
 	if b := run(caldate.New(2026, 9, 1), 0); b.CarryOver != 0 || b.Opening != 100000 || b.Balance() != 20000 || b.OpeningMonth == nil {
@@ -220,10 +220,51 @@ func TestAssembleMesDeInicioDoSaldoInicial(t *testing.T) {
 	w.OpeningBalanceMonth = &start
 	at := time.Now()
 	w.ArchivedAt = &at
-	if got := assemble(caldate.New(2026, 9, 1), []wallet.Wallet{w}, nil, nil, nil, nil, nil); len(got.Wallets) != 0 {
+	if got := assemble(caldate.New(2026, 9, 1), []wallet.Wallet{w}, nil, nil, nil, nil, nil, nil); len(got.Wallets) != 0 {
 		t.Errorf("arquivada antes do início e sem movimento deveria sumir: %+v", got.Wallets)
 	}
-	if got := assemble(start, []wallet.Wallet{w}, nil, nil, nil, nil, nil); len(got.Wallets) != 1 {
+	if got := assemble(start, []wallet.Wallet{w}, nil, nil, nil, nil, nil, nil); len(got.Wallets) != 1 {
 		t.Errorf("arquivada com saldo inicial vigente deveria aparecer: %+v", got.Wallets)
+	}
+}
+
+// Ajuste de saldo ("Conferir saldo"): como a transferência, só mexe no saldo (do mês e, pelo saldo anterior, dos meses
+// seguintes), nunca em receita, despesa ou categoria.
+func TestAssembleAjustesMexemSoNosSaldos(t *testing.T) {
+	geral := mkWallet(1, "Geral", true, 0, false)
+	antiga := mkWallet(2, "Antiga", false, 0, true)
+	got := assemble(oct, []wallet.Wallet{geral, antiga},
+		[]incomeRow{{WalletID: geral.ID, Expected: 500000, Received: 500000}},
+		[]paidRow{{WalletID: geral.ID, Paid: 100000}},
+		[]pendingRow{{WalletID: geral.ID, Pending: 50000}},
+		nil,
+		[]adjustmentRow{
+			{WalletID: geral.ID, Month: -150000, Carry: -30000}, // gastos esquecidos: 1500 no mês e 300 antes
+			{WalletID: antiga.ID, Month: 1000},                  // arquivada com ajuste no mês aparece
+		}, nil)
+	if len(got.Wallets) != 2 {
+		t.Fatalf("carteiras: %+v", got.Wallets)
+	}
+	g := got.Wallets[0]
+	// anterior -300; saldo = -300 + 5000 - 1000 - 1500 = 2200; mês = 5000 - 1000 - 1500 = 2500; projetado = 2200 - 500 = 1700
+	if g.CarryOver != -30000 || g.Adjustments != -150000 || g.Balance() != 220000 || g.MonthBalance() != 250000 || g.Projected() != 170000 {
+		t.Errorf("geral: %+v (saldo %d, mês %d, projetado %d)", g, g.Balance(), g.MonthBalance(), g.Projected())
+	}
+	if g.Expected != 500000 || g.Received != 500000 || g.Paid != 100000 || got.TotalPaid != 0 || got.TotalPending != 0 || len(got.ByCategory) != 0 {
+		t.Errorf("ajuste vazou para receita/despesa: %+v", got)
+	}
+}
+
+// O cenário do plano: receita de outubro sem os gastos lançados; em novembro a pessoa confere e o saldo real passa a
+// valer. O ajuste de outubro (gravado com a diferença) entra no saldo anterior de novembro.
+func TestAjusteDeOutubroFazNovembroComecarDoSaldoReal(t *testing.T) {
+	geral := mkWallet(1, "Geral", true, 0, false)
+	nov := caldate.New(2026, 11, 1)
+	// outubro: recebeu 5000, nada pago lançado => calculado 5000; o real era 1200 => ajuste de -3800 em outubro
+	got := assemble(nov, []wallet.Wallet{geral},
+		[]incomeRow{{WalletID: geral.ID, Carry: 500000}}, nil, nil, nil,
+		[]adjustmentRow{{WalletID: geral.ID, Carry: -380000}}, nil)
+	if b := got.Wallets[0]; b.CarryOver != 120000 || b.Balance() != 120000 || b.Adjustments != 0 {
+		t.Errorf("novembro deveria começar com o saldo real (1200): %+v", b)
 	}
 }

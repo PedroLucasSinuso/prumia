@@ -31,7 +31,7 @@ type WalletBalance struct {
 	// OpeningMonth: mês (dia 1) em que o saldo inicial passa a valer; nil = desde o começo.
 	OpeningMonth *caldate.Date
 	// CarryOver: saldo anterior = saldo inicial + soma, dos meses ANTERIORES ao consultado (e a partir do mês de início,
-	// se houver), de (recebido - pago + transferências recebidas - enviadas). Antes do mês de início é 0.
+	// se houver), de (recebido - pago + transferências recebidas - enviadas + ajustes). Antes do mês de início é 0.
 	CarryOver money.Cents
 	// Expected: líquido de TODAS as receitas do mês na carteira (previstas + recebidas).
 	Expected money.Cents
@@ -46,27 +46,31 @@ type WalletBalance struct {
 	// só movem saldo e nunca entram nos totais, nas categorias nem em Expected/Received/Paid.
 	TransfersIn  money.Cents
 	TransfersOut money.Cents
+	// Adjustments: soma dos ajustes de saldo ("Conferir saldo") do mês, com sinal. Como as transferências, não é receita
+	// nem despesa: só corrige o saldo para bater com o real (e, pelo saldo anterior, os meses seguintes).
+	Adjustments money.Cents
 }
 
-// Balance é o saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas.
+// Balance é o saldo REALIZADO acumulado: saldo anterior + recebido - pago + transferências recebidas - enviadas + ajustes.
 // Pode ser negativo. Não é saldo bancário.
 func (w WalletBalance) Balance() money.Cents { return w.CarryOver + w.MonthBalance() }
 
-// MonthBalance é só o movimento do mês: recebido - pago + transferências recebidas - enviadas.
+// MonthBalance é só o movimento do mês: recebido - pago + transferências recebidas - enviadas + ajustes.
 func (w WalletBalance) MonthBalance() money.Cents {
-	return w.Received - w.Paid + w.TransfersIn - w.TransfersOut
+	return w.Received - w.Paid + w.TransfersIn - w.TransfersOut + w.Adjustments
 }
 
 // Projected é o saldo projetado do mês: saldo anterior + tudo o que está previsto para entrar - tudo o que sai (pago + a
 // pagar). É o número principal do resumo: só fica negativo se, quando tudo acontecer, vai faltar. Receita ainda não
 // marcada como recebida não é alarme.
 func (w WalletBalance) Projected() money.Cents {
-	return w.CarryOver + w.Expected - w.Paid - w.Pending + w.TransfersIn - w.TransfersOut
+	return w.CarryOver + w.Expected - w.Paid - w.Pending + w.TransfersIn - w.TransfersOut + w.Adjustments
 }
 
-// hasMovement: o mês tem alguma receita, pagamento, conta a pagar ou transferência nesta carteira.
+// hasMovement: o mês tem alguma receita, pagamento, conta a pagar, transferência ou ajuste nesta carteira.
 func (w WalletBalance) hasMovement() bool {
-	return w.Expected != 0 || w.Received != 0 || w.Paid != 0 || w.Pending != 0 || w.TransfersIn != 0 || w.TransfersOut != 0
+	return w.Expected != 0 || w.Received != 0 || w.Paid != 0 || w.Pending != 0 || w.TransfersIn != 0 || w.TransfersOut != 0 ||
+		w.Adjustments != 0
 }
 
 type CategoryTotal struct {
@@ -98,7 +102,7 @@ func NewService(db *gorm.DB, today func() caldate.Date) *Service {
 	return &Service{db: db, today: today}
 }
 
-// sinceOpening é o filtro do saldo anterior, ÚNICO para recebido, pago e transferências (e portanto para o resumo, o
+// sinceOpening é o filtro do saldo anterior, ÚNICO para recebido, pago, transferências e ajustes (e portanto para o resumo, o
 // aviso de saldo e o projetado): só conta o movimento a partir do mês de início da carteira `w` (NULL = sempre conta).
 // `col` é a coluna de competência da linha. Quem usa precisa juntar a tabela wallets com o alias `w`.
 func sinceOpening(col string) string {
@@ -127,6 +131,13 @@ type transferRow struct {
 	In       money.Cents
 	Out      money.Cents
 	Carry    money.Cents // (recebido - enviado) antes do mês
+}
+
+// adjustmentRow: ajustes de saldo (não excluídos) por carteira: a soma do mês e a dos meses anteriores (saldo anterior).
+type adjustmentRow struct {
+	WalletID uuid.UUID
+	Month    money.Cents
+	Carry    money.Cents
 }
 
 // pendingRow: pendentes da competência por carteira ESTIMADA (padrão da categoria), com a parte atrasada.
@@ -221,6 +232,21 @@ func (s *Service) transfersByWallet(ctx context.Context, householdID uuid.UUID, 
 	return rows, err
 }
 
+// adjustmentsByWallet: ajustes de saldo por carteira, do mês e dos meses anteriores (a partir do mês de início, como o
+// resto do saldo anterior). Exclui os apagados.
+func (s *Service) adjustmentsByWallet(ctx context.Context, householdID uuid.UUID, month caldate.Date) ([]adjustmentRow, error) {
+	var rows []adjustmentRow
+	err := s.db.WithContext(ctx).Raw(`
+		SELECT a.wallet_id AS wallet_id,
+		       COALESCE(SUM(a.amount_cents) FILTER (WHERE a.competence_month = @month), 0)::bigint AS month,
+		       COALESCE(SUM(a.amount_cents) FILTER (WHERE a.competence_month < @month AND `+sinceOpening("a.competence_month")+`), 0)::bigint AS carry
+		FROM wallet_adjustments a
+		JOIN wallets w ON w.household_id = a.household_id AND w.id = a.wallet_id
+		WHERE a.household_id = @hh AND a.competence_month <= @month AND a.deleted_at IS NULL
+		GROUP BY a.wallet_id`, sql.Named("hh", householdID), sql.Named("month", month)).Scan(&rows).Error
+	return rows, err
+}
+
 // pendingByWallet: invoices PENDENTES da competência, atribuídas à carteira padrão da categoria (a da filha; se não tiver,
 // a da mãe; se nenhuma, a carteira padrão da casa). Conta também o que já venceu (due_date < hoje). Uma consulta, LEFT JOINs por chave.
 func (s *Service) pendingByWallet(ctx context.Context, householdID uuid.UUID, month caldate.Date) ([]pendingRow, error) {
@@ -253,7 +279,7 @@ func (s *Service) byCategory(ctx context.Context, householdID uuid.UUID, month c
 	return rows, err
 }
 
-// Month monta o resumo da competência `month` da casa: 6 consultas (carteiras, receitas, pagos, pendentes, transferências, categorias),
+// Month monta o resumo da competência `month` da casa: 7 consultas (carteiras, receitas, pagos, pendentes, transferências, ajustes, categorias),
 // todas agregadas por carteira/categoria, sem N+1.
 func (s *Service) Month(ctx context.Context, householdID uuid.UUID, month caldate.Date) (Summary, error) {
 	if err := checkMonth(month); err != nil {
@@ -279,23 +305,39 @@ func (s *Service) Month(ctx context.Context, householdID uuid.UUID, month caldat
 	if err != nil {
 		return Summary{}, err
 	}
+	adj, err := s.adjustmentsByWallet(ctx, householdID, month)
+	if err != nil {
+		return Summary{}, err
+	}
 	cats, err := s.byCategory(ctx, householdID, month)
 	if err != nil {
 		return Summary{}, err
 	}
-	return assemble(month, ws, inc, paid, pend, tr, cats), nil
+	return assemble(month, ws, inc, paid, pend, tr, adj, cats), nil
 }
 
 // OverdraftWarning diz se uma carteira com o aviso de saldo ligado ficou com saldo REALIZADO negativo até a competência
 // `month` (usado no aviso ao pagar; já inclui o pagamento recém-gravado). Carteira sem o aviso devolve false.
-// Reaproveita as mesmas consultas agregadas do resumo.
+// Reaproveita as mesmas consultas agregadas do resumo (via WalletMonth).
 func (s *Service) OverdraftWarning(ctx context.Context, householdID, walletID uuid.UUID, month caldate.Date) (bool, error) {
-	if err := checkMonth(month); err != nil {
+	b, w, err := s.WalletMonth(ctx, householdID, walletID, month)
+	if err != nil || w == nil || !w.WarnOnOverdraft {
 		return false, err
+	}
+	return b.Balance() < 0, nil
+}
+
+// WalletMonth devolve os números de UMA carteira (inclusive arquivada) na competência `month`, com a mesma regra do resumo
+// (uma só implementação do saldo anterior: aviso de saldo, "Conferir saldo" e resumo nunca divergem). Carteira que não é
+// da casa devolve w == nil, sem erro. As consultas são as agregadas do resumo (sem as pendentes e as categorias, que não
+// entram no saldo realizado).
+func (s *Service) WalletMonth(ctx context.Context, householdID, walletID uuid.UUID, month caldate.Date) (WalletBalance, *wallet.Wallet, error) {
+	if err := checkMonth(month); err != nil {
+		return WalletBalance{}, nil, err
 	}
 	ws, err := s.listWallets(ctx, householdID)
 	if err != nil {
-		return false, err
+		return WalletBalance{}, nil, err
 	}
 	var w *wallet.Wallet
 	for i := range ws {
@@ -303,33 +345,38 @@ func (s *Service) OverdraftWarning(ctx context.Context, householdID, walletID uu
 			w = &ws[i]
 		}
 	}
-	if w == nil || !w.WarnOnOverdraft {
-		return false, nil
+	if w == nil {
+		return WalletBalance{}, nil, nil
 	}
 	inc, err := s.incomesByWallet(ctx, householdID, month)
 	if err != nil {
-		return false, err
+		return WalletBalance{}, nil, err
 	}
 	paid, err := s.paidByWallet(ctx, householdID, month)
 	if err != nil {
-		return false, err
+		return WalletBalance{}, nil, err
 	}
 	tr, err := s.transfersByWallet(ctx, householdID, month)
 	if err != nil {
-		return false, err
+		return WalletBalance{}, nil, err
+	}
+	adj, err := s.adjustmentsByWallet(ctx, householdID, month)
+	if err != nil {
+		return WalletBalance{}, nil, err
 	}
 	// Uma carteira arquivada com saldo zero some do resumo; aqui só interessa a pedida, então ela sempre entra.
-	for _, b := range assemble(month, []wallet.Wallet{*w}, inc, paid, nil, tr, nil).Wallets {
+	for _, b := range assemble(month, []wallet.Wallet{*w}, inc, paid, nil, tr, adj, nil).Wallets {
 		if b.WalletID == walletID {
-			return b.Balance() < 0, nil
+			return b, w, nil
 		}
 	}
-	return false, nil
+	// Arquivada, sem saldo nem movimento: o assemble a deixa de fora, mas o saldo dela é conhecido (zero).
+	return WalletBalance{WalletID: w.ID, Name: w.Name, Archived: true, Opening: w.OpeningBalanceCents, OpeningMonth: w.OpeningBalanceMonth}, w, nil
 }
 
 // assemble junta as linhas agregadas no resumo. É PURA (sem banco) para ser testada em tabela. `ws` já vem na ordem de
 // exibição (padrão primeiro). Carteira arquivada só entra se tem saldo anterior diferente de zero ou movimento (inclusive transferência) no mês.
-func assemble(month caldate.Date, ws []wallet.Wallet, inc []incomeRow, paid []paidRow, pend []pendingRow, tr []transferRow, cats []categoryRow) Summary {
+func assemble(month caldate.Date, ws []wallet.Wallet, inc []incomeRow, paid []paidRow, pend []pendingRow, tr []transferRow, adj []adjustmentRow, cats []categoryRow) Summary {
 	out := Summary{Month: month, Wallets: []WalletBalance{}, ByCategory: []CategoryTotal{}}
 	byID := make(map[uuid.UUID]*WalletBalance, len(ws))
 	list := make([]*WalletBalance, len(ws))
@@ -362,6 +409,12 @@ func assemble(month caldate.Date, ws []wallet.Wallet, inc []incomeRow, paid []pa
 		if w := byID[r.WalletID]; w != nil {
 			w.TransfersIn += r.In
 			w.TransfersOut += r.Out
+			w.CarryOver += r.Carry
+		}
+	}
+	for _, r := range adj {
+		if w := byID[r.WalletID]; w != nil {
+			w.Adjustments += r.Month
 			w.CarryOver += r.Carry
 		}
 	}
