@@ -2,6 +2,8 @@
 
 O que falta fazer e o que está planejado. Responde: "o que vem depois do MVP e em que ordem?". O estado detalhado por fase fica no `plan.md` local; aqui vai só o que interessa a quem mantém o repositório.
 
+**Plano detalhado das próximas etapas** (ordem, escopo, critérios de aceite e regras de processo): [plano-proximas-etapas.md](plano-proximas-etapas.md).
+
 Legenda de risco: **alto** = migration, auth, séries, boleto ou deploy (branch própria, testada, relato no PR); **baixo** = UI e docs.
 
 ## Estado atual
