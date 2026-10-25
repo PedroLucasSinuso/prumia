@@ -1,9 +1,7 @@
-/** Aviso geral de um formulário (acima dos campos). role=alert para leitores de tela anunciarem. */
+import { Notice } from './ui/Notice'
+
+/** Aviso geral de um formulário (acima dos campos). É um `Notice` (role=alert, texto em `alert-text`) sem "Tentar de novo". */
 export function FormError({ message }: { message?: string }) {
   if (!message) return null
-  return (
-    <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm text-ink">
-      <span className="font-mono text-alert">[ ✖ ]</span> {message}
-    </p>
-  )
+  return <Notice>{message}</Notice>
 }

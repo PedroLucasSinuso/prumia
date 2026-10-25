@@ -3,7 +3,9 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { canAnimate, EXIT_MS } from '../../lib/motion'
 import { useBodyScrollLock } from '../../lib/scrollLock'
+import { Button } from './Button'
 import { trapTab } from './focus'
+import { SectionTitle } from './SectionTitle'
 import { Tooltip } from './Tooltip'
 
 export type PanelProps = {
@@ -81,8 +83,8 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
     side ? 'justify-end' : 'items-end justify-center sm:items-center'
   }`
   const box = side
-    ? `h-dvh max-h-dvh w-full max-w-[480px] border-l ${closing ? 'motion-safe:animate-slide-out' : 'motion-safe:animate-slide-in'}`
-    : `max-h-[92dvh] min-h-0 w-full ${variant === 'wide' ? 'max-w-6xl' : 'max-w-md'} rounded-t-md border sm:rounded-md ${closing ? 'motion-safe:animate-rise-out' : 'motion-safe:animate-rise-in'}`
+    ? `h-dvh max-h-dvh w-full max-w-[480px] ${closing ? 'motion-safe:animate-slide-out' : 'motion-safe:animate-slide-in'}`
+    : `max-h-[92dvh] min-h-0 w-full ${variant === 'wide' ? 'max-w-6xl' : 'max-w-md'} rounded-t-md sm:rounded-md ${closing ? 'motion-safe:animate-rise-out' : 'motion-safe:animate-rise-in'}`
 
   return (
     <div className={backdrop} onMouseDown={() => requestClose()}>
@@ -92,26 +94,22 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`flex flex-col border-line bg-surface outline-none ${box}`}
+        // Corpo sobre `surface` (o fundo escurecido separa o painel da página; sem borda nem sombra). Blocos internos usam `raised`.
+        className={`flex flex-col bg-surface outline-none ${box}`}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => trapTab(e, panel.current)}
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div className="min-w-0">
-            <h2 id={titleId} className="font-display text-2xl font-bold leading-tight text-heading font-stretch-condensed">
+            <SectionTitle id={titleId} size="title">
               {title}
-            </h2>
-            {subtitle && <p className="mt-0.5 text-sm text-ink/70">{subtitle}</p>}
+            </SectionTitle>
+            {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
           </div>
           <Tooltip label="Fechar" shortcut="Esc">
-            <button
-              type="button"
-              aria-label="Fechar"
-              onClick={() => requestClose()}
-              className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-ink transition-colors hover:bg-ink/8 active:bg-ink/12 md:size-9"
-            >
+            <Button variant="icon" aria-label="Fechar" type="button" onClick={() => requestClose()} className="-mr-2">
               <X size={20} strokeWidth={1.5} aria-hidden="true" />
-            </button>
+            </Button>
           </Tooltip>
         </div>
         {/* ÚNICO contêiner que rola: min-h-0 deixa o flex encolher, overscroll-contain impede a rolagem de vazar para a
@@ -124,7 +122,7 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
           {children}
         </div>
         {footer && (
-          <div className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_8px_-6px] shadow-ink/15 sm:flex-row-reverse sm:justify-start">
+          <div className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row-reverse sm:justify-start">
             {footer}
           </div>
         )}
@@ -140,7 +138,7 @@ export function Panel({ title, subtitle, onClose, children, footer, initialFocus
  */
 export function PanelFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky -bottom-5 z-10 -mx-5 -mb-5 mt-auto flex flex-col gap-2 border-t border-line bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_8px_-6px] shadow-ink/15">
+    <div className="sticky -bottom-5 z-10 -mx-5 -mb-5 mt-auto flex flex-col gap-2 border-t border-line bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row-reverse sm:justify-start">
       {children}
     </div>
   )

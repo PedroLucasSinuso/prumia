@@ -85,7 +85,7 @@ export function BarChart({ stack, label, height = 200 }: Props) {
           {ticks.map((t) => (
             <g key={t} className="text-ink">
               <line x1={PAD.left} x2={width - PAD.right} y1={PAD.top + plotH - y(t)} y2={PAD.top + plotH - y(t)} stroke="currentColor" strokeOpacity={t === 0 ? 0.35 : 0.12} />
-              <text x={PAD.left - 6} y={PAD.top + plotH - y(t)} dy="0.32em" textAnchor="end" fill="currentColor" fillOpacity="0.7" className="font-mono text-[10px] tabular-nums">
+              <text x={PAD.left - 6} y={PAD.top + plotH - y(t)} dy="0.32em" textAnchor="end" fill="currentColor" fillOpacity="0.7" className="font-mono text-caption tabular-nums">
                 {formatCompact(t)}
               </text>
             </g>
@@ -113,9 +113,9 @@ export function BarChart({ stack, label, height = 200 }: Props) {
               <g key={b.month} onMouseEnter={() => setActive(i)} onClick={() => setActive(i)}>
                 {/* alvo do mouse maior que a barra: a coluna inteira */}
                 <rect x={PAD.left + slot * i} y={PAD.top} width={slot} height={plotH} fill="transparent" />
-                {active === i && <rect x={PAD.left + slot * i + 2} y={PAD.top} width={slot - 4} height={plotH} fill="currentColor" className="text-ink/5" />}
+                {active === i && <rect x={PAD.left + slot * i + 2} y={PAD.top} width={slot - 4} height={plotH} className="fill-ink/5" />}
                 {rects}
-                <text x={cx} y={height - 6} textAnchor="middle" fill="currentColor" className={`font-mono text-[10px] ${active === i ? 'text-ink' : 'text-ink/70'}`}>
+                <text x={cx} y={height - 6} textAnchor="middle" fill="currentColor" className={`font-mono text-caption ${active === i ? 'text-ink' : 'text-muted'}`}>
                   {monthShort(b.month)}
                 </text>
               </g>
@@ -124,13 +124,13 @@ export function BarChart({ stack, label, height = 200 }: Props) {
         </svg>
       </div>
 
-      <p aria-live="polite" className="mt-1 min-h-5 text-xs text-ink/80">
+      <p aria-live="polite" className="mt-1 min-h-5 text-meta text-muted">
         {current ? (
           <>
             <span className="font-medium">{monthShort(current.month)}</span>{' '}
             <span className="font-mono tabular-nums">{formatCents(current.totalCents)}</span>
             {current.totalCents > current.paidCents && (
-              <span className="text-ink/70">
+              <span className="text-muted">
                 {' '}· pago <span className="font-mono tabular-nums">{formatCents(current.paidCents)}</span> · a pagar{' '}
                 <span className="font-mono tabular-nums">{formatCents(current.totalCents - current.paidCents)}</span>
               </span>
@@ -139,17 +139,17 @@ export function BarChart({ stack, label, height = 200 }: Props) {
               current.parts
                 .filter((p) => p.paidCents + p.pendingCents > 0)
                 .map((p) => (
-                  <span key={p.key} className="text-ink/70">
+                  <span key={p.key} className="text-muted">
                     {' '}· {name.get(p.key)} <span className="font-mono tabular-nums">{formatCents(p.paidCents + p.pendingCents)}</span>
                   </span>
                 ))}
           </>
         ) : (
-          <span className="text-ink/60">Selecione um mês (ou use as setas) para ver o valor exato.</span>
+          <span className="text-muted">Selecione um mês (ou use as setas) para ver o valor exato.</span>
         )}
       </p>
 
-      <ul aria-label="Legenda" className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink/80">
+      <ul aria-label="Legenda" className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted">
         {segments.length > 1 &&
           segments.map((s) => (
             <li key={s.key} className="flex items-center gap-1.5">
@@ -159,14 +159,14 @@ export function BarChart({ stack, label, height = 200 }: Props) {
               {s.name}
             </li>
           ))}
-        <li className="flex items-center gap-1.5 text-ink/70">
-          <svg aria-hidden="true" width="10" height="10" className="text-ink/70">
+        <li className="flex items-center gap-1.5 text-muted">
+          <svg aria-hidden="true" width="10" height="10" className="text-muted">
             <rect width="10" height="10" rx="2" fill="currentColor" />
           </svg>
           pago
         </li>
-        <li className="flex items-center gap-1.5 text-ink/70">
-          <svg aria-hidden="true" width="10" height="10" className="text-ink/70">
+        <li className="flex items-center gap-1.5 text-muted">
+          <svg aria-hidden="true" width="10" height="10" className="text-muted">
             <defs>
               <pattern id={`lg-${uid}`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                 <line x1="0" y1="0" x2="0" y2="4" stroke="currentColor" strokeWidth="1.5" />

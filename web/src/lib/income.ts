@@ -33,7 +33,7 @@ export const stateOf = (i: Pick<Income, 'received' | 'held'>): IncomeState => (i
 
 /** Marcadores da marca: `[ ▪ ]` recebida, `[ ▫ ]` a receber, `[ ✖ ]` não caiu. */
 export const stateMark: Record<IncomeState, string> = { received: '[ ▪ ]', expected: '[ ▫ ]', held: '[ ✖ ]' }
-export const stateTone: Record<IncomeState, string> = { received: 'text-accent', expected: 'text-ink/80', held: 'text-alert' }
+export const stateTone: Record<IncomeState, string> = { received: 'text-accent', expected: 'text-muted', held: 'text-alert' }
 
 /** Texto curto do estado: "recebida em 05/10", "cai em 28/10", "não caiu · atrasada 3 dias". */
 export function stateText(i: Income, today: string): string {

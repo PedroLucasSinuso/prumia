@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { addDays, addMonths, addMonthsClamped, clampISO, daysInMonth, fullDate, isValidISO, longDate, maskDate, monthLabel, monthOf, parseMasked, todayISO, weekdayIndex } from '../../lib/dates'
 import { trapTab } from './focus'
 import { Popover } from './Popover'
-import { controlCls, labelCls } from './styles'
+import { buttonCls, controlCls, labelCls } from './styles'
 
 type Props = {
   label: string
@@ -132,7 +132,7 @@ export function DatePicker({ label, hideLabel, value, onChange, min, max, error,
           aria-expanded={open}
           disabled={disabled}
           onClick={() => (open ? closeCalendar(true) : openCalendar())}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-ink/70 transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 md:w-9"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 md:w-9"
         >
           <CalendarDays aria-hidden="true" size={18} strokeWidth={1.5} />
         </button>
@@ -141,12 +141,12 @@ export function DatePicker({ label, hideLabel, value, onChange, min, max, error,
         <Calendar value={isValidISO(value) ? value : ''} min={min} max={max} onPick={pick} onEscape={() => closeCalendar(true)} />
       </Popover>
       {hint && !shown && (
-        <p id={`${inputId}-dica`} className="text-xs text-ink/70">
+        <p id={`${inputId}-dica`} className="text-meta text-muted">
           {hint}
         </p>
       )}
       {shown && (
-        <p id={`${inputId}-erro`} className="text-xs text-alert">
+        <p id={`${inputId}-erro`} className="text-meta font-medium text-alert-text">
           {shown}
         </p>
       )}
@@ -215,7 +215,7 @@ function Calendar({ value, min, max, onPick, onEscape }: { value: string; min?: 
   const prevOk = !min || monthOf(addDays(view, -1)) >= monthOf(min)
   const nextOk = !max || addMonths(view, 1) <= monthOf(max)
   const tomorrow = addDays(today, 1)
-  const arrow = 'flex size-10 items-center justify-center rounded-md text-ink transition-colors hover:bg-ink/8 active:bg-ink/12 disabled:opacity-30 disabled:hover:bg-transparent md:size-8'
+  const arrow = buttonCls({ variant: 'icon', size: 'sm' })
 
   return (
     <div ref={root} onKeyDown={onKeyDown} className="w-[min(20rem,calc(100vw-1rem))] p-2">
@@ -223,7 +223,7 @@ function Calendar({ value, min, max, onPick, onEscape }: { value: string; min?: 
         <button type="button" aria-label="Mês anterior" disabled={!prevOk} onClick={() => shiftView(-1)} className={arrow}>
           <ChevronLeft aria-hidden="true" size={18} strokeWidth={1.5} />
         </button>
-        <div aria-live="polite" className="font-display text-lg font-bold text-heading font-stretch-condensed">
+        <div aria-live="polite" className="font-display text-title font-bold text-heading font-stretch-condensed">
           {cap(monthLabel(view))}
         </div>
         <button type="button" aria-label="Próximo mês" disabled={!nextOk} onClick={() => shiftView(1)} className={arrow}>
@@ -233,7 +233,7 @@ function Calendar({ value, min, max, onPick, onEscape }: { value: string; min?: 
       <div role="grid" aria-label={monthLabel(view)}>
         <div role="row" className="grid grid-cols-7">
           {WEEK.map(([short, full]) => (
-            <div key={short} role="columnheader" aria-label={full} className="flex h-7 items-center justify-center text-[11px] font-medium uppercase tracking-wider text-ink/70">
+            <div key={short} role="columnheader" aria-label={full} className="flex h-7 items-center justify-center text-caption font-medium uppercase tracking-wider text-muted">
               {short}
             </div>
           ))}
@@ -257,7 +257,7 @@ function Calendar({ value, min, max, onPick, onEscape }: { value: string; min?: 
                       iso === value
                         ? 'border-structure bg-structure font-semibold text-on-structure'
                         : !allowed(iso)
-                          ? 'cursor-not-allowed border-transparent text-ink/30'
+                          ? 'cursor-not-allowed border-transparent text-muted opacity-45'
                           : iso === today
                             ? 'border-accent font-semibold text-ink hover:bg-ink/8 active:bg-ink/12'
                             : 'border-transparent text-ink hover:bg-ink/8 active:bg-ink/12'
@@ -278,7 +278,7 @@ function Calendar({ value, min, max, onPick, onEscape }: { value: string; min?: 
             type="button"
             disabled={!allowed(iso)}
             onClick={() => onPick(iso)}
-            className="flex min-h-10 flex-1 items-center justify-center rounded-md border border-ink/30 text-[13px] font-medium transition-colors hover:bg-ink/5 active:bg-ink/10 disabled:opacity-40 md:min-h-8"
+            className={buttonCls({ variant: 'secondary', size: 'sm', className: 'flex-1' })}
           >
             {text}
           </button>

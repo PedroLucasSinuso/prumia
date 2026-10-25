@@ -1,7 +1,7 @@
 import { forwardRef, useId } from 'react'
 
 import { digitsToCents, formatCents } from '../lib/money'
-import { controlCls } from './ui/styles'
+import { controlCls, labelCls } from './ui/styles'
 
 type Props = {
   label: string
@@ -11,7 +11,7 @@ type Props = {
   id?: string
   /** Rótulo só para leitores de tela (campos em linha, como o valor de um desconto). */
   hideLabel?: boolean
-  /** `hero`: o valor em destaque (números grandes num bloco com borda teal), usado ao cadastrar uma conta. */
+  /** `hero`: o valor em destaque (números grandes num bloco `raised`), usado ao cadastrar uma conta. */
   hero?: boolean
   /** Recebe o foco ao aparecer (o valor é o 1º campo ao lançar uma conta). */
   autoFocus?: boolean
@@ -26,7 +26,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInpu
   const auto = useId()
   const fieldId = id ?? auto
   const label_ = (
-    <label htmlFor={fieldId} className={hideLabel ? 'sr-only' : 'text-xs font-medium uppercase tracking-wider text-ink/80'}>
+    <label htmlFor={fieldId} className={hideLabel ? 'sr-only' : labelCls}>
       {label}
     </label>
   )
@@ -42,7 +42,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInpu
       aria-describedby={error ? `${fieldId}-erro` : undefined}
       className={
         hero
-          ? 'w-full border-0 bg-transparent p-0 font-mono text-[40px] font-semibold leading-tight tabular-nums text-heading outline-none'
+          ? 'w-full border-0 bg-transparent p-0 font-mono text-figure-lg font-semibold tabular-nums text-heading outline-none'
           : `${controlCls(Boolean(error))} font-mono tabular-nums`
       }
       value={formatCents(value)}
@@ -50,16 +50,18 @@ export const MoneyInput = forwardRef<HTMLInputElement, Props>(function MoneyInpu
     />
   )
   const err = error && (
-    <p id={`${fieldId}-erro`} className="text-xs text-alert">
+    <p id={`${fieldId}-erro`} className="text-meta font-medium text-alert-text">
       {error}
     </p>
   )
   if (hero) {
     return (
-      <div className={`flex flex-col gap-0.5 rounded-md border-2 bg-raised/35 px-3 py-2.5 transition-colors hover:bg-raised/60 focus-within:border-accent ${error ? 'border-alert' : 'border-structure'}`}>
+      // Bloco `raised` sem borda (tom, não contorno). O campo dentro não tem contorno próprio, então o FOCO aparece no
+      // bloco inteiro (`focus-within:outline`); com erro, um contorno fino em `alert-text`.
+      <div className={`flex flex-col gap-0.5 rounded-md bg-raised px-4 py-3 outline-offset-0 focus-within:outline-2 focus-within:outline-accent-text ${error ? 'outline-1 outline-alert-text' : ''}`}>
         {label_}
         {input}
-        <p className="text-xs text-ink/75">digite só os números: 18735 vira R$ 187,35</p>
+        <p className="text-meta text-muted">digite só os números: 18735 vira R$ 187,35</p>
         {err}
       </div>
     )

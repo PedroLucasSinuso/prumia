@@ -1,4 +1,4 @@
-import { Button } from './Button'
+import { Button } from './ui/Button'
 
 /**
  * Confirmação de "Excluir a repetição" (usada na lista de repetições e no detalhe da receita). Explica o efeito em palavras:
@@ -12,7 +12,7 @@ export function DeleteRepetitionConfirm({ name, busy, onConfirm, onCancel }: { n
         <Button type="button" disabled={busy} onClick={onConfirm} className="md:h-9">
           Excluir a repetição
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel} className="md:h-9">
+        <Button type="button" variant="secondary" onClick={onCancel} className="md:h-9">
           Cancelar
         </Button>
       </div>

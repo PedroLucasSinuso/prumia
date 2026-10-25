@@ -6,6 +6,7 @@ import { formatCents } from '../lib/money'
 import { useFlash, usePaidPulse } from '../lib/flash'
 import { seriesTag } from '../lib/series'
 import { useWalletName } from '../lib/useWalletName'
+import { Tag } from './ui/Tag'
 import { Tooltip } from './ui/Tooltip'
 
 type Props = {
@@ -35,7 +36,7 @@ function rowStatus(invoice: Invoice, today: string | undefined, walletName: stri
     return { mark: '[ ✖ ]', tone: 'text-alert', text: late > 0 ? `atrasada ${late} ${late === 1 ? 'dia' : 'dias'}` : 'atrasada' }
   }
   const d = today ? daysBetween(today, invoice.dueDate) : -1
-  return { mark: '[ ▫ ]', tone: 'text-ink/80', text: d === 0 ? 'vence hoje' : d === 1 ? 'vence amanhã' : d > 1 ? `em ${d} dias` : 'a vencer' }
+  return { mark: '[ ▫ ]', tone: 'text-muted', text: d === 0 ? 'vence hoje' : d === 1 ? 'vence amanhã' : d > 1 ? `em ${d} dias` : 'a vencer' }
 }
 
 /**
@@ -47,19 +48,19 @@ function rowStatus(invoice: Invoice, today: string | undefined, walletName: stri
 export function InvoiceRow({ invoice, category, today, open, checked, selecting, canWrite, busy, onTogglePaid, onOpen, onCheck }: Props) {
   const paid = invoice.status === 'paid'
   const overdue = invoice.status === 'overdue'
-  const node = paid ? 'border-structure bg-structure' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
+  const node = paid ? 'border-done bg-done' : overdue ? 'border-alert bg-alert' : 'border-ink bg-surface'
   const tag = seriesTag(invoice)
   const nameOf = useWalletName()
   const status = rowStatus(invoice, today, nameOf(invoice.paid?.walletId))
   // O risco é sempre `line-through`, mas transparente enquanto a conta não está paga: ao pagar, a cor aparece em 150 ms.
-  const strike = `line-through transition-colors ${paid ? 'text-ink/60 decoration-ink/60' : 'decoration-transparent'}`
+  const strike = `line-through transition-colors ${paid ? 'text-muted decoration-ink/60' : 'decoration-transparent'}`
   const flashing = useFlash(invoice.id)
   const pulsing = usePaidPulse(invoice.id)
 
   return (
     <li
       className={`group relative grid min-h-12 grid-cols-[28px_52px_44px_minmax(0,1fr)_64px] items-center border-l-2 pl-1.5 transition-colors ${flashing ? 'motion-safe:animate-flash' : ''} ${
-        open ? 'border-structure bg-structure/7' : checked ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-ink/4'
+        open ? 'border-accent bg-raised' : checked ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-raised'
       }`}
     >
       <span className="flex justify-center">
@@ -75,8 +76,8 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         )}
       </span>
       <span className="flex items-baseline justify-end gap-1 pr-2 leading-tight">
-        <span className="font-mono text-[15px] font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
-        <span className="text-[11px] text-ink/75">{weekdayShort(invoice.dueDate)}</span>
+        <span className="font-mono text-body font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
+        <span className="text-caption text-muted">{weekdayShort(invoice.dueDate)}</span>
       </span>
       <Tooltip label={paid ? 'Desfazer pagamento' : 'Pagar'} shortcut={paid ? undefined : 'P'}>
         <button
@@ -86,7 +87,7 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
           className="group/node flex h-11 w-11 items-center justify-center disabled:cursor-default"
         >
           <span className={`flex size-[18px] items-center justify-center rounded-sm border-2 outline-4 outline-surface transition-colors motion-safe:group-active/node:scale-90 ${node} ${pulsing ? 'motion-safe:animate-fill' : ''}`}>
-            {paid && <span className="size-2 rounded-[1px] bg-on-structure" />}
+            {paid && <span className="size-2 rounded-[1px] bg-surface" />}
           </span>
         </button>
       </Tooltip>
@@ -99,17 +100,17 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         <span className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className={`truncate text-sm font-medium ${strike}`}>{invoice.description}</span>
-            {tag && <span className="shrink-0 rounded-xs border border-ink/40 px-1 font-mono text-[10px] text-ink/80">{tag}</span>}
+            {tag && <Tag>{tag}</Tag>}
           </span>
-          <span className="block truncate text-xs text-ink/75 @3xl:hidden">
+          <span className="block truncate text-meta text-muted @3xl:hidden">
             {category && <span>{category}</span>}
             <span className="@lg:hidden">{category ? ' · ' : ''}{status.text}</span>
           </span>
         </span>
-        <span className="hidden truncate text-[13px] text-ink/80 @3xl:block">{category ?? ''}</span>
-        <span className="hidden items-center gap-1.5 text-[13px] @lg:flex">
-          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-xs ${status.tone}`}>{status.mark}</span>
-          <span className="truncate">{status.text}</span>
+        <span className="hidden truncate text-ui text-muted @3xl:block">{category ?? ''}</span>
+        <span className="hidden items-center gap-1.5 text-ui @lg:flex">
+          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-meta ${status.tone}`}>{status.mark}</span>
+          <span className="truncate text-muted">{status.text}</span>
         </span>
         <span className={`text-right font-mono text-sm font-semibold tabular-nums ${strike}`}>{formatCents(invoice.amountCents)}</span>
       </button>
@@ -121,7 +122,7 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
             aria-hidden="true"
             disabled={busy}
             onClick={() => onTogglePaid(invoice)}
-            className="h-8 rounded-sm px-2 text-xs font-semibold text-accent underline underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:text-ink/40"
+            className="h-8 rounded-sm px-2 text-meta font-semibold text-accent underline underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:text-muted"
           >
             {paid ? 'desfazer' : 'pagar'}
           </button>

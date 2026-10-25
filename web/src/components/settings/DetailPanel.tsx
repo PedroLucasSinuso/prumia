@@ -28,10 +28,10 @@ export function DetailPanel({ desktop, title, onClose, children }: Props) {
   return (
     <section
       aria-labelledby={titleId}
-      className="fixed inset-y-0 right-0 z-30 w-full max-w-md motion-safe:animate-slide-in xl:animate-none overflow-y-auto overscroll-contain border-l border-line bg-surface p-5 shadow-xl xl:sticky xl:top-6 xl:z-auto xl:max-h-[calc(100dvh-3rem)] xl:max-w-none xl:self-start xl:rounded-md xl:border xl:shadow-none"
+      className="fixed inset-y-0 right-0 z-30 w-full max-w-md motion-safe:animate-slide-in xl:animate-none overflow-y-auto overscroll-contain border-l border-line bg-surface p-5 xl:sticky xl:top-6 xl:z-auto xl:max-h-[calc(100dvh-3rem)] xl:max-w-none xl:self-start xl:rounded-md xl:border"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 id={titleId} className="min-w-0 truncate font-display text-[22px] font-bold text-heading font-stretch-condensed">
+        <h3 id={titleId} className="min-w-0 truncate font-display text-title font-bold text-heading font-stretch-condensed">
           {title}
         </h3>
         <Tooltip label="Fechar" shortcut="Esc">

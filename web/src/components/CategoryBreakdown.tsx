@@ -5,7 +5,7 @@ import { formatCents } from '../lib/money'
 
 /**
  * Lista "por categoria": uma barra por categoria principal (a soma das filhas incluída) e, embaixo, o detalhe das filhas em
- * texto pequeno. `split` mostra pago (structure) e a pagar (accent) na mesma barra; sem ele, uma barra só.
+ * texto pequeno. `split` mostra pago (`done`, discreto) e a pagar (`accent`) na mesma barra; sem ele, uma barra só.
  * `onSelect` torna cada categoria (e cada filha) clicável: o resumo abre o histórico dela. `selectedId` marca a escolhida.
  */
 export function CategoryBreakdown({
@@ -19,7 +19,7 @@ export function CategoryBreakdown({
         type="button"
         onClick={() => onSelect(id)}
         aria-pressed={selectedId === id}
-        className={`-mx-1.5 block min-h-11 w-[calc(100%+0.75rem)] rounded-sm px-1.5 py-1 text-left md:min-h-0 transition-colors duration-150 hover:bg-ink/5 ${selectedId === id ? 'bg-accent/10' : ''} ${extra}`}
+        className={`-mx-1.5 block min-h-11 w-[calc(100%+0.75rem)] rounded-sm px-1.5 py-1 text-left md:min-h-0 transition-colors duration-150 hover:bg-sunken ${selectedId === id ? 'bg-accent/10' : ''} ${extra}`}
       >
         {children}
         <span className="sr-only">{`, ver histórico de ${label}`}</span>
@@ -32,14 +32,14 @@ export function CategoryBreakdown({
       {rows.map((r) => (
         <li key={r.id}>
           {pick(r.id, r.name, <>
-          <span className="flex justify-between gap-3 text-[13px]">
+          <span className="flex justify-between gap-3 text-ui">
             <span className="font-medium">{r.name}</span>
             <span className="font-mono tabular-nums">{formatCents(r.totalCents)}</span>
           </span>
-          <span className="mt-1 flex h-2 rounded-xs bg-ink/10" aria-hidden="true">
+          <span className="mt-1 flex h-2 rounded-xs bg-sunken" aria-hidden="true">
             {split ? (
               <>
-                <span className="h-2 rounded-l-xs bg-structure" style={{ width: `${(r.paidCents / max) * 100}%` }} />
+                <span className="h-2 rounded-l-xs bg-done" style={{ width: `${(r.paidCents / max) * 100}%` }} />
                 <span className="h-2 bg-accent" style={{ width: `${((r.totalCents - r.paidCents) / max) * 100}%` }} />
               </>
             ) : (
@@ -50,7 +50,7 @@ export function CategoryBreakdown({
           {r.children.length > 0 && (
             <ul aria-label={`Detalhe de ${r.name}`} className="mt-1 flex flex-col gap-0.5 border-l-2 border-line pl-2.5">
               {r.children.map((c) => (
-                <li key={c.id} className="text-xs text-ink/80">
+                <li key={c.id} className="text-meta text-muted">
                   {pick(c.id, c.name, <span className="flex justify-between gap-3">
                     <span>{c.name}</span>
                     <span className="font-mono tabular-nums">{formatCents(c.totalCents)}</span>

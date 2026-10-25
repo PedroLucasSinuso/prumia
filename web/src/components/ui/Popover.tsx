@@ -105,7 +105,8 @@ export function Popover({ open, anchorRef, onClose, children, matchWidth, role, 
       onKeyDown={onKeyDown}
       // evita que clicar no popover tire o foco do campo (Combobox) e que o clique chegue ao fundo do painel
       onMouseDown={(e) => e.stopPropagation()}
-      className={`z-[60] overflow-y-auto rounded-md border border-line bg-surface text-ink shadow-lg motion-safe:animate-pop-in ${className}`}
+      // Camada flutuante: um tom acima (`raised`) e um filete `line` para separar do que está embaixo, sem sombra decorativa.
+      className={`z-[60] overflow-y-auto rounded-md border border-line bg-raised text-ink motion-safe:animate-pop-in ${className}`}
     >
       {children}
     </div>,

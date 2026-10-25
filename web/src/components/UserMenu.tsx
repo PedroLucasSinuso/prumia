@@ -8,7 +8,7 @@ import { ICON } from '../lib/navigation'
 import { roleLabel } from '../lib/roles'
 
 type Props = {
-  /** `inverse` = sobre a barra lateral (`structure`). */
+  /** `inverse` = sobre a barra lateral (`nav`). */
   tone?: 'light' | 'inverse'
   /** Onde o menu abre: abaixo do avatar (topo do celular) ou acima (rodapé da barra lateral). */
   placement?: 'below' | 'above'
@@ -72,7 +72,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
     <span
       aria-hidden="true"
       className={`flex size-9 shrink-0 items-center justify-center rounded-md border text-sm font-semibold ${
-        inverse ? 'border-on-structure/40 text-on-structure' : 'border-ink/25 text-heading'
+        inverse ? 'border-on-nav/40 text-on-nav' : 'border-line-strong text-heading'
       }`}
     >
       {name.slice(0, 1).toUpperCase()}
@@ -94,7 +94,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
         }}
         className={
           inverse
-            ? 'flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left hover:bg-on-structure/8'
+            ? 'flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left hover:bg-on-nav/8'
             : 'flex size-11 items-center justify-center rounded-md hover:bg-ink/5'
         }
       >
@@ -102,7 +102,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
         {inverse && (
           <>
             <span className="hidden min-w-0 flex-1 truncate text-sm font-semibold lg:block">{name}</span>
-            <ChevronsUpDown aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} className="hidden shrink-0 text-on-structure/70 lg:block" />
+            <ChevronsUpDown aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} className="hidden shrink-0 text-on-nav lg:block" />
           </>
         )}
       </button>
@@ -114,18 +114,18 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
           role="menu"
           aria-label={`Conta de ${name}`}
           onKeyDown={onMenuKey}
-          className={`absolute z-40 w-64 rounded-md border border-line bg-surface p-1.5 text-ink shadow-lg ${
+          className={`absolute z-40 w-64 rounded-md border border-line bg-raised p-1.5 text-ink ${
             placement === 'above' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-1'
           }`}
         >
           <div className="px-2.5 pb-2 pt-1.5">
             <p className="truncate text-sm font-semibold">{name}</p>
-            <p className="truncate text-xs text-ink/70">{email}</p>
+            <p className="truncate text-meta text-muted">{email}</p>
           </div>
 
           {houses.length > 1 && (
             <div role="group" aria-label="Casa" className="border-t border-line py-1">
-              <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wider text-ink/65">casa</p>
+              <p className="px-2.5 pb-1 pt-1.5 text-caption font-medium uppercase tracking-wider text-muted">casa</p>
               {houses.map((h) => {
                 const active = h.id === house?.id
                 return (
@@ -145,7 +145,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
                       {active && <Check aria-hidden="true" size={16} strokeWidth={2} />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{h.name}</span>
-                    <span className="shrink-0 text-xs text-ink/65">{roleLabel[h.role]}</span>
+                    <span className="shrink-0 text-meta text-muted">{roleLabel[h.role]}</span>
                   </button>
                 )
               })}

@@ -7,7 +7,7 @@ import { boletoErrorMessage, networkErrorMessage } from '../auth/errors'
 import { MAX_BOLETO_BYTES } from '../lib/boleto'
 import { formatCents } from '../lib/money'
 import { BoletoBox } from './BoletoBox'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 
@@ -118,10 +118,10 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
 
       {step.kind === 'idle' && (
         <>
-          <Button type="button" variant="ghost" onClick={pick}>
+          <Button type="button" variant="secondary" onClick={pick}>
             Importar boleto
           </Button>
-          <p className="text-xs text-ink/70">
+          <p className="text-meta text-muted">
             PDF, foto ou print do boleto ou da conta (até 5 MB). Você confere tudo antes de salvar. Várias contas ou arquivos?{' '}
             <Link to="/importar" className="font-semibold text-accent underline underline-offset-2">
               Importar várias
@@ -131,13 +131,13 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
       )}
 
       {step.kind === 'reading' && (
-        <p role="status" className="flex min-h-11 items-center justify-center rounded-md border border-ink/25 text-sm">
+        <p role="status" className="flex min-h-11 items-center justify-center rounded-md border border-line-strong text-sm">
           lendo o boleto…
         </p>
       )}
 
       {step.kind === 'password' && (
-        <div className="flex flex-col gap-2 rounded-md border border-ink/25 p-3">
+        <div className="flex flex-col gap-2 rounded-md bg-raised p-3">
           <Field
             ref={passwordInput}
             label="Senha do PDF"
@@ -158,7 +158,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
             <Button type="button" onClick={sendPassword}>
               Abrir PDF
             </Button>
-            <Button type="button" variant="ghost" onClick={manual}>
+            <Button type="button" variant="secondary" onClick={manual}>
               Cancelar
             </Button>
           </div>
@@ -172,7 +172,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
             <Button type="button" onClick={() => void read()}>
               Tentar de novo
             </Button>
-            <Button type="button" variant="ghost" onClick={manual}>
+            <Button type="button" variant="secondary" onClick={manual}>
               Preencher manualmente
             </Button>
           </div>
@@ -183,7 +183,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
         <section aria-label="Várias contas no arquivo" className="flex flex-col gap-3 rounded-md border-2 border-accent p-3">
           <div>
             <h3 className="text-sm font-semibold">Encontrei {step.extraction.items.length} contas neste arquivo</h3>
-            <p className="text-xs text-ink/75">Para criar todas de uma vez, abra em Importar e confira cada uma.</p>
+            <p className="text-meta text-muted">Para criar todas de uma vez, abra em Importar e confira cada uma.</p>
           </div>
           <ul className="flex flex-col gap-1 text-sm">
             {step.extraction.items.map((it, i) => (
@@ -206,14 +206,14 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
         <section aria-label="Conferir antes de salvar" className="flex flex-col gap-3 rounded-md border-2 border-accent p-3">
           <div>
             <h3 className="text-sm font-semibold">Conferir antes de salvar</h3>
-            <p className="text-xs text-ink/75">
+            <p className="text-meta text-muted">
               {first.boleto
                 ? 'Valor, vencimento e descrição vieram do boleto. Confira e corrija se precisar.'
                 : 'Conta sem código de barras: valor e vencimento vieram do documento. Confira e corrija se precisar.'}
             </p>
           </div>
           {duplicateId && showDuplicate && (
-            <div role="alert" className="flex flex-col gap-1 rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
+            <div role="alert" className="flex flex-col gap-1 rounded-md border-l-2 border-alert bg-sunken px-3 py-2 text-sm text-ink">
               <p>
                 <span aria-hidden="true" className="font-mono text-alert">[ ✖ ]</span> Já existe uma conta com este boleto.
               </p>
@@ -235,7 +235,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
               method={step.extraction.method === 'text' ? undefined : step.extraction.method}
             />
           ) : (
-            <p className="text-xs">
+            <p className="text-meta">
               <span aria-hidden="true" className={`font-mono ${step.extraction.method === 'ocr' ? 'text-alert' : 'text-accent'}`}>
                 {step.extraction.method === 'ocr' ? '[ ✖ ]' : '[ ▪ ]'}
               </span>{' '}

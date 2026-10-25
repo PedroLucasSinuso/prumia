@@ -29,7 +29,8 @@ type Props<T extends string> = {
  * - `role="radiogroup"` com `role="radio"` + `aria-checked` em cada opção; só a escolhida entra no Tab (tabindex
  *   itinerante) e as setas ←/→/↑/↓ movem e escolhem, Home/End vão às pontas. Igual a um `<input type="radio">`.
  * - `value={null}` = nenhuma escolhida (a 1ª fica focável).
- * - Visual: borda única de 6px, a escolhida preenchida (`bg-structure`); alvos de 44px no celular, 36px no computador.
+ * - Visual (igual ao `FilterChips`): trilho `sunken`, a escolhida sobe para `raised` com texto `heading` e um filete
+ *   `structure` embaixo (o estado não depende só do tom); alvos de 44px no celular, 36px no computador.
  *
  * Uso: `<Segmented label="Tipo" options={[{value:'a',label:'avulsa'},…]} value={kind} onChange={setKind} />`.
  */
@@ -59,7 +60,7 @@ export function Segmented<T extends string>({ label, hideLabel, options, value, 
       <span id={labelId} className={hideLabel ? 'sr-only' : labelCls}>
         {label}
       </span>
-      <div role="radiogroup" aria-labelledby={labelId} className={`gap-px ${wrap ? 'flex flex-wrap' : 'grid'}`} style={wrap ? undefined : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      <div role="radiogroup" aria-labelledby={labelId} className={`gap-0.5 rounded-md bg-sunken p-0.5 ${wrap ? 'flex flex-wrap' : 'grid'}`} style={wrap ? undefined : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((o, i) => {
           const on = o.value === value
           return (
@@ -76,11 +77,11 @@ export function Segmented<T extends string>({ label, hideLabel, options, value, 
               disabled={disabled || o.disabled}
               onClick={() => onChange(o.value)}
               onKeyDown={(e) => onKeyDown(e, i)}
-              className={`flex min-h-11 flex-auto items-center justify-center gap-1.5 whitespace-nowrap border px-3 text-[13px] transition-colors first:rounded-l-md last:rounded-r-md focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-9 ${
+              className={`flex min-h-11 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-sm border-b-2 px-3 text-ui transition-colors focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-8 ${
                 on
-                  ? 'border-structure bg-structure font-semibold text-on-structure'
-                  : 'border-ink/30 bg-raised/30 font-medium text-ink hover:bg-ink/6 active:bg-ink/10'
-              } ${wrap ? 'rounded-md' : ''}`}
+                  ? 'border-structure bg-raised font-semibold text-heading'
+                  : 'border-transparent font-medium text-ink hover:bg-ink/6 active:bg-ink/10'
+              }`}
             >
               {o.label}
             </button>

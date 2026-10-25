@@ -6,7 +6,7 @@ import type { Category, CnpjInfo, Payee, PayeeInput, PayeePatch } from '../api/t
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { buildTree } from '../lib/categories'
 import { cnpjDigits, formatCnpj } from '../lib/cnpj'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { Combobox } from './ui/Combobox'
@@ -106,7 +106,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
           }
         }} />
       {found && (
-        <p className="-mt-2 text-xs text-ink/75" aria-live="polite">
+        <p className="-mt-2 text-meta text-muted" aria-live="polite">
           <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> CNPJ conferido: {found.legalName}
           {found.tradeName ? ` (${found.tradeName})` : ''}
         </p>
@@ -132,15 +132,15 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {archived ? (
             <>
-              <p className="text-sm text-ink/80">Arquivado: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: false }), `${payee.name} restaurado.`)}>
+              <p className="text-sm text-muted">Arquivado: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: false }), `${payee.name} restaurado.`)}>
                 Restaurar favorecido
               </Button>
             </>
           ) : (
             <>
-              <p className="text-sm text-ink/80">Arquivar tira o favorecido da lista ao lançar contas novas. As contas antigas continuam com ele.</p>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: true }), `${payee.name} arquivado.`)}>
+              <p className="text-sm text-muted">Arquivar tira o favorecido da lista ao lançar contas novas. As contas antigas continuam com ele.</p>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(payee.id, { archived: true }), `${payee.name} arquivado.`)}>
                 Arquivar favorecido
               </Button>
             </>

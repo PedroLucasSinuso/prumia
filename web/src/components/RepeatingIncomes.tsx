@@ -1,11 +1,11 @@
-import { ChevronDown } from 'lucide-react'
 import { useId, useState } from 'react'
 
 import type { Income, IncomeSource, Member } from '../api/types'
 import { monthLabel } from '../lib/dates'
 import { kindShort, netOf, ruleText, untilText } from '../lib/income'
 import { formatCents } from '../lib/money'
-import { Button } from './Button'
+import { Button } from './ui/Button'
+import { SectionRule } from './ui/SectionRule'
 import { DeleteRepetitionConfirm } from './DeleteRepetitionConfirm'
 
 type Props = {
@@ -36,22 +36,10 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
   if (sources.length === 0) return null
 
   return (
-    <section aria-label="Receitas que se repetem" className="rounded-md border border-line">
-      <h2>
-        <button
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen((o) => !o)}
-          className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left transition-colors hover:bg-ink/4"
-        >
-          <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
-          <span className="text-xs font-semibold uppercase tracking-wider">
-            Receitas que se repetem <span className="font-mono font-medium text-ink/75">({sources.length})</span>
-          </span>
-        </button>
-      </h2>
+    <section aria-label="Receitas que se repetem">
+      <SectionRule as="h2" title="Receitas que se repetem" count={sources.length} onToggle={() => setOpen((o) => !o)} expanded={open} controls={panelId} />
       {open && (
-        <ul id={panelId} className="border-t border-line">
+        <ul id={panelId}>
           {sources.map((s) => {
             const finished = s.endMonth != null && s.endMonth < month
             const canEnd = canWrite && !finished && month >= s.startMonth && (s.endMonth == null || month < s.endMonth)
@@ -61,14 +49,14 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                 ? `${formatCents(s.unitPriceCents)} por ${s.unitLabel ?? 'unidade'}`
                 : formatCents(netOf(s.grossAmountCents, s.deductions))
             return (
-              <li key={s.id} className="flex flex-col gap-2 border-t border-line px-3 py-2.5 first:border-t-0">
+              <li key={s.id} className="flex flex-col gap-2 border-t border-line py-2.5 first:border-t-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className={`truncate text-sm font-medium ${finished ? 'text-ink/60' : ''}`}>{s.name}</p>
-                    <p className="truncate text-xs text-ink/75">
+                    <p className={`truncate text-sm font-medium ${finished ? 'text-muted' : ''}`}>{s.name}</p>
+                    <p className="truncate text-meta text-muted">
                       {person(s.userId)} · {kindShort[s.kind]} · {ruleText(s.dateRule)}
                     </p>
-                    <p className="text-xs text-ink/75">
+                    <p className="text-meta text-muted">
                       {finished ? `encerrada em ${s.endMonth!.slice(5, 7)}/${s.endMonth!.slice(0, 4)}` : untilText(s.endMonth)}
                     </p>
                   </div>
@@ -81,7 +69,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                         disabled={!current}
                         title={current ? undefined : 'Esta repetição não tem receita neste mês: troque de mês para editar.'}
                         onClick={() => current && onEdit(current)}
-                        className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-ink/40 disabled:no-underline md:h-9"
+                        className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-muted disabled:no-underline md:h-9"
                       >
                         Editar
                       </button>
@@ -105,7 +93,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                           <Button type="button" disabled={busy} onClick={() => { onEnd(s); setEnding(undefined) }} className="md:h-9">
                             Encerrar a repetição
                           </Button>
-                          <Button type="button" variant="ghost" onClick={() => setEnding(undefined)} className="md:h-9">
+                          <Button type="button" variant="secondary" onClick={() => setEnding(undefined)} className="md:h-9">
                             Cancelar
                           </Button>
                         </div>

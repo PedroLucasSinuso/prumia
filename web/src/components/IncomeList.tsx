@@ -26,23 +26,23 @@ export function IncomeList({ incomes, members, today, onOpen }: Props) {
           <li key={i.id} className="border-t border-line first:border-t-0">
             <button aria-label={`Detalhes de ${i.description}`} onClick={() => onOpen(i)} className="grid min-h-16 w-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-left">
               <span className="flex flex-col items-end leading-tight">
-                <span className="font-mono text-[15px] font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
-                <span className="text-[11px] text-ink/75">{weekdayShort(i.expectedDate)}</span>
+                <span className="font-mono text-body font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
+                <span className="text-caption text-muted">{weekdayShort(i.expectedDate)}</span>
               </span>
               <span className="min-w-0">
                 <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[15px] font-medium">{i.description}</span>
+                  <span className="truncate text-body font-medium">{i.description}</span>
                   <IncomeBadges income={i} />
                 </span>
-                <span className="mt-0.5 block truncate text-xs text-ink/80">
+                <span className="mt-0.5 block truncate text-meta text-muted">
                   {person(i.userId)} · {kindShort[i.kind]}
                 </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+                <span className="mt-0.5 flex items-center gap-1.5 text-meta">
                   <span aria-hidden="true" className={`font-mono ${stateTone[state]}`}>{stateMark[state]}</span>
                   {stateText(i, today)}
                 </span>
               </span>
-              <span className={`shrink-0 font-mono text-[15px] font-semibold tabular-nums ${state === 'received' ? 'text-accent' : ''}`}>{formatCents(i.netAmountCents)}</span>
+              <span className={`shrink-0 font-mono text-body font-semibold tabular-nums ${state === 'received' ? 'text-accent' : ''}`}>{formatCents(i.netAmountCents)}</span>
             </button>
           </li>
         )

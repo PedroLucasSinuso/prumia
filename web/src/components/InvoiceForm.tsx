@@ -10,7 +10,7 @@ import { readPref, writePref } from '../lib/storage'
 import { useWalletTag } from '../lib/useWalletName'
 import { formatCents } from '../lib/money'
 import { BoletoImport } from './BoletoImport'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
@@ -329,11 +329,11 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         />
       )}
       {fields.boleto && (
-        <p className="text-xs text-alert">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
+        <p className="text-meta font-medium text-alert-text">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
       )}
       {boleto && matchedPayee && (
-        <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
-          Favorecido: <strong>{matchedPayee.name}</strong> <span className="text-xs text-ink/70">(reconhecido pelo CNPJ do boleto)</span>
+        <p className="rounded-md bg-sunken px-3 py-2 text-sm" aria-live="polite">
+          Favorecido: <strong>{matchedPayee.name}</strong> <span className="text-meta text-muted">(reconhecido pelo CNPJ do boleto)</span>
         </p>
       )}
       {boleto?.beneficiaryCnpj && !payeeId && (
@@ -355,7 +355,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         />
       )}
       {boleto?.beneficiaryCnpj && payeeId && !matchedPayee && (
-        <p className="text-xs text-ink/70">O CNPJ deste boleto será associado ao favorecido escolhido, se ele ainda não tiver um.</p>
+        <p className="text-meta text-muted">O CNPJ deste boleto será associado ao favorecido escolhido, se ele ainda não tiver um.</p>
       )}
 
       <MoneyInput
@@ -379,7 +379,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
             options={[{ value: 'each', label: 'de cada parcela' }, { value: 'total', label: 'total da compra' }]}
           />
           {amount > 0 && Number(count) >= 2 && (
-            <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
+            <p className="rounded-md bg-sunken px-3 py-2 text-sm" aria-live="polite">
               {amountIsTotal
                 ? `${count}x de ${formatCents(Math.floor(amount / Number(count)))} (total ${formatCents(amount)}; sobra de centavos na última)`
                 : `${count}x de ${formatCents(amount)} = ${formatCents(amount * Number(count))}`}
@@ -389,7 +389,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         </div>
       )}
       {!editing && kind === 'recurring' && (
-        <p className="rounded-md border border-line px-3 py-2 text-sm">
+        <p className="rounded-md bg-sunken px-3 py-2 text-sm">
           {amount > 0 ? `${formatCents(amount)} ` : ''}todo dia {dueDate.slice(8, 10)}, a partir deste mês. O app cria os próximos 12 meses e continua criando sozinho.
         </p>
       )}
@@ -425,7 +425,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
               label: (
                 <span className="flex flex-col items-center leading-tight">
                   {o.name}
-                  <span className="font-mono text-[11px] font-normal tabular-nums opacity-80">{dayMonth(o.date)}</span>
+                  <span className="font-mono text-caption font-normal tabular-nums opacity-80">{dayMonth(o.date)}</span>
                 </span>
               ),
             })),
@@ -435,7 +435,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         {otherDate ? (
           <DatePicker label="Data de vencimento" name="dueDate" required value={dueDate} onChange={(d) => { setDueDate(d); clear('dueDate') }} error={fields.dueDate} />
         ) : (
-          fields.dueDate && <p className="text-xs text-alert">{fields.dueDate}</p>
+          fields.dueDate && <p className="text-meta font-medium text-alert-text">{fields.dueDate}</p>
         )}
       </fieldset>
 
@@ -450,7 +450,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
                 <button key={id} type="button" aria-pressed={on} onClick={() => { setCategoryId(id); clear('categoryId') }} className={chipCls(on)}>
                   {c.name}
                   {walletTag(c.defaultWalletId) && (
-                    <span className={`rounded-xs border px-1 font-mono text-[10px] ${on ? 'border-on-structure/70' : 'border-ink/50'}`} title={`Sugere a carteira ${walletTag(c.defaultWalletId)}`}>
+                    <span className={`rounded-xs border px-1 font-mono text-caption ${on ? 'border-on-structure/70' : 'border-line-strong'}`} title={`Sugere a carteira ${walletTag(c.defaultWalletId)}`}>
                       {walletTag(c.defaultWalletId)}
                     </span>
                   )}
@@ -470,7 +470,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
           error={fields.categoryId}
         />
         {newCat && (
-          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md border border-line p-3">
+          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md bg-raised p-3">
             <div className="flex flex-wrap gap-2">
               <input
                 aria-label="Nome da nova categoria"
@@ -484,12 +484,12 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
                   if (e.key === 'Enter') { e.preventDefault(); void createCategory() }
                   if (e.key === 'Escape') { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setNewCat(null) }
                 }}
-                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-ink/25 bg-raised/40 px-3 text-base text-ink transition-colors hover:border-ink/45 focus-visible:border-accent md:h-9 md:text-sm"
+                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-line-strong bg-raised px-3 text-base text-ink transition-colors hover:border-ink/50 focus-visible:border-accent md:h-9 md:text-sm"
               />
               <Button type="button" disabled={!newCat.name.trim()} loading={newCat.busy} loadingLabel="Criando…" onClick={() => void createCategory()}>
                 Criar categoria
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setNewCat(null)}>
+              <Button type="button" variant="secondary" onClick={() => setNewCat(null)}>
                 Cancelar
               </Button>
             </div>
@@ -499,14 +499,14 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
                 dentro de {topNode.category.name} (subcategoria)
               </label>
             )}
-            {newCat.error && <p role="alert" className="text-xs text-alert">{newCat.error}</p>}
+            {newCat.error && <p role="alert" className="text-meta font-medium text-alert-text">{newCat.error}</p>}
           </div>
         )}
       </fieldset>
 
-      <details className="rounded-md border border-line px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
+      <details className="rounded-md bg-sunken px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
         <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold transition-colors hover:text-heading">
-          Mais opções <span className="text-xs font-normal text-ink/75">favorecido · competência · observação</span>
+          Mais opções <span className="text-meta font-normal text-muted">favorecido · competência · observação</span>
         </summary>
         <div className="mt-3 flex flex-col gap-4 pb-1">
           {!editing && kind === 'recurring' && (
@@ -548,7 +548,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
             options={[{ value: 'this', label: 'só esta' }, { value: 'following', label: 'esta e as seguintes' }]}
           />
           {scope === 'following' && (
-            <p className="text-xs text-ink/75">Vale para as ainda não pagas daqui para frente. Contas pagas e anteriores não mudam, e o vencimento de cada uma é mantido.</p>
+            <p className="text-meta text-muted">Vale para as ainda não pagas daqui para frente. Contas pagas e anteriores não mudam, e o vencimento de cada uma é mantido.</p>
           )}
         </fieldset>
       )}
@@ -562,12 +562,12 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
               </Button>
             </Tooltip>
             {!editing && kind === 'single' && (
-              <Button type="button" variant="ghost" disabled={invalid} onClick={() => void submit(true)}>
+              <Button type="button" variant="secondary" disabled={invalid} onClick={() => void submit(true)}>
                 Adicionar e lançar outra
               </Button>
             )}
             {editing && onCancel && (
-              <Button type="button" variant="ghost" onClick={onCancel}>
+              <Button type="button" variant="secondary" onClick={onCancel}>
                 Cancelar
               </Button>
             )}

@@ -61,7 +61,7 @@ export function ActionMenu({ label, actions, revealOnHover = true }: Props) {
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => setOpen((o) => !o)}
-        className={`flex size-11 items-center justify-center rounded-md text-ink/75 transition-opacity duration-150 hover:bg-ink/6 hover:text-ink md:size-9 ${
+        className={`flex size-11 items-center justify-center rounded-md text-muted transition-opacity duration-150 hover:bg-ink/6 hover:text-ink md:size-9 ${
           revealOnHover ? 'pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100 aria-expanded:opacity-100' : ''
         }`}
       >
@@ -74,7 +74,8 @@ export function ActionMenu({ label, actions, revealOnHover = true }: Props) {
           role="menu"
           aria-label={label}
           onKeyDown={onKey}
-          className="absolute right-0 top-full z-30 mt-1 w-52 rounded-md border border-line bg-surface p-1 text-ink shadow-lg"
+          // camada flutuante: tom `raised` + filete, sem sombra decorativa (igual ao Popover)
+          className="absolute right-0 top-full z-30 mt-1 w-52 rounded-md border border-line bg-raised p-1 text-ink"
         >
           {visible.map((a) => {
             const Icon = a.icon
@@ -90,7 +91,7 @@ export function ActionMenu({ label, actions, revealOnHover = true }: Props) {
                 }}
                 className="flex min-h-11 w-full items-center gap-2.5 rounded-sm px-2.5 text-left text-sm hover:bg-ink/6 focus-visible:bg-ink/6 md:min-h-9"
               >
-                {Icon && <Icon aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} className="shrink-0 text-ink/70" />}
+                {Icon && <Icon aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} className="shrink-0 text-muted" />}
                 {a.label}
               </button>
             )

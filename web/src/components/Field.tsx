@@ -9,7 +9,7 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
 }
 
 /**
- * Campo de formulário da marca: rótulo em caixa alta pequena, borda fina, erro em coral. Acessível (label, aria).
+ * Campo de formulário da marca: rótulo em caixa alta pequena, borda `line-strong`, erro em `alert-text`. Acessível (label, aria).
  * Estados: hover (borda mais forte), foco (borda `accent` + contorno global), erro, desabilitado.
  * Celular: 44px; computador: 36px. O visual vem de `ui/styles` (igual ao DatePicker, Combobox e MonthPicker).
  */
@@ -31,12 +31,12 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         {...input}
       />
       {hint && !error && (
-        <p id={`${fieldId}-dica`} className="text-xs text-ink/60">
+        <p id={`${fieldId}-dica`} className="text-meta text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${fieldId}-erro`} className="text-xs text-alert">
+        <p id={`${fieldId}-erro`} className="text-meta font-medium text-alert-text">
           {error}
         </p>
       )}

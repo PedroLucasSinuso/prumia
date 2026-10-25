@@ -1,9 +1,10 @@
-import { ChevronDown } from 'lucide-react'
 
 import type { Income, Member } from '../api/types'
 import { weekdayShort } from '../lib/dates'
 import { kindShort, stateMark, stateOf, stateText, stateTone, type IncomeSection, type SectionId } from '../lib/income'
 import { formatCents } from '../lib/money'
+import { SectionRule } from './ui/SectionRule'
+import { Tag } from './ui/Tag'
 
 type RowActions = {
   members: Member[]
@@ -30,28 +31,15 @@ type Props = RowActions & {
  */
 export function IncomeSections({ sections, collapsed, onToggle, ...rows }: Props) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {sections.map((s) => {
         const open = !collapsed.includes(s.id)
         const panelId = `secao-receitas-${s.id}`
         return (
-          <section key={s.id} aria-label={s.title} className="rounded-md border border-line">
-            <h3>
-              <button
-                aria-expanded={open}
-                aria-controls={panelId}
-                onClick={() => onToggle(s.id)}
-                className="flex h-10 w-full items-center gap-2 rounded-md px-3 text-left transition-colors hover:bg-ink/4"
-              >
-                <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
-                <span className="text-xs font-semibold uppercase tracking-wider">
-                  {s.title} <span className="font-mono font-medium text-ink/75">({s.items.length})</span>
-                </span>
-                <span className="ml-auto font-mono text-[13px] font-semibold tabular-nums text-ink/85">{formatCents(s.totalCents)}</span>
-              </button>
-            </h3>
+          <section key={s.id} aria-label={s.title}>
+            <SectionRule title={s.title} count={s.items.length} total={formatCents(s.totalCents)} onToggle={() => onToggle(s.id)} expanded={open} controls={panelId} />
             {open && (
-              <ul id={panelId} className="border-t border-line pb-1">
+              <ul id={panelId} className="pb-1">
                 {s.items.map((i) => (
                   <IncomeRow key={i.id} income={i} {...rows} />
                 ))}
@@ -68,8 +56,8 @@ export function IncomeSections({ sections, collapsed, onToggle, ...rows }: Props
 export function IncomeBadges({ income }: { income: Income }) {
   return (
     <>
-      {income.repeats && <span className="shrink-0 rounded-xs border border-ink/40 px-1 font-mono text-[10px] text-ink/80">repete</span>}
-      {income.amountMode === 'per_unit' && <span className="shrink-0 rounded-xs border border-ink/40 px-1 font-mono text-[10px] text-ink/80">por unidade</span>}
+      {income.repeats && <Tag>repete</Tag>}
+      {income.amountMode === 'per_unit' && <Tag>por unidade</Tag>}
     </>
   )
 }
@@ -79,10 +67,10 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
   const person = members.find((m) => m.userId === i.userId)?.name ?? 'Pessoa'
   const open = i.id === selectedId
   return (
-    <li className={`group relative grid min-h-12 grid-cols-[64px_minmax(0,1fr)_96px] items-center border-l-2 pl-1.5 transition-colors ${open ? 'border-structure bg-structure/7' : 'border-transparent hover:bg-ink/4'}`}>
+    <li className={`group relative grid min-h-12 grid-cols-[64px_minmax(0,1fr)_96px] items-center border-l-2 pl-1.5 transition-colors ${open ? 'border-accent bg-raised' : 'border-transparent hover:bg-raised'}`}>
       <span className="flex items-baseline justify-end gap-1 pr-3 leading-tight">
-        <span className="font-mono text-[15px] font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
-        <span className="text-[11px] text-ink/75">{weekdayShort(i.expectedDate)}</span>
+        <span className="font-mono text-body font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
+        <span className="text-caption text-muted">{weekdayShort(i.expectedDate)}</span>
       </span>
       <button
         aria-label={`Detalhes de ${i.description}`}
@@ -95,18 +83,18 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
             <span className="truncate text-sm font-medium">{i.description}</span>
             <IncomeBadges income={i} />
           </span>
-          <span className="block truncate text-xs text-ink/75 @3xl:hidden">
+          <span className="block truncate text-meta text-muted @3xl:hidden">
             {person} · {kindShort[i.kind]}
             <span className="@lg:hidden"> · {stateText(i, today)}</span>
           </span>
         </span>
-        <span className="hidden truncate text-[13px] text-ink/80 @3xl:block">{person}</span>
-        <span className="hidden truncate text-[13px] text-ink/80 @3xl:block">{kindShort[i.kind]}</span>
-        <span className="hidden items-center gap-1.5 text-[13px] @lg:flex">
-          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-xs ${stateTone[state]}`}>{stateMark[state]}</span>
+        <span className="hidden truncate text-ui text-muted @3xl:block">{person}</span>
+        <span className="hidden truncate text-ui text-muted @3xl:block">{kindShort[i.kind]}</span>
+        <span className="hidden items-center gap-1.5 text-ui @lg:flex">
+          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-meta ${stateTone[state]}`}>{stateMark[state]}</span>
           <span className="truncate">{stateText(i, today)}</span>
         </span>
-        <span className={`text-right font-mono text-sm font-semibold tabular-nums ${state === 'received' ? 'text-accent' : state === 'held' ? 'text-ink' : 'text-ink/85'}`}>
+        <span className={`text-right font-mono text-sm font-semibold tabular-nums ${state === 'received' ? 'text-accent' : state === 'held' ? 'text-ink' : 'text-muted'}`}>
           {formatCents(i.netAmountCents)}
         </span>
       </button>
@@ -118,7 +106,7 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
             aria-hidden="true"
             disabled={busy}
             onClick={() => (state === 'received' ? onHold(i) : onReceive(i))}
-            className="h-8 rounded-sm px-2 text-xs font-semibold text-accent underline underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:text-ink/40"
+            className="h-8 rounded-sm px-2 text-meta font-semibold text-accent underline underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:text-muted"
           >
             {state === 'received' ? 'não caiu' : 'caiu'}
           </button>

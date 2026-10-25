@@ -7,7 +7,7 @@ import { buildTree } from '../../lib/categories'
 import { ICON } from '../../lib/navigation'
 import { useWalletTag } from '../../lib/useWalletName'
 import { ActionMenu } from '../ActionMenu'
-import { Button } from '../Button'
+import { Button } from '../ui/Button'
 import { CategoryForm } from '../CategoryForm'
 import { Sheet } from '../Sheet'
 import { useToast } from '../toastContext'
@@ -160,7 +160,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
             onPointerDown={() => setArmed(c.id)}
             onPointerUp={() => !dragId && setArmed(undefined)}
             onKeyDown={(e) => onHandleKey(e, c)}
-            className="flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded-sm text-ink/45 hover:bg-ink/6 hover:text-ink active:cursor-grabbing"
+            className="flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted hover:bg-ink/6 hover:text-ink active:cursor-grabbing"
           >
             <GripVertical aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} />
           </button>
@@ -171,17 +171,17 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
           onClick={() => setEditing({ kind: 'edit', id: c.id })}
           className="flex min-h-12 min-w-0 flex-1 items-center gap-3 px-1.5 py-1.5 text-left md:min-h-10"
         >
-          <span className={`min-w-0 flex-1 truncate text-[15px] md:text-sm ${child ? '' : 'font-medium'} ${c.archived ? 'text-ink/65' : ''}`}>{c.name}</span>
+          <span className={`min-w-0 flex-1 truncate text-body md:text-sm ${child ? '' : 'font-medium'} ${c.archived ? 'text-muted' : ''}`}>{c.name}</span>
           <Meta c={c} />
         </button>
         {reordering && !c.archived ? (
           <span className="flex shrink-0 gap-1">
             <button type="button" aria-label={`Subir ${c.name}`} disabled={index <= 0 || actions.reorder.isPending} onClick={() => move(c, -1)}
-              className="flex size-11 items-center justify-center rounded-md border border-line hover:bg-ink/5 disabled:opacity-30">
+              className="flex size-11 items-center justify-center rounded-md border border-line-strong hover:bg-ink/6 disabled:opacity-40">
               <ChevronUp aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} />
             </button>
             <button type="button" aria-label={`Descer ${c.name}`} disabled={index === siblings.length - 1 || actions.reorder.isPending} onClick={() => move(c, 1)}
-              className="flex size-11 items-center justify-center rounded-md border border-line hover:bg-ink/5 disabled:opacity-30">
+              className="flex size-11 items-center justify-center rounded-md border border-line-strong hover:bg-ink/6 disabled:opacity-40">
               <ChevronDown aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} />
             </button>
           </span>
@@ -215,7 +215,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
           canWrite && (
             <>
               {!desktop && (
-                <Button variant="ghost" aria-pressed={reordering} onClick={() => setReordering((r) => !r)} className="flex items-center gap-2">
+                <Button variant="secondary" aria-pressed={reordering} onClick={() => setReordering((r) => !r)} className="flex items-center gap-2">
                   {reordering ? <Check aria-hidden="true" size={18} strokeWidth={ICON.strokeWidth} /> : <ArrowUpDown aria-hidden="true" size={18} strokeWidth={ICON.strokeWidth} />}
                   {reordering ? 'Concluir' : 'Reordenar'}
                 </Button>
@@ -230,17 +230,17 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
 
       <DetailLayout open={desktop && panelOpen}>
         <div className="min-w-0">
-          {categories.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
+          {categories.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
           {categories.isError && <LoadError what="as categorias" onRetry={() => void categories.refetch()} />}
           {categories.isSuccess && active.length === 0 && (
-            <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
+            <p className="rounded-md bg-sunken p-4 text-sm text-muted">
               Nenhuma categoria ativa{canWrite ? '. Crie a primeira em Nova categoria.' : '.'}
             </p>
           )}
 
           {active.length > 0 && (
-            <div className="rounded-md border border-line">
-              <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 text-xs text-ink/70">
+            <div className="rounded-md bg-raised">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 text-meta text-muted">
                 <span>
                   {tops.length} {tops.length === 1 ? 'categoria' : 'categorias'}
                   {subCount > 0 && ` · ${subCount} ${subCount === 1 ? 'subcategoria' : 'subcategorias'}`}
@@ -255,8 +255,8 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
           <p aria-live="polite" className="sr-only">{announce}</p>
 
           {archived.length > 0 && (
-            <details className="mt-4 rounded-md border border-line px-3">
-              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-ink/85 md:min-h-10">arquivadas ({archived.length})</summary>
+            <details className="mt-4 rounded-md bg-sunken px-3">
+              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-muted md:min-h-10">arquivadas ({archived.length})</summary>
               <ul aria-label="Categorias arquivadas" className="flex flex-col pb-1">
                 {archived.map((c) => row(c, false))}
               </ul>
@@ -285,7 +285,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
 
       {moving && (
         <Sheet title={`Mover ${moving.name}`} onClose={() => setMoving(undefined)}>
-          <p className="mb-3 text-sm text-ink/80">Escolha onde {moving.name} fica. Dentro de outra, ela vira subcategoria e entra na soma da principal.</p>
+          <p className="mb-3 text-sm text-muted">Escolha onde {moving.name} fica. Dentro de outra, ela vira subcategoria e entra na soma da principal.</p>
           <ul className="flex flex-col gap-1.5">
             {[{ id: '', name: 'Categoria principal (topo)' }, ...tops.filter((t) => t.id !== moving.id)].map((target) => {
               const current = (moving.parentId ?? '') === target.id
@@ -307,9 +307,9 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
                         },
                       )
                     }
-                    className={`flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left text-sm ${current ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
+                    className={`flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left text-sm ${current ? 'border-accent bg-raised' : 'border-line hover:bg-raised'}`}
                   >
-                    <span aria-hidden="true" className="font-mono text-xs text-ink/70">{current ? '[ ▪ ]' : '[ ▫ ]'}</span>
+                    <span aria-hidden="true" className="font-mono text-meta text-muted">{current ? '[ ▪ ]' : '[ ▫ ]'}</span>
                     {target.name}
                   </button>
                 </li>

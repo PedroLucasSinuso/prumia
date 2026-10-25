@@ -9,15 +9,16 @@ import { problemMessage } from '../../auth/errors'
 import { useActiveHouse, type House } from '../../auth/useActiveHouse'
 import { inviteLink, resetLink } from '../../lib/links'
 import { roleHelp, roleLabel } from '../../lib/roles'
-import { Button } from '../Button'
+import { Button } from '../ui/Button'
 import { Field } from '../Field'
 import { LinkBox } from '../LinkBox'
 import { MembersList } from '../MembersList'
 import { useToast } from '../toastContext'
 import { Card, SectionHeader } from './ui'
+import { Notice } from '../ui/Notice'
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/75'
-const select = 'h-11 rounded-md border border-ink/25 bg-raised/40 px-3 text-base md:h-9 md:text-sm'
+const label = 'text-meta font-medium uppercase tracking-wider text-muted'
+const select = 'h-11 rounded-md border border-line-strong bg-raised px-3 text-base md:h-9 md:text-sm'
 
 const errorText = (e: unknown) => (e instanceof ApiError ? (e.network ? 'Sem conexão com o servidor.' : problemMessage(e.problem)) : 'Algo deu errado.')
 const expiry = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -153,32 +154,30 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
       />
 
       {error && (
-        <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
-          <span className="font-mono text-alert">[ ✖ ]</span> {error}
-        </p>
+        <Notice>{error}</Notice>
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] xl:items-start">
         <div className="flex flex-col gap-4">
           <Card label="Casa">
-            <h3 className="font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{house.name}</h3>
+            <h3 className="font-display text-title font-bold leading-tight text-heading font-stretch-condensed">{house.name}</h3>
             {isAdmin ? (
               <form onSubmit={onRename} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="min-w-0 flex-1">
                   <Field label="Nome da casa" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
                 </div>
-                <Button type="submit" variant="ghost" disabled={actions.rename.isPending || !name.trim() || name.trim() === house.name}>
+                <Button type="submit" variant="secondary" disabled={actions.rename.isPending || !name.trim() || name.trim() === house.name}>
                   Salvar nome
                 </Button>
               </form>
             ) : (
-              <p className="mt-1 text-sm text-ink/75">Só quem administra pode renomear a casa.</p>
+              <p className="mt-1 text-sm text-muted">Só quem administra pode renomear a casa.</p>
             )}
           </Card>
 
           <Card label="Pessoas" title={count !== undefined ? `pessoas da casa (${count})` : 'pessoas da casa'}>
-            {members.isPending && <p role="status" className="mt-2 text-sm text-ink/70">carregando…</p>}
-            {members.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as pessoas.</p>}
+            {members.isPending && <p role="status" className="mt-2 text-sm text-muted">carregando…</p>}
+            {members.isError && <Notice className="mt-2" onRetry={() => void members.refetch()}>Não foi possível carregar as pessoas.</Notice>}
             {members.isSuccess && (
               <MembersList members={members.data} meId={me.id} isAdmin={isAdmin} busy={busy} onRole={onRole} onRemove={onRemove} onResetLink={onResetLink} />
             )}
@@ -197,7 +196,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
         <div className="flex flex-col gap-4">
           {isAdmin ? (
             <Card label="Convidar" title="convidar alguém">
-              <p className="mt-1 text-sm text-ink/80">Gere um link e mande para a pessoa. Ela cria a conta (ou entra) e já cai na casa.</p>
+              <p className="mt-1 text-sm text-muted">Gere um link e mande para a pessoa. Ela cria a conta (ou entra) e já cai na casa.</p>
               <form onSubmit={onInvite} className="mt-3 flex flex-col gap-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="flex flex-col gap-1">
@@ -230,11 +229,11 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
               )}
             </Card>
           ) : (
-            <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">Só quem administra a casa pode convidar pessoas.</p>
+            <p className="rounded-md bg-sunken p-4 text-sm text-muted">Só quem administra a casa pode convidar pessoas.</p>
           )}
 
           <Card label="Outra casa" title="outra casa">
-            <p className="mt-1 text-sm text-ink/80">Uma casa separada, com contas e pessoas próprias. Você troca de casa pelo topo da tela ou pelo menu da sua conta.</p>
+            <p className="mt-1 text-sm text-muted">Uma casa separada, com contas e pessoas próprias. Você troca de casa pelo topo da tela ou pelo menu da sua conta.</p>
             {creating ? (
               <form onSubmit={onCreate} className="mt-3 flex flex-col gap-3">
                 <Field label="Nome da nova casa" value={newName} maxLength={80} onChange={(e) => setNewName(e.target.value)} />
@@ -244,22 +243,22 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
                 </div>
               </form>
             ) : (
-              <Button variant="ghost" className="mt-3" onClick={() => setCreating(true)}>Criar outra casa</Button>
+              <Button variant="secondary" className="mt-3" onClick={() => setCreating(true)}>Criar outra casa</Button>
             )}
           </Card>
 
           {isAdmin && (
             <Card label="Zona de perigo" title="zona de perigo" tone="danger">
-              <p className="mt-1 text-sm text-ink/80">
+              <p className="mt-1 text-sm text-muted">
                 Excluir remove a casa e tira o acesso de todas as pessoas. Os dados ficam guardados no servidor, mas o app deixa de mostrá-los.
               </p>
               {confirmDelete ? (
                 <div className="mt-3 flex items-center gap-3">
-                  <Button variant="ghost" onClick={onDelete} disabled={actions.remove.isPending}>Sim, excluir a casa</Button>
+                  <Button variant="secondary" onClick={onDelete} disabled={actions.remove.isPending}>Sim, excluir a casa</Button>
                   <button onClick={() => setConfirmDelete(false)} className="h-11 text-sm underline underline-offset-4">cancelar</button>
                 </div>
               ) : (
-                <Button variant="ghost" className="mt-3" onClick={() => setConfirmDelete(true)}>Excluir casa…</Button>
+                <Button variant="secondary" className="mt-3" onClick={() => setConfirmDelete(true)}>Excluir casa…</Button>
               )}
             </Card>
           )}

@@ -4,15 +4,19 @@ import { useCategories, useInvoiceActions, usePayees, useRecurrenceActions, useP
 import type { Invoice, Purchase, Recurrence } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
-import { Button } from '../components/Button'
+import { Button } from '../components/ui/Button'
 import { InvoiceForm } from '../components/InvoiceForm'
 import { RecurrenceForm } from '../components/RecurrenceForm'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/toastContext'
+import { EmptyState } from '../components/ui/EmptyState'
+import { ListSkeleton } from '../components/ui/ListSkeleton'
+import { Notice } from '../components/ui/Notice'
+import { SectionRule } from '../components/ui/SectionRule'
+import { SectionTitle } from '../components/ui/SectionTitle'
 import { currentMonth, dayMonth, fullDate, monthLabel } from '../lib/dates'
 import { formatCents } from '../lib/money'
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/80'
 
 /** Valor da parcela: o das invoices geradas, ou total/parcelas se todas foram excluídas. */
 function installmentValue(p: Purchase): number {
@@ -25,28 +29,28 @@ function PurchaseItem({ purchase }: { purchase: Purchase }) {
   const parcels: Invoice[] = purchase.installments
   const paid = parcels.filter((i) => i.status === 'paid').length
   return (
-    <li className="border-t border-ink/10 first:border-t-0">
+    <li className="border-t border-line first:border-t-0">
       <details>
-        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
+        <summary className="-mx-2 flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-raised [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
-            <span className="block truncate text-[15px] font-medium">{purchase.description}</span>
-            <span className="block truncate text-xs text-ink/80">
+            <span className="block truncate text-body font-medium text-ink">{purchase.description}</span>
+            <span className="block truncate text-meta text-muted">
               comprada em {fullDate(purchase.purchaseDate)}
               {` · ${paid} de ${purchase.installmentsCount} pagas`}
             </span>
           </span>
           <span className="shrink-0 text-right">
-            <span className="block font-mono text-[15px] font-semibold tabular-nums">{purchase.installmentsCount}x {formatCents(installmentValue(purchase))}</span>
-            <span className="block text-[11px] text-ink/75">total {formatCents(purchase.totalAmountCents)}</span>
+            <span className="block font-mono text-body font-semibold tabular-nums text-ink">{purchase.installmentsCount}x {formatCents(installmentValue(purchase))}</span>
+            <span className="block text-caption text-muted">total {formatCents(purchase.totalAmountCents)}</span>
           </span>
         </summary>
-        {parcels.length === 0 && <p className="mb-2 ml-1 text-[13px] text-ink/75">Todas as parcelas foram excluídas.</p>}
+        {parcels.length === 0 && <p className="mb-2 ml-1 text-ui text-muted">Todas as parcelas foram excluídas.</p>}
         {parcels.length > 0 && (
-          <ul aria-label={`Parcelas de ${purchase.description}`} className="mb-2 ml-1 border-l border-structure/40 pl-3">
+          <ul aria-label={`Parcelas de ${purchase.description}`} className="mb-2 ml-1 border-l border-line-strong pl-3">
             {parcels.map((i) => (
-              <li key={i.id} className="flex justify-between gap-3 py-1 text-[13px]">
+              <li key={i.id} className="flex justify-between gap-3 py-1 text-ui">
                 <span>
-                  <span className="font-mono text-xs">{i.status === 'paid' ? '[ ▪ ]' : '[ ▫ ]'}</span> {i.series?.installmentNumber}/{purchase.installmentsCount} · vence {dayMonth(i.dueDate)}
+                  <span aria-hidden="true" className={`font-mono text-meta ${i.status === 'paid' ? 'text-accent' : 'text-muted'}`}>{i.status === 'paid' ? '[ ▪ ]' : '[ ▫ ]'}</span> {i.series?.installmentNumber}/{purchase.installmentsCount} · vence {dayMonth(i.dueDate)}
                 </span>
                 <span className="font-mono tabular-nums">{formatCents(i.amountCents)}</span>
               </li>
@@ -92,19 +96,19 @@ export default function SeriesPage() {
     <AppShell>
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
         <header>
-          <h1 className="font-display text-[32px] font-bold leading-none text-heading font-stretch-condensed">Parcelas e contas fixas</h1>
-          <p className="mt-1 text-sm text-ink/80">Compras no cartão e contas que se repetem todo mês.</p>
+          <SectionTitle as="h1" size="page" className="leading-none">Parcelas e contas fixas</SectionTitle>
+          <p className="mt-1 text-sm text-muted">Compras no cartão e contas que se repetem todo mês.</p>
           {canWrite && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => setCreating('installments')}>Nova compra parcelada</Button>
-              <Button variant="ghost" onClick={() => setCreating('recurring')}>Nova conta fixa</Button>
+              <Button variant="secondary" onClick={() => setCreating('recurring')}>Nova conta fixa</Button>
             </div>
           )}
         </header>
 
-        <div className="grid gap-6 md:grid-cols-2 md:items-start">
-          <section aria-label="Compras parceladas" className="rounded-md border border-ink/20 p-4">
-            <h2 className={label}>compras parceladas</h2>
+        <div className="grid gap-8 md:grid-cols-2 md:items-start">
+          <section aria-label="Compras parceladas">
+            <SectionRule as="h2" title="Compras parceladas" count={purchases.data?.length} />
             <div className="mt-2">
               <label htmlFor="busca-compra" className="sr-only">Buscar compra</label>
               <input
@@ -113,13 +117,13 @@ export default function SeriesPage() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Quando comprei… (ex.: notebook)"
-                className="h-11 w-full rounded-md border border-ink/25 bg-raised/40 px-3 text-base"
+                className="h-11 w-full rounded-md border border-line-strong bg-raised px-3 text-base text-ink placeholder:text-muted transition-colors hover:border-ink/50 focus-visible:border-accent md:h-9 md:text-sm"
               />
             </div>
-            {purchases.isPending && <p role="status" className="mt-2 text-sm text-ink/70">carregando…</p>}
-            {purchases.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as compras.</p>}
+            {purchases.isPending && <ListSkeleton className="mt-3" label="Carregando as compras" />}
+            {purchases.isError && <Notice className="mt-3" onRetry={() => void purchases.refetch()}>Não foi possível carregar as compras.</Notice>}
             {purchases.isSuccess && purchases.data.length === 0 && (
-              <p className="mt-2 text-sm text-ink/75">{q ? `Nenhuma compra com “${q}”.` : 'Nenhuma compra parcelada ainda.'}</p>
+              <EmptyState compact className="mt-3" title={q ? `Nenhuma compra com “${q}”.` : 'Nenhuma compra parcelada ainda.'} />
             )}
             <ul className="mt-2 flex flex-col">
               {(purchases.data ?? []).map((p) => (
@@ -128,23 +132,23 @@ export default function SeriesPage() {
             </ul>
           </section>
 
-          <section aria-label="Contas fixas" className="rounded-md border border-ink/20 p-4">
-            <h2 className={label}>contas fixas</h2>
-            {recurrences.isPending && <p role="status" className="mt-2 text-sm text-ink/70">carregando…</p>}
-            {recurrences.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as contas fixas.</p>}
-            {recurrences.isSuccess && recurrences.data.length === 0 && <p className="mt-2 text-sm text-ink/75">Nenhuma conta fixa ainda.</p>}
+          <section aria-label="Contas fixas">
+            <SectionRule as="h2" title="Contas fixas" count={recurrences.data?.length} />
+            {recurrences.isPending && <ListSkeleton className="mt-3" label="Carregando as contas fixas" />}
+            {recurrences.isError && <Notice className="mt-3" onRetry={() => void recurrences.refetch()}>Não foi possível carregar as contas fixas.</Notice>}
+            {recurrences.isSuccess && recurrences.data.length === 0 && <EmptyState compact className="mt-3" title="Nenhuma conta fixa ainda." />}
             <ul className="mt-2 flex flex-col">
               {(recurrences.data ?? []).map((r) => (
-                <li key={r.id} className="border-t border-ink/10 first:border-t-0">
-                  <button aria-label={`Editar ${r.description}`} onClick={() => setEditing(r)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
+                <li key={r.id} className="border-t border-line first:border-t-0">
+                  <button aria-label={`Editar ${r.description}`} onClick={() => setEditing(r)} className="-mx-2 flex min-h-14 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-raised">
                     <span className="min-w-0">
-                      <span className="block truncate text-[15px] font-medium">{r.description}</span>
-                      <span className="block truncate text-xs text-ink/80">
+                      <span className="block truncate text-body font-medium text-ink">{r.description}</span>
+                      <span className="block truncate text-meta text-muted">
                         todo dia {r.dayOfMonth} · desde {monthLabel(r.startMonth)}
                         {r.endMonth ? ` · até ${monthLabel(r.endMonth)}` : ' · sem fim'}
                       </span>
                     </span>
-                    <span className="shrink-0 font-mono text-[15px] font-semibold tabular-nums">{formatCents(r.amountCents)}</span>
+                    <span className="shrink-0 font-mono text-body font-semibold tabular-nums text-ink">{formatCents(r.amountCents)}</span>
                   </button>
                 </li>
               ))}

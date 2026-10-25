@@ -8,7 +8,7 @@ import { dayMonth, monthLabel, monthName, monthOf, todayISO, weekdayShort } from
 import { deductionLabel, kindLabel, netOf, offsetOf, offsetSentence, PREVIEW_FETCH, sumDeductions, upcomingDates, type MonthOffset } from '../lib/income'
 import { formatCents } from '../lib/money'
 import { suggestWalletId } from '../lib/wallets'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { DeductionsEditor } from './DeductionsEditor'
 import { Field } from './Field'
 import { Combobox } from './ui/Combobox'
@@ -40,7 +40,7 @@ type Props = {
 
 type RuleChoice = 'date' | DateRule['rule']
 
-const legend = 'mb-2 p-0 text-xs font-semibold uppercase tracking-wider text-ink/80'
+const legend = 'mb-2 p-0 text-meta font-semibold uppercase tracking-wider text-muted'
 const group = 'border-t border-line pt-4'
 const inner = 'flex flex-col gap-3'
 
@@ -305,7 +305,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
                 hint={following ? 'Cada mês tem a sua quantidade; mudar aqui vale só para este mês.' : businessDays != null ? `Sugerida: ${businessDays} dias úteis em ${monthLabel(competence)}.` : undefined}
                 onChange={(e) => { qtyTouched.current = true; setQuantity(e.target.value); clear('quantity'); if (e.target.value !== String(income?.quantity ?? '')) forceThis('a quantidade') }} error={fields.quantity} />
             </div>
-            <p className="font-mono text-sm tabular-nums text-ink/85" aria-live="polite">
+            <p className="font-mono text-sm tabular-nums text-muted" aria-live="polite">
               {qtyValid ? `${qty} × ${formatCents(price)} = ${formatCents(total)}` : 'Informe a quantidade.'}
             </p>
           </>
@@ -345,7 +345,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
               onChange={(v) => { offsetTouched.current = true; setOffset(v === '-1' ? -1 : 0); clear('dateRule.monthOffset') }}
               options={[{ value: '0', label: 'No mês da competência' }, { value: '-1', label: 'No mês anterior' }]}
             />
-            <p className="text-xs text-ink/75" aria-live="polite">
+            <p className="text-meta text-muted" aria-live="polite">
               {offsetSentence(kind, competence, { rule, n: nValid ? nNumber : undefined }, offset)}
               {offset === -1 ? ' A quantidade e o resumo continuam sendo os de ' + monthName(competence) + '.' : ''}
             </p>
@@ -355,13 +355,13 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           <DatePicker label="Data" name="expectedDate" required value={exact} onChange={(d) => { setExact(d); clear('expectedDate') }} error={fields.expectedDate} />
         )}
         {currentRule && dates && (
-          <div className="rounded-md border border-line px-3 py-2 text-[13px] text-ink/85" aria-live="polite">
-            <span className="text-xs font-medium uppercase tracking-wider text-ink/70">Próximas datas</span>
+          <div className="rounded-md bg-sunken px-3 py-2 text-ui text-muted" aria-live="polite">
+            <span className="text-meta font-medium uppercase tracking-wider text-muted">Próximas datas</span>
             <span className="mt-0.5 block font-mono tabular-nums">
               {dates.upcoming.map((d) => `${dayMonth(d)} (${weekdayShort(d)})`).join(' · ')}
             </span>
             {dates.passedThisMonth && (
-              <span className="mt-1 block text-xs text-ink/70">
+              <span className="mt-1 block text-meta text-muted">
                 {offset === -1 ? `Competência de ${monthName(monthOf(today))}` : 'Este mês'}: {dayMonth(dates.passedThisMonth)} ({weekdayShort(dates.passedThisMonth)}), já passou: conta como recebida.
               </span>
             )}
@@ -404,32 +404,32 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       <div className={group}>
         <DeductionsEditor salary={kind === 'salary'} value={deductions} onChange={(d) => { setDeductions(d); clear('deductions'); setTaxNote(undefined) }} errors={fields} disabled={dis} />
         {kind === 'salary' && canWrite && (
-          <div className="flex flex-col gap-2 rounded-md border border-line p-3">
+          <div className="flex flex-col gap-2 rounded-md bg-raised p-3">
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-28">
                 <Field label="Dependentes" type="number" inputMode="numeric" min={0} max={20} value={dependents} onChange={(e) => setDependents(e.target.value)} />
               </div>
-              <Button type="button" variant="ghost" disabled={taxBusy || total <= 0} onClick={() => void suggestTax()}>
+              <Button type="button" variant="secondary" disabled={taxBusy || total <= 0} onClick={() => void suggestTax()}>
                 {taxBusy ? 'Calculando…' : 'Sugerir INSS e IRRF'}
               </Button>
             </div>
-            <p className="text-xs text-ink/75" aria-live="polite">
+            <p className="text-meta text-muted" aria-live="polite">
               {taxNote ?? 'Opcional. Preenche os descontos pela tabela do ano; você pode editar. Os descontos nunca são aplicados sozinhos.'}
             </p>
           </div>
         )}
       </div>
 
-      <div className={`rounded-md border-2 px-3 py-2.5 ${net < 0 ? 'border-alert' : 'border-structure'}`}>
-        <p className="text-xs font-medium uppercase tracking-wider text-ink/80">líquido{sumDeductions(deductions) > 0 ? ' (valor − descontos)' : ''}</p>
-        <p className="font-mono text-[34px] font-semibold leading-tight tabular-nums text-heading">{formatCents(net)}</p>
-        {net < 0 && <p className="text-xs text-alert">Os descontos passam do valor.</p>}
+      <div className={`rounded-md bg-raised px-3 py-2.5 ${net < 0 ? 'border-l-2 border-alert' : ''}`}>
+        <p className="text-meta font-medium uppercase tracking-wider text-muted">líquido{sumDeductions(deductions) > 0 ? ' (valor − descontos)' : ''}</p>
+        <p className={`font-mono text-figure font-semibold tabular-nums ${net < 0 ? 'text-alert-text' : 'text-heading'}`}>{formatCents(net)}</p>
+        {net < 0 && <p className="text-meta font-medium text-alert-text">Os descontos passam do valor.</p>}
       </div>
 
       <Field label="Observação" name="notes" autoComplete="off" value={notes} disabled={dis} onChange={(e) => setNotes(e.target.value)} error={fields.notes} />
 
       {editing && (
-        <p className="text-xs text-ink/75">
+        <p className="text-meta text-muted">
           {kindLabel[income.kind]} de <strong>{personName(income.userId)}</strong>
           {income.repeats ? ' · repete todo mês' : ''}
           {income.received ? ' · já recebida' : ''}
@@ -443,7 +443,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
             onChange={(v) => (v === 'following' ? chooseFollowing() : setScope('this'))}
             options={[{ value: 'this', label: 'Só este mês' }, { value: 'following', label: 'Este e os seguintes' }]}
           />
-          <p className="text-xs text-ink/75">
+          <p className="text-meta text-muted">
             {following
               ? income.received
                 ? 'Este mês já foi recebido e não muda; os próximos sim.'
@@ -459,7 +459,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
             {editing ? 'Salvar alterações' : 'Adicionar receita'}
           </Button>
           {editing && onCancel && (
-            <Button type="button" variant="ghost" onClick={onCancel}>
+            <Button type="button" variant="secondary" onClick={onCancel}>
               Cancelar
             </Button>
           )}

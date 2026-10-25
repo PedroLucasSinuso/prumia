@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '../api/errors'
 import type { Recurrence, RecurrencePatch } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
@@ -63,7 +63,7 @@ export function RecurrenceForm({ recurrence, canWrite, onSave, onDone }: Props) 
         hint={recurrence.endMonth ? 'Só dá para antecipar o fim.' : 'Em branco: continua todo mês.'}
         error={fields.endMonth}
       />
-      <p className="text-xs text-ink/75">As mudanças valem para as próximas contas ainda não pagas. As pagas e as passadas ficam como estão.</p>
+      <p className="text-meta text-muted">As mudanças valem para as próximas contas ainda não pagas. As pagas e as passadas ficam como estão.</p>
       {canWrite && (
         <Button type="submit" disabled={busy || !description || amount <= 0 || !(Number(day) >= 1)}>
           {busy ? 'Salvando…' : 'Salvar'}

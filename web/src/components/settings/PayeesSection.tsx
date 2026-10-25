@@ -6,7 +6,7 @@ import type { Category, Payee } from '../../api/types'
 import { categoryPath } from '../../lib/categories'
 import { formatCnpj } from '../../lib/cnpj'
 import { ICON } from '../../lib/navigation'
-import { Button } from '../Button'
+import { Button } from '../ui/Button'
 import { PayeeForm } from '../PayeeForm'
 import { useToast } from '../toastContext'
 import { DetailLayout, DetailPanel } from './DetailPanel'
@@ -38,8 +38,8 @@ export function PayeesSection({ houseId, categories, canWrite, desktop }: { hous
   const item = (p: Payee) => (
     <li key={p.id} className={`border-t border-line/60 first:border-t-0 ${selected?.id === p.id ? 'bg-accent/8' : ''}`}>
       <button aria-label={`Abrir favorecido ${p.name}`} onClick={() => open(p)} className="flex min-h-14 w-full min-w-0 flex-col justify-center px-2 py-2 text-left">
-        <span className={`block truncate text-[15px] font-medium ${p.archived ? 'text-ink/70' : ''}`}>{p.name}</span>
-        {meta(p) && <span className="block truncate text-xs text-ink/75">{meta(p)}</span>}
+        <span className={`block truncate text-body font-medium ${p.archived ? 'text-muted' : ''}`}>{p.name}</span>
+        {meta(p) && <span className="block truncate text-meta text-muted">{meta(p)}</span>}
       </button>
     </li>
   )
@@ -47,7 +47,7 @@ export function PayeesSection({ houseId, categories, canWrite, desktop }: { hous
   const table = (list: Payee[], label: string) => (
     <table aria-label={label} className="w-full table-fixed border-collapse text-sm">
       <thead>
-        <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-ink/65">
+        <tr className="border-b border-line text-left text-meta uppercase tracking-wider text-muted">
           <th scope="col" className="w-[24%] px-3 py-2 font-medium">apelido</th>
           <th scope="col" className="px-3 py-2 font-medium">nome oficial</th>
           <th scope="col" className="w-44 px-3 py-2 font-medium">CNPJ</th>
@@ -62,11 +62,11 @@ export function PayeesSection({ houseId, categories, canWrite, desktop }: { hous
             className={`cursor-pointer border-b border-line/60 last:border-b-0 ${selected?.id === p.id ? 'bg-accent/8' : 'hover:bg-ink/4'}`}
           >
             <td className="truncate px-3 py-2">
-              <button aria-label={`Abrir favorecido ${p.name}`} className={`max-w-full truncate text-left font-medium ${p.archived ? 'text-ink/70' : ''}`}>{p.name}</button>
+              <button aria-label={`Abrir favorecido ${p.name}`} className={`max-w-full truncate text-left font-medium ${p.archived ? 'text-muted' : ''}`}>{p.name}</button>
             </td>
-            <td className="truncate px-3 py-2 text-ink/80">{p.legalName ?? <span className="text-ink/40">—</span>}</td>
-            <td className="px-3 py-2 font-mono text-[13px] tabular-nums text-ink/80">{p.cnpj ? formatCnpj(p.cnpj) : <span className="text-ink/40">—</span>}</td>
-            <td className="truncate px-3 py-2 text-ink/80">{categoryName(p.defaultCategoryId) ?? <span className="text-ink/40">—</span>}</td>
+            <td className="truncate px-3 py-2 text-muted">{p.legalName ?? <span className="text-muted">—</span>}</td>
+            <td className="px-3 py-2 font-mono text-ui tabular-nums text-muted">{p.cnpj ? formatCnpj(p.cnpj) : <span className="text-muted">—</span>}</td>
+            <td className="truncate px-3 py-2 text-muted">{categoryName(p.defaultCategoryId) ?? <span className="text-muted">—</span>}</td>
           </tr>
         ))}
       </tbody>
@@ -89,24 +89,24 @@ export function PayeesSection({ houseId, categories, canWrite, desktop }: { hous
 
       <DetailLayout open={desktop && panelOpen}>
         <div className="min-w-0">
-          {payees.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
+          {payees.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
           {payees.isError && <LoadError what="os favorecidos" onRetry={() => void payees.refetch()} />}
           {payees.isSuccess && active.length === 0 && (
-            <p className="rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/75">
+            <p className="rounded-md bg-sunken p-4 text-sm text-muted">
               Nenhum favorecido ainda{canWrite ? '. Crie o primeiro em Novo favorecido.' : '.'}
             </p>
           )}
 
           {active.length > 0 &&
             (desktop ? (
-              <div className="overflow-hidden rounded-md border border-line">{table(active, 'Favorecidos ativos')}</div>
+              <div className="overflow-hidden rounded-md bg-raised">{table(active, 'Favorecidos ativos')}</div>
             ) : (
-              <ul aria-label="Favorecidos ativos" className="flex flex-col rounded-md border border-line">{active.map(item)}</ul>
+              <ul aria-label="Favorecidos ativos" className="flex flex-col rounded-md bg-raised">{active.map(item)}</ul>
             ))}
 
           {archived.length > 0 && (
-            <details className="mt-4 rounded-md border border-line px-3">
-              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-ink/85 md:min-h-10">arquivados ({archived.length})</summary>
+            <details className="mt-4 rounded-md bg-sunken px-3">
+              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-muted md:min-h-10">arquivados ({archived.length})</summary>
               {desktop ? <div className="pb-2">{table(archived, 'Favorecidos arquivados')}</div> : <ul aria-label="Favorecidos arquivados" className="flex flex-col">{archived.map(item)}</ul>}
             </details>
           )}

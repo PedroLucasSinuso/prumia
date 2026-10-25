@@ -7,7 +7,7 @@ import { ApiError } from '../api/errors'
 import type { Category, DocumentExtraction } from '../api/types'
 import { boletoErrorMessage, networkErrorMessage, problemMessage } from '../auth/errors'
 import { useActiveHouse } from '../auth/useActiveHouse'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
 import { DatePicker } from './ui/DatePicker'
@@ -41,8 +41,8 @@ type FileEntry = {
 /** Estado que o formulário de conta passa ao "Abrir em Importar" (uma lista lida lá). */
 export type ImportState = { extraction: DocumentExtraction; fileName: string }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
-const input = 'h-11 w-full rounded-md border border-line bg-surface px-2 text-sm text-ink md:h-9'
+const label = 'text-meta font-medium uppercase tracking-wider text-muted'
+const input = 'h-11 w-full rounded-md border border-line-strong bg-raised px-2 text-sm text-ink transition-colors hover:border-ink/50 focus-visible:border-accent md:h-9'
 const link = 'text-sm font-semibold text-accent underline underline-offset-4'
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
 
@@ -291,7 +291,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
   return (
     <div className="flex flex-col gap-5 md:gap-6">
         {!canWrite && (
-          <p className="rounded-md border border-line px-3 py-2 text-sm">Seu papel nesta casa é somente leitura: não dá para criar contas.</p>
+          <p className="rounded-md bg-sunken px-3 py-2 text-sm">Seu papel nesta casa é somente leitura: não dá para criar contas.</p>
         )}
 
         {canWrite && (
@@ -322,8 +322,8 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
             {files.length === 0 && <FileUp aria-hidden="true" size={40} strokeWidth={1.25} className="text-accent" />}
             <div className="text-sm">
               <p className={files.length === 0 ? 'text-base font-semibold' : 'font-semibold'}>PDF, foto ou print, um ou vários (até 5 MB cada).</p>
-              <p className="hidden text-ink/75 md:block">Arraste os arquivos para cá ou escolha no computador.</p>
-              <p className="text-ink/75 md:hidden">Tire uma foto, escolha da galeria ou dos arquivos.</p>
+              <p className="hidden text-muted md:block">Arraste os arquivos para cá ou escolha no computador.</p>
+              <p className="text-muted md:hidden">Tire uma foto, escolha da galeria ou dos arquivos.</p>
             </div>
             <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
               <Button type="button" disabled={!ready} onClick={() => picker.current?.click()} className="w-full md:h-9 md:w-auto">
@@ -331,7 +331,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               </Button>
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 disabled={!ready}
                 aria-expanded={pasting}
                 onClick={() => setPasting((v) => !v)}
@@ -345,7 +345,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         )}
 
         {canWrite && pasting && (
-          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md border border-line bg-surface p-4">
+          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md bg-raised p-4">
             <label htmlFor="texto-contas" className={label}>Texto das contas</label>
             <textarea
               id="texto-contas"
@@ -355,14 +355,14 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               rows={6}
               autoFocus
               placeholder={'Gás: R$ 150,00\nMercado: 310,25\nInternet: 119,90'}
-              className="w-full rounded-md border border-line bg-surface p-2 font-mono text-sm text-ink"
+              className="w-full rounded-md border border-line-strong bg-raised p-2 font-mono text-sm text-ink placeholder:text-muted focus-visible:border-accent"
             />
-            <p className="text-xs text-ink/70">
+            <p className="text-meta text-muted">
               Uma conta por linha: <strong>descrição: valor</strong>, e se quiser o vencimento: <strong>Luz: R$ 210,35 vence 10/11</strong> (também vale 10/11/2026, 10/11/26 ou "dia 10"; sem ano, o app escolhe o próximo). Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
             </p>
             <div className="flex gap-2">
               <Button type="button" disabled={!pasted.trim()} onClick={addText} className="md:h-9">Ler texto</Button>
-              <Button type="button" variant="ghost" onClick={() => { setPasting(false); setPasted('') }} className="md:h-9">Cancelar</Button>
+              <Button type="button" variant="secondary" onClick={() => { setPasting(false); setPasted('') }} className="md:h-9">Cancelar</Button>
             </div>
           </section>
         )}
@@ -370,11 +370,11 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         {canWrite && files.length === 0 && (
           <ul aria-label="O que dá para importar" className="grid gap-3 text-sm md:grid-cols-3">
             {examples.map(({ Icon, title, text }) => (
-              <li key={title} className="flex gap-3 rounded-md border border-line p-3">
+              <li key={title} className="flex gap-3 rounded-md bg-sunken p-3">
                 <Icon aria-hidden="true" size={20} strokeWidth={1.5} className="mt-0.5 shrink-0 text-accent" />
                 <span>
                   <span className="block font-semibold">{title}</span>
-                  <span className="block text-ink/75">{text}</span>
+                  <span className="block text-muted">{text}</span>
                 </span>
               </li>
             ))}
@@ -395,7 +395,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         {files.length > 0 && (
           <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-8">
             <aside aria-label="Arquivos lidos" className="flex flex-col gap-3 lg:sticky lg:top-0">
-              <ul className="flex flex-col divide-y divide-ink/10 rounded-md border border-line">
+              <ul className="flex flex-col divide-y divide-line rounded-md bg-raised">
                 {files.map((f) => (
                   <FileItem
                     key={f.id}
@@ -413,7 +413,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
 
             <section aria-label="Contas encontradas" className="flex flex-col gap-3">
               {rows.length === 0 && !busy && (
-                <p className="rounded-md border border-line p-4 text-sm text-ink/80">Nenhuma conta encontrada ainda.</p>
+                <p className="rounded-md bg-sunken p-4 text-sm text-muted">Nenhuma conta encontrada ainda.</p>
               )}
               <ul className="flex flex-col gap-3">
                 {rows.map((r, i) => (
@@ -473,22 +473,22 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
   return (
     <li className={`flex flex-col gap-2 px-3 py-2 ${selected ? 'bg-accent/10' : ''}`}>
       <div className="flex items-center gap-2">
-        <span aria-hidden="true" className={`font-mono text-xs ${file.status === 'error' || file.status === 'password' ? 'text-alert' : 'text-accent'}`}>{mark}</span>
+        <span aria-hidden="true" className={`font-mono text-meta ${file.status === 'error' || file.status === 'password' ? 'text-alert' : 'text-accent'}`}>{mark}</span>
         <button type="button" onClick={onSelect} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 truncate text-left text-sm md:min-h-8">
           {file.name}
         </button>
-        <span className="shrink-0 text-xs text-ink/75">
+        <span className="shrink-0 text-meta text-muted">
           {file.status === 'done' ? (file.found === 1 ? '1 conta' : `${file.found} contas`) : statusText[file.status]}
         </span>
-        <button type="button" onClick={onRemove} aria-label={`Tirar ${file.name}`} className="h-11 w-11 shrink-0 rounded-md text-ink/70 hover:bg-ink/5 md:h-8 md:w-8">
+        <button type="button" onClick={onRemove} aria-label={`Tirar ${file.name}`} className="h-11 w-11 shrink-0 rounded-md text-muted hover:bg-ink/5 md:h-8 md:w-8">
           ×
         </button>
       </div>
       {file.status === 'error' && file.message && (
         <div className="flex flex-col gap-1">
-          <p className="text-xs">{file.message}</p>
+          <p className="text-meta">{file.message}</p>
           {((file.file && file.file.size <= MAX_BOLETO_BYTES) || file.text !== undefined) && (
-            <button type="button" className={`${link} self-start text-xs`} onClick={onRetry}>
+            <button type="button" className={`${link} self-start text-meta`} onClick={onRetry}>
               Tentar de novo
             </button>
           )}
@@ -509,7 +509,7 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
             />
             <Button type="button" className="shrink-0 md:h-9" onClick={() => onPassword(pw.current)}>Abrir</Button>
           </div>
-          <p className="text-xs text-ink/70">{file.wrongPassword ? 'Senha incorreta. Confira e tente de novo.' : 'Usada só para abrir este arquivo; não fica guardada.'}</p>
+          <p className="text-meta text-muted">{file.wrongPassword ? 'Senha incorreta. Confira e tente de novo.' : 'Usada só para abrir este arquivo; não fica guardada.'}</p>
         </div>
       )}
     </li>
@@ -522,7 +522,7 @@ function Preview({ file }: { file: FileEntry }) {
     return <img src={file.url} alt={`Pré-visualização de ${file.name}`} className="hidden max-h-[70vh] w-full rounded-md border border-line object-contain lg:block" />
   }
   return (
-    <div className="hidden items-center gap-3 rounded-md border border-line p-4 text-sm lg:flex">
+    <div className="hidden items-center gap-3 rounded-md bg-sunken p-4 text-sm lg:flex">
       <span aria-hidden="true" className="font-mono text-accent">{file.isPdf ? '[ PDF ]' : '[ ▫ ]'}</span>
       <span className="min-w-0 truncate">{file.name}</span>
     </div>
@@ -541,7 +541,7 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
   onRemove: () => void
 }) {
   const id = (f: string) => `r${index}-${f}`
-  const err = (f: string) => errors[f] && <p className="text-xs text-alert">{errors[f]}</p>
+  const err = (f: string) => errors[f] && <p className="text-meta font-medium text-alert-text">{errors[f]}</p>
   const otherErrors = Object.entries(errors).filter(([k]) => !['description', 'amountCents', 'dueDate', 'categoryId', 'competenceMonth'].includes(k))
   const known = categories.some((c) => c.id === row.categoryId)
   return (
@@ -550,7 +550,7 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
       onFocusCapture={onFocus}
       className={`flex flex-col gap-3 rounded-md border p-3 transition-colors duration-150 ${active ? 'border-accent' : 'border-line'} ${row.include ? '' : 'opacity-60'}`}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
         <span className={`font-mono ${row.ocr ? 'font-semibold' : ''}`}>
           {row.ocr ? (
             <><span aria-hidden="true" className="text-alert">[ ✖ ]</span> OCR: confira</>
@@ -558,19 +558,19 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
             <><span aria-hidden="true" className="text-accent">[ ▪ ]</span> {originText[row.origin]}</>
           )}
         </span>
-        {row.ocr && <span className="text-ink/75">{originText[row.origin]}</span>}
-        {row.payee && <span className="text-ink/75">favorecido: <strong>{row.payee.name}</strong></span>}
+        {row.ocr && <span className="text-muted">{originText[row.origin]}</span>}
+        {row.payee && <span className="text-muted">favorecido: <strong>{row.payee.name}</strong></span>}
         <label className="ml-auto flex min-h-11 items-center gap-2 md:min-h-8">
           <input type="checkbox" checked={row.include} onChange={(e) => onChange({ include: e.target.checked })} />
           criar
         </label>
-        <button type="button" onClick={onRemove} className={`${link} min-h-11 text-xs md:min-h-8`}>
+        <button type="button" onClick={onRemove} className={`${link} min-h-11 text-meta md:min-h-8`}>
           remover
         </button>
       </div>
 
       {row.duplicateOf && (
-        <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-xs">
+        <p role="alert" className="rounded-md border-l-2 border-alert bg-sunken px-3 py-2 text-meta text-ink">
           <span aria-hidden="true" className="font-mono text-alert">[ ✖ ]</span>{' '}
           {row.duplicateOf === 'batch' ? 'Este boleto já está em outra linha desta importação.' : 'Já existe uma conta com este boleto.'}{' '}
           {row.include ? 'Será criada mesmo assim.' : 'Fica de fora; marque "criar" para incluir mesmo assim.'}
@@ -623,16 +623,16 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
               onChange={(e) => onChange({ newPayeeName: e.target.value })}
               className={input}
             />
-            <p className="text-xs text-ink/70">Se preencher, o prumia reconhece as próximas contas deste CNPJ.</p>
+            <p className="text-meta text-muted">Se preencher, o prumia reconhece as próximas contas deste CNPJ.</p>
           </div>
         )}
       </div>
 
       {row.boleto && (
-        <p className="break-words font-mono text-xs tabular-nums text-ink/75">{formatDigitableLine(row.boleto.digitableLine)}</p>
+        <p className="break-words font-mono text-meta tabular-nums text-muted">{formatDigitableLine(row.boleto.digitableLine)}</p>
       )}
       {otherErrors.map(([k, msg]) => (
-        <p key={k} className="text-xs text-alert">{msg}</p>
+        <p key={k} className="text-meta font-medium text-alert-text">{msg}</p>
       ))}
     </li>
   )

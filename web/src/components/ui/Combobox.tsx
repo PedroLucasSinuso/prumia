@@ -174,7 +174,7 @@ export function Combobox({ label, hideLabel, options, value, onChange, placehold
           onBlur={close}
           className={`${controlCls(Boolean(error))} pr-9`}
         />
-        <ChevronDown aria-hidden="true" size={16} strokeWidth={1.5} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink/60" />
+        <ChevronDown aria-hidden="true" size={16} strokeWidth={1.5} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
       </div>
       <Popover open={open} anchorRef={input} onClose={close} matchWidth trapEscape={false} className="max-h-72 py-1">
         <ul
@@ -199,7 +199,7 @@ export function Combobox({ label, hideLabel, options, value, onChange, placehold
             }
             if (it.kind === 'empty') {
               return (
-                <li key="vazio" id={optionId(i)} role="option" aria-selected={value === ''} onMouseMove={() => setActive(i)} onClick={() => choose(it)} className={`${base} text-ink/70`}>
+                <li key="vazio" id={optionId(i)} role="option" aria-selected={value === ''} onMouseMove={() => setActive(i)} onClick={() => choose(it)} className={`${base} text-muted`}>
                   {emptyLabel}
                 </li>
               )
@@ -208,27 +208,27 @@ export function Combobox({ label, hideLabel, options, value, onChange, placehold
             return (
               <li key={o.value} id={optionId(i)} role="option" aria-label={`${fullLabel(o)}${o.badge ? `, ${o.badgeTitle ?? o.badge}` : ''}`} aria-selected={o.value === value} onMouseMove={() => setActive(i)} onClick={() => choose(it)} className={`${base} ${o.group ? 'pl-6' : ''} ${o.value === value ? 'font-semibold' : ''}`}>
                 <span className="min-w-0 truncate">
-                  {o.group && <span className="text-ink/60">{o.group} › </span>}
+                  {o.group && <span className="text-muted">{o.group} › </span>}
                   {o.label}
                 </span>
                 {o.badge && (
-                  <span className="shrink-0 rounded-xs border border-ink/50 px-1 font-mono text-[10px]" title={o.badgeTitle}>
+                  <span className="shrink-0 rounded-xs border border-line-strong px-1 font-mono text-caption" title={o.badgeTitle}>
                     {o.badge}
                   </span>
                 )}
               </li>
             )
           })}
-          {items.length === (onCreate ? 1 : 0) && <li role="presentation" className="px-3 py-2 text-sm text-ink/70">Nada encontrado.</li>}
+          {items.length === (onCreate ? 1 : 0) && <li role="presentation" className="px-3 py-2 text-sm text-muted">Nada encontrado.</li>}
         </ul>
       </Popover>
       {hint && !error && (
-        <p id={`${inputId}-dica`} className="text-xs text-ink/70">
+        <p id={`${inputId}-dica`} className="text-meta text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${inputId}-erro`} className="text-xs text-alert">
+        <p id={`${inputId}-erro`} className="text-meta font-medium text-alert-text">
           {error}
         </p>
       )}
