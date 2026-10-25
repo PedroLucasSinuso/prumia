@@ -11,6 +11,8 @@ const messages: Record<string, string> = {
   bad_origin: 'Requisição bloqueada por segurança. Recarregue a página e tente de novo.',
   invalid_invite: 'Este convite é inválido, expirou ou foi revogado. Peça um novo a quem administra a casa.',
   invite_used: 'Este convite já foi usado.',
+  invalid_signup_invite: 'Este link de cadastro é inválido, expirou, já foi usado ou foi revogado. Peça um novo a quem administra o prumia.',
+  signup_invite_limit: 'Já há 5 links de cadastro pendentes. Revogue um ou espere vencer.',
   already_member: 'Você já faz parte desta casa.',
   household_limit: 'Você chegou ao limite de casas criadas por você. Exclua uma casa que não usa para criar outra.',
   last_admin: 'A casa precisa de pelo menos uma pessoa administradora.',

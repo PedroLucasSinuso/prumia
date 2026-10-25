@@ -83,6 +83,24 @@ O prumia não envia e-mail. Quem administra a casa gera um link e entrega à pes
 
 Depois da troca, a pessoa é desconectada de todos os aparelhos e entra de novo com a senha nova.
 
+## Convidar alguém para ter a própria casa
+
+Às vezes a pessoa não vai morar com você: ela quer usar o prumia com a **própria conta e a própria casa** (um parente, um amigo, ou
+uma conta de testes). Isso é diferente de "Convidar uma pessoa", que leva para a **sua** casa.
+
+Só quem criou a **primeira conta** do prumia vê esta opção.
+
+1. Abra **Ajustes > Minha conta** e vá até **Convites de cadastro**.
+2. Escolha por quanto tempo o link vale (1, 2 ou 7 dias) e toque em **Gerar link de cadastro**.
+3. Toque em **Copiar link** e envie à pessoa. O link aparece **uma vez só** e funciona **uma vez só**.
+4. A pessoa abre o link, preenche nome, e-mail, senha e o nome da casa dela e toca em **Criar conta**.
+
+A casa nova já vem com as carteiras e as categorias padrão. Ela não vê nada da sua casa, e você não vê nada da dela.
+
+- A lista **Links de cadastro pendentes** mostra os que ainda valem. Toque em **Revogar** para cancelar um.
+- Dá para ter até **5** links pendentes ao mesmo tempo.
+- Se a pessoa vir "Este link de cadastro é inválido", ele venceu, já foi usado ou foi revogado: gere outro.
+
 ## E se...
 
 - **"Este convite é inválido, expirou ou foi revogado."** O link está incompleto, o convite já foi usado, passou da validade ou foi cancelado. Peça um novo a quem administra.

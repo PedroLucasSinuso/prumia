@@ -33,8 +33,10 @@ export interface paths {
         /**
          * Cria usuário a partir de um convite ou cria uma nova casa
          * @description Sem `inviteToken`, cria o usuário e uma casa nova (o usuário é admin). Com `inviteToken`, entra na casa do convite.
-         *     O cadastro **sem convite** só é aceito para o primeiro usuário do sistema, salvo se o servidor tiver
-         *     `OPEN_REGISTRATION=true`; depois disso responde 403 (`registration_closed`). Define o cookie de sessão.
+         *     O cadastro **sem convite** só é aceito para o primeiro usuário do sistema (que vira o dono do sistema), salvo se o
+         *     servidor tiver `OPEN_REGISTRATION=true` ou se vier um `signupToken` (convite de cadastro gerado pelo dono do sistema:
+         *     conta e casa próprias); sem nada disso responde 403 (`registration_closed`). `signupToken` inválido, vencido, usado ou
+         *     revogado responde 400 (`invalid_signup_invite`) e nada é gravado. Define o cookie de sessão.
          */
         post: operations["register"];
         delete?: never;
@@ -128,6 +130,47 @@ export interface paths {
         post?: never;
         /** Sai de todos os outros aparelhos (encerra as sessões do usuário, menos a atual) */
         delete: operations["endOtherSessions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/signup-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Convites de cadastro pendentes (só o dono do sistema) */
+        get: operations["listSignupInvites"];
+        put?: never;
+        /**
+         * Gera um convite de cadastro (conta e casa próprias) de uso único (só o dono do sistema)
+         * @description O token em claro vem só nesta resposta; no banco fica o hash SHA-256. Validade de 1 a 168 horas (padrão 48).
+         *     Até 5 pendentes ao mesmo tempo (409 `signup_invite_limit`).
+         */
+        post: operations["createSignupInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/signup-invites/{inviteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inviteId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoga um convite de cadastro pendente (só o dono do sistema). Já revogado = 204 */
+        delete: operations["revokeSignupInvite"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1258,9 +1301,12 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
-            /** @description Usado quando não há convite */
+            /** @description Usado quando não há convite de casa */
             householdName?: string;
+            /** @description Convite de casa: entra na casa de quem convidou */
             inviteToken?: string;
+            /** @description Convite de cadastro (do dono do sistema): cria conta e casa próprias. Não combina com inviteToken */
+            signupToken?: string;
         };
         LoginRequest: {
             /** Format: email */
@@ -1274,6 +1320,8 @@ export interface components {
             /** Format: email */
             email: string;
             theme: components["schemas"]["Theme"];
+            /** @description Dono do sistema (a primeira conta): só ele gera convites de cadastro */
+            isSystemOwner: boolean;
             /**
              * Format: uri
              * @description Endereço público do app (PUBLIC_URL do servidor), sem barra final. O front monta com ele os links de convite e de nova
@@ -1314,6 +1362,26 @@ export interface components {
             role: components["schemas"]["Role"];
             /** Format: date-time */
             joinedAt: string;
+        };
+        SignupInvite: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        SignupInviteInput: {
+            /** @description Padrão 48 */
+            expiresInHours?: number;
+        };
+        SignupInviteCreated: {
+            /** Format: uuid */
+            id: string;
+            /** @description Só nesta resposta */
+            token: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         InviteCreated: {
             /** Format: uuid */
@@ -2397,6 +2465,79 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    listSignupInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupInvite"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createSignupInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SignupInviteInput"];
+            };
+        };
+        responses: {
+            /** @description Criado */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupInviteCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    revokeSignupInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inviteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revogado */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     resetPassword: {

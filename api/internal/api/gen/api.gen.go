@@ -1148,7 +1148,10 @@ type Me struct {
 	Email      string             `json:"email"`
 	Households []HouseholdRef     `json:"households"`
 	Id         openapi_types.UUID `json:"id"`
-	Name       string             `json:"name"`
+
+	// IsSystemOwner Dono do sistema (a primeira conta): só ele gera convites de cadastro
+	IsSystemOwner bool   `json:"isSystemOwner"`
+	Name          string `json:"name"`
 
 	// PublicUrl Endereço público do app (PUBLIC_URL do servidor), sem barra final. O front monta com ele os links de convite e de nova
 	// senha; ausente = usa o endereço do navegador de quem gera o link.
@@ -1385,11 +1388,16 @@ type RecurrencePatch struct {
 type RegisterRequest struct {
 	Email string `json:"email"`
 
-	// HouseholdName Usado quando não há convite
+	// HouseholdName Usado quando não há convite de casa
 	HouseholdName *string `json:"householdName,omitempty"`
-	InviteToken   *string `json:"inviteToken,omitempty"`
-	Name          string  `json:"name"`
-	Password      string  `json:"password"`
+
+	// InviteToken Convite de casa: entra na casa de quem convidou
+	InviteToken *string `json:"inviteToken,omitempty"`
+	Name        string  `json:"name"`
+	Password    string  `json:"password"`
+
+	// SignupToken Convite de cadastro (do dono do sistema): cria conta e casa próprias. Não combina com inviteToken
+	SignupToken *string `json:"signupToken,omitempty"`
 }
 
 // Role defines model for Role.
@@ -1406,6 +1414,28 @@ type SeriesRef struct {
 
 // SeriesRefKind defines model for SeriesRef.Kind.
 type SeriesRefKind string
+
+// SignupInvite defines model for SignupInvite.
+type SignupInvite struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	ExpiresAt time.Time          `json:"expiresAt"`
+	Id        openapi_types.UUID `json:"id"`
+}
+
+// SignupInviteCreated defines model for SignupInviteCreated.
+type SignupInviteCreated struct {
+	ExpiresAt time.Time          `json:"expiresAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// Token Só nesta resposta
+	Token string `json:"token"`
+}
+
+// SignupInviteInput defines model for SignupInviteInput.
+type SignupInviteInput struct {
+	// ExpiresInHours Padrão 48
+	ExpiresInHours *int `json:"expiresInHours,omitempty"`
+}
 
 // TaxEstimate defines model for TaxEstimate.
 type TaxEstimate struct {
@@ -1903,6 +1933,9 @@ type ResetPasswordJSONRequestBody ResetPasswordJSONBody
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
 
+// CreateSignupInviteJSONRequestBody defines body for CreateSignupInvite for application/json ContentType.
+type CreateSignupInviteJSONRequestBody = SignupInviteInput
+
 // CreateHouseholdJSONRequestBody defines body for CreateHousehold for application/json ContentType.
 type CreateHouseholdJSONRequestBody CreateHouseholdJSONBody
 
@@ -2013,6 +2046,15 @@ type ServerInterface interface {
 	// EndOtherSessions Sai de todos os outros aparelhos (encerra as sessões do usuário, menos a atual)
 	// (DELETE /auth/sessions/others)
 	EndOtherSessions(c *gin.Context)
+	// ListSignupInvites Convites de cadastro pendentes (só o dono do sistema)
+	// (GET /auth/signup-invites)
+	ListSignupInvites(c *gin.Context)
+	// CreateSignupInvite Gera um convite de cadastro (conta e casa próprias) de uso único (só o dono do sistema)
+	// (POST /auth/signup-invites)
+	CreateSignupInvite(c *gin.Context)
+	// RevokeSignupInvite Revoga um convite de cadastro pendente (só o dono do sistema). Já revogado = 204
+	// (DELETE /auth/signup-invites/{inviteId})
+	RevokeSignupInvite(c *gin.Context, inviteId openapi_types.UUID)
 	// LookupCnpj Consulta razão social e nome fantasia de um CNPJ na BrasilAPI (cache e prazo curto)
 	// (GET /cnpj/{cnpj})
 	LookupCnpj(c *gin.Context, cnpj string)
@@ -2333,6 +2375,57 @@ func (siw *ServerInterfaceWrapper) EndOtherSessions(c *gin.Context) {
 	}
 
 	siw.Handler.EndOtherSessions(c)
+}
+
+// ListSignupInvites operation middleware
+func (siw *ServerInterfaceWrapper) ListSignupInvites(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListSignupInvites(c)
+}
+
+// CreateSignupInvite operation middleware
+func (siw *ServerInterfaceWrapper) CreateSignupInvite(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateSignupInvite(c)
+}
+
+// RevokeSignupInvite operation middleware
+func (siw *ServerInterfaceWrapper) RevokeSignupInvite(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "inviteId" -------------
+	var inviteId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "inviteId", c.Param("inviteId"), &inviteId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter inviteId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RevokeSignupInvite(c, inviteId)
 }
 
 // LookupCnpj operation middleware
@@ -4702,6 +4795,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PATCH(options.BaseURL+"/auth/me", wrapper.UpdateMe)
 	router.POST(options.BaseURL+"/auth/password", wrapper.ChangePassword)
 	router.DELETE(options.BaseURL+"/auth/sessions/others", wrapper.EndOtherSessions)
+	router.GET(options.BaseURL+"/auth/signup-invites", wrapper.ListSignupInvites)
+	router.POST(options.BaseURL+"/auth/signup-invites", wrapper.CreateSignupInvite)
+	router.DELETE(options.BaseURL+"/auth/signup-invites/:inviteId", wrapper.RevokeSignupInvite)
 	router.POST(options.BaseURL+"/auth/password-reset", wrapper.ResetPassword)
 	router.POST(options.BaseURL+"/households", wrapper.CreateHousehold)
 	router.DELETE(options.BaseURL+"/households/:householdId", wrapper.DeleteHousehold)

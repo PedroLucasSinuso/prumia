@@ -138,6 +138,10 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   e abre um convite vê **Entrar na casa** (`useAcceptInvite` → `POST /invites/accept`, relê `/auth/me` e ativa a casa nova); nada é
   consumido sem o toque. Sem sessão, além do cadastro há **Entrar e aceitar o convite**: vai a `/entrar` com
   `state.from = /convite#token=…` e, logado, `RedirectIfAuthenticated` volta para o convite (o `from` vem do estado da navegação, nunca da URL).
+- **Convite de cadastro** `/cadastro#token=` (`RegisterPage` lê com `useLinkToken` e manda `signupToken`; mostra "Você recebeu um convite"). Quem
+  gera é o dono do sistema (`me.isSystemOwner`) no card `SignupInvitesCard` de Ajustes > Minha conta: validade (1, 2 ou 7 dias), o link
+  (`signupLink`, uma vez só, em `LinkBox`) e os pendentes com **Revogar**. Hooks `useSignupInvites(enabled)` e `useSignupInviteActions()`;
+  fixtures `signupInvites`/`createSignupInvite` em `test/utils.tsx` (o `me` padrão tem `isSystemOwner: false`). Testes: `pages/SignupInvites.test.tsx`.
 - **Casa ativa** (`auth/useActiveHouse.ts`): toda tela usa `useActiveHouse().house` (nunca `me.households[0]`). A escolha fica no
   `AuthProvider` e no `localStorage` (`prumia.casaAtiva.<userId>`, por usuário; falha de armazenamento é ignorada). Casa guardada
   que não está mais em `me.households` (saiu, removido, excluída) cai na 1ª. `selectHouse` grava a escolha e faz `queryClient.clear()`:

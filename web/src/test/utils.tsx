@@ -18,7 +18,7 @@ export const fail = (status: number, code: string, fields?: Record<string, strin
 })
 
 export const me: Me = {
-  id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', theme: 'marfim',
+  id: 'u1', name: 'Pedro', email: 'pedro@exemplo.com', theme: 'marfim', isSystemOwner: false,
   households: [{ id: 'h1', name: 'Casa do Pedro', role: 'admin' }],
 }
 /** Duas casas: a do Pedro (admin) e a da Ana, em que ele entrou como membro. */
@@ -113,6 +113,9 @@ type Routes = {
   createTransfer?: Reply
   removeTransfer?: Reply
   restoreTransfer?: Reply
+  /** GET /auth/signup-invites (convites de cadastro pendentes). Padrão: vazia. */
+  signupInvites?: Reply
+  createSignupInvite?: Reply
   /** GET /wallet-adjustments (ajustes de saldo do mês). Padrão: vazia. */
   adjustments?: Reply
   createAdjustment?: Reply
@@ -191,6 +194,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/payees') return r.payees ?? ok([])
     if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
     if (url === '/households/{householdId}/transfers') return r.transfers ?? ok([])
+    if (url === '/auth/signup-invites') return r.signupInvites ?? ok([])
     if (url === '/households/{householdId}/wallet-adjustments') return r.adjustments ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
@@ -261,6 +265,7 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/wallets': r.createWallet,
       '/households/{householdId}/transfers': r.createTransfer,
       '/households/{householdId}/transfers/{transferId}/restore': r.restoreTransfer,
+      '/auth/signup-invites': r.createSignupInvite,
       '/households/{householdId}/wallet-adjustments': r.createAdjustment,
       '/households/{householdId}/wallet-adjustments/{adjustmentId}/restore': r.restoreAdjustment,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
