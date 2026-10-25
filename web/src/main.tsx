@@ -24,19 +24,26 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false,
 // Tema de cor (Marfim, Grafite, Contraste, Sistema): ver src/lib/theme.ts.
 startThemeSync()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
-  </StrictMode>,
-)
+function start() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </StrictMode>,
+  )
+}
+
+// Demonstração (build com VITE_DEMO=1): troca a API por uma falsa em memória antes de o app rodar. No build normal a
+// condição é falsa em tempo de compilação e o código da demonstração nem entra no pacote.
+if (import.meta.env.VITE_DEMO === '1') void import('./demo/install').then(start)
+else start()
 
 // PWA: só para o app ser instalável (sem modo offline). Não registra em dev nem fora de HTTPS/localhost.
-registerServiceWorker()
+if (import.meta.env.VITE_DEMO !== '1') registerServiceWorker()

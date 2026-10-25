@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build da demonstração (npm run build:demo)
+dist-demo
