@@ -66,6 +66,9 @@ export default function SummaryPage() {
   // Carteira em conferência de saldo (o painel "Conferir saldo" fica aberto enquanto houver uma).
   const [checking, setChecking] = useState<WalletBalance | null>(null)
 
+  // Taxas de referência (BrasilAPI pelo servidor) só quando há investimento para comparar. Hook: antes do return abaixo.
+  const rates = useReferenceRates(summary.data?.wallets.some((w) => w.kind === 'investment') ?? false).data
+
   if (!house) return null
   const canWrite = house.role !== 'viewer'
   const walletList = wallets.data ?? []
@@ -116,8 +119,6 @@ export default function SummaryPage() {
   // sai da carteira de origem como transferência).
   const regular = s ? s.wallets.filter((w) => w.kind !== 'investment') : []
   const investments = s ? s.wallets.filter((w) => w.kind === 'investment') : []
-  // Taxas de referência (BrasilAPI pelo servidor) só quando há investimento para comparar.
-  const rates = useReferenceRates(investments.length > 0).data
   const cdi = rates?.rates.find((r) => r.code === 'cdi')?.basisPoints
   const noIncome = s !== undefined && regular.every((w) => w.expectedIncomeCents === 0)
   const rows = rollup(s?.byCategory ?? [], cats)
