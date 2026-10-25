@@ -22,7 +22,7 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 | Auth | argon2id; sessão por cookie httpOnly SameSite; rate limit no login |
 | Boleto | extração local: texto do PDF → código de barras → Tesseract; arquivo só em memória (nunca disco/log) |
 | Testes | unit nas regras críticas; integração com Postgres real (testcontainers); front só fluxos principais |
-| CI | GitHub Actions (`.github/workflows/ci.yml`): jobs `api`, `web`, `hooks`, `docker` em todo PR; mantenha verde |
+| CI | GitHub Actions (`.github/workflows/ci.yml`): jobs `api`, `web`, `site`, `hooks`, `docker` em todo PR; mantenha verde |
 | Infra | Docker Compose (`deploy/compose.yaml`), 3 containers: `api`, `db`, `web` (nginx: estático + proxy `/api`; config em `deploy/nginx/default.conf`). Só o `web` publica porta (127.0.0.1:8080; nginx sem root). Fase 1: `tailscale serve` HTTPS + `APP_ENV=production` (`docs/developer-guide/deployment.md`); fase 2 VPS + certbot |
 
 ## Layout do repositório
@@ -30,6 +30,7 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 api/            backend Go (cmd/, internal/<domínio>/, migrations/)
 web/            frontend React (a criar)
 openapi/        openapi.yaml (contrato)
+site/           site público de documentação (Astro + Starlight); páginas geradas de docs/ no build
 deploy/         compose, nginx, Dockerfiles
 scripts/        backup/restore e utilitários
 docs/           product/ (spec, plan; LOCAL, fora do git), developer-guide/, user-guides/, brand/

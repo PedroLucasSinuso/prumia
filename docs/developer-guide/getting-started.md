@@ -77,13 +77,14 @@ Para iterar no backend, rode os testes (`make test`) e reconstrua a API com `doc
 
 ## Integração contínua
 
-O GitHub Actions (`.github/workflows/ci.yml`) roda em todo PR e em push para `main`, com quatro jobs independentes.
+O GitHub Actions (`.github/workflows/ci.yml`) roda em todo PR e em push para `main`, com cinco jobs independentes.
 Um push novo no mesmo PR cancela a execução anterior. Para reproduzir localmente:
 
 | Job | O que roda | Local |
 |---|---|---|
 | `api` | `make lint` + `make test` (integração com Postgres via testcontainers; instala poppler, Ghostscript e Tesseract para os testes de boleto) | `make web-install && make lint && make test` |
 | `web` | `tsc -b`, `oxlint`, `vitest run`, `npm run build` e confere se `src/api/schema.d.ts` está em dia | `make web-install && make web-test && make web-build && make check-generated` |
+| `site` | gera e constrói o site de documentação (`site/`), conferindo os links internos | `make site-build` |
 | `hooks` | testes do guard de Git | `make hooks-test` |
 | `docker` | valida o compose e constrói as imagens `api` e `web` (sem push) | `POSTGRES_PASSWORD=x docker compose -p prumia-ci -f deploy/compose.yaml build api web` |
 

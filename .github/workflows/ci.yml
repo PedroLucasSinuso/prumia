@@ -1,5 +1,5 @@
-# Integração contínua do prumia. Quatro jobs independentes (rodam em paralelo):
-# api (Go), web (React), hooks (guard de Git do Claude Code) e docker (compose + imagens).
+# Integração contínua do prumia. Cinco jobs independentes (rodam em paralelo):
+# api (Go), web (React), site (documentação), hooks (guard de Git do Claude Code) e docker (compose + imagens).
 # Reproduzir localmente: ver docs/developer-guide/getting-started.md, seção "Integração contínua".
 name: CI
 
@@ -95,6 +95,24 @@ jobs:
             echo "::error::web/src/api/schema.d.ts desatualizado: rode 'make generate' e commite o resultado"
             exit 1
           }
+
+  site:
+    name: site (documentação)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      # O build gera as páginas a partir de docs/ e falha com link interno quebrado (starlight-links-validator).
+      - name: Build (com conferência de links)
+        run: npm run build
 
   hooks:
     name: hooks (guard de Git)

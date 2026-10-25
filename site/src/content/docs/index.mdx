@@ -1,0 +1,44 @@
+---
+title: prumia
+description: Clareza para construir o futuro. As contas, as receitas e o que deve sobrar no mês, num app da sua casa.
+template: splash
+hero:
+  tagline: Clareza para construir o futuro. As contas que vencem, o dinheiro que entra e o que deve sobrar no fim do mês, num app só da sua casa.
+  image:
+    light: ../../assets/simbolo.svg
+    dark: ../../assets/simbolo-escuro.svg
+    alt: ''
+  actions:
+    - text: Comece aqui
+      link: /guias/o-que-e-o-prumia/
+      icon: right-arrow
+    - text: Primeiros passos
+      link: /guias/primeiros-passos/
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components'
+
+<CardGrid stagger>
+  <Card title="Nenhuma conta esquecida" icon="list-format">
+    Cada mês mostra o que vence, o que já foi pago (riscado) e o que atrasou. Pagar é um toque.
+  </Card>
+  <Card title="Saber se vai sobrar" icon="information">
+    O saldo projetado avisa antes: previsto para entrar, menos o que já foi pago e o que falta pagar.
+  </Card>
+  <Card title="Menos digitação" icon="document">
+    Parcelas e contas fixas se repetem sozinhas. Boleto em PDF, foto ou print vira conta.
+  </Card>
+  <Card title="Dinheiro por carteira" icon="seti:folder">
+    Geral, Benefício, reserva e investimentos, cada um com o seu saldo. O VR não paga o aluguel.
+  </Card>
+</CardGrid>
+
+## Guias mais usados
+
+<CardGrid>
+  <LinkCard title="Cadastrar e pagar contas" href="/guias/cadastrar-e-pagar-contas/" description="Lançar uma conta e marcar como paga em poucos toques." />
+  <LinkCard title="Salário e previsão" href="/guias/salario-e-previsao/" description="Salário com descontos, VR e o dia em que o dinheiro cai." />
+  <LinkCard title="Resumo do mês" href="/guias/resumo-do-mes/" description="Quanto deve sobrar e para onde vai o dinheiro." />
+  <LinkCard title="Perguntas frequentes" href="/guias/perguntas-frequentes/" description="Respostas curtas para as dúvidas comuns." />
+</CardGrid>

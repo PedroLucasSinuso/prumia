@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Símbolo prumia (aproximação do original, ver docs/brand/design-direction.md). A aresta vertical central é o "prumo". -->
+  <path d="M8 14 L34 4 L34 34 L8 46 Z" fill="#203D40"/>
+  <path d="M8 46 L34 34 L34 60 L8 52 Z" fill="#313638"/>
+  <path d="M34 4 L58 32 L34 34 Z" fill="#416A91"/>
+  <path d="M34 34 L58 32 L34 60 Z" fill="#203D40"/>
+</svg>
