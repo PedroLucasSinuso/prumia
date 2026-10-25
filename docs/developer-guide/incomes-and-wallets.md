@@ -330,7 +330,7 @@ entidade à parte: reaproveita o saldo transportado, as transferências e o Conf
 | Rendimento | **Conferir saldo** (ajuste): a pessoa informa o valor atual e a diferença vira ajuste do mês. |
 | Não paga nem recebe | `wallet.CheckSpendable` (pagar invoice, receita e molde de receita, carteira padrão de categoria) recusa investimento com 400 no campo. A sugestão de carteira para Vale (`BenefitOrDefaultID`) só olha carteiras `regular`. |
 | Não é padrão | `CHECK (NOT (is_default AND kind = 'investment'))` no banco e 400 em `isDefault` no PATCH. |
-| Resumo | `WalletBalance.kind` vai na resposta; o cálculo é o mesmo de qualquer carteira. O **front** separa: o saldo projetado da casa soma só as `regular`, e os investimentos aparecem no bloco "investimentos" (`InvestmentCard`: valor, aportes, resgates, rendimento e atualizações). |
+| Resumo | `WalletBalance.kind` vai na resposta; o cálculo é o mesmo de qualquer carteira. O **front** separa: o destaque do resumo é o saldo projetado da carteira padrão (nunca a soma: dinheiro de uma carteira não paga o que é de outra), e os investimentos aparecem no bloco "investimentos" (`InvestmentCard`: valor, aportes, resgates, rendimento e atualizações). |
 | Reserva | Um investimento pode contar como reserva (5.5), como qualquer carteira. |
 
 **Taxas de referência (PT-5c).** `GET /rates` (só logado; não é recurso da casa) devolve CDI, Selic e IPCA acumulado em 12 meses

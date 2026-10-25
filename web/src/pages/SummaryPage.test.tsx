@@ -88,11 +88,14 @@ describe('resumo do mês', () => {
     expect(within(vr).getAllByText('R$ 120,00').length).toBeGreaterThan(0)
   })
 
-  it('destaques: saldo projetado da casa, a pagar, atrasado (com quantidade) e pago', async () => {
+  it('destaques: saldo projetado da carteira padrão, a pagar, atrasado (com quantidade) e pago', async () => {
     mockApi({ me: ok(me), summary: ok(summary) })
     renderAt('/resumo?mes=2026-10')
     const top = await screen.findByRole('region', { name: 'Destaques do mês' })
-    expect(within(top).getByText('R$ 2.353,19')).toBeInTheDocument() // 2.473,19 - 120,00
+    // o destaque é só a carteira padrão (o benefício não paga as contas da Geral); o que vai faltar em outra vira aviso
+    expect(within(top).getByText('saldo projetado · Geral')).toBeInTheDocument()
+    expect(within(top).getByText('R$ 2.473,19')).toBeInTheDocument()
+    expect(within(top).getByText(/Benefício: vai faltar/)).toHaveTextContent('Benefício: vai faltar R$ 120,00')
     expect(within(top).getByText('deve sobrar no mês')).toBeInTheDocument()
     expect(within(top).getByText('R$ 1.000,00')).toBeInTheDocument()
     expect(within(top).getByText('R$ 300,00')).toBeInTheDocument()
@@ -102,7 +105,9 @@ describe('resumo do mês', () => {
   })
 
   it('sem atraso, o destaque não usa o marcador de alerta', async () => {
-    mockApi({ me: ok(me), summary: ok({ ...summary, overdueCents: 0, overdueCount: 0 }) })
+    // nenhuma carteira negativa (o Benefício negativo também viraria aviso no destaque)
+    const wallets = [summary.wallets[0], { ...summary.wallets[1], projectedCents: 5000 }]
+    mockApi({ me: ok(me), summary: ok({ ...summary, wallets, overdueCents: 0, overdueCount: 0 }) })
     renderAt('/resumo?mes=2026-10')
     const top = await screen.findByRole('region', { name: 'Destaques do mês' })
     expect(within(top).getByText('nenhuma conta vencida')).toBeInTheDocument()
