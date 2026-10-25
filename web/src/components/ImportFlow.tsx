@@ -64,7 +64,7 @@ let fileSeq = 0
 const examples = [
   { Icon: Receipt, title: 'Boleto ou fatura', text: 'Linha digitável, valor, vencimento e quem recebe. Reconhece o favorecido pelo CNPJ.' },
   { Icon: ScanText, title: 'Conta em foto, sem código de barras', text: 'Lê valor, vencimento e mês de referência direto da imagem.' },
-  { Icon: ListChecks, title: 'Lista, print de conversa ou texto', text: 'Uma conta por linha, "descrição: valor": Gás: R$ 150,00 / Mercado: 310,25. Pode colar o texto.' },
+  { Icon: ListChecks, title: 'Lista, print de conversa ou texto', text: 'Uma conta por linha, "descrição: valor", com o vencimento se quiser: Gás: R$ 150,00 vence 10/11. Pode colar o texto.' },
 ]
 
 export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }) {
@@ -358,7 +358,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               className="w-full rounded-md border border-line bg-surface p-2 font-mono text-sm text-ink"
             />
             <p className="text-xs text-ink/70">
-              Uma conta por linha: <strong>descrição: valor</strong>. Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
+              Uma conta por linha: <strong>descrição: valor</strong>, e se quiser o vencimento: <strong>Luz: R$ 210,35 vence 10/11</strong> (também vale 10/11/2026, 10/11/26 ou "dia 10"; sem ano, o app escolhe o próximo). Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
             </p>
             <div className="flex gap-2">
               <Button type="button" disabled={!pasted.trim()} onClick={addText} className="md:h-9">Ler texto</Button>

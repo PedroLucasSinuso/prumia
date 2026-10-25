@@ -254,6 +254,21 @@ describe('importar contas colando texto', () => {
     expect(within(row).getByLabelText('Competência')).toHaveTextContent(/novembro de 2026/i)
   })
 
+  it('item de lista com vencimento vem com a data e a competência do mês dela', async () => {
+    const user = userEvent.setup()
+    mockApi({
+      me: ok(me),
+      parseText: ok({ kind: 'list', method: 'text', items: [{ description: 'Luz', amountCents: 21035, dueDate: '2026-11-10' }, { description: 'Gás', amountCents: 15000 }] } as DocumentExtraction),
+    })
+    renderAt('/importar')
+    await paste(user, 'Luz: R$ 210,35 vence 10/11\nGás: R$ 150,00')
+    const rows = await screen.findAllByRole('listitem', { name: /^Conta \d/ })
+    expect(within(rows[0]).getByLabelText('Vencimento')).toHaveValue('10/11/2026')
+    expect(within(rows[0]).getByLabelText('Competência')).toHaveTextContent(/novembro de 2026/i)
+    // sem data na linha: hoje
+    expect(within(rows[1]).getByLabelText('Vencimento')).toHaveValue('22/10/2026')
+  })
+
   it('400 genérico do servidor mostra uma mensagem que explica (não o "algo deu errado")', async () => {
     const user = userEvent.setup()
     mockApi({ me: ok(me), parseText: ok(list), createBatch: fail(400, 'bad_request') })
