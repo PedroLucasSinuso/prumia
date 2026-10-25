@@ -1,9 +1,12 @@
 import type { WalletBalance } from '../api/types'
 import { monthLabel } from '../lib/dates'
-import { formatCents } from '../lib/money'
+import { formatCents, formatSignedCents } from '../lib/money'
 import { PaidGauge } from './PaidGauge'
+import { Button } from './ui/Button'
 
-type Props = { title: string; hint: string; balance: WalletBalance; /** Mês consultado (AAAA-MM-01): antes do mês de início da carteira ela "ainda não começou". */ month?: string; /** `dark`: a carteira padrão da casa (ganha um filete `accent` à esquerda; o fundo é o mesmo `raised` das outras). */ tone?: 'dark' | 'light' }
+type Props = { title: string; hint: string; balance: WalletBalance; /** Mês consultado (AAAA-MM-01): antes do mês de início da carteira ela "ainda não começou". */ month?: string; /** `dark`: a carteira padrão da casa (ganha um filete `accent` à esquerda; o fundo é o mesmo `raised` das outras). */ tone?: 'dark' | 'light'
+  /** Abre o "Conferir saldo" desta carteira; sem ele (Só leitura, mês futuro, arquivada) o botão não aparece. */
+  onCheck?: () => void }
 
 const row = 'flex items-baseline justify-between gap-3 border-t border-line py-2 text-ui md:py-1.5'
 
@@ -13,7 +16,7 @@ const row = 'flex items-baseline justify-between gap-3 border-t border-line py-2
  * foi marcado como recebido não é alarme. O "a pagar" por carteira é estimado pela carteira padrão da categoria.
  * Direção "Instrumento calmo": todas as carteiras sobre `raised` (sem bloco sólido da estrutura, que fica para a navegação).
  */
-export function WalletCard({ title, hint, balance, month, tone = 'light' }: Props) {
+export function WalletCard({ title, hint, balance, month, tone = 'light', onCheck }: Props) {
   const start = balance.openingBalanceMonth
   const beforeStart = Boolean(start && month && month < start)
   const dark = tone === 'dark'
@@ -42,7 +45,7 @@ export function WalletCard({ title, hint, balance, month, tone = 'light' }: Prop
         {formatCents(Math.abs(projected))}
       </p>
       <p className={`text-caption ${soft}`}>
-        hoje: <span className="font-mono tabular-nums">{formatCents(balance.balanceCents)}</span> (saldo anterior + recebido − pago ± transferências)
+        hoje: <span className="font-mono tabular-nums">{formatCents(balance.balanceCents)}</span> (saldo anterior + recebido − pago ± transferências{balance.adjustmentsCents !== 0 ? ' ± ajustes' : ''})
       </p>
       <PaidGauge fraction={Math.min(1, paidFraction)} className="mt-3" />
       <p className={`mt-1 text-caption ${soft}`}>{Math.round(paidFraction * 100)}% do previsto já foi pago</p>
@@ -66,6 +69,12 @@ export function WalletCard({ title, hint, balance, month, tone = 'light' }: Prop
             <dd className="font-mono tabular-nums">{formatCents(balance.transfersOutCents)}</dd>
           </div>
         )}
+        {balance.adjustmentsCents !== 0 && (
+          <div className={row}>
+            <dt>ajustes de saldo (conferência)</dt>
+            <dd className="font-mono tabular-nums">{formatSignedCents(balance.adjustmentsCents)}</dd>
+          </div>
+        )}
         <div className={row}>
           <dt>previsto para entrar</dt>
           <dd className="font-mono tabular-nums">{formatCents(balance.expectedIncomeCents)}</dd>
@@ -83,6 +92,11 @@ export function WalletCard({ title, hint, balance, month, tone = 'light' }: Prop
           <dd className="font-mono tabular-nums">{formatCents(balance.pendingCents)}</dd>
         </div>
       </dl>
+      {onCheck && (
+        <Button variant="secondary" size="sm" className="mt-3" onClick={onCheck} aria-label={`Conferir saldo de ${title}`}>
+          Conferir saldo
+        </Button>
+      )}
     </section>
   )
 }

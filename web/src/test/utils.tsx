@@ -41,7 +41,7 @@ export function walletBalance(walletId: string, over: Partial<WalletBalance> = {
   const w = wallets.find((x) => x.id === walletId)!
   return {
     walletId, name: w.name, isDefault: w.isDefault, archived: false, openingBalanceCents: 0, openingBalanceMonth: null, carryOverCents: 0,
-    expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, transfersInCents: 0, transfersOutCents: 0, balanceCents: 0, monthBalanceCents: 0, pendingCents: 0, projectedCents: 0, ...over,
+    expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, transfersInCents: 0, transfersOutCents: 0, adjustmentsCents: 0, balanceCents: 0, monthBalanceCents: 0, pendingCents: 0, projectedCents: 0, ...over,
   }
 }
 
@@ -113,6 +113,11 @@ type Routes = {
   createTransfer?: Reply
   removeTransfer?: Reply
   restoreTransfer?: Reply
+  /** GET /wallet-adjustments (ajustes de saldo do mês). Padrão: vazia. */
+  adjustments?: Reply
+  createAdjustment?: Reply
+  removeAdjustment?: Reply
+  restoreAdjustment?: Reply
   updateWallet?: Reply
   /** GET /cnpj/{cnpj} (BrasilAPI). Padrão: 503, a consulta fora do ar. */
   cnpj?: Reply
@@ -186,6 +191,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/payees') return r.payees ?? ok([])
     if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
     if (url === '/households/{householdId}/transfers') return r.transfers ?? ok([])
+    if (url === '/households/{householdId}/wallet-adjustments') return r.adjustments ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
     if (url === '/households/{householdId}/incomes') return r.incomes ?? ok([])
@@ -255,6 +261,8 @@ export function mockApi(r: Routes = {}) {
       '/households/{householdId}/wallets': r.createWallet,
       '/households/{householdId}/transfers': r.createTransfer,
       '/households/{householdId}/transfers/{transferId}/restore': r.restoreTransfer,
+      '/households/{householdId}/wallet-adjustments': r.createAdjustment,
+      '/households/{householdId}/wallet-adjustments/{adjustmentId}/restore': r.restoreAdjustment,
       '/households/{householdId}/members/{userId}/password-reset-link': r.resetLink,
       '/auth/password-reset': r.passwordReset,
       '/auth/password': r.changePassword,
@@ -285,6 +293,7 @@ export function mockApi(r: Routes = {}) {
     if (url.endsWith('/pay')) return r.unpay ?? ok()
     if (url.endsWith('/receive')) return r.unreceive ?? ok()
     if (url === '/households/{householdId}/transfers/{transferId}') return r.removeTransfer ?? { response: { ok: true } }
+    if (url === '/households/{householdId}/wallet-adjustments/{adjustmentId}') return r.removeAdjustment ?? { response: { ok: true } }
     if (url === '/households/{householdId}/incomes/{incomeId}') return r.removeIncome ?? { response: { ok: true } }
     return r.remove ?? { response: { ok: true } }
   }) as never)

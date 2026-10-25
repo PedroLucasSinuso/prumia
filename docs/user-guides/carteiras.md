@@ -28,7 +28,7 @@ Quem é **Responsável** pela casa cria, renomeia e arquiva carteiras. Os demais
 
 Para cada carteira:
 
-> **saldo = saldo anterior + o que você já recebeu nela no mês − o que você já pagou com ela no mês ± transferências**
+> **saldo = saldo anterior + o que você já recebeu nela no mês − o que você já pagou com ela no mês ± transferências ± ajustes**
 
 - **O saldo continua de um mês para o outro**: o que sobrou (ou faltou) até o mês anterior aparece como "saldo que veio dos meses
   anteriores". Ele soma o saldo inicial e todos os meses anteriores (a partir do mês de início, se você definiu um).
@@ -36,7 +36,8 @@ Para cada carteira:
 - O valor da receita é o **líquido** (já sem os descontos). O valor da despesa é o que você **efetivamente pagou**.
 - O "mês" é o **mês de competência**. Uma conta de setembro paga em outubro conta em **setembro**.
 
-- **Transferências** (próxima seção) somam na carteira que recebe e subtraem na que envia.
+- **Transferências** (mais abaixo) somam na carteira que recebe e subtraem na que envia.
+- **Ajustes** (de "Conferir saldo", logo abaixo) corrigem o saldo para bater com o do banco.
 
 É uma estimativa para você se organizar, não o saldo do banco.
 
@@ -52,6 +53,28 @@ receitas de agosto e setembro, a carteira ficaria negativa dali para a frente. P
 Pronto: agosto e setembro aparecem normalmente com o que você cadastrou, mas **não entram** no saldo que vem de trás. Outubro começa
 exatamente no saldo real que você informou, e os meses seguintes continuam dali. Na tela do Resumo de agosto, o cartão avisa "esta
 carteira começa em outubro de 2026". Deixando o mês em branco ("sem data"), a carteira conta desde o primeiro lançamento, como sempre foi.
+
+## Conferir o saldo com o do banco
+
+O app só sabe o que você cadastrou. Se você lançou o salário e esqueceu alguns gastos, o saldo fica maior do que o real, e essa
+diferença passa para os meses seguintes. Para acertar:
+
+1. Abra o **Resumo** no mês que quer conferir (o atual ou um anterior).
+2. No cartão da carteira, toque em **Conferir saldo**.
+3. O painel mostra o **saldo calculado** até o fim do mês. Digite o **saldo real** (o que o extrato mostra). Se a conta estiver no
+   negativo (cheque especial), marque **O saldo está negativo**.
+4. Confira a **diferença** que aparece e toque em **Conferir saldo**.
+
+A diferença vira um **ajuste** naquele mês, e os meses seguintes partem do saldo real.
+
+- O ajuste **não é receita nem conta**: não muda o que você ganhou nem o que gastou, nem os totais por categoria. Só corrige o saldo.
+- O cartão da carteira mostra a linha **ajustes de saldo (conferência)**, e o Resumo mostra a lista **Ajustes de saldo do mês**, com o
+  botão de excluir (que oferece **Desfazer**).
+- Errou? No aviso que aparece depois, toque em **Desfazer**. Não dá para editar: exclua e confira de novo.
+- **Cuidado**: se depois de conferir você lançar um gasto esquecido daquele mês, ele conta além do ajuste. Nesse caso, confira o saldo de
+  novo (o app grava só a nova diferença) ou exclua o ajuste.
+- Não dá para conferir um mês que ainda não chegou, um mês anterior ao **mês de início** da carteira, nem uma carteira arquivada.
+- Quem só tem permissão de leitura vê os ajustes, mas não confere nem exclui.
 
 ## Guardar dinheiro na Reserva (ou tirar de lá)
 

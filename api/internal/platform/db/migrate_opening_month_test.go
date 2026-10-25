@@ -21,9 +21,8 @@ func TestMigracaoMesDeInicioUpDownUpComDados(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := db.Migrate(ctx, sqlDB); err != nil {
-		t.Fatalf("up 00011: %v", err)
-	}
+	// Só até a 00011 (e não até a última): o Rollback abaixo desfaz exatamente a 00011.
+	gooseTo(t, gdb, 11)
 	var nulls int
 	gdb.Raw(`SELECT count(*) FROM wallets WHERE opening_balance_month IS NULL AND opening_balance_cents = 12345`).Scan(&nulls)
 	if nulls != 1 {

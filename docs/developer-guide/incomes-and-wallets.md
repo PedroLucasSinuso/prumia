@@ -193,10 +193,10 @@ O saldo agora **é transportado**: o que sobra (ou falta) num mês entra como **
 
 ```
 anterior(carteira, mês) = saldo inicial + soma, nos meses ANTERIORES ao consultado, de (receitas RECEBIDAS líquidas - despesas PAGAS
-                          + transferências recebidas - transferências enviadas)
+                          + transferências recebidas - transferências enviadas + ajustes de saldo)
 saldo(carteira, mês)    = anterior + receitas RECEBIDAS do mês - despesas PAGAS do mês
-                          + transferências recebidas do mês - enviadas do mês           (REALIZADO)
-do mês                  = receitas RECEBIDAS do mês - despesas PAGAS do mês + transferências recebidas - enviadas
+                          + transferências recebidas do mês - enviadas do mês + ajustes do mês   (REALIZADO)
+do mês                  = receitas RECEBIDAS do mês - despesas PAGAS do mês + transferências recebidas - enviadas + ajustes
 ```
 
 Definições (decisão deste módulo, onde a spec era aberta):
@@ -217,7 +217,8 @@ critérios (uma invoice de setembro paga em outubro pertence a setembro). Conseq
 - Receita **a receber** (data futura) ou **"não caiu"** não entra no saldo (só em `expectedIncomeCents`). Como o recebimento é automático,
   ninguém precisa marcar o salário/VR; o saldo só fica menor se alguém disser "não caiu".
 - Uma invoice paga com uma carteira conta para a competência **da invoice**, não do dia do pagamento.
-- Não é saldo bancário: não há conciliação com o banco (pós-MVP). Mover dinheiro entre carteiras é a **transferência** (seção 5.3).
+- Não é saldo bancário, mas dá para **reconciliar** com o real a qualquer momento: é o "Conferir saldo" (seção 5.4). Mover dinheiro
+  entre carteiras é a **transferência** (seção 5.3).
 
 ### 5.3 Transferências entre carteiras
 
@@ -245,6 +246,39 @@ transferência). Se a **origem** tem `warnOnOverdraft` e o saldo realizado acumu
 
 A exportação CSV (`invoice/export.go`) lista só contas, então não muda.
 
+### 5.4 Conferir saldo (ajustes de saldo)
+
+O saldo soma só o que está cadastrado: se a pessoa lança a receita e esquece os gastos, sobra dinheiro "falso" nos meses seguintes.
+"Conferir saldo" reconcilia com a realidade: a pessoa digita o **saldo real** da carteira no fim de um mês e a **diferença** para o
+saldo calculado vira um **ajuste** naquele mês. Como a transferência, **não é receita nem despesa**: só altera o saldo da carteira.
+Código em `api/internal/adjustment` (`model.go`, `service.go`) e `api/internal/api/adjustments.go`; tabela `wallet_adjustments`
+(migration `00012`, ver [schema.md](schema.md)).
+
+| Regra | Detalhe |
+|---|---|
+| Entrada | `walletId`, `actualBalanceCents` (o saldo **real**, pode ser negativo; até ±R$ 10 bilhões), `competenceMonth` (dia 1; padrão = mês atual), `notes` (opcional, até 500). |
+| Diferença | O servidor calcula o saldo **realizado** até o fim do mês (`balanceCents` do resumo, via `summary.WalletMonth`, a MESMA conta do resumo e do aviso de saldo, já com os ajustes anteriores) e grava `amount_cents = real - calculado`. A prévia da tela é só informativa. Diferença zero = 400 em `actualBalanceCents` ("o saldo já confere"). |
+| Validação | Carteira inexistente, de outra casa ou **arquivada**: 400 em `walletId`. Mês fora do dia 1, **futuro** (depois do mês atual) ou **anterior ao mês de início** da carteira: 400 em `competenceMonth`. |
+| Vários no mesmo mês | Permitido: cada conferência grava só a nova diferença (o calculado já inclui as anteriores). A lista mostra todos. |
+| Sem edição | Criar, excluir (`deleted_at`) e restaurar (o Desfazer devolve a **mesma** diferença, sem recalcular). Excluir um já excluído = 404; restaurar um ativo = 409 `not_deleted`. |
+| Autorização | Listar = qualquer membro. Criar/excluir/restaurar = `admin` e `member`; `viewer` nunca escreve (403 `read_only` no porteiro). `household_id` sempre da rota. |
+| Rotas | `GET /wallet-adjustments?month=`, `POST /wallet-adjustments` (201 com o ajuste), `DELETE /wallet-adjustments/{id}` (204), `POST /wallet-adjustments/{id}/restore`. |
+
+**Efeito nos saldos** (`summary.adjustmentsByWallet`, mais uma consulta agregada no resumo, agora **7**, sem N+1): cada `WalletBalance`
+ganha `adjustmentsCents` (soma do mês, com sinal). `balanceCents`, `monthBalanceCents` e `projectedCents` somam os ajustes do mês;
+`carryOverCents` inclui os ajustes dos meses anteriores, com o mesmo filtro de mês de início (`sinceOpening`). Carteira arquivada aparece
+também se tiver ajuste no mês. Ajuste **nunca** entra em `byCategory`, totais, nem em previsto/recebido/pago. O `OverdraftWarning`
+(aviso ao pagar/transferir) passa por `WalletMonth`, então um ajuste para baixo faz o pagamento seguinte avisar.
+
+**Armadilha conhecida**: se a pessoa confere o saldo e **depois** lança um gasto esquecido daquele mês, o gasto entra além do ajuste
+(conta duas vezes). A tela avisa no formulário e mostra o ajuste no cartão da carteira ("ajustes de saldo (conferência)") e na lista
+"Ajustes de saldo do mês" do Resumo; a correção é conferir de novo (ou excluir o ajuste).
+
+Na UI (Resumo): botão **Conferir saldo** em cada cartão de carteira (só para quem escreve, só até o mês atual, nunca em arquivada);
+o painel mostra o calculado, a prévia da diferença e grava; o aviso traz **Desfazer**. Testes: `api/adjustments_test.go` (cenário
+do plano, mês passado, validações, papéis, isolamento, excluir/restaurar, aviso de saldo), `summary/summary_test.go` (`assemble` com
+ajustes), `platform/db/migrate_adjustments_test.go` (Up/Down/Up com dados) e `web/src/pages/BalanceCheck.test.tsx`.
+
 #### 5.2.1 Mês de início do saldo inicial
 
 Quem começa a usar o app no meio da vida financeira (contas de agosto a janeiro, app usado desde outubro) não precisa lançar o passado:
@@ -260,7 +294,7 @@ Para o mês consultado M:
 
 "Movimento" é a mesma definição de saldo (recebido líquido − pago + transferências recebidas − enviadas). A regra mora num só lugar:
 `summary.sinceOpening`, o filtro `(w.opening_balance_month IS NULL OR competência >= w.opening_balance_month)` aplicado, com `JOIN wallets`,
-às três consultas de saldo anterior (receitas, pagos, transferências), mais o zero de M < S em `assemble`. Resumo, projetado e
+às quatro consultas de saldo anterior (receitas, pagos, transferências, ajustes), mais o zero de M < S em `assemble`. Resumo, projetado e
 `OverdraftWarning` (aviso ao pagar/transferir) passam pelas mesmas consultas, então não divergem. Carteira arquivada continua aparecendo só
 com saldo anterior ≠ 0 ou movimento no mês, já com a regra nova. `WalletBalance.openingBalanceMonth` leva o mês à UI.
 Testes: `api/wallet_opening_month_test.go` (cenário das parcelas, NULL, PATCH, M<S/=S/>S, início depois do último movimento, aviso,
@@ -268,8 +302,9 @@ isolamento), `summary/summary_test.go` e `platform/db/migrate_opening_month_test
 
 ## 6. Resumo mensal (`GET /summary?month=`)
 
-Escopado por `household_id`, tudo por competência, em **6 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses
-anteriores, com `FILTER`), pagos por carteira (idem), pendentes por carteira estimada (com o atraso), transferências por carteira (idem) e invoices por categoria. O saldo
+Escopado por `household_id`, tudo por competência, em **7 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses
+anteriores, com `FILTER`), pagos por carteira (idem), pendentes por carteira estimada (com o atraso), transferências por carteira (idem),
+ajustes de saldo por carteira (idem) e invoices por categoria. O saldo
 anterior sai da **mesma agregação** (`competence_month < mês`), sem consulta por carteira. A montagem (`summary.assemble`) é pura e
 testada em tabela.
 
@@ -283,13 +318,14 @@ testada em tabela.
 | `carryOverCents` | saldo anterior (seções 5.2 e 5.2.1; 0 antes do mês de início) |
 | `expectedIncomeCents / receivedIncomeCents / paidCents` | do mês, ver seção 5.2 |
 | `transfersInCents / transfersOutCents` | transferências recebidas / enviadas na competência (seção 5.3) |
-| `balanceCents` | **realizado acumulado**: `carryOver + receivedIncomeCents - paidCents + transfersInCents - transfersOutCents` (pode ser negativo) |
-| `monthBalanceCents` | só o mês: `receivedIncomeCents - paidCents + transfersInCents - transfersOutCents` |
+| `adjustmentsCents` | soma, com sinal, dos ajustes de saldo da competência (seção 5.4) |
+| `balanceCents` | **realizado acumulado**: `carryOver + receivedIncomeCents - paidCents + transfersInCents - transfersOutCents + adjustmentsCents` (pode ser negativo) |
+| `monthBalanceCents` | só o mês: `receivedIncomeCents - paidCents + transfersInCents - transfersOutCents + adjustmentsCents` |
 | `pendingCents` | **estimativa** do que falta pagar com a carteira (ver "saldo projetado" abaixo) |
-| `projectedCents` | **saldo projetado**: `carryOver + expectedIncomeCents - paidCents - pendingCents + transfersInCents - transfersOutCents` |
+| `projectedCents` | **saldo projetado**: `carryOver + expectedIncomeCents - paidCents - pendingCents + transfersInCents - transfersOutCents + adjustmentsCents` |
 
 **Carteira arquivada** só entra na lista se tem `carryOver` diferente de zero **ou** algum movimento no mês (previsto, recebido, pago, a
-pagar ou transferência). As ativas sempre entram.
+pagar, transferência ou ajuste). As ativas sempre entram.
 
 | Outros campos | Cálculo |
 |---|---|
@@ -400,6 +436,8 @@ filtro de casa é `EnsureHorizonAll`, usado só pelo job `api horizon`.
 | Transferência: origem = destino, valor ≤ 0, carteira de outra casa/arquivada, competência fora do dia 1 | 400 `validation_error` com `fields` (`toWalletId`, `fromWalletId`, `amountCents`, `competenceMonth`) |
 | Transferência inexistente, já excluída (ao excluir) ou de outra casa | 404 `not_found` |
 | Restaurar transferência que não está excluída | 409 `not_deleted` |
+| Conferir saldo: carteira de outra casa/arquivada, mês futuro, fora do dia 1 ou antes do mês de início, saldo que já confere | 400 `validation_error` com `fields` (`walletId`, `competenceMonth`, `actualBalanceCents`) |
+| Ajuste inexistente, já excluído (ao excluir) ou de outra casa | 404 `not_found`; restaurar um que não está excluído: 409 `not_deleted` |
 | Corpo JSON inválido | 400 `bad_request` |
 
 ## 11. Testes

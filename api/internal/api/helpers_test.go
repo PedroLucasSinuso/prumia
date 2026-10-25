@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/PedroLucasSinuso/prumia/api/internal/adjustment"
 	"github.com/PedroLucasSinuso/prumia/api/internal/auth"
 	"github.com/PedroLucasSinuso/prumia/api/internal/boleto"
 	"github.com/PedroLucasSinuso/prumia/api/internal/category"
@@ -83,6 +84,7 @@ func newApp(t *testing.T, o opts) *app {
 		&Payees{Svc: payeeSvc, Log: log},
 		&Wallets{Svc: wallet.NewService(gdb), Log: log},
 		&Transfers{Svc: transfer.NewService(gdb, today), Log: log, Balance: sumSvc},
+		&Adjustments{Svc: adjustment.NewService(gdb, sumSvc, today), Log: log},
 		NewCNPJLookups(o.company, log),
 		&Invoices{Svc: invSvc, Log: log, Horizon: recSvc, Balance: sumSvc},
 		&Purchases{Svc: series.NewPurchaseService(gdb, invSvc), Invoices: invSvc, Log: log},
