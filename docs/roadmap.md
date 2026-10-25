@@ -2,6 +2,8 @@
 
 O que falta fazer e o que está planejado. Responde: "o que vem depois do MVP e em que ordem?". O estado detalhado por fase fica no `plan.md` local; aqui vai só o que interessa a quem mantém o repositório.
 
+**Plano detalhado das próximas etapas** (ordem, escopo, critérios de aceite e regras de processo): [plano-proximas-etapas.md](plano-proximas-etapas.md).
+
 Legenda de risco: **alto** = migration, auth, séries, boleto ou deploy (branch própria, testada, relato no PR); **baixo** = UI e docs.
 
 ## Estado atual
@@ -110,7 +112,7 @@ Já previsto desde o início; novas tabelas, sem backfill.
 
 ## Feito: acesso por domínio com Cloudflare Tunnel (#51)
 
-`make tunnel-setup` e `make tunnel-up` publicam o app por `https://app.<domínio>` a partir do computador, sem abrir porta e sem Zero Trust (túnel gerenciado localmente). O nginx tem uma porta interna (8081) só para o túnel, onde o IP do cliente vem de `CF-Connecting-IP`. Pendente: o Cloudflare Access (login por e-mail antes do app) exige ativar o Zero Trust (cartão ou PayPal). Guia: [deployment.md](developer-guide/deployment.md).
+`make tunnel-setup` e `make tunnel-up` publicam o app por `https://app.<domínio>` a partir do computador, sem abrir porta e sem Zero Trust (túnel gerenciado localmente). O nginx tem uma porta interna (8081) só para o túnel, onde o IP do cliente vem de `CF-Connecting-IP`. O app fica exposto só com o login próprio (decisão do dono: sem Cloudflare Access). Guia: [deployment.md](developer-guide/deployment.md).
 
 ## Fase 2 de infraestrutura
 
@@ -120,6 +122,7 @@ Já previsto desde o início; novas tabelas, sem backfill.
 
 ## Ideias sem prioridade
 
+- **Só se o prumia virar um produto comercial** (hoje são duas pessoas usando): **modo demo** (casa de exemplo, sem cadastro), **onboarding simplificado** e **disparo de e-mails** (boas-vindas, convite, nova senha, avisos). Isso traria decisões novas (provedor de e-mail, domínio e reputação de envio, LGPD, planos e cobrança, limites por casa) e **não deve ser antecipado** nas escolhas de hoje além de manter o cadastro e os convites desacoplados da tela.
 - Offline parcial no PWA (hoje: instalável, sem offline).
 - Exportação (CSV) e importação de extratos.
 - Notificação de vencimento próximo.

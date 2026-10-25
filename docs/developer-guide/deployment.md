@@ -154,9 +154,8 @@ Não precisa ativar o Zero Trust, que pede cartão ou PayPal mesmo no plano grá
 5. **`make tunnel-up`**: liga o `cloudflared`. Para desligar: `make tunnel-down` (o app volta a ficar só em localhost).
 6. Abra `https://app.seudominio.com.br` de outro aparelho (rede móvel). Deve aparecer o login do prumia.
 
-**Sem a camada do Cloudflare Access** (login por e-mail antes do app, que exige o Zero Trust): o prumia fica exposto com o próprio
-login (argon2id, limite de tentativas por IP e por e-mail, cadastro fechado). Se mais tarde ativar o Zero Trust, dá para colocar o
-Access na frente sem refazer o túnel.
+**Proteção do app**: ele fica exposto só com o próprio login (argon2id, limite de tentativas por IP e por e-mail, cadastro fechado
+a quem não tem convite). Não há camada extra na frente (decisão do dono: o app é usado por duas pessoas).
 
 ### Por que a porta 8081
 
