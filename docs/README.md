@@ -8,6 +8,14 @@
 | [roadmap.md](roadmap.md) | quem decide o que vem a seguir | o que falta, próximos passos e planos futuros |
 | [brand/](brand/) | design e front-end | [manual de identidade](brand/manual-identidade-prumia.md) e assets |
 
+## Site de documentação
+
+`site/` (Astro + Starlight) publica os guias de uso e os guias técnicos como um site com busca, modo escuro e a marca do app.
+A fonte continua aqui: `site/scripts/sync-docs.mjs` gera as páginas a partir destes Markdown a cada build (título do `# ...`,
+links `.md` viram rotas; links para fora de `user-guides/` e `developer-guide/` viram texto, porque o site é público). O CI
+(job `site`) falha com link interno quebrado. Local: `make site-dev` (http://localhost:4321) e `make site-build`. Publicação:
+Cloudflare Pages (ver [plano-docs-onboarding.md](plano-docs-onboarding.md)). **Nada de dado pessoal nos guias**: eles são públicos.
+
 Fora desta pasta: [CLAUDE.md](../CLAUDE.md) (contexto para o Claude Code) e [openapi/openapi.yaml](../openapi/openapi.yaml) (contrato da API, fonte de verdade).
 
 ## O que é versionado

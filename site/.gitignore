@@ -1,0 +1,5 @@
+# Gerado por scripts/sync-docs.mjs a partir de docs/ (a fonte de verdade fica lá)
+src/content/docs/guias/
+src/content/docs/dev/
+dist/
+.astro/

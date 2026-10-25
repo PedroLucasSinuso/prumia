@@ -7,7 +7,7 @@ Como criar sua conta, entrar e sair do prumia. Use na primeira vez que abrir o a
 1. Abra o endereço do prumia no navegador. Você vai cair na tela **Entrar**.
 2. Toque em **Criar conta**.
 3. Preencha **Seu nome**, **E-mail** e **Senha** (mínimo de 10 caracteres).
-4. Em **Nome da casa**, escreva como quer chamar a sua casa. Por exemplo: "Casa do Pedro e da Ana". Se deixar em branco, usamos "Minha casa".
+4. Em **Nome da casa**, escreva como quer chamar a sua casa. Por exemplo: "Casa da Ana e do Beto". Se deixar em branco, usamos "Minha casa".
 5. Toque em **Criar conta**. Você já entra no app, dentro da sua casa.
 
 A pessoa que cria a casa é a **administradora** dela. Para convidar quem mora com você, veja [Convidar pessoas](convidar-pessoas.md).

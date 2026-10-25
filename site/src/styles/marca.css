@@ -1,0 +1,87 @@
+/*
+ * Marca do prumia no Starlight (fonte única de cores e tipografia: docs/brand/manual-identidade-prumia.md e web/src/index.css).
+ * Claro = tema Marfim; escuro = o tema escuro do app ("sistema" no escuro). No Starlight o nome das variáveis é invertido no
+ * modo claro: --sl-color-white é o TEXTO mais forte e --sl-color-black é o FUNDO.
+ */
+:root {
+  --sl-font: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --sl-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --prumia-display: 'Archivo Variable', 'Arial Narrow', ui-sans-serif, sans-serif;
+
+  /* escuro (padrão do Starlight) */
+  --sl-color-accent-low: #3b2f5c;
+  --sl-color-accent: #bd93f9;
+  --sl-color-accent-high: #e3d3fd;
+  --sl-color-white: #f8f8f2;
+  --sl-color-gray-1: #e6e6ea;
+  --sl-color-gray-2: #c2c3cc;
+  --sl-color-gray-3: #a5a7b4;
+  --sl-color-gray-4: #6b6e80;
+  --sl-color-gray-5: #343746;
+  --sl-color-gray-6: #282a36;
+  --sl-color-black: #21222c;
+  --sl-color-orange: #ff8f8f;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #d6dfe8;
+  --sl-color-accent: #416a91;
+  --sl-color-accent-high: #2c4a66;
+  --sl-color-white: #203d40;
+  --sl-color-gray-1: #313638;
+  --sl-color-gray-2: #3f4446;
+  --sl-color-gray-3: #5e6261;
+  --sl-color-gray-4: #8a8c88;
+  --sl-color-gray-5: #d9cfbd;
+  --sl-color-gray-6: #eae0ce;
+  --sl-color-gray-7: #efe6d6;
+  --sl-color-black: #f3ebdd;
+  /* Signal (coral) só para alerta, nunca para inundar */
+  --sl-color-orange: #c53011;
+}
+
+/* Títulos em Archivo condensada, como no app */
+.sl-markdown-content :is(h1, h2, h3),
+h1#_top,
+.hero h1,
+.site-title {
+  font-family: var(--prumia-display);
+  font-stretch: 75%;
+  letter-spacing: 0;
+}
+.site-title {
+  font-weight: 700;
+  text-transform: lowercase; /* a marca é sempre minúscula */
+}
+
+/* Números alinhados em coluna (valores em R$ nos exemplos) */
+.sl-markdown-content {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Raio 4–6 px, nada de pílula */
+:root {
+  --sl-border-radius: 6px;
+}
+.sl-markdown-content table {
+  border-radius: 6px;
+}
+
+/* Botões e controles: raio da marca (o Starlight usa pílula) */
+.sl-link-button,
+starlight-menu-button button,
+.pagination-links a {
+  border-radius: 6px;
+}
+
+/* Ícones dos cards na cor de acento (o Starlight alterna laranja, roxo, verde...: fora da paleta) */
+.card {
+  --sl-card-border: var(--sl-color-accent);
+  --sl-card-bg: var(--sl-color-accent-low);
+}
+
+/* Item atual do menu: fundo discreto, texto forte */
+.sidebar-content a[aria-current='page'] {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-white);
+}

@@ -66,6 +66,14 @@ web-build: ## Build de produção do front
 web-dev: ## Sobe o front em desenvolvimento (proxy /api -> localhost:8080)
 	cd $(WEB) && npm run dev
 
+.PHONY: site-dev
+site-dev: ## Sobe o site de documentação em desenvolvimento (http://localhost:4321; gera as páginas a partir de docs/)
+	cd site && npm ci --silent && npm run dev
+
+.PHONY: site-build
+site-build: ## Build do site de documentação (falha com link interno quebrado)
+	cd site && npm ci --silent && npm run build
+
 .PHONY: web-types
 web-types: ## Regenera os tipos TypeScript a partir do openapi.yaml
 	cd $(WEB) && npm run generate:api

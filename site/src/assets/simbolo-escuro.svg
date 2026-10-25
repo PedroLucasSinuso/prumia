@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Variante do símbolo para fundo escuro: mesmas formas, cores do tema escuro do app (estrutura #7656bd, acento #bd93f9). -->
+  <path d="M8 14 L34 4 L34 34 L8 46 Z" fill="#7656bd"/>
+  <path d="M8 46 L34 34 L34 60 L8 52 Z" fill="#c2c3cc"/>
+  <path d="M34 4 L58 32 L34 34 Z" fill="#bd93f9"/>
+  <path d="M34 34 L58 32 L34 60 Z" fill="#7656bd"/>
+</svg>
