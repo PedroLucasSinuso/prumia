@@ -13,7 +13,7 @@
 `site/` (Astro + Starlight) publica os guias de uso e os guias técnicos como um site com busca, modo escuro e a marca do app.
 A fonte continua aqui: `site/scripts/sync-docs.mjs` gera as páginas a partir destes Markdown a cada build (título do `# ...`,
 links `.md` viram rotas; links para fora de `user-guides/` e `developer-guide/` viram texto, porque o site é público). O CI
-(job `site`) falha com link interno quebrado. Local: `make site-dev` (http://localhost:4321) e `make site-build`. Publicação:
+(job `site`) falha com link interno quebrado. A **demonstração** (`/demo/`) é o próprio app com uma API falsa em memória (`web/src/demo`, dados fictícios, nada salvo): `npm run build:demo` em `web/`. `scripts/build-pages.sh` junta site + demo em `site/dist` para o Cloudflare Pages. Local: `make site-dev` (http://localhost:4321) e `make site-build`. Publicação:
 Cloudflare Pages (ver [plano-docs-onboarding.md](plano-docs-onboarding.md)). **Nada de dado pessoal nos guias**: eles são públicos.
 
 Fora desta pasta: [CLAUDE.md](../CLAUDE.md) (contexto para o Claude Code) e [openapi/openapi.yaml](../openapi/openapi.yaml) (contrato da API, fonte de verdade).

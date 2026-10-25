@@ -26,6 +26,7 @@ const messages: Record<string, string> = {
   payee_cnpj_exists: 'Já existe um favorecido com este CNPJ.',
   payee_in_use: 'Este favorecido está em uso. Arquive em vez de apagar.',
   not_found: 'Não encontrado. Recarregue a página.',
+  demo_unavailable: 'Isso não funciona na demonstração (precisa de um servidor de verdade). No app, funciona.',
 }
 
 // Leitura de boleto (POST /boletos/extract): códigos do servidor -> texto. `boleto_not_found` = nada válido no arquivo.
@@ -38,6 +39,7 @@ const boletoMessages: Record<string, string> = {
   text_too_large: 'O texto passa de 20.000 caracteres. Cole menos linhas.',
   too_many_requests: messages.too_many_requests,
   busy: 'O servidor está lendo outros boletos agora. Tente de novo em alguns segundos.',
+  demo_unavailable: 'A leitura de boletos e documentos não funciona na demonstração. No app de verdade, funciona.',
 }
 
 /** Mensagem de falha ao ler um boleto. Código desconhecido vira "não consegui ler" (nunca o texto cru do servidor). */

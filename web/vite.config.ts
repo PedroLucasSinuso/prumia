@@ -6,7 +6,9 @@ import { defineConfig } from 'vitest/config'
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Demonstração (`npm run build:demo`): o mesmo app, servido em /demo/ do site, com a API falsa em memória (src/demo).
+  ...(mode === 'demo' ? { base: '/demo/', build: { outDir: 'dist-demo' } } : {}),
   plugins: [react(), tailwindcss()],
   define: { __APP_VERSION__: JSON.stringify(version) },
   server: {
@@ -19,4 +21,4 @@ export default defineConfig({
     testTimeout: 15000,
     setupFiles: ['./src/test/setup.ts'],
   },
-})
+}))
