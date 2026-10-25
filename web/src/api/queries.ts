@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult, WalletAdjustment, WalletAdjustmentInput } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -11,6 +11,8 @@ const keys = {
   wallets: (house: string) => ['wallets', house] as const,
   transfers: (house: string, month: string) => ['transfers', house, month] as const,
   allTransfers: (house: string) => ['transfers', house] as const,
+  adjustments: (house: string, month: string) => ['adjustments', house, month] as const,
+  allAdjustments: (house: string) => ['adjustments', house] as const,
   invoices: (house: string, month: string) => ['invoices', house, month] as const,
   allInvoices: (house: string) => ['invoices', house] as const,
   incomes: (house: string, month: string) => ['incomes', house, month] as const,
@@ -151,6 +153,40 @@ export function useTransferActions(houseId: string) {
   })
   const restore = useMutation({
     mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/transfers/{transferId}/restore', path(id))),
+    onSettled: refresh,
+  })
+  return { create, remove, restore }
+}
+
+export function useAdjustments(houseId: string, month: string) {
+  return useQuery({
+    queryKey: keys.adjustments(houseId, month),
+    enabled: houseId !== '',
+    queryFn: (): Promise<WalletAdjustment[]> =>
+      unwrap(api.GET('/households/{householdId}/wallet-adjustments', { params: { path: { householdId: houseId }, query: { month } } })),
+  })
+}
+
+/**
+ * Conferir saldo (criar ajuste), excluir e restaurar (Desfazer). Como as transferências, só mexem nos saldos: ao terminar,
+ * a lista e o resumo são refeitos. Não há edição (para corrigir: exclui e confere de novo).
+ */
+export function useAdjustmentActions(houseId: string) {
+  const qc = useQueryClient()
+  const refresh = () =>
+    Promise.all([qc.invalidateQueries({ queryKey: keys.allAdjustments(houseId) }), qc.invalidateQueries({ queryKey: keys.summary(houseId) })])
+  const path = (adjustmentId: string) => ({ params: { path: { householdId: houseId, adjustmentId } } })
+  const create = useMutation({
+    mutationFn: (body: WalletAdjustmentInput): Promise<WalletAdjustment> =>
+      unwrap(api.POST('/households/{householdId}/wallet-adjustments', { params: { path: { householdId: houseId } }, body })),
+    onSettled: refresh,
+  })
+  const remove = useMutation({
+    mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/wallet-adjustments/{adjustmentId}', path(id))),
+    onSettled: refresh,
+  })
+  const restore = useMutation({
+    mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/wallet-adjustments/{adjustmentId}/restore', path(id))),
     onSettled: refresh,
   })
   return { create, remove, restore }

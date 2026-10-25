@@ -2,10 +2,12 @@ import { ArrowLeftRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
-import { useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
-import type { Transfer, TransferInput, TransferResult } from '../api/types'
+import { useAdjustmentActions, useAdjustments, useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
+import type { Transfer, TransferInput, TransferResult, WalletAdjustment, WalletBalance } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
+import { AdjustmentsSection } from '../components/AdjustmentsSection'
 import { AppShell } from '../components/AppShell'
+import { BalanceCheckForm } from '../components/BalanceCheckForm'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
@@ -22,9 +24,9 @@ import { Notice } from '../components/ui/Notice'
 import { Stat } from '../components/ui/Stat'
 import { Surface } from '../components/ui/Surface'
 import { rollup } from '../lib/categories'
-import { addMonths, monthLabel } from '../lib/dates'
+import { addMonths, currentMonth, monthLabel, monthName } from '../lib/dates'
 import { commitments, monthShort } from '../lib/history'
-import { formatCents } from '../lib/money'
+import { formatCents, formatSignedCents } from '../lib/money'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
 import { walletName } from '../lib/wallets'
@@ -51,10 +53,14 @@ export default function SummaryPage() {
   const wallets = useWallets(houseId)
   const transfers = useTransfers(houseId, month)
   const transferActions = useTransferActions(houseId)
+  const adjustments = useAdjustments(houseId, month)
+  const adjustmentActions = useAdjustmentActions(houseId)
   const toast = useToast()
   const desktop = useIsDesktop()
   const [picked, setPicked] = useState<string | null>(null)
   const [transferring, setTransferring] = useState(false)
+  // Carteira em conferência de saldo (o painel "Conferir saldo" fica aberto enquanto houver uma).
+  const [checking, setChecking] = useState<WalletBalance | null>(null)
 
   if (!house) return null
   const canWrite = house.role !== 'viewer'
@@ -71,6 +77,25 @@ export default function SummaryPage() {
   }
   // No computador o formulário abre na lateral; no celular, sobe da base (como os outros formulários).
   const TransferPanel = desktop ? SlideOver : Sheet
+  // Conferir saldo: só quem escreve, só até o mês atual (um mês que não chegou não tem o que conferir), nunca arquivada.
+  const canCheck = canWrite && month <= currentMonth()
+
+  function afterCheck(adj: WalletAdjustment) {
+    const name = checking?.name ?? nameOf(adj.walletId)
+    setChecking(null)
+    toast({
+      message: `Saldo de ${name} conferido: ajuste de ${formatSignedCents(adj.amountCents)} em ${monthName(adj.competenceMonth)}.`,
+      actionLabel: 'Desfazer',
+      onAction: () => adjustmentActions.remove.mutate(adj.id),
+    })
+  }
+  function deleteAdjustment(adj: WalletAdjustment) {
+    adjustmentActions.remove.mutate(adj.id, {
+      onSuccess: () =>
+        toast({ message: 'Ajuste de saldo excluído.', actionLabel: 'Desfazer', onAction: () => adjustmentActions.restore.mutate(adj.id) }),
+      onError: () => toast({ message: 'Não foi possível excluir o ajuste. Tente de novo.' }),
+    })
+  }
 
   function afterTransfer(result: TransferResult, sent: TransferInput) {
     setTransferring(false)
@@ -168,10 +193,19 @@ export default function SummaryPage() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {s.wallets.map((w) => (
-                <WalletCard key={w.walletId} title={w.name} hint={w.isDefault ? 'carteira padrão' : (members.data?.find((m) => m.userId === w.ownerUserId)?.name ?? '')} balance={w} month={month} tone={w.isDefault ? 'dark' : 'light'} />
+                <WalletCard
+                  key={w.walletId}
+                  title={w.name}
+                  hint={w.isDefault ? 'carteira padrão' : (members.data?.find((m) => m.userId === w.ownerUserId)?.name ?? '')}
+                  balance={w}
+                  month={month}
+                  tone={w.isDefault ? 'dark' : 'light'}
+                  onCheck={canCheck && !w.archived ? () => setChecking(w) : undefined}
+                />
               ))}
             </div>
             <TransfersSection transfers={transfers.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteTransfer} />
+            <AdjustmentsSection adjustments={adjustments.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteAdjustment} />
             {desktop && (
               <div className={card}>
                 <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} />
@@ -228,6 +262,12 @@ export default function SummaryPage() {
             {transferring && (
               <TransferPanel title="Transferir entre carteiras" subtitle={monthLabel(month)} onClose={() => setTransferring(false)}>
                 <TransferForm wallets={walletList} month={month} onCreate={(body) => transferActions.create.mutateAsync(body)} onDone={afterTransfer} />
+              </TransferPanel>
+            )}
+
+            {checking && (
+              <TransferPanel title="Conferir saldo" subtitle={`${checking.name} · ${monthLabel(month)}`} onClose={() => setChecking(null)}>
+                <BalanceCheckForm balance={checking} month={month} onCreate={(body) => adjustmentActions.create.mutateAsync(body)} onDone={afterCheck} />
               </TransferPanel>
             )}
 

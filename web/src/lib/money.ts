@@ -7,6 +7,11 @@ export function formatCents(cents: number): string {
   return brl.format(cents / 100).replace(/ /g, ' ')
 }
 
+/** Como `formatCents`, mas com o sinal sempre à vista ("+R$ 12,00", "-R$ 3,00"): diferenças e ajustes. */
+export function formatSignedCents(cents: number): string {
+  return cents > 0 ? '+' + formatCents(cents) : formatCents(cents)
+}
+
 /**
  * Converte o que a pessoa digitou num campo de dinheiro em centavos: só os dígitos contam
  * ("R$ 1.500,00" -> 150000; "15" -> 15 centavos). Limita a 12 dígitos (R$ 10 bilhões), como o backend.
