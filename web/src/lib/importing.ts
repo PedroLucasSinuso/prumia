@@ -1,6 +1,6 @@
 import type { Boleto, Category, DocumentExtraction, DocumentItem, InvoiceInput, Payee } from '../api/types'
 import { buildTree } from './categories'
-import { monthOf } from './dates'
+import { monthLabel, monthName, monthOf } from './dates'
 
 /**
  * Regras puras da tela "Importar" (sem rede nem React): transformar o que o servidor leu em linhas editáveis,
@@ -154,4 +154,10 @@ export function progressMarks(done: number, total: number): string {
   const slots = Math.min(total, 10)
   const filled = total === 0 ? 0 : Math.round((done / total) * slots)
   return `[ ${Array.from({ length: slots }, (_, i) => (i < filled ? '▪' : '▫')).join(' ')} ]`
+}
+
+/** "outubro", "outubro e novembro", "junho, julho e outubro"; com o ano quando ele não é o do mês em que a pessoa está. */
+export function monthsText(months: string[], current: string): string {
+  const names = months.map((m) => (m.slice(0, 4) === current.slice(0, 4) ? monthName(m) : monthLabel(m)))
+  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`
 }

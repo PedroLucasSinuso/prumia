@@ -92,13 +92,15 @@ Código em `internal/boleto/list.go` (parser) e `documents.go` (rota). **Uma con
 
 Por linha, `parseListLine`: tira a hora do fim (`14:32 ✓✓`); descarta a linha com `://`, `www.`, `@`, `token=`, hora no meio, data `dd/mm/aaaa`
 ou CPF/CNPJ; casa `listLineRe` (descrição preguiçosa, separador `:`/`=`/`-`/`–`, `R$` opcional, número, até 3 "palavras" de lixo curto no fim).
-O número passa por `parseMoney` (`150` = 15000, `150,5` = 15050, `R$150`, `1.234,56`; ponto decimal só com `R$`, erro comum de OCR).
+O número passa por `parseMoney` (`150` = 15000, `150,5` = 15050, `R$150`, `1.234,56`; ponto decimal com `R$`, erro comum de OCR, ou
+sem `R$` na forma simples `98.40`, `plainDotDecimalRe`). Quantidade (`2x`, `x2`, `2 x`) antes do valor ou na descrição sai do caminho
+(`qtyBeforeValueRe`, `qtyInDescRe`) e vai para o fim do nome, "Pão (2x)"; o valor **não** é multiplicado (`10x R$ 300` é a parcela).
 Sem `R$` a regra é mais dura: separador obrigatório, descrição de até 40 caracteres, sem número solto e que não termine em dígito, `/` ou `.`.
 
 | Tipo | Condição |
 |---|---|
-| **Forte** | tem `R$` (com ou sem centavos) **ou** vírgula com 2 casas (`154,72`) com separador |
-| **Fraco** | inteiro (ou vírgula com 1 casa) sem `R$`, com separador; teto R$ 100.000 |
+| **Forte** | tem `R$` (com ou sem centavos), **ou** vírgula com 2 casas (`154,72`) com separador, **ou** ponto com 2 casas (`98.40`) com separador e **nada depois do valor** |
+| **Fraco** | inteiro (ou vírgula com 1 casa) sem `R$`, com separador; ponto com 2 casas seguido de algo (`123.45 kWh`); teto R$ 100.000 |
 
 **Vencimento na linha** (`extractDue`, `list.go`): antes de ler o item, a linha perde a data e a palavra de ligação (`vence`, `venc.`, `vencimento`, `até`) e a data vira `Item.DueDate` (a tela já usava `dueDate` e a competência por item). Formas: `dd/mm/aaaa`, `dd/mm/aa`, `dd-mm-aaaa`, `dd/mm` e `dia dd`. Sem ano usa o de `ref` (a hora do extrator, `Extractor.Now`), ou o seguinte se a data ficou mais de 6 meses atrás; só o dia usa este mês, ou o próximo se já passou (dia 31 em mês curto cai no último dia). Data impossível não vale e a linha fica como está. Linha só com data/hora, CNPJ e CPF continuam ignorados; a hora no fim da linha é tirada antes. `analyze` e `findListItems` recebem `ref` (testes usam `testRef`).
 

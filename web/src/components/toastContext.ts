@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 
-export type ToastInput = { message: string; actionLabel?: string; onAction?: () => void }
+/** `actionLabel` é a ação principal (quase sempre "Desfazer"); `secondaryLabel` é uma segunda, opcional ("Ver"). */
+export type ToastInput = { message: string; actionLabel?: string; onAction?: () => void; secondaryLabel?: string; onSecondary?: () => void }
 
 export const ToastContext = createContext<((t: ToastInput) => void) | null>(null)
 

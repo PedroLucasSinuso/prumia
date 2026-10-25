@@ -92,9 +92,10 @@ describe('importar contas', () => {
         newPayee: { name: 'Gás', cnpj: '11222333000181', legalName: 'Gasco Distribuidora SA' },
       },
     ])
-    // volta ao mês da primeira conta, com aviso e "Desfazer"
-    expect(await screen.findByText('3 contas criadas.')).toBeInTheDocument()
+    // volta ao mês de onde a pessoa veio; o aviso diz onde as contas caíram, com "Desfazer" e "Ver" (junho está fora do mês)
+    expect(await screen.findByText('3 contas criadas em junho e outubro.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver' })).toBeInTheDocument()
   })
 
   it('espera e tenta de novo quando o servidor pede calma (429)', async () => {

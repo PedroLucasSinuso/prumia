@@ -8,7 +8,7 @@ type ToastState = ToastInput & { id: number }
 const LIFETIME_MS = 7000
 
 /**
- * Aviso temporário no rodapé, com ação opcional ("Desfazer"). Um por vez; some em 7 s.
+ * Aviso temporário no rodapé, com ação opcional ("Desfazer") e uma segunda, também opcional ("Ver"). Um por vez; some em 7 s.
  * Entra subindo com fade e sai descendo (150 ms, `motion-safe`). Com ação, uma barra fina no fundo esvazia mostrando
  * quanto tempo resta para desfazer (a barra é decorativa: o aviso continua sendo lido por `role="status"`).
  */
@@ -55,6 +55,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             }`}
           >
             <span>{toast.message}</span>
+            {toast.secondaryLabel && (
+              <button
+                className="h-11 shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2 transition-colors hover:bg-surface/15 active:bg-surface/25 md:h-9"
+                onClick={() => {
+                  toast.onSecondary?.()
+                  dismiss()
+                }}
+              >
+                {toast.secondaryLabel}
+              </button>
+            )}
             {toast.actionLabel && (
               <button
                 className="h-11 shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2 transition-colors hover:bg-surface/15 active:bg-surface/25 md:h-9"

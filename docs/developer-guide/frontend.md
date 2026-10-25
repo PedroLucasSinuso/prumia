@@ -167,7 +167,7 @@ No Resumo, cada `WalletCard` ganha o botão **Conferir saldo** (prop `onCheck`; 
 
 ## Importar em massa
 
-O miolo da importação é `components/ImportFlow.tsx` (arquivos, texto colado, revisão e lote). Ele aparece em dois lugares: a página `/importar` (`pages/ImportPage`, celular e link direto) e o `ImportModal` (`Panel variant="wide"`, aberto pelo botão **Importar** do Mês no computador, carregado sob demanda). Quem usa passa `onCreated(mês)`: a página navega para o mês, o modal fecha e troca o mês.
+O miolo da importação é `components/ImportFlow.tsx` (arquivos, texto colado, revisão e lote). Ele aparece em dois lugares: a página `/importar` (`pages/ImportPage`, celular e link direto) e o `ImportModal` (`Panel variant="wide"`, aberto pelo botão **Importar** do Mês no computador, carregado sob demanda). Quem usa passa `month` (o mês em que a pessoa está), `onCreated()` e `onView(mês)`: depois de criar, a pessoa **continua no mês em que estava** (a página volta para o `?mes=` de onde veio; o modal só fecha). O aviso diz em que mês(es) as contas caíram (`monthsText`, em `lib/importing.ts`: "3 contas criadas em junho e outubro.") com **Desfazer** e, se alguma caiu fora do mês atual, **Ver** (a segunda ação do toast, `secondaryLabel`/`onSecondary` em `toastContext.ts`), que chama `onView` com o primeiro desses meses.
 
 ## Importar boleto
 

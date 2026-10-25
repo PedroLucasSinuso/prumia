@@ -17,7 +17,7 @@ import { MAX_BOLETO_BYTES } from '../lib/boleto'
 import { buildTree } from '../lib/categories'
 import { formatDigitableLine } from '../lib/boleto'
 import { isValidISO, todayISO } from '../lib/dates'
-import { markRepeated, progressMarks, RETRY_DELAYS_MS, rowErrors, rowsFrom, toInput, type ImportRow } from '../lib/importing'
+import { markRepeated, monthsText, progressMarks, RETRY_DELAYS_MS, rowErrors, rowsFrom, toInput, type ImportRow } from '../lib/importing'
 import { formatCents } from '../lib/money'
 
 type FileStatus = 'waiting' | 'reading' | 'retrying' | 'password' | 'done' | 'error'
@@ -67,7 +67,16 @@ const examples = [
   { Icon: ListChecks, title: 'Lista, print de conversa ou texto', text: 'Uma conta por linha, "descrição: valor", com o vencimento se quiser: Gás: R$ 150,00 vence 10/11. Pode colar o texto.' },
 ]
 
-export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }) {
+type Props = {
+  /** Mês em que a pessoa está ("AAAA-MM-01"): depois de criar, ela continua nele. */
+  month: string
+  /** Chamado depois de criar (fecha o modal, volta para o mês). */
+  onCreated: () => void
+  /** "Ver" no aviso: abre um mês onde caíram contas importadas (só aparece quando elas caíram fora do mês atual). */
+  onView: (month: string) => void
+}
+
+export function ImportFlow({ month, onCreated, onView }: Props) {
   const { house } = useActiveHouse()
   const houseId = house?.id ?? ''
   const canWrite = house?.role !== 'viewer'
@@ -260,9 +269,12 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
     try {
       const res = await actions.createBatch.mutateAsync(included.map(toInput))
       const ids = res.items.map((i) => i.id)
-      const month = included[0].competence
+      // A pessoa continua no mês em que estava; o aviso diz em que mês(es) as contas caíram e "Ver" leva até lá.
+      const months = [...new Set(included.map((r) => `${r.competence}-01`))].sort()
+      const elsewhere = months.filter((m) => m !== month)
       toast({
-        message: ids.length === 1 ? '1 conta criada.' : `${ids.length} contas criadas.`,
+        message: `${ids.length === 1 ? '1 conta criada' : `${ids.length} contas criadas`} em ${monthsText(months, month)}.`,
+        ...(elsewhere.length > 0 ? { secondaryLabel: 'Ver', onSecondary: () => onView(elsewhere[0]) } : {}),
         actionLabel: 'Desfazer',
         onAction: () => {
           void Promise.all(ids.map((id) => actions.remove.mutateAsync({ id }))).catch(() =>
@@ -270,7 +282,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
           )
         },
       })
-      onCreated(month)
+      onCreated()
     } catch (err) {
       const api = err instanceof ApiError ? err : undefined
       if (api?.problem?.fields) {
