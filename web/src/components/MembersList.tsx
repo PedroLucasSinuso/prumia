@@ -19,7 +19,7 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
   const admins = members.filter((m) => m.role === 'admin').length
   return (
     <ul className="relative flex flex-col">
-      <span aria-hidden="true" className="absolute bottom-6 left-[11px] top-6 w-px bg-structure/40" />
+      <span aria-hidden="true" className="absolute bottom-6 left-[11px] top-6 w-px bg-line-strong" />
       {members.map((m) => {
         const self = m.userId === meId
         return (

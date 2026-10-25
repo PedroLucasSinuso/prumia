@@ -177,11 +177,11 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
         {reordering && !c.archived ? (
           <span className="flex shrink-0 gap-1">
             <button type="button" aria-label={`Subir ${c.name}`} disabled={index <= 0 || actions.reorder.isPending} onClick={() => move(c, -1)}
-              className="flex size-11 items-center justify-center rounded-md border border-line hover:bg-ink/5 disabled:opacity-30">
+              className="flex size-11 items-center justify-center rounded-md border border-line-strong hover:bg-ink/6 disabled:opacity-40">
               <ChevronUp aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} />
             </button>
             <button type="button" aria-label={`Descer ${c.name}`} disabled={index === siblings.length - 1 || actions.reorder.isPending} onClick={() => move(c, 1)}
-              className="flex size-11 items-center justify-center rounded-md border border-line hover:bg-ink/5 disabled:opacity-30">
+              className="flex size-11 items-center justify-center rounded-md border border-line-strong hover:bg-ink/6 disabled:opacity-40">
               <ChevronDown aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} />
             </button>
           </span>
@@ -239,7 +239,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
           )}
 
           {active.length > 0 && (
-            <div className="rounded-md border border-line">
+            <div className="rounded-md bg-raised">
               <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 text-meta text-muted">
                 <span>
                   {tops.length} {tops.length === 1 ? 'categoria' : 'categorias'}
@@ -307,7 +307,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
                         },
                       )
                     }
-                    className={`flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left text-sm ${current ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
+                    className={`flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left text-sm ${current ? 'border-accent bg-raised' : 'border-line hover:bg-raised'}`}
                   >
                     <span aria-hidden="true" className="font-mono text-meta text-muted">{current ? '[ ▪ ]' : '[ ▫ ]'}</span>
                     {target.name}

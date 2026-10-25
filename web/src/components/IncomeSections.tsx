@@ -1,9 +1,10 @@
-import { ChevronDown } from 'lucide-react'
 
 import type { Income, Member } from '../api/types'
 import { weekdayShort } from '../lib/dates'
 import { kindShort, stateMark, stateOf, stateText, stateTone, type IncomeSection, type SectionId } from '../lib/income'
 import { formatCents } from '../lib/money'
+import { SectionRule } from './ui/SectionRule'
+import { Tag } from './ui/Tag'
 
 type RowActions = {
   members: Member[]
@@ -30,28 +31,15 @@ type Props = RowActions & {
  */
 export function IncomeSections({ sections, collapsed, onToggle, ...rows }: Props) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {sections.map((s) => {
         const open = !collapsed.includes(s.id)
         const panelId = `secao-receitas-${s.id}`
         return (
-          <section key={s.id} aria-label={s.title} className="rounded-md border border-line">
-            <h3>
-              <button
-                aria-expanded={open}
-                aria-controls={panelId}
-                onClick={() => onToggle(s.id)}
-                className="flex h-10 w-full items-center gap-2 rounded-md px-3 text-left transition-colors hover:bg-ink/4"
-              >
-                <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
-                <span className="text-meta font-semibold uppercase tracking-wider">
-                  {s.title} <span className="font-mono font-medium text-muted">({s.items.length})</span>
-                </span>
-                <span className="ml-auto font-mono text-ui font-semibold tabular-nums text-muted">{formatCents(s.totalCents)}</span>
-              </button>
-            </h3>
+          <section key={s.id} aria-label={s.title}>
+            <SectionRule title={s.title} count={s.items.length} total={formatCents(s.totalCents)} onToggle={() => onToggle(s.id)} expanded={open} controls={panelId} />
             {open && (
-              <ul id={panelId} className="border-t border-line pb-1">
+              <ul id={panelId} className="pb-1">
                 {s.items.map((i) => (
                   <IncomeRow key={i.id} income={i} {...rows} />
                 ))}
@@ -68,8 +56,8 @@ export function IncomeSections({ sections, collapsed, onToggle, ...rows }: Props
 export function IncomeBadges({ income }: { income: Income }) {
   return (
     <>
-      {income.repeats && <span className="shrink-0 rounded-xs border border-line-strong px-1 font-mono text-caption text-muted">repete</span>}
-      {income.amountMode === 'per_unit' && <span className="shrink-0 rounded-xs border border-line-strong px-1 font-mono text-caption text-muted">por unidade</span>}
+      {income.repeats && <Tag>repete</Tag>}
+      {income.amountMode === 'per_unit' && <Tag>por unidade</Tag>}
     </>
   )
 }
@@ -79,7 +67,7 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
   const person = members.find((m) => m.userId === i.userId)?.name ?? 'Pessoa'
   const open = i.id === selectedId
   return (
-    <li className={`group relative grid min-h-12 grid-cols-[64px_minmax(0,1fr)_96px] items-center border-l-2 pl-1.5 transition-colors ${open ? 'border-structure bg-structure/7' : 'border-transparent hover:bg-ink/4'}`}>
+    <li className={`group relative grid min-h-12 grid-cols-[64px_minmax(0,1fr)_96px] items-center border-l-2 pl-1.5 transition-colors ${open ? 'border-accent bg-raised' : 'border-transparent hover:bg-raised'}`}>
       <span className="flex items-baseline justify-end gap-1 pr-3 leading-tight">
         <span className="font-mono text-body font-semibold tabular-nums">{i.expectedDate.slice(8, 10)}</span>
         <span className="text-caption text-muted">{weekdayShort(i.expectedDate)}</span>

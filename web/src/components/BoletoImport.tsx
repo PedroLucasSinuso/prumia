@@ -137,7 +137,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
       )}
 
       {step.kind === 'password' && (
-        <div className="flex flex-col gap-2 rounded-md border border-line-strong p-3">
+        <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
           <Field
             ref={passwordInput}
             label="Senha do PDF"

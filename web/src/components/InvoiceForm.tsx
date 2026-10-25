@@ -332,7 +332,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         <p className="text-meta font-medium text-alert-text">A linha digitável deste boleto é inválida. Importe de novo ou preencha manualmente.</p>
       )}
       {boleto && matchedPayee && (
-        <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
+        <p className="rounded-md bg-sunken px-3 py-2 text-sm" aria-live="polite">
           Favorecido: <strong>{matchedPayee.name}</strong> <span className="text-meta text-muted">(reconhecido pelo CNPJ do boleto)</span>
         </p>
       )}
@@ -379,7 +379,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
             options={[{ value: 'each', label: 'de cada parcela' }, { value: 'total', label: 'total da compra' }]}
           />
           {amount > 0 && Number(count) >= 2 && (
-            <p className="rounded-md border border-line px-3 py-2 text-sm" aria-live="polite">
+            <p className="rounded-md bg-sunken px-3 py-2 text-sm" aria-live="polite">
               {amountIsTotal
                 ? `${count}x de ${formatCents(Math.floor(amount / Number(count)))} (total ${formatCents(amount)}; sobra de centavos na última)`
                 : `${count}x de ${formatCents(amount)} = ${formatCents(amount * Number(count))}`}
@@ -389,7 +389,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         </div>
       )}
       {!editing && kind === 'recurring' && (
-        <p className="rounded-md border border-line px-3 py-2 text-sm">
+        <p className="rounded-md bg-sunken px-3 py-2 text-sm">
           {amount > 0 ? `${formatCents(amount)} ` : ''}todo dia {dueDate.slice(8, 10)}, a partir deste mês. O app cria os próximos 12 meses e continua criando sozinho.
         </p>
       )}
@@ -470,7 +470,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
           error={fields.categoryId}
         />
         {newCat && (
-          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md border border-line p-3">
+          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md bg-sunken p-3">
             <div className="flex flex-wrap gap-2">
               <input
                 aria-label="Nome da nova categoria"
@@ -504,7 +504,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
         )}
       </fieldset>
 
-      <details className="rounded-md border border-line px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
+      <details className="rounded-md bg-sunken px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
         <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold transition-colors hover:text-heading">
           Mais opções <span className="text-meta font-normal text-muted">favorecido · competência · observação</span>
         </summary>

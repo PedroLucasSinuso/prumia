@@ -12,7 +12,7 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
   const { house, houses, selectHouse } = useActiveHouse()
   const [open, setOpen] = useState(false)
   const inverse = tone === 'inverse'
-  const caption = inverse ? 'text-on-structure/75' : 'text-muted'
+  const caption = inverse ? 'text-on-nav' : 'text-muted'
 
   // Barra lateral: uma linha compacta "papel · casa". Topo do celular: rótulo "casa" e o nome em destaque.
   const text = inverse ? (
@@ -36,7 +36,7 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
         aria-haspopup="dialog"
         aria-label={`Casa ativa: ${house?.name}. Trocar de casa`}
         onClick={() => setOpen(true)}
-        className={`flex min-h-11 min-w-0 items-center gap-2 rounded-md px-1 ${inverse ? 'hover:bg-on-structure/8' : 'hover:bg-ink/5'}`}
+        className={`flex min-h-11 min-w-0 items-center gap-2 rounded-md px-1 ${inverse ? 'hover:bg-on-nav/8' : 'hover:bg-ink/5'}`}
       >
         {text}
         <span aria-hidden="true" className={`font-mono text-meta ${caption}`}>▾</span>
@@ -57,7 +57,7 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
                       if (!active) selectHouse(h.id)
                       setOpen(false)
                     }}
-                    className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left ${active ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left ${active ? 'border-accent bg-raised' : 'border-line hover:bg-raised'}`}
                   >
                     <span aria-hidden="true" className={`font-mono text-meta ${active ? 'text-heading' : 'text-muted'}`}>
                       {active ? '[ ▪ ]' : '[ ▫ ]'}

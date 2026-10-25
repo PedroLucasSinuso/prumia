@@ -53,7 +53,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
     <div className="flex flex-col gap-5">
       <div>
         <p className={label}>líquido</p>
-        <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading">{formatCents(income.netAmountCents)}</p>
+        <p className="font-mono text-figure font-semibold tracking-tight tabular-nums text-heading">{formatCents(income.netAmountCents)}</p>
         <p className="mt-1 flex items-center gap-2 text-sm font-medium">
           <span aria-hidden="true" className={`font-mono ${stateTone[state]}`}>{stateMark[state]}</span>
           {stateText(income, today)}

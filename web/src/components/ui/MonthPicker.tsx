@@ -140,7 +140,7 @@ function Months({ value, min, max, clearable, onPick, onEscape }: { value: strin
         <button type="button" aria-label="Ano anterior" disabled={Boolean(min && ym(year - 1, 11) < min)} onClick={() => setFocus(clamp(shift(focus, -12)))} className={arrow}>
           <ChevronLeft aria-hidden="true" size={18} strokeWidth={1.5} />
         </button>
-        <div aria-live="polite" className="font-display text-lg font-bold tabular-nums text-heading font-stretch-condensed">
+        <div aria-live="polite" className="font-display text-title font-bold tabular-nums text-heading font-stretch-condensed">
           {year}
         </div>
         <button type="button" aria-label="Próximo ano" disabled={Boolean(max && ym(year + 1, 0) > max)} onClick={() => setFocus(clamp(shift(focus, 12)))} className={arrow}>

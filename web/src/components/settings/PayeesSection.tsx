@@ -99,9 +99,9 @@ export function PayeesSection({ houseId, categories, canWrite, desktop }: { hous
 
           {active.length > 0 &&
             (desktop ? (
-              <div className="overflow-hidden rounded-md border border-line">{table(active, 'Favorecidos ativos')}</div>
+              <div className="overflow-hidden rounded-md bg-raised">{table(active, 'Favorecidos ativos')}</div>
             ) : (
-              <ul aria-label="Favorecidos ativos" className="flex flex-col rounded-md border border-line">{active.map(item)}</ul>
+              <ul aria-label="Favorecidos ativos" className="flex flex-col rounded-md bg-raised">{active.map(item)}</ul>
             ))}
 
           {archived.length > 0 && (

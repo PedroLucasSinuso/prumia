@@ -42,7 +42,7 @@ type FileEntry = {
 export type ImportState = { extraction: DocumentExtraction; fileName: string }
 
 const label = 'text-meta font-medium uppercase tracking-wider text-muted'
-const input = 'h-11 w-full rounded-md border border-line bg-surface px-2 text-sm text-ink md:h-9'
+const input = 'h-11 w-full rounded-md border border-line-strong bg-raised px-2 text-sm text-ink transition-colors hover:border-ink/50 focus-visible:border-accent md:h-9'
 const link = 'text-sm font-semibold text-accent underline underline-offset-4'
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
 
@@ -291,7 +291,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
   return (
     <div className="flex flex-col gap-5 md:gap-6">
         {!canWrite && (
-          <p className="rounded-md border border-line px-3 py-2 text-sm">Seu papel nesta casa é somente leitura: não dá para criar contas.</p>
+          <p className="rounded-md bg-sunken px-3 py-2 text-sm">Seu papel nesta casa é somente leitura: não dá para criar contas.</p>
         )}
 
         {canWrite && (
@@ -345,7 +345,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         )}
 
         {canWrite && pasting && (
-          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md border border-line bg-surface p-4">
+          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md bg-sunken p-4">
             <label htmlFor="texto-contas" className={label}>Texto das contas</label>
             <textarea
               id="texto-contas"
@@ -355,7 +355,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               rows={6}
               autoFocus
               placeholder={'Gás: R$ 150,00\nMercado: 310,25\nInternet: 119,90'}
-              className="w-full rounded-md border border-line bg-surface p-2 font-mono text-sm text-ink"
+              className="w-full rounded-md border border-line-strong bg-raised p-2 font-mono text-sm text-ink placeholder:text-muted focus-visible:border-accent"
             />
             <p className="text-meta text-muted">
               Uma conta por linha: <strong>descrição: valor</strong>, e se quiser o vencimento: <strong>Luz: R$ 210,35 vence 10/11</strong> (também vale 10/11/2026, 10/11/26 ou "dia 10"; sem ano, o app escolhe o próximo). Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
@@ -370,7 +370,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         {canWrite && files.length === 0 && (
           <ul aria-label="O que dá para importar" className="grid gap-3 text-sm md:grid-cols-3">
             {examples.map(({ Icon, title, text }) => (
-              <li key={title} className="flex gap-3 rounded-md border border-line p-3">
+              <li key={title} className="flex gap-3 rounded-md bg-sunken p-3">
                 <Icon aria-hidden="true" size={20} strokeWidth={1.5} className="mt-0.5 shrink-0 text-accent" />
                 <span>
                   <span className="block font-semibold">{title}</span>
@@ -395,7 +395,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         {files.length > 0 && (
           <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-8">
             <aside aria-label="Arquivos lidos" className="flex flex-col gap-3 lg:sticky lg:top-0">
-              <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+              <ul className="flex flex-col divide-y divide-line rounded-md bg-raised">
                 {files.map((f) => (
                   <FileItem
                     key={f.id}
@@ -413,7 +413,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
 
             <section aria-label="Contas encontradas" className="flex flex-col gap-3">
               {rows.length === 0 && !busy && (
-                <p className="rounded-md border border-line p-4 text-sm text-muted">Nenhuma conta encontrada ainda.</p>
+                <p className="rounded-md bg-sunken p-4 text-sm text-muted">Nenhuma conta encontrada ainda.</p>
               )}
               <ul className="flex flex-col gap-3">
                 {rows.map((r, i) => (
@@ -522,7 +522,7 @@ function Preview({ file }: { file: FileEntry }) {
     return <img src={file.url} alt={`Pré-visualização de ${file.name}`} className="hidden max-h-[70vh] w-full rounded-md border border-line object-contain lg:block" />
   }
   return (
-    <div className="hidden items-center gap-3 rounded-md border border-line p-4 text-sm lg:flex">
+    <div className="hidden items-center gap-3 rounded-md bg-sunken p-4 text-sm lg:flex">
       <span aria-hidden="true" className="font-mono text-accent">{file.isPdf ? '[ PDF ]' : '[ ▫ ]'}</span>
       <span className="min-w-0 truncate">{file.name}</span>
     </div>

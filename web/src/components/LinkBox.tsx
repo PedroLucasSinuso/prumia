@@ -15,7 +15,7 @@ export function LinkBox({ label, link, note }: { label: string; link: string; no
         aria-label={label}
         value={link}
         onFocus={(e) => e.currentTarget.select()}
-        className="mt-1 h-11 w-full rounded-md border border-line-strong bg-surface px-3 font-mono text-meta"
+        className="mt-1 h-11 w-full rounded-md border border-line-strong bg-raised px-3 font-mono text-meta text-ink"
       />
       {note && <p className="mt-1 text-meta text-muted">{note}</p>}
       <Button

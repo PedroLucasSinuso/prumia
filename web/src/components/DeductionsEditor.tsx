@@ -29,7 +29,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled, salar
       <legend className="mb-1 text-meta font-medium uppercase tracking-wider text-muted">Descontos</legend>
       {value.length === 0 && <p className="text-meta text-muted">{salary ? 'Sem descontos. Adicione INSS, IRRF, plano de saúde, coparticipação...' : 'Sem descontos. INSS e IRRF só valem para salário.'}</p>}
       {value.map((d, i) => (
-        <div key={i} className="flex flex-col gap-1.5 rounded-md border border-line p-2">
+        <div key={i} className="flex flex-col gap-1.5 rounded-md bg-sunken p-2">
           <div className="flex items-start gap-2">
             <select
               aria-label={`Tipo do desconto ${i + 1}`}
@@ -50,7 +50,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled, salar
               type="button"
               aria-label={`Remover desconto ${i + 1}`}
               onClick={() => onChange(value.filter((_, k) => k !== i))}
-              className="flex size-11 shrink-0 items-center justify-center rounded-md text-lg hover:bg-ink/5"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md text-title hover:bg-ink/6"
             >
               ×
             </button>

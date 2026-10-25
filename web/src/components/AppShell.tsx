@@ -29,10 +29,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (computador) */}
-      <aside className="hidden shrink-0 flex-col bg-structure px-2 py-4 text-on-structure md:sticky md:top-0 md:flex md:h-dvh md:w-16 lg:w-60 lg:px-3">
+      <aside className="hidden shrink-0 flex-col bg-nav px-2 py-4 text-on-nav md:sticky md:top-0 md:flex md:h-dvh md:w-16 lg:w-60 lg:px-3">
         <div className="flex items-center gap-2.5 px-1.5 pb-6 lg:px-2">
           <Logo size={32} tone="inverse" />
-          <span className="hidden font-display text-2xl font-semibold tracking-tight lg:inline">prumia</span>
+          <span className="hidden font-display text-title font-semibold tracking-tight lg:inline">prumia</span>
         </div>
         <nav aria-label="Principal" className="flex flex-col gap-0.5">
           {NAV_ITEMS.map((item) => {
@@ -45,13 +45,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-current={active ? 'page' : undefined}
                 title={item.label}
                 className={`group flex h-10 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-150 lg:px-3 ${
-                  active ? 'bg-on-structure/12 font-semibold' : 'text-on-structure/80 hover:bg-on-structure/8 hover:text-on-structure'
+                  active ? 'bg-on-nav/15 font-semibold' : 'font-medium hover:bg-on-nav/10'
                 }`}
               >
                 <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0" />
                 <span className="sr-only lg:not-sr-only lg:flex-1">{item.label}</span>
                 {active && (
-                  <span aria-hidden="true" className="hidden font-mono text-caption text-on-structure/70 lg:inline">
+                  <span aria-hidden="true" className="hidden font-mono text-caption text-on-nav lg:inline">
                     [ ▪ ]
                   </span>
                 )}
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )
           })}
         </nav>
-        <div className="mt-auto flex flex-col gap-2 border-t border-on-structure/20 pt-3">
+        <div className="mt-auto flex flex-col gap-2 border-t border-on-nav/20 pt-3">
           <div className="hidden px-1 lg:block">
             <HouseSwitcher tone="inverse" />
           </div>
@@ -97,7 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 active ? 'font-semibold text-heading' : 'font-medium text-muted'
               }`}
             >
-              {active && <span aria-hidden="true" className="absolute inset-x-[24%] -top-px h-[3px] bg-structure" />}
+              {active && <span aria-hidden="true" className="absolute inset-x-[24%] -top-px h-[3px] bg-accent" />}
               <Icon aria-hidden="true" size={22} strokeWidth={active ? 2 : ICON.strokeWidth} />
               {item.label}
             </NavLink>

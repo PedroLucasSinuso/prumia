@@ -14,6 +14,7 @@ import { DataSection } from '../components/settings/DataSection'
 import { HouseSection } from '../components/settings/HouseSection'
 import { PayeesSection } from '../components/settings/PayeesSection'
 import { WalletsSection } from '../components/settings/WalletsSection'
+import { SectionTitle } from '../components/ui/SectionTitle'
 import { ICON } from '../lib/navigation'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
@@ -63,7 +64,7 @@ function SettingsView() {
             key={s.id}
             to={`/ajustes/${s.id}`}
             className={({ isActive }) =>
-              `flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-150 ${isActive ? 'bg-structure/10 font-semibold text-heading' : 'text-muted hover:bg-ink/6'}`
+              `flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-150 ${isActive ? 'bg-raised font-semibold text-heading' : 'text-ink hover:bg-raised'}`
             }
           >
             <Icon aria-hidden="true" size={18} strokeWidth={ICON.strokeWidth} className="shrink-0" />
@@ -88,7 +89,7 @@ function SettingsView() {
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-36 pt-4 md:max-w-none md:px-10 md:pb-10 md:pt-8">
         {desktop || !current ? (
           <header>
-            <h1 className="font-display text-[32px] font-bold leading-none text-heading font-stretch-condensed">Ajustes</h1>
+            <SectionTitle as="h1" size="page" className="leading-none">Ajustes</SectionTitle>
             <p className="mt-1 text-sm text-muted">Molde o prumia ao jeito da sua casa.</p>
           </header>
         ) : (

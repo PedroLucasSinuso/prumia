@@ -61,7 +61,7 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
         <div className="min-w-0">
           {wallets.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
           {wallets.isError && <LoadError what="as carteiras" onRetry={() => void wallets.refetch()} />}
-          {active.length > 0 && <ul aria-label="Carteiras ativas" className="flex flex-col rounded-md border border-line">{active.map(item)}</ul>}
+          {active.length > 0 && <ul aria-label="Carteiras ativas" className="flex flex-col rounded-md bg-raised">{active.map(item)}</ul>}
           {!isAdmin && wallets.isSuccess && <p className="mt-3 text-meta text-muted">Só o Responsável da casa cria e altera carteiras.</p>}
           {archived.length > 0 && (
             <details className="mt-4 rounded-md bg-sunken px-3">

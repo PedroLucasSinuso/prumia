@@ -223,7 +223,7 @@ function Calendar({ value, min, max, onPick, onEscape }: { value: string; min?: 
         <button type="button" aria-label="Mês anterior" disabled={!prevOk} onClick={() => shiftView(-1)} className={arrow}>
           <ChevronLeft aria-hidden="true" size={18} strokeWidth={1.5} />
         </button>
-        <div aria-live="polite" className="font-display text-lg font-bold text-heading font-stretch-condensed">
+        <div aria-live="polite" className="font-display text-title font-bold text-heading font-stretch-condensed">
           {cap(monthLabel(view))}
         </div>
         <button type="button" aria-label="Próximo mês" disabled={!nextOk} onClick={() => shiftView(1)} className={arrow}>

@@ -83,7 +83,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
     <div className="flex flex-col gap-5">
       <div>
         <p className={label}>valor</p>
-        <p className={`font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading ${paid ? 'line-through decoration-2' : ''}`}>
+        <p className={`font-mono text-figure font-semibold tracking-tight tabular-nums text-heading ${paid ? 'line-through decoration-2' : ''}`}>
           {formatCents(invoice.amountCents)}
         </p>
         <p className="mt-1 flex items-center gap-2 text-sm font-medium">
@@ -102,7 +102,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
       </dl>
 
       {paid && invoice.paid && (
-        <section aria-label="Pagamento" className="rounded-md border border-line px-3 py-3 text-sm">
+        <section aria-label="Pagamento" className="rounded-md bg-sunken px-3 py-3 text-sm">
           <p className={`${label} mb-1.5`}>pagamento</p>
           <p>
             <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · carteira {walletName(wallets, invoice.paid.walletId)}
@@ -114,7 +114,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
       )}
 
       {invoice.boleto && (
-        <section aria-label="Boleto" className="rounded-md border border-line px-3 py-3">
+        <section aria-label="Boleto" className="rounded-md bg-sunken px-3 py-3">
           <BoletoBox boleto={invoice.boleto} />
         </section>
       )}

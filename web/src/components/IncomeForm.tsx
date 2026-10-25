@@ -355,7 +355,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
           <DatePicker label="Data" name="expectedDate" required value={exact} onChange={(d) => { setExact(d); clear('expectedDate') }} error={fields.expectedDate} />
         )}
         {currentRule && dates && (
-          <div className="rounded-md border border-line px-3 py-2 text-ui text-muted" aria-live="polite">
+          <div className="rounded-md bg-sunken px-3 py-2 text-ui text-muted" aria-live="polite">
             <span className="text-meta font-medium uppercase tracking-wider text-muted">Próximas datas</span>
             <span className="mt-0.5 block font-mono tabular-nums">
               {dates.upcoming.map((d) => `${dayMonth(d)} (${weekdayShort(d)})`).join(' · ')}
@@ -404,7 +404,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       <div className={group}>
         <DeductionsEditor salary={kind === 'salary'} value={deductions} onChange={(d) => { setDeductions(d); clear('deductions'); setTaxNote(undefined) }} errors={fields} disabled={dis} />
         {kind === 'salary' && canWrite && (
-          <div className="flex flex-col gap-2 rounded-md border border-line p-3">
+          <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-28">
                 <Field label="Dependentes" type="number" inputMode="numeric" min={0} max={20} value={dependents} onChange={(e) => setDependents(e.target.value)} />
@@ -420,9 +420,9 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
         )}
       </div>
 
-      <div className={`rounded-md border-2 px-3 py-2.5 ${net < 0 ? 'border-alert' : 'border-structure'}`}>
+      <div className={`rounded-md bg-raised px-3 py-2.5 ${net < 0 ? 'border-l-2 border-alert' : ''}`}>
         <p className="text-meta font-medium uppercase tracking-wider text-muted">líquido{sumDeductions(deductions) > 0 ? ' (valor − descontos)' : ''}</p>
-        <p className="font-mono text-figure font-semibold leading-tight tabular-nums text-heading">{formatCents(net)}</p>
+        <p className={`font-mono text-figure font-semibold tabular-nums ${net < 0 ? 'text-alert-text' : 'text-heading'}`}>{formatCents(net)}</p>
         {net < 0 && <p className="text-meta font-medium text-alert-text">Os descontos passam do valor.</p>}
       </div>
 

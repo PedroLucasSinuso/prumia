@@ -8,7 +8,7 @@ import { ICON } from '../lib/navigation'
 import { roleLabel } from '../lib/roles'
 
 type Props = {
-  /** `inverse` = sobre a barra lateral (`structure`). */
+  /** `inverse` = sobre a barra lateral (`nav`). */
   tone?: 'light' | 'inverse'
   /** Onde o menu abre: abaixo do avatar (topo do celular) ou acima (rodapé da barra lateral). */
   placement?: 'below' | 'above'
@@ -72,7 +72,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
     <span
       aria-hidden="true"
       className={`flex size-9 shrink-0 items-center justify-center rounded-md border text-sm font-semibold ${
-        inverse ? 'border-on-structure/40 text-on-structure' : 'border-line-strong text-heading'
+        inverse ? 'border-on-nav/40 text-on-nav' : 'border-line-strong text-heading'
       }`}
     >
       {name.slice(0, 1).toUpperCase()}
@@ -94,7 +94,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
         }}
         className={
           inverse
-            ? 'flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left hover:bg-on-structure/8'
+            ? 'flex h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 text-left hover:bg-on-nav/8'
             : 'flex size-11 items-center justify-center rounded-md hover:bg-ink/5'
         }
       >
@@ -102,7 +102,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
         {inverse && (
           <>
             <span className="hidden min-w-0 flex-1 truncate text-sm font-semibold lg:block">{name}</span>
-            <ChevronsUpDown aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} className="hidden shrink-0 text-on-structure/70 lg:block" />
+            <ChevronsUpDown aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} className="hidden shrink-0 text-on-nav lg:block" />
           </>
         )}
       </button>
@@ -114,7 +114,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
           role="menu"
           aria-label={`Conta de ${name}`}
           onKeyDown={onMenuKey}
-          className={`absolute z-40 w-64 rounded-md border border-line bg-surface p-1.5 text-ink ${
+          className={`absolute z-40 w-64 rounded-md border border-line bg-raised p-1.5 text-ink ${
             placement === 'above' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-1'
           }`}
         >
