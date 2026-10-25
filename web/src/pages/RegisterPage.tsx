@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { AuthLayout } from '../components/AuthLayout'
-import { Button } from '../components/Button'
+import { Button } from '../components/ui/Button'
 import { Field } from '../components/Field'
 import { FormError } from '../components/FormError'
 
@@ -94,7 +94,7 @@ export default function RegisterPage() {
           {busy ? 'Criando…' : 'Criar conta'}
         </Button>
       </form>
-      <p className="text-sm text-ink/80">
+      <p className="text-sm text-muted">
         Já tem conta?{' '}
         <Link to="/entrar" className="font-semibold text-accent underline underline-offset-2">
           Entrar

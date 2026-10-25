@@ -7,7 +7,7 @@ import { daysBetween, fullDate, monthLabel, weekdayShort } from '../lib/dates'
 import { formatCents } from '../lib/money'
 import { walletName } from '../lib/wallets'
 import { BoletoBox } from './BoletoBox'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Tooltip } from './ui/Tooltip'
 
 type Props = {
@@ -31,7 +31,7 @@ type Props = {
   onDelete: (invoice: Invoice, scope: SeriesScope) => void
 }
 
-const label = 'text-[11px] font-medium uppercase tracking-wider text-ink/75'
+const label = 'text-caption font-medium uppercase tracking-wider text-muted'
 
 function statusLine(inv: Invoice, today: string): { mark: string; tone: string; text: string } {
   if (inv.status === 'paid') return { mark: '[ ▪ ]', tone: 'text-accent', text: inv.paid ? `paga em ${fullDate(inv.paid.paidAt)}` : 'paga' }
@@ -95,7 +95,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
       <dl className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] gap-x-4 gap-y-2.5 border-t border-line pt-4 text-sm">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
-            <dt className="text-ink/75">{k}</dt>
+            <dt className="text-muted">{k}</dt>
             <dd className="whitespace-pre-line break-words font-medium">{v}</dd>
           </div>
         ))}
@@ -107,7 +107,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
           <p>
             <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> Paga em {fullDate(invoice.paid.paidAt)} · carteira {walletName(wallets, invoice.paid.walletId)}
           </p>
-          <p className="mt-0.5 text-ink/80">
+          <p className="mt-0.5 text-muted">
             Valor pago: <span className="font-mono font-semibold tabular-nums text-ink">{formatCents(invoice.paid.amountCents)}</span>
           </p>
         </section>
@@ -134,7 +134,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
               <select
                 value={payWallet}
                 onChange={(e) => setChosen(e.target.value)}
-                className="h-11 min-w-0 flex-1 rounded-md border border-ink/25 bg-raised/40 px-2 text-sm md:h-9"
+                className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-raised/40 px-2 text-sm md:h-9"
               >
                 {wallets.map((w) => (
                   <option key={w.id} value={w.id}>{w.name}</option>
@@ -143,11 +143,11 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
             </label>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 md:h-9">
+            <Button type="button" variant="secondary" onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 md:h-9">
               <Pencil size={16} strokeWidth={1.5} aria-hidden="true" /> Editar
             </Button>
             {paid && (
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => onUnpay(invoice)} className="flex flex-1 items-center justify-center gap-2 md:h-9">
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => onUnpay(invoice)} className="flex flex-1 items-center justify-center gap-2 md:h-9">
                 <Undo2 size={16} strokeWidth={1.5} aria-hidden="true" /> Desfazer pagamento
               </Button>
             )}

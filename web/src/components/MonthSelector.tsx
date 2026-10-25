@@ -23,14 +23,14 @@ export function MonthSelector({ month, onChange }: Props) {
   const arrow = `flex items-center justify-center rounded-md text-heading transition-colors hover:bg-ink/8 active:bg-ink/12 ${desktop ? "size-10" : "size-11"}`
   const prev = (
     <Tooltip label="Mês anterior" shortcut="←">
-      <button aria-label="Mês anterior" className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, -1))}>
+      <button aria-label="Mês anterior" className={`${arrow} ${desktop ? 'border border-line-strong' : ''}`} onClick={() => onChange(addMonths(month, -1))}>
         {chevron('M15 5 L8 12 L15 19')}
       </button>
     </Tooltip>
   )
   const next = (
     <Tooltip label="Próximo mês" shortcut="→">
-      <button aria-label="Próximo mês" className={`${arrow} ${desktop ? 'border border-ink/30' : ''}`} onClick={() => onChange(addMonths(month, 1))}>
+      <button aria-label="Próximo mês" className={`${arrow} ${desktop ? 'border border-line-strong' : ''}`} onClick={() => onChange(addMonths(month, 1))}>
         {chevron('M9 5 L16 12 L9 19')}
       </button>
     </Tooltip>

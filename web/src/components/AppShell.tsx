@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0" />
                 <span className="sr-only lg:not-sr-only lg:flex-1">{item.label}</span>
                 {active && (
-                  <span aria-hidden="true" className="hidden font-mono text-[11px] text-on-structure/70 lg:inline">
+                  <span aria-hidden="true" className="hidden font-mono text-caption text-on-structure/70 lg:inline">
                     [ ▪ ]
                   </span>
                 )}
@@ -93,8 +93,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               key={item.to}
               to={{ pathname: item.to, search }}
               aria-current={active ? 'page' : undefined}
-              className={`relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors duration-150 ${
-                active ? 'font-semibold text-heading' : 'font-medium text-ink/75'
+              className={`relative flex h-16 flex-col items-center justify-center gap-1 text-caption tracking-wide transition-colors duration-150 ${
+                active ? 'font-semibold text-heading' : 'font-medium text-muted'
               }`}
             >
               {active && <span aria-hidden="true" className="absolute inset-x-[24%] -top-px h-[3px] bg-structure" />}

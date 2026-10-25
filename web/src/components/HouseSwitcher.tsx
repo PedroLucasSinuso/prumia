@@ -12,17 +12,17 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
   const { house, houses, selectHouse } = useActiveHouse()
   const [open, setOpen] = useState(false)
   const inverse = tone === 'inverse'
-  const caption = inverse ? 'text-on-structure/75' : 'text-ink/70'
+  const caption = inverse ? 'text-on-structure/75' : 'text-muted'
 
   // Barra lateral: uma linha compacta "papel · casa". Topo do celular: rótulo "casa" e o nome em destaque.
   const text = inverse ? (
     <span className="min-w-0 text-left leading-tight">
-      <span className={`block text-[11px] uppercase tracking-wider ${caption}`}>casa</span>
+      <span className={`block text-caption uppercase tracking-wider ${caption}`}>casa</span>
       <span className="block truncate text-sm font-semibold">{house ? `${roleLabel[house.role]} · ${house.name}` : 'sem casa'}</span>
     </span>
   ) : (
     <span className="min-w-0 text-left leading-tight">
-      <span className={`block text-[11px] uppercase tracking-wider ${caption}`}>casa</span>
+      <span className={`block text-caption uppercase tracking-wider ${caption}`}>casa</span>
       <span className="block truncate text-base font-semibold">{house?.name ?? 'Sem casa'}</span>
     </span>
   )
@@ -59,12 +59,12 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
                     }}
                     className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left ${active ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
                   >
-                    <span aria-hidden="true" className={`font-mono text-xs ${active ? 'text-heading' : 'text-ink/60'}`}>
+                    <span aria-hidden="true" className={`font-mono text-xs ${active ? 'text-heading' : 'text-muted'}`}>
                       {active ? '[ ▪ ]' : '[ ▫ ]'}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-base font-semibold text-ink">{h.name}</span>
-                      <span className="block text-sm text-ink/75">{roleLabel[h.role]}</span>
+                      <span className="block text-sm text-muted">{roleLabel[h.role]}</span>
                     </span>
                   </button>
                 </li>

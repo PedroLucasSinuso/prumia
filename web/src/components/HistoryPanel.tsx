@@ -43,7 +43,7 @@ export function HistoryPanel({ houseId, month, categoryId, categories, hideTitle
               type="button"
               aria-pressed={span === n}
               onClick={() => setSpan(n)}
-              className={`h-9 px-3 transition-colors duration-150 md:h-8 ${span === n ? 'bg-structure text-on-structure' : 'text-ink/80 hover:bg-ink/5'}`}
+              className={`h-9 px-3 transition-colors duration-150 md:h-8 ${span === n ? 'bg-structure text-on-structure' : 'text-muted hover:bg-ink/5'}`}
             >
               {n} meses
             </button>
@@ -51,7 +51,7 @@ export function HistoryPanel({ houseId, month, categoryId, categories, hideTitle
         </div>
       </div>
 
-      {history.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
+      {history.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
       {history.isError && (
         <p role="alert" className="text-sm">
           <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar o histórico.{' '}
@@ -65,18 +65,18 @@ export function HistoryPanel({ houseId, month, categoryId, categories, hideTitle
         <>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-xs text-ink/75">média por mês</dt>
+              <dt className="text-meta text-muted">média por mês</dt>
               <dd className="font-mono text-base font-semibold tabular-nums">{formatCents(avg)}</dd>
             </div>
             {change && (
               <div>
-                <dt className="text-xs text-ink/75">
+                <dt className="text-meta text-muted">
                   {monthShort(month)} vs. {monthShort(addMonths(month, -1))}
                 </dt>
                 <dd className="font-mono text-base font-semibold tabular-nums">
                   {change.diffCents === 0 ? 'igual' : `${change.diffCents > 0 ? '+' : '−'}${formatCents(Math.abs(change.diffCents))}`}
                   {change.pct !== null && change.diffCents !== 0 && (
-                    <span className="ml-1 text-xs font-normal text-ink/70">
+                    <span className="ml-1 text-xs font-normal text-muted">
                       ({change.pct > 0 ? '+' : '−'}
                       {Math.abs(change.pct)}%)
                     </span>

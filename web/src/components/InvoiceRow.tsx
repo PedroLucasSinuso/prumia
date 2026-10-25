@@ -35,7 +35,7 @@ function rowStatus(invoice: Invoice, today: string | undefined, walletName: stri
     return { mark: '[ ✖ ]', tone: 'text-alert', text: late > 0 ? `atrasada ${late} ${late === 1 ? 'dia' : 'dias'}` : 'atrasada' }
   }
   const d = today ? daysBetween(today, invoice.dueDate) : -1
-  return { mark: '[ ▫ ]', tone: 'text-ink/80', text: d === 0 ? 'vence hoje' : d === 1 ? 'vence amanhã' : d > 1 ? `em ${d} dias` : 'a vencer' }
+  return { mark: '[ ▫ ]', tone: 'text-muted', text: d === 0 ? 'vence hoje' : d === 1 ? 'vence amanhã' : d > 1 ? `em ${d} dias` : 'a vencer' }
 }
 
 /**
@@ -52,7 +52,7 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
   const nameOf = useWalletName()
   const status = rowStatus(invoice, today, nameOf(invoice.paid?.walletId))
   // O risco é sempre `line-through`, mas transparente enquanto a conta não está paga: ao pagar, a cor aparece em 150 ms.
-  const strike = `line-through transition-colors ${paid ? 'text-ink/60 decoration-ink/60' : 'decoration-transparent'}`
+  const strike = `line-through transition-colors ${paid ? 'text-muted decoration-ink/60' : 'decoration-transparent'}`
   const flashing = useFlash(invoice.id)
   const pulsing = usePaidPulse(invoice.id)
 
@@ -75,8 +75,8 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         )}
       </span>
       <span className="flex items-baseline justify-end gap-1 pr-2 leading-tight">
-        <span className="font-mono text-[15px] font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
-        <span className="text-[11px] text-ink/75">{weekdayShort(invoice.dueDate)}</span>
+        <span className="font-mono text-body font-semibold tabular-nums">{invoice.dueDate.slice(8, 10)}</span>
+        <span className="text-caption text-muted">{weekdayShort(invoice.dueDate)}</span>
       </span>
       <Tooltip label={paid ? 'Desfazer pagamento' : 'Pagar'} shortcut={paid ? undefined : 'P'}>
         <button
@@ -99,15 +99,15 @@ export function InvoiceRow({ invoice, category, today, open, checked, selecting,
         <span className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className={`truncate text-sm font-medium ${strike}`}>{invoice.description}</span>
-            {tag && <span className="shrink-0 rounded-xs border border-ink/40 px-1 font-mono text-[10px] text-ink/80">{tag}</span>}
+            {tag && <span className="shrink-0 rounded-xs border border-line-strong px-1 font-mono text-caption text-muted">{tag}</span>}
           </span>
-          <span className="block truncate text-xs text-ink/75 @3xl:hidden">
+          <span className="block truncate text-xs text-muted @3xl:hidden">
             {category && <span>{category}</span>}
             <span className="@lg:hidden">{category ? ' · ' : ''}{status.text}</span>
           </span>
         </span>
-        <span className="hidden truncate text-[13px] text-ink/80 @3xl:block">{category ?? ''}</span>
-        <span className="hidden items-center gap-1.5 text-[13px] @lg:flex">
+        <span className="hidden truncate text-ui text-muted @3xl:block">{category ?? ''}</span>
+        <span className="hidden items-center gap-1.5 text-ui @lg:flex">
           <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-xs ${status.tone}`}>{status.mark}</span>
           <span className="truncate">{status.text}</span>
         </span>

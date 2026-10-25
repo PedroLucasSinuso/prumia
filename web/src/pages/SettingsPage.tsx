@@ -63,7 +63,7 @@ function SettingsView() {
             key={s.id}
             to={`/ajustes/${s.id}`}
             className={({ isActive }) =>
-              `flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-150 ${isActive ? 'bg-structure/10 font-semibold text-heading' : 'text-ink/80 hover:bg-ink/6'}`
+              `flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-150 ${isActive ? 'bg-structure/10 font-semibold text-heading' : 'text-muted hover:bg-ink/6'}`
             }
           >
             <Icon aria-hidden="true" size={18} strokeWidth={ICON.strokeWidth} className="shrink-0" />
@@ -74,9 +74,9 @@ function SettingsView() {
             <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-heading" />
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-base font-medium">{s.label}</span>
-              <span className="truncate text-xs text-ink/75">{s.hint}</span>
+              <span className="truncate text-xs text-muted">{s.hint}</span>
             </span>
-            <ChevronRight aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-ink/60" />
+            <ChevronRight aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-muted" />
           </NavLink>
         )
       })}
@@ -89,7 +89,7 @@ function SettingsView() {
         {desktop || !current ? (
           <header>
             <h1 className="font-display text-[32px] font-bold leading-none text-heading font-stretch-condensed">Ajustes</h1>
-            <p className="mt-1 text-sm text-ink/80">Molde o prumia ao jeito da sua casa.</p>
+            <p className="mt-1 text-sm text-muted">Molde o prumia ao jeito da sua casa.</p>
           </header>
         ) : (
           <button type="button" onClick={() => navigate('/ajustes')} className="-ml-1 flex h-11 w-fit items-center gap-1 rounded-md pr-3 text-sm font-semibold text-accent">
@@ -123,7 +123,7 @@ function SectionBody({ id, me, house, desktop }: { id: SectionId; me: Me; house?
       return <AboutSection />
   }
   // As demais seções dependem de uma casa ativa.
-  if (!house) return <p className="text-sm text-ink/75">Você ainda não está em nenhuma casa.</p>
+  if (!house) return <p className="text-sm text-muted">Você ainda não está em nenhuma casa.</p>
   const canWrite = house.role !== 'viewer'
   switch (id) {
     case 'casa':

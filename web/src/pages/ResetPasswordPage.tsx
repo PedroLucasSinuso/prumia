@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { AuthLayout } from '../components/AuthLayout'
-import { Button } from '../components/Button'
+import { Button } from '../components/ui/Button'
 import { Field } from '../components/Field'
 import { FormError } from '../components/FormError'
 
@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <AuthLayout title="Nova senha">
-        <p className="text-sm text-ink/85">Este link está incompleto. Peça a quem administra a casa para gerar um novo.</p>
+        <p className="text-sm text-muted">Este link está incompleto. Peça a quem administra a casa para gerar um novo.</p>
         <Link to="/entrar" className="text-sm font-semibold text-accent underline underline-offset-2">Ir para o login</Link>
       </AuthLayout>
     )

@@ -6,7 +6,7 @@ import { useActiveHouse } from '../auth/useActiveHouse'
 import type { Category, CategoryInput, CategoryPatch } from '../api/types'
 import { activeWallets } from '../lib/wallets'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { Combobox } from './ui/Combobox'
@@ -105,7 +105,7 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
       />
 
       {hasChildren ? (
-        <p className="text-sm text-ink/80">Esta categoria tem subcategorias, então é uma categoria principal.</p>
+        <p className="text-sm text-muted">Esta categoria tem subcategorias, então é uma categoria principal.</p>
       ) : (
         parents.length > 0 && (
           <Combobox
@@ -127,31 +127,31 @@ export function CategoryForm({ category, all, defaultParentId, canWrite, onCreat
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
         <Segmented label="carteira padrão" value={wallet ?? 'none'} onChange={(v) => setWallet(v === 'none' ? null : v)} options={walletOptions} />
-        <p className="text-xs text-ink/70">Ao pagar uma conta desta categoria, o app já sugere esta carteira.</p>
+        <p className="text-meta text-muted">Ao pagar uma conta desta categoria, o app já sugere esta carteira.</p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-1" disabled={!canWrite}>
         <Segmented label="gasto essencial?" value={essential ? 'yes' : 'no'} onChange={(v) => setEssential(v === 'yes')} options={[{ value: 'yes', label: 'sim' }, { value: 'no', label: 'não' }]} />
-        <p className="text-xs text-ink/70">Essencial é o que não dá para cortar: moradia, mercado, saúde.</p>
+        <p className="text-meta text-muted">Essencial é o que não dá para cortar: moradia, mercado, saúde.</p>
       </fieldset>
 
       {category && canWrite && (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {archived ? (
             <>
-              <p className="text-sm text-ink/80">Arquivada: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(category.id, { archived: false }), `${category.name} restaurada.`)}>
+              <p className="text-sm text-muted">Arquivada: não aparece ao lançar contas novas. Restaure para voltar a usar.</p>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(category.id, { archived: false }), `${category.name} restaurada.`)}>
                 Restaurar categoria
               </Button>
             </>
           ) : (
             <>
-              <p className="text-sm text-ink/80">
+              <p className="text-sm text-muted">
                 Arquivar tira a categoria da lista ao lançar contas novas. As contas que já usam ela continuam com o mesmo nome. Por isso uma
                 categoria em uso nunca é apagada, só arquivada.
                 {hasChildren && ' As subcategorias são arquivadas junto e voltam quando você restaurar esta.'}
               </p>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(category.id, { archived: true }), `${category.name} arquivada.`)}>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(category.id, { archived: true }), `${category.name} arquivada.`)}>
                 Arquivar categoria
               </Button>
             </>

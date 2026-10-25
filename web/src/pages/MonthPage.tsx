@@ -6,7 +6,7 @@ import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvo
 import type { Category, Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
-import { Button } from '../components/Button'
+import { Button } from '../components/ui/Button'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { InvoiceDetail } from '../components/InvoiceDetail'
 import { InvoiceForm } from '../components/InvoiceForm'
@@ -371,7 +371,7 @@ export default function MonthPage() {
           key={key}
           aria-pressed={status === key}
           onClick={() => setStatus(key)}
-          className={`h-10 whitespace-nowrap rounded-md border px-3 text-[13px] transition-colors md:h-9 ${status === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium hover:bg-ink/5'}`}
+          className={`h-10 whitespace-nowrap rounded-md border px-3 text-ui transition-colors md:h-9 ${status === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-line-strong font-medium hover:bg-ink/5'}`}
         >
           {text} <span className="font-mono opacity-85">{counts[key]}</span>
         </button>
@@ -384,7 +384,7 @@ export default function MonthPage() {
       aria-label="Filtrar por categoria"
       value={categoryFilter}
       onChange={(e) => setCategoryFilter(e.target.value)}
-      className="h-10 min-w-0 rounded-md border border-ink/30 bg-surface px-2.5 text-[13px] text-ink md:h-9"
+      className="h-10 min-w-0 rounded-md border border-line-strong bg-surface px-2.5 text-ui text-ink md:h-9"
     >
       <option value="">Todas as categorias</option>
       {tree.map((n) => [
@@ -395,7 +395,7 @@ export default function MonthPage() {
   )
   const searchBox = (
     <label className="relative flex min-w-0 flex-1 items-center md:max-w-72">
-      <Search size={16} strokeWidth={1.5} aria-hidden="true" className="pointer-events-none absolute left-2.5 text-ink/60" />
+      <Search size={16} strokeWidth={1.5} aria-hidden="true" className="pointer-events-none absolute left-2.5 text-muted" />
       <input
         ref={searchRef}
         type="search"
@@ -403,7 +403,7 @@ export default function MonthPage() {
         placeholder={desktop ? 'Buscar  ( / )' : 'Buscar'}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="h-10 w-full min-w-0 rounded-md border border-ink/30 bg-surface pl-8 pr-2.5 text-base text-ink placeholder:text-ink/55 md:h-9 md:text-[13px]"
+        className="h-10 w-full min-w-0 rounded-md border border-line-strong bg-surface pl-8 pr-2.5 text-base text-ink placeholder:text-muted md:h-9 md:text-ui"
       />
     </label>
   )
@@ -414,28 +414,28 @@ export default function MonthPage() {
   }
 
   const emptyState = empty ? (
-    <div className="mt-2 flex flex-col items-start gap-3 rounded-md border border-dashed border-ink/25 p-5">
-      <p className="text-sm text-ink/80">Nenhuma conta neste mês.</p>
+    <div className="mt-2 flex flex-col items-start gap-3 rounded-md border border-dashed border-line-strong p-5">
+      <p className="text-sm text-muted">Nenhuma conta neste mês.</p>
       {canWrite && (
         <div className="flex flex-wrap gap-2">
           <Button onClick={openNew} className="flex items-center gap-2">
             <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Lançar a primeira conta
           </Button>
-          <Link to={{ pathname: '/importar', search }} className="flex h-11 items-center gap-2 rounded-md border border-ink/25 px-4 text-sm font-semibold transition-colors hover:bg-ink/5">
+          <Link to={{ pathname: '/importar', search }} className="flex h-11 items-center gap-2 rounded-md border border-line-strong px-4 text-sm font-semibold transition-colors hover:bg-ink/5">
             <FileUp size={18} strokeWidth={1.5} aria-hidden="true" /> Importar
           </Link>
         </div>
       )}
     </div>
   ) : invoices.isSuccess && visible.length === 0 ? (
-    <p className="mt-2 rounded-md border border-dashed border-ink/25 p-4 text-sm text-ink/80">
+    <p className="mt-2 rounded-md border border-dashed border-line-strong p-4 text-sm text-muted">
       Nenhuma conta com esse filtro.{' '}
       <button className="font-semibold text-accent underline underline-offset-2" onClick={clearFilters}>Limpar filtros</button>
     </p>
   ) : null
 
   const seriesLink = (
-    <Link to={{ pathname: '/parcelas', search }} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent underline underline-offset-2">
+    <Link to={{ pathname: '/parcelas', search }} className="inline-flex items-center gap-1.5 text-ui font-medium text-accent underline underline-offset-2">
       <Layers size={15} strokeWidth={1.5} aria-hidden="true" /> Parcelas e fixas
     </Link>
   )
@@ -452,7 +452,7 @@ export default function MonthPage() {
                 <button
                   type="button"
                   onClick={() => setImporting(true)}
-                  className="ml-2 flex h-10 items-center gap-2 rounded-md border border-ink/30 px-3.5 text-sm font-semibold transition-colors hover:bg-ink/5"
+                  className="ml-2 flex h-10 items-center gap-2 rounded-md border border-line-strong px-3.5 text-sm font-semibold transition-colors hover:bg-ink/5"
                 >
                   <FileUp size={18} strokeWidth={1.5} aria-hidden="true" /> Importar
                 </button>
@@ -460,7 +460,7 @@ export default function MonthPage() {
               {canWrite && (
                 <Button onClick={openNew} title="Nova conta (N)" className="flex h-10 items-center gap-2">
                   <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova conta
-                  <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-[10px] leading-4">N</kbd>
+                  <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-caption leading-4">N</kbd>
                 </Button>
               )}
               <ShortcutsHelp open={helpOpen} onToggle={() => setHelpOpen((o) => !o)} />
@@ -476,7 +476,7 @@ export default function MonthPage() {
                 <span>a pagar</span>
                 <span className="font-mono">{Math.round(fraction * 100)}% pago</span>
               </div>
-              <p className="font-mono text-[34px] font-semibold leading-tight tracking-tight tabular-nums">{formatCents(toPay)}</p>
+              <p className="font-mono text-figure font-semibold leading-tight tracking-tight tabular-nums">{formatCents(toPay)}</p>
               <PaidGauge fraction={fraction} tone="dark" className="mt-2" />
             </div>
             <Highlight title="atrasado" alert={overdue.length > 0} value={formatCents(overdueTotal)}>
@@ -492,13 +492,13 @@ export default function MonthPage() {
           </section>
         ) : (
           <section aria-label="Resumo do mês" className="px-1">
-            <div className={`flex justify-between ${label} text-ink/80`}>
+            <div className={`flex justify-between ${label} text-muted`}>
               <span>a pagar neste mês</span>
               <span className="font-mono">{Math.round(fraction * 100)}% pago</span>
             </div>
             <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading">{formatCents(toPay)}</p>
             <PaidGauge fraction={fraction} className="mt-2" />
-            <p className="mt-2 flex justify-between gap-3 text-xs text-ink/80">
+            <p className="mt-2 flex justify-between gap-3 text-xs text-muted">
               <span>
                 <span className="font-mono font-semibold text-ink">{formatCents(paidTotal)}</span> pago · {counts.paid} de {counts.all}
               </span>
@@ -517,25 +517,25 @@ export default function MonthPage() {
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
           <section aria-label="Régua do mês" className="rounded-md border border-line px-2.5 pb-1.5 pt-2.5 md:px-4 md:pb-3 md:pt-4">
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className={`${label} text-ink/80`}>régua do mês</h2>
-              <p className="hidden items-center gap-4 text-xs text-ink/85 md:flex">
+              <h2 className={`${label} text-muted`}>régua do mês</h2>
+              <p className="hidden items-center gap-4 text-xs text-muted md:flex">
                 <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-structure" />paga</span>
                 <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-accent" />a vencer</span>
                 <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-alert" />atrasada</span>
               </p>
-              <p className="text-[11px] text-ink/75 md:hidden">cada barra é um dia</p>
+              <p className="text-caption text-muted md:hidden">cada barra é um dia</p>
             </div>
             <MonthRuler invoices={list} month={month} todayDay={isCurrent ? Number(today.slice(8, 10)) : undefined} barArea={desktop ? 168 : 52} />
           </section>
           {desktop && byCategory.length > 0 && (
             <section aria-label="Por categoria" className="rounded-md border border-line p-4">
-              <h2 className={`${label} mb-3 text-ink/80`}>por categoria</h2>
+              <h2 className={`${label} mb-3 text-muted`}>por categoria</h2>
               <CategoryBreakdown rows={byCategory} gap="gap-2.5" />
             </section>
           )}
         </div>
 
-        {invoices.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
+        {invoices.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
         {invoices.isError && (
           <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
             <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar as contas.{' '}
@@ -549,7 +549,7 @@ export default function MonthPage() {
           <section aria-label="Contas do mês" className="@container min-w-0 flex-1">
             {desktop ? (
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="mr-auto font-display text-[26px] font-bold text-heading font-stretch-condensed">Contas do mês</h2>
+                <h2 className="mr-auto font-display text-section font-bold text-heading font-stretch-condensed">Contas do mês</h2>
                 {statusGroup}
                 {categorySelect}
                 {searchBox}
@@ -562,7 +562,7 @@ export default function MonthPage() {
                     aria-label="Buscar e filtrar por categoria"
                     aria-expanded={filtersOpen || filtering}
                     onClick={() => setFiltersOpen((o) => !o)}
-                    className={`relative flex size-10 shrink-0 items-center justify-center rounded-md border transition-colors ${filtering ? 'border-structure bg-structure text-on-structure' : 'border-ink/30'}`}
+                    className={`relative flex size-10 shrink-0 items-center justify-center rounded-md border transition-colors ${filtering ? 'border-structure bg-structure text-on-structure' : 'border-line-strong'}`}
                   >
                     <Search size={18} strokeWidth={1.5} aria-hidden="true" />
                   </button>
@@ -641,7 +641,7 @@ export default function MonthPage() {
                   onOpen={(inv) => setPanel({ id: inv.id, mode: 'view' })}
                   actions={
                     canWrite && (
-                      <p className="text-xs text-ink/75">
+                      <p className="text-meta text-muted">
                         Selecione uma conta para ver os detalhes. Nova conta: tecla <kbd className="font-mono">N</kbd>; todos os atalhos: <kbd className="font-mono">?</kbd>
                       </p>
                     )
@@ -714,9 +714,9 @@ export default function MonthPage() {
 function Highlight({ title, value, valueClass = '', alert = false, children }: { title: string; value: string; valueClass?: string; alert?: boolean; children: ReactNode }) {
   return (
     <div className={`rounded-md border px-4 py-3.5 ${alert ? 'border-alert/70' : 'border-line'}`}>
-      <p className={`${label} text-ink/80`}>{title}</p>
-      <p className={`font-mono text-[34px] font-semibold leading-tight tracking-tight tabular-nums ${valueClass}`}>{value}</p>
-      <p className="mt-1.5 flex items-center gap-2 text-[13px] text-ink/80">{children}</p>
+      <p className={`${label} text-muted`}>{title}</p>
+      <p className={`font-mono text-figure font-semibold leading-tight tracking-tight tabular-nums ${valueClass}`}>{value}</p>
+      <p className="mt-1.5 flex items-center gap-2 text-ui text-muted">{children}</p>
     </div>
   )
 }
@@ -724,7 +724,7 @@ function Highlight({ title, value, valueClass = '', alert = false, children }: {
 function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <div className="mb-3 flex items-start justify-between gap-2">
-      <h2 className="min-w-0 break-words font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{title}</h2>
+      <h2 className="min-w-0 break-words font-display text-title font-bold leading-tight text-heading font-stretch-condensed">{title}</h2>
       <button aria-label="Fechar detalhes" title="Fechar (Esc)" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
         <X size={20} strokeWidth={1.5} aria-hidden="true" />
       </button>
@@ -742,11 +742,11 @@ function Overview({ list, today, isCurrent, onOpen, actions }: { list: Invoice[]
   return (
     <section aria-label="Próximos vencimentos" className="flex flex-col gap-4 rounded-md border border-line p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className={`${label} text-ink/80`}>{isCurrent ? 'próximos 7 dias' : 'a pagar neste mês'}</h2>
-        {items.length > 0 && <span className="font-mono text-[13px] font-semibold tabular-nums">{formatCents(sum)}</span>}
+        <h2 className={`${label} text-muted`}>{isCurrent ? 'próximos 7 dias' : 'a pagar neste mês'}</h2>
+        {items.length > 0 && <span className="font-mono text-ui font-semibold tabular-nums">{formatCents(sum)}</span>}
       </div>
       {items.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-ink/80">
+        <p className="flex items-center gap-2 text-sm text-muted">
           <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span>
           {isCurrent ? 'Nada vence nos próximos 7 dias.' : 'Nada a pagar neste mês.'}
         </p>
@@ -755,10 +755,10 @@ function Overview({ list, today, isCurrent, onOpen, actions }: { list: Invoice[]
           {items.map((i) => (
             <li key={i.id}>
               <button onClick={() => onOpen(i)} className="flex min-h-9 w-full items-center gap-3 rounded-sm px-2 text-left text-sm transition-colors hover:bg-ink/5">
-                <span aria-hidden="true" className={`font-mono text-xs ${i.status === 'overdue' ? 'text-alert' : 'text-ink/70'}`}>{i.status === 'overdue' ? '[ ✖ ]' : '[ ▫ ]'}</span>
-                <span className="w-11 font-mono text-xs tabular-nums text-ink/80">{dayMonth(i.dueDate)}</span>
+                <span aria-hidden="true" className={`font-mono text-xs ${i.status === 'overdue' ? 'text-alert' : 'text-muted'}`}>{i.status === 'overdue' ? '[ ✖ ]' : '[ ▫ ]'}</span>
+                <span className="w-11 font-mono text-xs tabular-nums text-muted">{dayMonth(i.dueDate)}</span>
                 <span className="min-w-0 flex-1 truncate">{i.description}</span>
-                <span className="font-mono text-[13px] font-semibold tabular-nums">{formatCents(i.amountCents)}</span>
+                <span className="font-mono text-ui font-semibold tabular-nums">{formatCents(i.amountCents)}</span>
               </button>
             </li>
           ))}

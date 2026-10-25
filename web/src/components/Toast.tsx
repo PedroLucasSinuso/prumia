@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <span>{toast.message}</span>
             {toast.actionLabel && (
               <button
-                className="h-9 shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2 transition-colors hover:bg-surface/15 active:bg-surface/25"
+                className="h-11 shrink-0 rounded-sm px-2 font-semibold underline underline-offset-2 transition-colors hover:bg-surface/15 active:bg-surface/25 md:h-9"
                 onClick={() => {
                   toast.onAction?.()
                   dismiss()

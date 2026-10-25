@@ -5,7 +5,7 @@ import type { TransferInput, TransferResult, Wallet } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { monthOf, todayISO } from '../lib/dates'
 import { activeWallets, defaultWallet } from '../lib/wallets'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
@@ -80,7 +80,7 @@ export function TransferForm({ wallets, month, onCreate, onDone }: Props) {
       <Combobox label="Para" options={options} value={to} placeholder="escolha a carteira" onChange={(v) => { setTo(v); clear('toWalletId') }} error={fields.toWalletId} />
       <DatePicker label="Data" value={date} onChange={(v) => { setDate(v); clear('transferDate') }} error={fields.transferDate} />
       <Field label="Observação (opcional)" name="notes" autoComplete="off" maxLength={500} value={notes} onChange={(e) => { setNotes(e.target.value); clear('notes') }} error={fields.notes} />
-      <p className="text-xs text-ink/70">Transferir não é receita nem conta: só move o saldo de uma carteira para a outra.</p>
+      <p className="text-meta text-muted">Transferir não é receita nem conta: só move o saldo de uma carteira para a outra.</p>
       <PanelFooter>
         <Button type="submit" loading={busy} loadingLabel="Transferindo…">
           Transferir

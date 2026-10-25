@@ -6,7 +6,7 @@ import { fullDate, monthLabel, weekdayShort } from '../lib/dates'
 import { kindLabel, ruleText, stateMark, stateOf, stateText, stateTone, sumDeductions, unitText, untilText } from '../lib/income'
 import { formatCents } from '../lib/money'
 import { useWalletName } from '../lib/useWalletName'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { DeleteRepetitionConfirm } from './DeleteRepetitionConfirm'
 
 type Props = {
@@ -26,7 +26,7 @@ type Props = {
   onDeleteRepetition?: (income: Income) => void
 }
 
-const label = 'text-[11px] font-medium uppercase tracking-wider text-ink/75'
+const label = 'text-caption font-medium uppercase tracking-wider text-muted'
 
 /**
  * Detalhe da receita em modo LEITURA: o líquido, a situação (derivada: o recebimento é automático), quando cai em
@@ -58,24 +58,24 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
           <span aria-hidden="true" className={`font-mono ${stateTone[state]}`}>{stateMark[state]}</span>
           {stateText(income, today)}
         </p>
-        {state === 'held' && <p className="mt-1 text-xs text-ink/75">Fora do saldo até você dizer que caiu.</p>}
+        {state === 'held' && <p className="mt-1 text-xs text-muted">Fora do saldo até você dizer que caiu.</p>}
       </div>
 
       <dl className="grid grid-cols-[minmax(0,6.5rem)_minmax(0,1fr)] gap-x-4 gap-y-2.5 border-t border-line pt-4 text-sm">
         <div className="contents">
-          <dt className="text-ink/75">Valor bruto</dt>
+          <dt className="text-muted">Valor bruto</dt>
           <dd className="font-mono font-medium tabular-nums">
             {formatCents(income.grossAmountCents)}
-            {unit && <span className="block font-sans text-xs font-normal text-ink/75">{unit}</span>}
+            {unit && <span className="block font-sans text-xs font-normal text-muted">{unit}</span>}
           </dd>
         </div>
         <div className="contents">
-          <dt className="text-ink/75">Descontos</dt>
+          <dt className="text-muted">Descontos</dt>
           <dd className="font-medium">
             {discounts > 0 ? (
               <>
                 <span className="font-mono tabular-nums">− {formatCents(discounts)}</span>
-                <ul className="mt-0.5 text-xs font-normal text-ink/75">
+                <ul className="mt-0.5 text-xs font-normal text-muted">
                   {income.deductions.map((d, i) => (
                     <li key={i} className="flex justify-between gap-3">
                       <span>{d.name}</span>
@@ -91,7 +91,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
         </div>
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
-            <dt className="text-ink/75">{k}</dt>
+            <dt className="text-muted">{k}</dt>
             <dd className="whitespace-pre-line break-words font-medium">{v}</dd>
           </div>
         ))}
@@ -101,7 +101,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           <div className="flex flex-wrap gap-2">
             {state === 'received' ? (
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => onHold(income)} className="flex flex-1 items-center justify-center gap-2 md:h-9">
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => onHold(income)} className="flex flex-1 items-center justify-center gap-2 md:h-9">
                 <X size={16} strokeWidth={1.5} aria-hidden="true" /> Não caiu
               </Button>
             ) : (
@@ -109,7 +109,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
                 <Check size={16} strokeWidth={1.5} aria-hidden="true" /> Caiu
               </Button>
             )}
-            <Button type="button" variant="ghost" onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 md:h-9">
+            <Button type="button" variant="secondary" onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 md:h-9">
               <Pencil size={16} strokeWidth={1.5} aria-hidden="true" /> Editar
             </Button>
           </div>

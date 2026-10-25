@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { Button } from '../Button'
+import { Button } from './Button'
 import { Sheet } from '../Sheet'
 import { SlideOver } from '../SlideOver'
 import { PanelFooter } from './Panel'

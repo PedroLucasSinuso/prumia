@@ -97,10 +97,10 @@ export function Tooltip({ label, shortcut, children, delay = 400, className = 'i
             id={id}
             role="tooltip"
             style={style}
-            className="pointer-events-none z-[70] flex items-center gap-2 whitespace-nowrap rounded-sm bg-ink px-2 py-1 text-xs font-medium text-surface motion-safe:animate-fade-in"
+            className="pointer-events-none z-[70] flex items-center gap-2 whitespace-nowrap rounded-sm bg-ink px-2 py-1 text-meta font-medium text-surface motion-safe:animate-fade-in"
           >
             {label}
-            {shortcut && <kbd className="rounded-xs border border-surface/40 px-1 font-mono text-[11px] leading-4">{shortcut}</kbd>}
+            {shortcut && <kbd className="rounded-xs border border-surface/40 px-1 font-mono text-caption leading-4">{shortcut}</kbd>}
           </div>,
           document.body,
         )}

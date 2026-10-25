@@ -26,8 +26,8 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled, salar
 
   return (
     <fieldset className="flex flex-col gap-2" disabled={disabled}>
-      <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-ink/80">Descontos</legend>
-      {value.length === 0 && <p className="text-xs text-ink/75">{salary ? 'Sem descontos. Adicione INSS, IRRF, plano de saúde, coparticipação...' : 'Sem descontos. INSS e IRRF só valem para salário.'}</p>}
+      <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-muted">Descontos</legend>
+      {value.length === 0 && <p className="text-meta text-muted">{salary ? 'Sem descontos. Adicione INSS, IRRF, plano de saúde, coparticipação...' : 'Sem descontos. INSS e IRRF só valem para salário.'}</p>}
       {value.map((d, i) => (
         <div key={i} className="flex flex-col gap-1.5 rounded-md border border-line p-2">
           <div className="flex items-start gap-2">
@@ -35,7 +35,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled, salar
               aria-label={`Tipo do desconto ${i + 1}`}
               value={d.kind}
               onChange={(e) => setKind(i, e.target.value as DeductionKind)}
-              className="h-11 min-w-0 flex-1 rounded-md border border-ink/25 bg-raised/40 px-2 text-sm"
+              className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-raised/40 px-2 text-sm"
             >
               {kinds.map((k) => (
                 <option key={k} value={k}>
@@ -60,7 +60,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled, salar
           )}
         </div>
       ))}
-      {errors.deductions && <p className="text-xs text-alert">{errors.deductions}</p>}
+      {errors.deductions && <p className="text-meta font-medium text-alert-text">{errors.deductions}</p>}
       <div className="flex items-center justify-between gap-2">
         <button type="button" onClick={add} className="h-11 text-sm font-semibold text-accent underline underline-offset-4">
           + Adicionar desconto

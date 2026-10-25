@@ -12,7 +12,7 @@ const SEGMENTS = 10
 export function PaidGauge({ fraction, tone = 'light', className = '' }: Props) {
   const filled = Math.round(Math.min(1, Math.max(0, fraction)) * SEGMENTS)
   const on = tone === 'dark' ? 'bg-on-structure border-on-structure' : 'bg-structure border-structure'
-  const off = tone === 'dark' ? 'border-on-structure/55' : 'border-ink/35'
+  const off = tone === 'dark' ? 'border-on-structure/55' : 'border-line-strong'
   return (
     <div role="img" aria-label={`${Math.round(fraction * 100)}% do valor do mês já foi pago`} className={`flex gap-1 ${className}`}>
       {Array.from({ length: SEGMENTS }, (_, i) => (

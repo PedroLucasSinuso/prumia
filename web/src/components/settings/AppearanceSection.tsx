@@ -25,7 +25,7 @@ function Mini({ theme }: { theme: Exclude<ThemeId, 'sistema'> }) {
           <span className="h-1 flex-1 rounded-sm bg-ink/40" />
         </div>
         <div className="flex items-center gap-1">
-          <span className="font-mono text-[8px] leading-none text-ink/70">[ ▫ ]</span>
+          <span className="font-mono text-[8px] leading-none text-muted">[ ▫ ]</span>
           <span className="h-1 flex-1 rounded-sm bg-ink/25" />
           <span className="size-1.5 rounded-sm bg-alert" />
         </div>
@@ -83,9 +83,9 @@ export function AppearanceSection() {
         <div className="flex items-start gap-3 p-3">
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">{t.label}</span>
-            <span className="block text-xs text-ink/75">{t.description}</span>
+            <span className="block text-xs text-muted">{t.description}</span>
           </span>
-          <span aria-hidden="true" className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${on ? 'border-structure bg-structure text-on-structure' : 'border-ink/30'}`}>
+          <span aria-hidden="true" className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${on ? 'border-structure bg-structure text-on-structure' : 'border-line-strong'}`}>
             {on && <Check size={14} strokeWidth={2.5} />}
           </span>
         </div>
@@ -99,7 +99,7 @@ export function AppearanceSection() {
       <div role="radiogroup" aria-label="Tema" className="flex max-w-6xl flex-col gap-6">
         {groups.map((g) => (
           <section key={g.title} aria-label={g.title}>
-            <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-ink/70">{g.title}</h3>
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">{g.title}</h3>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{g.items.map(card)}</div>
           </section>
         ))}

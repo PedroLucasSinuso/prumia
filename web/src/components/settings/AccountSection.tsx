@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import type { Me } from '../../api/types'
 import { useAuth } from '../../auth/context'
 import { networkErrorMessage, problemFields, problemMessage } from '../../auth/errors'
-import { Button } from '../Button'
+import { Button } from '../ui/Button'
 import { Field } from '../Field'
 import { useToast } from '../toastContext'
 import { Card, SectionHeader } from './ui'
@@ -137,8 +137,8 @@ function SessionsCard() {
 
   return (
     <Card label="Aparelhos" title="Aparelhos conectados">
-      <p className="mt-2 text-sm text-ink/80">Perdeu o celular ou entrou num computador emprestado? Saia de todos os outros aparelhos; este continua conectado.</p>
-      <Button variant="ghost" className="mt-3" onClick={() => void endOthers()} disabled={busy}>
+      <p className="mt-2 text-sm text-muted">Perdeu o celular ou entrou num computador emprestado? Saia de todos os outros aparelhos; este continua conectado.</p>
+      <Button variant="secondary" className="mt-3" onClick={() => void endOthers()} disabled={busy}>
         Sair dos outros aparelhos
       </Button>
     </Card>

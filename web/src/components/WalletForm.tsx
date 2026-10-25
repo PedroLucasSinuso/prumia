@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '../api/errors'
 import type { Member, Wallet, WalletInput, WalletPatch } from '../api/types'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { Field } from './Field'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
@@ -107,10 +107,10 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
         onChange={(v) => { setOwnerId(v); clear('ownerUserId') }}
         error={fields.ownerUserId}
       />
-      <p className="-mt-2 text-xs text-ink/70">É só uma etiqueta: quem pode lançar usa qualquer carteira.</p>
+      <p className="-mt-2 text-xs text-muted">É só uma etiqueta: quem pode lançar usa qualquer carteira.</p>
       <fieldset disabled={!canWrite} className="flex flex-col gap-1">
         <MoneyInput label="Saldo inicial" value={opening} onChange={setOpening} error={fields.openingBalanceCents} />
-        <p className="text-xs text-ink/70">Quanto já havia nesta carteira antes do primeiro lançamento. Opcional.</p>
+        <p className="text-meta text-muted">Quanto já havia nesta carteira antes do primeiro lançamento. Opcional.</p>
         <MonthPicker
           label="Saldo inicial vale a partir de" clearable placeholder="sem data: conta desde o início" value={startMonth}
           onChange={(m) => { setStartMonth(m); clear('openingBalanceMonth') }} error={fields.openingBalanceMonth}
@@ -125,21 +125,21 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
       {wallet && canWrite && (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {wallet.isDefault ? (
-            <p className="text-sm text-ink/80">Esta é a carteira padrão: recebe os lançamentos quando você não escolhe outra. Para trocar, abra a carteira que será a padrão.</p>
+            <p className="text-sm text-muted">Esta é a carteira padrão: recebe os lançamentos quando você não escolhe outra. Para trocar, abra a carteira que será a padrão.</p>
           ) : wallet.archived ? (
             <>
-              <p className="text-sm text-ink/80">Arquivada: não aparece ao lançar. O histórico e o saldo continuam. Restaure para voltar a usar.</p>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onRestore(wallet.id), `${wallet.name} restaurada.`)}>
+              <p className="text-sm text-muted">Arquivada: não aparece ao lançar. O histórico e o saldo continuam. Restaure para voltar a usar.</p>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onRestore(wallet.id), `${wallet.name} restaurada.`)}>
                 Restaurar carteira
               </Button>
             </>
           ) : (
             <>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onUpdate(wallet.id, { isDefault: true }), `${wallet.name} agora é a padrão.`)}>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(wallet.id, { isDefault: true }), `${wallet.name} agora é a padrão.`)}>
                 Tornar padrão
               </Button>
-              <p className="text-sm text-ink/80">Arquivar tira a carteira da lista ao lançar. O que já foi lançado nela continua.</p>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => onArchive(wallet.id), `${wallet.name} arquivada.`)}>
+              <p className="text-sm text-muted">Arquivar tira a carteira da lista ao lançar. O que já foi lançado nela continua.</p>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onArchive(wallet.id), `${wallet.name} arquivada.`)}>
                 Arquivar carteira
               </Button>
             </>

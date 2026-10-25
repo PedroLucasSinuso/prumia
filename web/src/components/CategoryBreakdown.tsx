@@ -32,7 +32,7 @@ export function CategoryBreakdown({
       {rows.map((r) => (
         <li key={r.id}>
           {pick(r.id, r.name, <>
-          <span className="flex justify-between gap-3 text-[13px]">
+          <span className="flex justify-between gap-3 text-ui">
             <span className="font-medium">{r.name}</span>
             <span className="font-mono tabular-nums">{formatCents(r.totalCents)}</span>
           </span>
@@ -50,7 +50,7 @@ export function CategoryBreakdown({
           {r.children.length > 0 && (
             <ul aria-label={`Detalhe de ${r.name}`} className="mt-1 flex flex-col gap-0.5 border-l-2 border-line pl-2.5">
               {r.children.map((c) => (
-                <li key={c.id} className="text-xs text-ink/80">
+                <li key={c.id} className="text-meta text-muted">
                   {pick(c.id, c.name, <span className="flex justify-between gap-3">
                     <span>{c.name}</span>
                     <span className="font-mono tabular-nums">{formatCents(c.totalCents)}</span>

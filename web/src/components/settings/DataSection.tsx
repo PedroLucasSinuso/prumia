@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { networkErrorMessage } from '../../auth/errors'
 import { useActiveHouse } from '../../auth/useActiveHouse'
 import { ICON } from '../../lib/navigation'
-import { Button } from '../Button'
+import { Button } from '../ui/Button'
 import { Field } from '../Field'
 import { Card, SectionHeader } from './ui'
 
@@ -49,7 +49,7 @@ export function DataSection() {
     <div>
       <SectionHeader title="Dados" description="Leve suas contas para uma planilha. Os dados continuam sendo seus." />
       <Card label="Exportar contas" title="Exportar contas (CSV)" className="max-w-xl">
-        <p className="mt-2 text-sm text-ink/80">Vencimento, categoria, favorecido, valor, status e pagamento, uma conta por linha. Deixe as datas em branco para exportar tudo.</p>
+        <p className="mt-2 text-sm text-muted">Vencimento, categoria, favorecido, valor, status e pagamento, uma conta por linha. Deixe as datas em branco para exportar tudo.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Vencimento de" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           <Field label="Vencimento até" type="date" value={to} onChange={(e) => setTo(e.target.value)} />

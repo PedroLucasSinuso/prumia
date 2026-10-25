@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { currentMonth, monthLabel } from '../../lib/dates'
 import { trapTab } from './focus'
 import { Popover } from './Popover'
-import { controlCls, labelCls } from './styles'
+import { buttonCls, controlCls, labelCls } from './styles'
 
 type Props = {
   label: string
@@ -76,19 +76,19 @@ export function MonthPicker({ label, hideLabel, value, onChange, min, max, clear
         onClick={() => setOpen((o) => !o)}
         className={`${controlCls(Boolean(error))} flex items-center justify-between gap-2 text-left`}
       >
-        <span className={value ? '' : 'text-ink/40'}>{value ? monthLabel(`${value}-01`) : placeholder}</span>
-        <CalendarDays aria-hidden="true" size={18} strokeWidth={1.5} className="shrink-0 text-ink/70" />
+        <span className={value ? '' : 'text-muted'}>{value ? monthLabel(`${value}-01`) : placeholder}</span>
+        <CalendarDays aria-hidden="true" size={18} strokeWidth={1.5} className="shrink-0 text-muted" />
       </button>
       <Popover open={open} anchorRef={btn} onClose={() => close(false)} role="dialog" aria-label="Escolher mês" trapEscape={false}>
         <Months value={value} min={min} max={max} clearable={clearable} onPick={pick} onEscape={() => close(true)} />
       </Popover>
       {hint && !error && (
-        <p id={`${btnId}-dica`} className="text-xs text-ink/70">
+        <p id={`${btnId}-dica`} className="text-meta text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${btnId}-erro`} className="text-xs text-alert">
+        <p id={`${btnId}-erro`} className="text-meta font-medium text-alert-text">
           {error}
         </p>
       )}
@@ -133,7 +133,7 @@ function Months({ value, min, max, clearable, onPick, onEscape }: { value: strin
     go(keys[e.key])
   }
 
-  const arrow = 'flex size-10 items-center justify-center rounded-md text-ink transition-colors hover:bg-ink/8 active:bg-ink/12 disabled:opacity-30 disabled:hover:bg-transparent md:size-8'
+  const arrow = buttonCls({ variant: 'icon', size: 'sm' })
   return (
     <div ref={root} onKeyDown={onKeyDown} className="w-[min(18rem,calc(100vw-1rem))] p-2">
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -166,7 +166,7 @@ function Months({ value, min, max, clearable, onPick, onEscape }: { value: strin
                 on
                   ? 'border-structure bg-structure font-semibold text-on-structure'
                   : !allowed(m)
-                    ? 'cursor-not-allowed border-transparent text-ink/30'
+                    ? 'cursor-not-allowed border-transparent text-muted opacity-45'
                     : m === now
                       ? 'border-accent font-semibold hover:bg-ink/8 active:bg-ink/12'
                       : 'border-transparent hover:bg-ink/8 active:bg-ink/12'
@@ -182,7 +182,7 @@ function Months({ value, min, max, clearable, onPick, onEscape }: { value: strin
           type="button"
           disabled={!allowed(now)}
           onClick={() => onPick(now)}
-          className="flex min-h-10 flex-1 items-center justify-center rounded-md border border-ink/30 text-[13px] font-medium transition-colors hover:bg-ink/5 active:bg-ink/10 disabled:opacity-40 md:min-h-8"
+          className={buttonCls({ variant: 'secondary', size: 'sm', className: 'flex-1' })}
         >
           Este mês
         </button>
@@ -190,7 +190,7 @@ function Months({ value, min, max, clearable, onPick, onEscape }: { value: strin
           <button
             type="button"
             onClick={() => onPick('')}
-            className="flex min-h-10 flex-1 items-center justify-center rounded-md border border-ink/30 text-[13px] font-medium transition-colors hover:bg-ink/5 active:bg-ink/10 md:min-h-8"
+            className={buttonCls({ variant: 'secondary', size: 'sm', className: 'flex-1' })}
           >
             Limpar
           </button>

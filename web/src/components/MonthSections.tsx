@@ -32,10 +32,10 @@ export function MonthSections({ sections, collapsed, onToggle, ...timeline }: Pr
               >
                 <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
                 <span className="text-xs font-semibold uppercase tracking-wider">
-                  {s.title} <span className="font-mono font-medium text-ink/75">({s.items.length})</span>
+                  {s.title} <span className="font-mono font-medium text-muted">({s.items.length})</span>
                 </span>
                 {s.id === 'overdue' && <span aria-hidden="true" className="size-2 rounded-xs bg-alert" />}
-                <span className="ml-auto font-mono text-[13px] font-semibold tabular-nums text-ink/85">{formatCents(s.totalCents)}</span>
+                <span className="ml-auto font-mono text-ui font-semibold tabular-nums text-muted">{formatCents(s.totalCents)}</span>
               </button>
             </h3>
             {open && (

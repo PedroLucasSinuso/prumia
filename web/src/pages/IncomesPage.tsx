@@ -7,7 +7,7 @@ import type { Income, IncomeSource, SeriesScope } from '../api/types'
 import { useAuth } from '../auth/context'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
-import { Button } from '../components/Button'
+import { Button } from '../components/ui/Button'
 import { IncomeDetail } from '../components/IncomeDetail'
 import { IncomeForm } from '../components/IncomeForm'
 import { IncomeList } from '../components/IncomeList'
@@ -244,7 +244,7 @@ export default function IncomesPage() {
           key={key}
           aria-pressed={groupBy === key}
           onClick={() => setGroupBy(key)}
-          className={`h-9 whitespace-nowrap rounded-md border px-3 text-[13px] transition-colors ${groupBy === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-ink/30 font-medium hover:bg-ink/5'}`}
+          className={`h-9 whitespace-nowrap rounded-md border px-3 text-ui transition-colors ${groupBy === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-line-strong font-medium hover:bg-ink/5'}`}
         >
           {text}
         </button>
@@ -253,8 +253,8 @@ export default function IncomesPage() {
   )
 
   const emptyState = empty ? (
-    <div className="mt-2 flex flex-col items-start gap-3 rounded-md border border-dashed border-ink/25 p-5">
-      <p className="text-sm text-ink/85">
+    <div className="mt-2 flex flex-col items-start gap-3 rounded-md border border-dashed border-line-strong p-5">
+      <p className="text-sm text-muted">
         {hasSources || !canWrite ? (
           'Nenhuma receita neste mês.'
         ) : (
@@ -280,7 +280,7 @@ export default function IncomesPage() {
                 <Tooltip label="Nova receita" shortcut="N">
                   <Button onClick={openNew} className="flex items-center gap-2">
                     <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova receita
-                    <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-[10px] leading-4">N</kbd>
+                    <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-caption leading-4">N</kbd>
                   </Button>
                 </Tooltip>
               )}
@@ -292,21 +292,21 @@ export default function IncomesPage() {
         {/* Topo: recebido (grande), a receber (pequeno), por pessoa e sobra do mês */}
         <section aria-label="Resumo das receitas" className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div className="rounded-md px-1 md:bg-structure md:px-4 md:py-3.5 md:text-on-structure">
-            <div className={`flex justify-between ${label} text-ink/80 md:text-on-structure/85`}>
+            <div className={`flex justify-between ${label} text-muted md:text-on-structure/85`}>
               <span>recebido</span>
               <span className="font-mono">{Math.round(fraction * 100)}% do mês</span>
             </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading md:text-[44px] md:text-on-structure">{formatCents(totals.received)}</p>
+            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading md:text-figure-lg md:text-on-structure">{formatCents(totals.received)}</p>
             <PaidGauge fraction={fraction} tone={desktop ? 'dark' : 'light'} className="mt-2" />
-            <p className="mt-2 text-[13px] text-ink/80 md:text-on-structure/85">
+            <p className="mt-2 text-ui text-muted md:text-on-structure/85">
               a receber <span className="font-mono font-semibold tabular-nums">{formatCents(totals.pending)}</span>
             </p>
           </div>
 
           <div className="rounded-md border border-line px-3 py-3 md:px-4 md:py-3.5">
-            <p className={`${label} text-ink/80`}>por pessoa</p>
+            <p className={`${label} text-muted`}>por pessoa</p>
             {people.length === 0 ? (
-              <p className="mt-1 text-sm text-ink/75">Sem receitas neste mês.</p>
+              <p className="mt-1 text-sm text-muted">Sem receitas neste mês.</p>
             ) : (
               <table className="mt-1 w-full text-sm">
                 <thead className="sr-only">
@@ -317,7 +317,7 @@ export default function IncomesPage() {
                     <tr key={p.userId}>
                       <th scope="row" className="py-0.5 pr-2 text-left font-medium">{p.name}</th>
                       <td className="py-0.5 text-right font-mono font-semibold tabular-nums text-accent">{formatCents(p.received)}</td>
-                      <td className="py-0.5 pl-3 text-right font-mono text-xs tabular-nums text-ink/75">
+                      <td className="py-0.5 pl-3 text-right font-mono text-xs tabular-nums text-muted">
                         <span className="sr-only">a receber </span>{p.pending > 0 ? `+ ${formatCents(p.pending)}` : ''}
                       </td>
                     </tr>
@@ -328,27 +328,27 @@ export default function IncomesPage() {
           </div>
 
           <div className="rounded-md border border-line px-3 py-3 md:px-4 md:py-3.5">
-            <p className={`${label} text-ink/80`}>sobra do mês</p>
+            <p className={`${label} text-muted`}>sobra do mês</p>
             {surplus ? (
               <>
                 <p className={`font-mono text-[30px] font-semibold leading-tight tabular-nums ${surplus.surplus < 0 ? 'text-alert' : 'text-heading'}`}>
                   {surplus.surplus < 0 && <span aria-hidden="true" className="mr-1.5 text-base">[ ✖ ]</span>}
                   {formatCents(surplus.surplus)}
                 </p>
-                <p className="text-xs text-ink/75">
+                <p className="text-meta text-muted">
                   receitas {formatCents(surplus.income)} − despesas {formatCents(surplus.expenses)}
                 </p>
               </>
             ) : (
-              <p className="mt-1 text-sm text-ink/75" role="status">{summary.isError ? 'Indisponível agora.' : 'calculando…'}</p>
+              <p className="mt-1 text-sm text-muted" role="status">{summary.isError ? 'Indisponível agora.' : 'calculando…'}</p>
             )}
-            <Link to={{ pathname: '/resumo', search }} className="mt-1.5 inline-block text-[13px] font-medium text-accent underline underline-offset-2">
+            <Link to={{ pathname: '/resumo', search }} className="mt-1.5 inline-block text-ui font-medium text-accent underline underline-offset-2">
               Ver no resumo
             </Link>
           </div>
         </section>
 
-        {incomes.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
+        {incomes.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
         {incomes.isError && (
           <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
             <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar as receitas.{' '}
@@ -361,7 +361,7 @@ export default function IncomesPage() {
             <section aria-label="Receitas do mês" className="@container min-w-0">
               {desktop ? (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <h2 className="mr-auto font-display text-[26px] font-bold text-heading font-stretch-condensed">Receitas do mês</h2>
+                  <h2 className="mr-auto font-display text-section font-bold text-heading font-stretch-condensed">Receitas do mês</h2>
                   {list.length > 0 && groupSwitch}
                 </div>
               ) : (
@@ -405,7 +405,7 @@ export default function IncomesPage() {
               {panelIncome ? (
                 <section aria-label="Detalhes da receita" className="rounded-md border-2 border-structure p-4 motion-safe:animate-fade-in">
                   <div className="mb-3 flex items-start justify-between gap-2">
-                    <h2 className="min-w-0 break-words font-display text-[22px] font-bold leading-tight text-heading font-stretch-condensed">{panelIncome.description}</h2>
+                    <h2 className="min-w-0 break-words font-display text-title font-bold leading-tight text-heading font-stretch-condensed">{panelIncome.description}</h2>
                     <Tooltip label="Fechar" shortcut="Esc">
                       <button aria-label="Fechar detalhes" onClick={() => setPanel(null)} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
                         <X size={20} strokeWidth={1.5} aria-hidden="true" />
@@ -479,11 +479,11 @@ function NextUp({ list, today, onOpen, canWrite }: { list: Income[]; today: stri
   return (
     <section aria-label="Próximas a receber" className="flex flex-col gap-3 rounded-md border border-line p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className={`${label} text-ink/80`}>a receber neste mês</h2>
-        {items.length > 0 && <span className="font-mono text-[13px] font-semibold tabular-nums">{formatCents(items.reduce((s, i) => s + i.netAmountCents, 0))}</span>}
+        <h2 className={`${label} text-muted`}>a receber neste mês</h2>
+        {items.length > 0 && <span className="font-mono text-ui font-semibold tabular-nums">{formatCents(items.reduce((s, i) => s + i.netAmountCents, 0))}</span>}
       </div>
       {items.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-ink/80">
+        <p className="flex items-center gap-2 text-sm text-muted">
           <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span>
           Tudo o que estava previsto já caiu.
         </p>
@@ -492,16 +492,16 @@ function NextUp({ list, today, onOpen, canWrite }: { list: Income[]; today: stri
           {items.map((i) => (
             <li key={i.id}>
               <button onClick={() => onOpen(i)} className="flex min-h-9 w-full items-center gap-3 rounded-sm px-2 text-left text-sm transition-colors hover:bg-ink/5">
-                <span aria-hidden="true" className={`font-mono text-xs ${stateOf(i) === 'held' ? 'text-alert' : 'text-ink/70'}`}>{stateOf(i) === 'held' ? '[ ✖ ]' : '[ ▫ ]'}</span>
-                <span className="w-11 font-mono text-xs tabular-nums text-ink/80">{dayMonth(i.expectedDate)}</span>
+                <span aria-hidden="true" className={`font-mono text-xs ${stateOf(i) === 'held' ? 'text-alert' : 'text-muted'}`}>{stateOf(i) === 'held' ? '[ ✖ ]' : '[ ▫ ]'}</span>
+                <span className="w-11 font-mono text-xs tabular-nums text-muted">{dayMonth(i.expectedDate)}</span>
                 <span className="min-w-0 flex-1 truncate">{i.description}</span>
-                <span className="font-mono text-[13px] font-semibold tabular-nums">{formatCents(i.netAmountCents)}</span>
+                <span className="font-mono text-ui font-semibold tabular-nums">{formatCents(i.netAmountCents)}</span>
               </button>
             </li>
           ))}
         </ul>
       )}
-      <p className="text-xs text-ink/75">
+      <p className="text-meta text-muted">
         Selecione uma receita para ver os detalhes.{canWrite && <> Nova receita: tecla <kbd className="font-mono">N</kbd>.</>} Hoje é {dayMonth(today)}.
       </p>
     </section>

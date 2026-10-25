@@ -54,7 +54,7 @@ export function MonthRuler({ invoices, month, todayDay, barArea = 56, className 
           </span>
         )}
       </div>
-      <div aria-hidden="true" className="mt-1 flex justify-between font-mono text-[11px] text-ink/75">
+      <div aria-hidden="true" className="mt-1 flex justify-between font-mono text-caption text-muted">
         <span>01</span>
         <span>10</span>
         <span>20</span>

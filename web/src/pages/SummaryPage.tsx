@@ -6,7 +6,7 @@ import { useCategories, useCategoryHistory, useMembers, useSummary, useTransferA
 import type { Transfer, TransferInput, TransferResult } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
-import { Button } from '../components/Button'
+import { Button } from '../components/ui/Button'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
@@ -24,7 +24,7 @@ import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
 import { walletName } from '../lib/wallets'
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/80'
+const label = 'text-xs font-medium uppercase tracking-wider text-muted'
 const card = 'rounded-md border border-line p-4'
 
 /** Um destaque da linha do topo: rótulo, valor em mono e uma nota curta. */
@@ -33,7 +33,7 @@ function Tile({ title, value, note, strong = false }: { title: string; value: st
     <div className={`rounded-md p-3 md:p-4 ${strong ? 'border-2 border-structure' : 'border border-line'}`}>
       <p className={label}>{title}</p>
       <p className={`mt-1 font-mono text-xl font-semibold tabular-nums md:text-2xl ${strong ? 'text-heading' : 'text-ink'}`}>{value}</p>
-      {note && <p className="mt-0.5 text-xs text-ink/75">{note}</p>}
+      {note && <p className="mt-0.5 text-xs text-muted">{note}</p>}
     </div>
   )
 }
@@ -104,15 +104,15 @@ export default function SummaryPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <MonthSelector month={month} onChange={setMonth} />
             {canTransfer && (
-              <Button variant="ghost" onClick={() => setTransferring(true)} className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setTransferring(true)} className="flex items-center gap-2">
                 <ArrowLeftRight aria-hidden="true" size={18} strokeWidth={1.5} /> Transferir
               </Button>
             )}
           </div>
-          <p className="mt-2 hidden text-sm text-ink/75 md:block">Resumo do mês: o que entra, o que sai e para onde vai.</p>
+          <p className="mt-2 hidden text-sm text-muted md:block">Resumo do mês: o que entra, o que sai e para onde vai.</p>
         </header>
 
-        {summary.isPending && <p role="status" className="text-sm text-ink/70">carregando…</p>}
+        {summary.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
         {summary.isError && (
           <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
             <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar o resumo.{' '}
@@ -125,7 +125,7 @@ export default function SummaryPage() {
         {s && (
           <>
             {noIncome && (
-              <p className="rounded-md border border-dashed border-line p-4 text-sm text-ink/80">
+              <p className="rounded-md border border-dashed border-line p-4 text-sm text-muted">
                 Ainda não há receitas neste mês, então o saldo mostra só o que sai. Cadastre o salário e o vale em{' '}
                 <Link to="/receitas" className="font-semibold text-accent underline underline-offset-2">
                   receitas
@@ -168,7 +168,7 @@ export default function SummaryPage() {
                 />
                 <Tile title="pago" value={formatCents(s.totalPaidCents)} note="valor efetivamente pago" />
               </div>
-              <p className="mt-2 text-xs text-ink/70">
+              <p className="mt-2 text-xs text-muted">
                 Projetado = tudo o que está previsto para entrar menos o que já foi pago e o que falta pagar no mês.
               </p>
             </section>
@@ -189,16 +189,16 @@ export default function SummaryPage() {
               <section aria-label="Por categoria" className={card}>
                 <h2 className={label}>para onde vai o dinheiro</h2>
                 {s.byCategory.length === 0 ? (
-                  <p className="mt-2 text-sm text-ink/75">Nenhuma conta neste mês.</p>
+                  <p className="mt-2 text-sm text-muted">Nenhuma conta neste mês.</p>
                 ) : (
                   <>
-                    <p className="mt-1 text-xs text-ink/70">Selecione uma categoria para ver o histórico.</p>
+                    <p className="mt-1 text-xs text-muted">Selecione uma categoria para ver o histórico.</p>
                     <div className="mt-3">
                       <CategoryBreakdown rows={rows} split onSelect={setPicked} selectedId={selected} />
                     </div>
                   </>
                 )}
-                <p className="mt-3 flex items-center gap-4 text-xs text-ink/80">
+                <p className="mt-3 flex items-center gap-4 text-xs text-muted">
                   <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-structure" />pago</span>
                   <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-accent" />a pagar</span>
                 </p>
@@ -220,11 +220,11 @@ export default function SummaryPage() {
                   </Link>
                 </div>
                 <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-heading">{formatCents(aheadTotal)}</p>
-                <p className="text-xs text-ink/75">em parcelas e contas fixas nos próximos 3 meses</p>
+                <p className="text-meta text-muted">em parcelas e contas fixas nos próximos 3 meses</p>
                 <ul className="mt-3 grid grid-cols-3 gap-3 text-sm">
                   {ahead.map((m) => (
                     <li key={m.month} className="border-t border-line pt-2">
-                      <span className="block text-xs text-ink/75">{monthShort(m.month)}</span>
+                      <span className="block text-xs text-muted">{monthShort(m.month)}</span>
                       <span className="font-mono tabular-nums">{formatCents(m.cents)}</span>
                     </li>
                   ))}

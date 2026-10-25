@@ -7,7 +7,7 @@ import { ApiError } from '../api/errors'
 import type { Category, DocumentExtraction } from '../api/types'
 import { boletoErrorMessage, networkErrorMessage, problemMessage } from '../auth/errors'
 import { useActiveHouse } from '../auth/useActiveHouse'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
 import { DatePicker } from './ui/DatePicker'
@@ -41,7 +41,7 @@ type FileEntry = {
 /** Estado que o formulário de conta passa ao "Abrir em Importar" (uma lista lida lá). */
 export type ImportState = { extraction: DocumentExtraction; fileName: string }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-ink/70'
+const label = 'text-xs font-medium uppercase tracking-wider text-muted'
 const input = 'h-11 w-full rounded-md border border-line bg-surface px-2 text-sm text-ink md:h-9'
 const link = 'text-sm font-semibold text-accent underline underline-offset-4'
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
@@ -322,8 +322,8 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
             {files.length === 0 && <FileUp aria-hidden="true" size={40} strokeWidth={1.25} className="text-accent" />}
             <div className="text-sm">
               <p className={files.length === 0 ? 'text-base font-semibold' : 'font-semibold'}>PDF, foto ou print, um ou vários (até 5 MB cada).</p>
-              <p className="hidden text-ink/75 md:block">Arraste os arquivos para cá ou escolha no computador.</p>
-              <p className="text-ink/75 md:hidden">Tire uma foto, escolha da galeria ou dos arquivos.</p>
+              <p className="hidden text-muted md:block">Arraste os arquivos para cá ou escolha no computador.</p>
+              <p className="text-muted md:hidden">Tire uma foto, escolha da galeria ou dos arquivos.</p>
             </div>
             <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
               <Button type="button" disabled={!ready} onClick={() => picker.current?.click()} className="w-full md:h-9 md:w-auto">
@@ -331,7 +331,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               </Button>
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 disabled={!ready}
                 aria-expanded={pasting}
                 onClick={() => setPasting((v) => !v)}
@@ -357,12 +357,12 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               placeholder={'Gás: R$ 150,00\nMercado: 310,25\nInternet: 119,90'}
               className="w-full rounded-md border border-line bg-surface p-2 font-mono text-sm text-ink"
             />
-            <p className="text-xs text-ink/70">
+            <p className="text-meta text-muted">
               Uma conta por linha: <strong>descrição: valor</strong>, e se quiser o vencimento: <strong>Luz: R$ 210,35 vence 10/11</strong> (também vale 10/11/2026, 10/11/26 ou "dia 10"; sem ano, o app escolhe o próximo). Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
             </p>
             <div className="flex gap-2">
               <Button type="button" disabled={!pasted.trim()} onClick={addText} className="md:h-9">Ler texto</Button>
-              <Button type="button" variant="ghost" onClick={() => { setPasting(false); setPasted('') }} className="md:h-9">Cancelar</Button>
+              <Button type="button" variant="secondary" onClick={() => { setPasting(false); setPasted('') }} className="md:h-9">Cancelar</Button>
             </div>
           </section>
         )}
@@ -374,7 +374,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
                 <Icon aria-hidden="true" size={20} strokeWidth={1.5} className="mt-0.5 shrink-0 text-accent" />
                 <span>
                   <span className="block font-semibold">{title}</span>
-                  <span className="block text-ink/75">{text}</span>
+                  <span className="block text-muted">{text}</span>
                 </span>
               </li>
             ))}
@@ -413,7 +413,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
 
             <section aria-label="Contas encontradas" className="flex flex-col gap-3">
               {rows.length === 0 && !busy && (
-                <p className="rounded-md border border-line p-4 text-sm text-ink/80">Nenhuma conta encontrada ainda.</p>
+                <p className="rounded-md border border-line p-4 text-sm text-muted">Nenhuma conta encontrada ainda.</p>
               )}
               <ul className="flex flex-col gap-3">
                 {rows.map((r, i) => (
@@ -477,10 +477,10 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
         <button type="button" onClick={onSelect} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 truncate text-left text-sm md:min-h-8">
           {file.name}
         </button>
-        <span className="shrink-0 text-xs text-ink/75">
+        <span className="shrink-0 text-xs text-muted">
           {file.status === 'done' ? (file.found === 1 ? '1 conta' : `${file.found} contas`) : statusText[file.status]}
         </span>
-        <button type="button" onClick={onRemove} aria-label={`Tirar ${file.name}`} className="h-11 w-11 shrink-0 rounded-md text-ink/70 hover:bg-ink/5 md:h-8 md:w-8">
+        <button type="button" onClick={onRemove} aria-label={`Tirar ${file.name}`} className="h-11 w-11 shrink-0 rounded-md text-muted hover:bg-ink/5 md:h-8 md:w-8">
           ×
         </button>
       </div>
@@ -509,7 +509,7 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
             />
             <Button type="button" className="shrink-0 md:h-9" onClick={() => onPassword(pw.current)}>Abrir</Button>
           </div>
-          <p className="text-xs text-ink/70">{file.wrongPassword ? 'Senha incorreta. Confira e tente de novo.' : 'Usada só para abrir este arquivo; não fica guardada.'}</p>
+          <p className="text-meta text-muted">{file.wrongPassword ? 'Senha incorreta. Confira e tente de novo.' : 'Usada só para abrir este arquivo; não fica guardada.'}</p>
         </div>
       )}
     </li>
@@ -541,7 +541,7 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
   onRemove: () => void
 }) {
   const id = (f: string) => `r${index}-${f}`
-  const err = (f: string) => errors[f] && <p className="text-xs text-alert">{errors[f]}</p>
+  const err = (f: string) => errors[f] && <p className="text-meta font-medium text-alert-text">{errors[f]}</p>
   const otherErrors = Object.entries(errors).filter(([k]) => !['description', 'amountCents', 'dueDate', 'categoryId', 'competenceMonth'].includes(k))
   const known = categories.some((c) => c.id === row.categoryId)
   return (
@@ -558,8 +558,8 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
             <><span aria-hidden="true" className="text-accent">[ ▪ ]</span> {originText[row.origin]}</>
           )}
         </span>
-        {row.ocr && <span className="text-ink/75">{originText[row.origin]}</span>}
-        {row.payee && <span className="text-ink/75">favorecido: <strong>{row.payee.name}</strong></span>}
+        {row.ocr && <span className="text-muted">{originText[row.origin]}</span>}
+        {row.payee && <span className="text-muted">favorecido: <strong>{row.payee.name}</strong></span>}
         <label className="ml-auto flex min-h-11 items-center gap-2 md:min-h-8">
           <input type="checkbox" checked={row.include} onChange={(e) => onChange({ include: e.target.checked })} />
           criar
@@ -623,16 +623,16 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
               onChange={(e) => onChange({ newPayeeName: e.target.value })}
               className={input}
             />
-            <p className="text-xs text-ink/70">Se preencher, o prumia reconhece as próximas contas deste CNPJ.</p>
+            <p className="text-meta text-muted">Se preencher, o prumia reconhece as próximas contas deste CNPJ.</p>
           </div>
         )}
       </div>
 
       {row.boleto && (
-        <p className="break-words font-mono text-xs tabular-nums text-ink/75">{formatDigitableLine(row.boleto.digitableLine)}</p>
+        <p className="break-words font-mono text-xs tabular-nums text-muted">{formatDigitableLine(row.boleto.digitableLine)}</p>
       )}
       {otherErrors.map(([k, msg]) => (
-        <p key={k} className="text-xs text-alert">{msg}</p>
+        <p key={k} className="text-meta font-medium text-alert-text">{msg}</p>
       ))}
     </li>
   )

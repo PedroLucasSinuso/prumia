@@ -5,7 +5,7 @@ import type { Income, IncomeSource, Member } from '../api/types'
 import { monthLabel } from '../lib/dates'
 import { kindShort, netOf, ruleText, untilText } from '../lib/income'
 import { formatCents } from '../lib/money'
-import { Button } from './Button'
+import { Button } from './ui/Button'
 import { DeleteRepetitionConfirm } from './DeleteRepetitionConfirm'
 
 type Props = {
@@ -46,7 +46,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
         >
           <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
           <span className="text-xs font-semibold uppercase tracking-wider">
-            Receitas que se repetem <span className="font-mono font-medium text-ink/75">({sources.length})</span>
+            Receitas que se repetem <span className="font-mono font-medium text-muted">({sources.length})</span>
           </span>
         </button>
       </h2>
@@ -64,11 +64,11 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
               <li key={s.id} className="flex flex-col gap-2 border-t border-line px-3 py-2.5 first:border-t-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className={`truncate text-sm font-medium ${finished ? 'text-ink/60' : ''}`}>{s.name}</p>
-                    <p className="truncate text-xs text-ink/75">
+                    <p className={`truncate text-sm font-medium ${finished ? 'text-muted' : ''}`}>{s.name}</p>
+                    <p className="truncate text-xs text-muted">
                       {person(s.userId)} · {kindShort[s.kind]} · {ruleText(s.dateRule)}
                     </p>
-                    <p className="text-xs text-ink/75">
+                    <p className="text-meta text-muted">
                       {finished ? `encerrada em ${s.endMonth!.slice(5, 7)}/${s.endMonth!.slice(0, 4)}` : untilText(s.endMonth)}
                     </p>
                   </div>
@@ -105,7 +105,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                           <Button type="button" disabled={busy} onClick={() => { onEnd(s); setEnding(undefined) }} className="md:h-9">
                             Encerrar a repetição
                           </Button>
-                          <Button type="button" variant="ghost" onClick={() => setEnding(undefined)} className="md:h-9">
+                          <Button type="button" variant="secondary" onClick={() => setEnding(undefined)} className="md:h-9">
                             Cancelar
                           </Button>
                         </div>

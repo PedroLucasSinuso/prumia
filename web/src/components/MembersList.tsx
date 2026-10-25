@@ -28,21 +28,21 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
               {m.name.slice(0, 1).toUpperCase()}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-medium">
-                {m.name} {self && <span className="text-xs font-normal text-ink/70">(você)</span>}
+              <p className="truncate text-body font-medium">
+                {m.name} {self && <span className="text-xs font-normal text-muted">(você)</span>}
               </p>
-              <p className="truncate text-xs text-ink/80">{m.email}</p>
+              <p className="truncate text-xs text-muted">{m.email}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
                 {/* O próprio papel não se troca por aqui: tirar o próprio admin sem querer trancaria a pessoa fora da gestão. */}
                 {isAdmin && !self ? (
-                  <label className="flex items-center gap-2 text-xs text-ink/80">
+                  <label className="flex items-center gap-2 text-xs text-muted">
                     papel
                     <select
                       aria-label={`Papel de ${m.name}`}
                       value={m.role}
                       disabled={busy}
                       onChange={(e) => onRole(m.userId, e.target.value as Role)}
-                      className="h-11 rounded-md border border-ink/25 bg-raised/40 px-2 text-sm text-ink"
+                      className="h-11 rounded-md border border-line-strong bg-raised/40 px-2 text-sm text-ink"
                     >
                       {(Object.keys(roleLabel) as Role[]).map((r) => (
                         <option key={r} value={r}>{roleLabel[r]} — {roleHelp[r]}</option>
@@ -50,10 +50,10 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
                     </select>
                   </label>
                 ) : (
-                  <span className="text-xs text-ink/80">
+                  <span className="text-meta text-muted">
                     {roleLabel[m.role]} · {roleHelp[m.role]}
                     {self && m.role === 'admin' && admins === 1 && members.length > 1 && (
-                      <span className="block text-ink/70">Você é o único admin. Para deixar de ser, torne outra pessoa admin antes.</span>
+                      <span className="block text-muted">Você é o único admin. Para deixar de ser, torne outra pessoa admin antes.</span>
                     )}
                   </span>
                 )}
@@ -68,10 +68,10 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
                       <button onClick={() => { setConfirming(undefined); onRemove(m) }} className="h-11 text-sm font-semibold text-ink underline underline-offset-4">
                         {self ? 'Confirmar saída' : `Confirmar remoção de ${m.name}`}
                       </button>
-                      <button onClick={() => setConfirming(undefined)} className="h-11 text-sm text-ink/80 underline underline-offset-4">cancelar</button>
+                      <button onClick={() => setConfirming(undefined)} className="h-11 text-sm text-muted underline underline-offset-4">cancelar</button>
                     </span>
                   ) : (
-                    <button onClick={() => setConfirming(m.userId)} className="h-11 text-sm font-semibold text-ink/80 underline underline-offset-4">
+                    <button onClick={() => setConfirming(m.userId)} className="h-11 text-sm font-semibold text-muted underline underline-offset-4">
                       {self ? 'sair da casa' : 'remover'}
                     </button>
                   ))}

@@ -30,6 +30,20 @@
   --color-alert: var(--prumia-alert);
   /* Borda padrão (= ink/15 no Marfim; mais forte no Contraste). Prefira `border-line` a `border-ink/15`. */
   --color-line: var(--prumia-line);
+  /* Texto secundário (`text-muted`): cor SÓLIDA com ≥4,5:1 sobre surface, raised e sunken. Substitui `text-ink/55..85`
+     (a opacidade sobre o fundo dava 3,4-4,4:1 e não passava em AA). */
+  --color-muted: var(--prumia-muted);
+  /* Erro e atraso em TEXTO (`text-alert-text`, ≥4,5:1). `text-alert`/`bg-alert` ficam só para marcas, nós, linhas e ícones. */
+  --color-alert-text: var(--prumia-alert-text);
+  /* Um tom ABAIXO do fundo (`bg-sunken`): trilho de barras, fundo de grupo segmentado, poço de lista. */
+  --color-sunken: var(--prumia-sunken);
+  /* Borda de campo e controle (`border-line-strong`). `line` continua para divisórias finas. */
+  --color-line-strong: var(--prumia-line-strong);
+  /* O que já foi resolvido (`bg-done`): barras "paga" da régua, discretas para não competir com o que pede ação. */
+  --color-done: var(--prumia-done);
+  /* Barra lateral (`bg-nav text-on-nav`): separada de `structure` para o destaque poder mudar sem mexer na navegação. */
+  --color-nav: var(--prumia-nav);
+  --color-on-nav: var(--prumia-on-nav);
   /* Só para TEXTO: `text-accent` pode usar outra cor da paleta quando o cobalto não passa 4,5:1 (temas escuros).
      Fundo, borda e preenchimento (`bg-accent`, `border-accent`, `fill-accent`) continuam em --prumia-accent. */
   --text-color-accent: var(--prumia-accent-text);
@@ -44,6 +58,33 @@
   --font-display: 'Archivo Variable', 'Arial Narrow', ui-sans-serif, sans-serif;
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /*
+   * Escala tipográfica (docs/brand/design-direction.md, seção Sistema). Cada `--text-X` vira a classe `text-X` do Tailwind,
+   * já com a altura de linha (`--text-X--line-height`). Nenhum texto abaixo de 11 px (caption).
+   *   caption 11 · meta 12 · ui 13 · body 15 · title 22 · section 28 · page 40 (page-sm 36: o mês no celular)
+   *   figure 34 · figure-lg 44 (valores em mono)
+   */
+  --text-caption: 11px;
+  --text-caption--line-height: 16px;
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-ui: 13px;
+  --text-ui--line-height: 18px;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-title: 22px;
+  --text-title--line-height: 26px;
+  --text-section: 28px;
+  --text-section--line-height: 32px;
+  --text-page-sm: 36px;
+  --text-page-sm--line-height: 40px;
+  --text-page: 40px;
+  --text-page--line-height: 44px;
+  --text-figure: 34px;
+  --text-figure--line-height: 40px;
+  --text-figure-lg: 44px;
+  --text-figure-lg--line-height: 48px;
 
   /* Movimento sutil (150-200 ms), sempre atrás de `motion-safe:` para respeitar prefers-reduced-motion. */
   --animate-fade-in: fade-in 150ms ease-out;
@@ -111,6 +152,11 @@
      surface (fundo) · raised (cartões e campos) · ink (texto e bordas) · structure/on-structure (barra lateral, botão
      primário, destaques sólidos e o texto sobre eles) · heading (títulos) · accent (dado ativo; accent-text quando é texto)
      · alert (só alerta) · line (bordas finas).
+   Papéis da direção "Instrumento calmo" (hierarquia por TOM de superfície e tipografia, não por borda):
+     muted (texto secundário sólido) · alert-text (erro/atraso em texto) · sunken (um tom abaixo do fundo) ·
+     line-strong (borda de campo/controle) · done (o que já foi resolvido, discreto) · nav/on-nav (barra lateral).
+   Dracula: `raised` passou de #44475a para #343746 (cartões calmos sobre o #282a36; os campos usam o mesmo papel com
+   borda `line-strong`, então continuam legíveis). Todos os pares de texto passam em 4,5:1 (scripts/contraste-temas.py).
    O Marfim é a identidade da marca (docs/brand/manual-identidade-prumia.md); os demais são paletas conhecidas
    (Solarized, Catppuccin Latte, Dracula, Nord, Gruvbox, Rosé Pine) com tons derivados só quando o contraste de texto
    pedia (WCAG AA, 4,5:1: veja docs/brand/design-direction.md). Seletores de ATRIBUTO, todos com a mesma
@@ -131,6 +177,13 @@
     --prumia-alert: #f06b4f;
     --prumia-raised: #ffffff;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    --prumia-muted: #5e6261;
+    --prumia-alert-text: #c53011;
+    --prumia-sunken: #eae0ce;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 32%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 26%, transparent);
+    --prumia-nav: #203d40;
+    --prumia-on-nav: #f3ebdd;
     --prumia-focus: 2px;
     color-scheme: light;
   }
@@ -148,6 +201,13 @@
     --prumia-alert: #dc322f;
     --prumia-raised: #ffffff;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    --prumia-muted: #52676e;
+    --prumia-alert-text: #c4271f;
+    --prumia-sunken: #eee8d5;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 32%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 26%, transparent);
+    --prumia-nav: #073642;
+    --prumia-on-nav: #fdf6e3;
     --prumia-focus: 2px;
     color-scheme: light;
   }
@@ -165,6 +225,13 @@
     --prumia-alert: #d20f39;
     --prumia-raised: #ffffff;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 15%, transparent);
+    --prumia-muted: #5c5f77;
+    --prumia-alert-text: #b80d32;
+    --prumia-sunken: #e6e9ef;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 32%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 26%, transparent);
+    --prumia-nav: #1a4fc0;
+    --prumia-on-nav: #eff1f5;
     --prumia-focus: 2px;
     color-scheme: light;
   }
@@ -180,8 +247,15 @@
     --prumia-accent: #bd93f9;
     --prumia-accent-text: #bd93f9;
     --prumia-alert: #ff5555;
-    --prumia-raised: #44475a;
+    --prumia-raised: #343746;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-muted: #c2c3cc;
+    --prumia-alert-text: #ff8f8f;
+    --prumia-sunken: #21222c;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 36%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 30%, transparent);
+    --prumia-nav: #7656bd;
+    --prumia-on-nav: #f8f8f2;
     --prumia-focus: 2px;
     color-scheme: dark;
   }
@@ -199,6 +273,13 @@
     --prumia-alert: #df8a92;
     --prumia-raised: #3b4252;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-muted: #c0c8d6;
+    --prumia-alert-text: #eba6ad;
+    --prumia-sunken: #272c36;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 36%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 30%, transparent);
+    --prumia-nav: #4a6b94;
+    --prumia-on-nav: #eceff4;
     --prumia-focus: 2px;
     color-scheme: dark;
   }
@@ -216,6 +297,13 @@
     --prumia-alert: #fb4934;
     --prumia-raised: #3c3836;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-muted: #bdae93;
+    --prumia-alert-text: #ff8a78;
+    --prumia-sunken: #1d2021;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 36%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 30%, transparent);
+    --prumia-nav: #8a5a12;
+    --prumia-on-nav: #fbf1c7;
     --prumia-focus: 2px;
     color-scheme: dark;
   }
@@ -233,6 +321,13 @@
     --prumia-alert: #eb6f92;
     --prumia-raised: #26233a;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+    --prumia-muted: #a9a5c4;
+    --prumia-alert-text: #f08ca8;
+    --prumia-sunken: #12101b;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 36%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 30%, transparent);
+    --prumia-nav: #907aa9;
+    --prumia-on-nav: #191724;
     --prumia-focus: 2px;
     color-scheme: dark;
   }
@@ -250,6 +345,13 @@
     --prumia-alert: #b00020;
     --prumia-raised: #f2f2f2;
     --prumia-line: color-mix(in oklab, var(--prumia-ink) 60%, transparent);
+    --prumia-muted: #2e2e2e;
+    --prumia-alert-text: #b00020;
+    --prumia-sunken: #e6e6e6;
+    --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 85%, transparent);
+    --prumia-done: color-mix(in oklab, var(--prumia-ink) 40%, transparent);
+    --prumia-nav: #000000;
+    --prumia-on-nav: #ffffff;
     --prumia-focus: 3px;
     color-scheme: light;
   }
@@ -266,8 +368,15 @@
       --prumia-accent: #bd93f9;
       --prumia-accent-text: #bd93f9;
       --prumia-alert: #ff5555;
-      --prumia-raised: #44475a;
+      --prumia-raised: #343746;
       --prumia-line: color-mix(in oklab, var(--prumia-ink) 20%, transparent);
+      --prumia-muted: #c2c3cc;
+      --prumia-alert-text: #ff8f8f;
+      --prumia-sunken: #21222c;
+      --prumia-line-strong: color-mix(in oklab, var(--prumia-ink) 36%, transparent);
+      --prumia-done: color-mix(in oklab, var(--prumia-ink) 30%, transparent);
+      --prumia-nav: #7656bd;
+      --prumia-on-nav: #f8f8f2;
       --prumia-focus: 2px;
       color-scheme: dark;
     }

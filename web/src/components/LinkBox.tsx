@@ -1,21 +1,23 @@
 import { copyText } from '../lib/links'
 import { useToast } from './toastContext'
-import { Button } from './Button'
+import { Button } from './ui/Button'
+import { Eyebrow } from './ui/Eyebrow'
+import { Surface } from './ui/Surface'
 
 /** Mostra um link já gerado (somente leitura, selecionável) com botão de copiar. */
 export function LinkBox({ label, link, note }: { label: string; link: string; note?: string }) {
   const toast = useToast()
   return (
-    <div className="rounded-md border-2 border-structure p-3">
-      <p className="text-xs font-medium uppercase tracking-wider text-ink/70">{label}</p>
+    <Surface pad="sm">
+      <Eyebrow>{label}</Eyebrow>
       <input
         readOnly
         aria-label={label}
         value={link}
         onFocus={(e) => e.currentTarget.select()}
-        className="mt-1 h-11 w-full rounded-md border border-ink/25 bg-raised/40 px-3 font-mono text-xs"
+        className="mt-1 h-11 w-full rounded-md border border-line-strong bg-surface px-3 font-mono text-meta"
       />
-      {note && <p className="mt-1 text-xs text-ink/70">{note}</p>}
+      {note && <p className="mt-1 text-meta text-muted">{note}</p>}
       <Button
         className="mt-2"
         onClick={async () => toast({ message: (await copyText(link)) ? 'Link copiado.' : 'Não deu para copiar. Selecione o link e copie.' })}
