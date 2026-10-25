@@ -89,11 +89,15 @@ Depende do PT-2. Novas tabelas, sem backfill. **Antes de desenhar**, escreva no 
 ### PT-6 · Segurança e infraestrutura — risco alto (cada item é um PR)
 
 - **Token no fragmento**: links de convite e de nova senha levam o token na query (`?token=`); mover para o fragmento (`#`), que não vai ao servidor nem aos logs de proxy. Ajustar front, `lib/links.ts`, testes e guias.
-- **Cloudflare Access** (login por e-mail antes do app): exige ativar o Zero Trust (cartão/PayPal) e é **ação do dono**; o agente só prepara o guia passo a passo em [deployment.md](developer-guide/deployment.md).
 - **Backup automático agendado e enviado para fora da máquina** (`scripts/backup.sh` + agendador do sistema ou container; destino configurável; criptografia; retenção; verificação com `make test-restore`). Nada de segredo no Git.
 - **Exposição pública**: revisar rate limit, cookies e HSTS agora que o app está na internet; limite de login por IP **e** por e-mail já existe: avaliar bloqueio progressivo.
 - **CI mais rápido**: o job `api` leva ~10 min (cache dos pacotes do sistema, testes de integração em paralelo).
 - **Coleção Postman** ([developer-guide/postman](developer-guide/postman)): atualizar com carteiras, transferências, convites e `income-dates` (já defasada).
+
+### Fora de escopo por enquanto
+
+- **Cloudflare Access / Zero Trust**: descartado pelo dono. Não propor nem preparar guia.
+- **Modo demo, onboarding simplificado e disparo de e-mails**: só fariam sentido se o prumia virasse um produto comercial; hoje são duas pessoas usando. Não implementar nem antecipar (ver [roadmap.md](roadmap.md), "Ideias sem prioridade"). O PT-3 (convite de cadastro) continua valendo, mas **sem e-mail**: o link é copiado e enviado pela própria pessoa.
 
 ### PT-7 · Manutenção recorrente — risco baixo
 
