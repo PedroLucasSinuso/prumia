@@ -19,6 +19,8 @@ Só administradores convidam.
 3. Toque em **Gerar link de convite**.
 4. Toque em **Copiar link** e envie para a pessoa (WhatsApp, por exemplo).
 
+**Formato do link:** o código do convite vai depois de um `#` (`…/convite#token=…`). Essa parte fica só no navegador de quem abre e não passa pelo servidor. Links enviados antes, com `?token=`, continuam valendo até vencer.
+
 **O endereço do link:** ele usa o endereço público do app, se estiver configurado (`PUBLIC_URL` no `.env`). Sem isso, usa o endereço que você estava usando no navegador, e se for `localhost` o link **não abre no celular da outra pessoa**. Nesse caso, gere o convite abrindo o app pelo endereço que a outra pessoa também consegue acessar (o do domínio, o do Tailscale ou o do IP da rede).
 
 O link só aparece nesta tela, uma única vez. Se perder, gere outro. Cada convite serve para **uma pessoa só**.

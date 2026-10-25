@@ -81,7 +81,10 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 - Log de SQL do GORM: **sem os valores** dos parâmetros (`ParameterizedQueries`, inclusive no caminho `Raw().Scan()`, que
   o GORM loga à parte) e sem "record not found". Antes, cada login com e-mail errado gravava o e-mail no log, e em desenvolvimento
   todo SQL saía com hashes, linhas digitáveis e valores. Teste: `platform/db/logger_test.go`.
-- nginx: formato de log próprio **sem query string e sem Referer** (os links de convite e de nova senha levam o token na query).
+- Links de convite e de nova senha levam o token no **fragmento** (`/convite#token=…`): o navegador não envia o que vem depois do `#`,
+  então o token não chega ao nginx, ao túnel nem a nenhum proxy. Links antigos com `?token=` (até 7 dias) ainda abrem; a página reescreve
+  o endereço para o formato com `#`.
+- nginx: formato de log próprio **sem query string e sem Referer** (segunda barreira, para os links antigos com o token na query).
 - Erros 500 respondem só `internal_error`; pânico é recuperado sem stack trace na resposta (teste em `platform/httpx`).
 - `.env.example` só tem valores de exemplo; `.env` está no `.gitignore`. A senha do Postgres é gerada por `make env`.
 
