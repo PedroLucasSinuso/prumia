@@ -29,7 +29,7 @@ export function DeductionsEditor({ value, onChange, errors = {}, disabled, salar
       <legend className="mb-1 text-meta font-medium uppercase tracking-wider text-muted">Descontos</legend>
       {value.length === 0 && <p className="text-meta text-muted">{salary ? 'Sem descontos. Adicione INSS, IRRF, plano de saúde, coparticipação...' : 'Sem descontos. INSS e IRRF só valem para salário.'}</p>}
       {value.map((d, i) => (
-        <div key={i} className="flex flex-col gap-1.5 rounded-md bg-sunken p-2">
+        <div key={i} className="flex flex-col gap-1.5 rounded-md bg-raised p-2">
           <div className="flex items-start gap-2">
             <select
               aria-label={`Tipo do desconto ${i + 1}`}

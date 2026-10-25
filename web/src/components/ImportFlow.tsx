@@ -345,7 +345,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         )}
 
         {canWrite && pasting && (
-          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md bg-sunken p-4">
+          <section aria-label="Colar texto" className="flex flex-col gap-2 rounded-md bg-raised p-4">
             <label htmlFor="texto-contas" className={label}>Texto das contas</label>
             <textarea
               id="texto-contas"

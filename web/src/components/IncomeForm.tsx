@@ -404,7 +404,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       <div className={group}>
         <DeductionsEditor salary={kind === 'salary'} value={deductions} onChange={(d) => { setDeductions(d); clear('deductions'); setTaxNote(undefined) }} errors={fields} disabled={dis} />
         {kind === 'salary' && canWrite && (
-          <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
+          <div className="flex flex-col gap-2 rounded-md bg-raised p-3">
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-28">
                 <Field label="Dependentes" type="number" inputMode="numeric" min={0} max={20} value={dependents} onChange={(e) => setDependents(e.target.value)} />

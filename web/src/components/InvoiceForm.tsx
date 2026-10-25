@@ -470,7 +470,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
           error={fields.categoryId}
         />
         {newCat && (
-          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md bg-sunken p-3">
+          <div role="group" aria-label="Nova categoria" className="flex flex-col gap-2 rounded-md bg-raised p-3">
             <div className="flex flex-wrap gap-2">
               <input
                 aria-label="Nome da nova categoria"
