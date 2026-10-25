@@ -188,6 +188,12 @@ Convites de **cadastro** (conta e casa próprias), gerados pelo dono do sistema 
 Índice parcial `(created_by) WHERE used_at IS NULL AND revoked_at IS NULL` para contar os pendentes. O `Down` apaga a tabela e a coluna
 (o cadastro volta a valer só para o primeiro usuário).
 
+### households.reserve_target_months e wallets.counts_as_reserve (migration 00014)
+
+Meta da reserva de emergência (ver [incomes-and-wallets.md](incomes-and-wallets.md), seção 5.5). `households.reserve_target_months`:
+`smallint`, `CHECK (NULL ou 1 a 36)`; `NULL` = sem meta. `wallets.counts_as_reserve`: `boolean NOT NULL DEFAULT false`. Nenhuma tabela
+nova; o progresso é calculado. O `Down` remove as duas colunas (a configuração se perde; saldos e lançamentos ficam).
+
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 
 Reserva de emergência e investimentos. Previsto como **novas tabelas** (ex.: `goals`, `goal_contributions`), referenciando

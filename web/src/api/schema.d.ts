@@ -606,6 +606,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/households/{householdId}/reserve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Meta da reserva de emergência e progresso no mês (qualquer membro)
+         * @description `targetMonths` nulo = a casa não configurou meta (a tela não mostra nada). Gasto essencial médio = média, nos 6 meses
+         *     ANTES de `month` que tiveram alguma conta, das contas de categorias essenciais (ou filhas de uma essencial): valor pago,
+         *     ou o da conta se pendente; sem histórico, usa o próprio mês. `savedCents` = soma do saldo realizado (o `balanceCents`
+         *     do resumo) das carteiras marcadas como reserva. `targetCents` = meses × gasto essencial médio.
+         */
+        get: operations["getReserve"];
+        /**
+         * Define a meta e as carteiras de reserva (só o Responsável, como as carteiras)
+         * @description `targetMonths` de 1 a 36 (nulo desliga a meta). `walletIds` substitui a lista de carteiras que contam como reserva
+         *     (vazia = nenhuma). Carteira que não é da casa = 400 em `walletIds`. Responde o status do mês atual.
+         */
+        put: operations["setReserve"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/households/{householdId}/wallet-adjustments": {
         parameters: {
             query?: never;
@@ -2069,6 +2099,24 @@ export interface components {
             competenceMonth?: components["schemas"]["Month"];
             notes?: string | null;
         };
+        ReserveStatus: {
+            /** @description Meta em meses de gasto essencial; null = sem meta */
+            targetMonths: number | null;
+            /** @description Carteiras que contam como reserva */
+            walletIds: string[];
+            /** @description Gasto essencial médio por mês */
+            essentialMonthlyCents: components["schemas"]["Cents"];
+            /** @description Quantos meses entraram na média (0 = ainda sem gasto essencial) */
+            basisMonths: number;
+            /** @description Saldo realizado das carteiras de reserva no mês */
+            savedCents: components["schemas"]["Cents"];
+            /** @description Meses × gasto essencial médio (0 sem meta ou sem gasto) */
+            targetCents: components["schemas"]["Cents"];
+        };
+        ReserveInput: {
+            targetMonths: number | null;
+            walletIds: string[];
+        };
         WalletAdjustment: {
             /** Format: uuid */
             id: string;
@@ -3333,6 +3381,59 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getReserve: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReserveStatus"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    setReserve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: components["parameters"]["HouseholdId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReserveInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReserveStatus"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listWalletAdjustments: {

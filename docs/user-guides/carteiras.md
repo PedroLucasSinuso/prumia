@@ -76,6 +76,21 @@ A diferença vira um **ajuste** naquele mês, e os meses seguintes partem do sal
 - Não dá para conferir um mês que ainda não chegou, um mês anterior ao **mês de início** da carteira, nem uma carteira arquivada.
 - Quem só tem permissão de leitura vê os ajustes, mas não confere nem exclui.
 
+## Reserva de emergência (meta)
+
+Opcional. Serve para saber quantos meses vocês aguentariam só com o dinheiro guardado, pagando o essencial.
+
+1. Abra **Ajustes > Carteiras** e vá até **Reserva de emergência (opcional)**. (Só o Responsável da casa altera.)
+2. Em **meta**, escolha quantos meses de gasto essencial vocês querem guardados (3, 6, 9 ou 12).
+3. Marque as carteiras onde esse dinheiro fica (por exemplo, a Reserva) e toque em **Salvar reserva**.
+
+O **Resumo** passa a mostrar o bloco **Reserva de emergência**: quanto está guardado, quantos meses isso cobre e quanto falta para a meta.
+
+- **Gasto essencial** é o das categorias marcadas como essenciais (moradia, mercado, saúde, transporte…; veja em Ajustes > Categorias).
+  O app faz a média dos últimos 6 meses que tiveram contas.
+- O guardado é o saldo das carteiras marcadas (o mesmo que o Resumo mostra).
+- Para desligar, escolha **sem meta** e salve: o bloco some do Resumo.
+
 ## Guardar dinheiro na Reserva (ou tirar de lá)
 
 Para mover dinheiro de uma carteira para outra, abra o **Resumo** e toque em **Transferir**:

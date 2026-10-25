@@ -4,18 +4,20 @@ type Props = {
   /** Cores para fundo claro (padrão) ou sobre o teal. */
   tone?: 'light' | 'dark'
   className?: string
+  /** Texto para leitores de tela (padrão: "N% do valor do mês já foi pago"). */
+  label?: string
 }
 
 const SEGMENTS = 10
 
 /** Medidor segmentado, direto do manual da marca: `[ ▪ ▪ ▪ ▫ ▫ ]`. Cada segmento vale 10% do valor do mês. */
-export function PaidGauge({ fraction, tone = 'light', className = '' }: Props) {
+export function PaidGauge({ fraction, tone = 'light', className = '', label }: Props) {
   const filled = Math.round(Math.min(1, Math.max(0, fraction)) * SEGMENTS)
   // Preenchido em `accent` (dado ativo): o tom da estrutura (petróleo/roxo) fica para a navegação e a ação principal.
   const on = tone === 'dark' ? 'bg-on-structure border-on-structure' : 'bg-accent border-accent'
   const off = tone === 'dark' ? 'border-on-structure/55' : 'border-line-strong'
   return (
-    <div role="img" aria-label={`${Math.round(fraction * 100)}% do valor do mês já foi pago`} className={`flex gap-1 ${className}`}>
+    <div role="img" aria-label={label ?? `${Math.round(fraction * 100)}% do valor do mês já foi pago`} className={`flex gap-1 ${className}`}>
       {Array.from({ length: SEGMENTS }, (_, i) => (
         <span key={i} className={`h-2.5 flex-1 rounded-xs border ${i < filled ? on : off}`} />
       ))}
