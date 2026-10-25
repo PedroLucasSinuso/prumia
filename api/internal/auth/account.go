@@ -83,7 +83,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, currentT
 	if currentPassword == newPassword {
 		return validation.New("newPassword", "a nova senha precisa ser diferente da atual")
 	}
-	hash, err := HashPassword(newPassword) // caro: fora da transação
+	hash, err := s.hash(newPassword) // caro: fora da transação
 	if err != nil {
 		return err
 	}

@@ -109,7 +109,7 @@ func (s *Service) ResetPassword(ctx context.Context, tok, newPassword string) er
 	if n := len([]rune(newPassword)); n < MinPasswordLen || n > MaxPasswordLen {
 		return validation.New("newPassword", fmt.Sprintf("a senha deve ter de %d a %d caracteres", MinPasswordLen, MaxPasswordLen))
 	}
-	hash, err := HashPassword(newPassword) // caro: fora da transação
+	hash, err := s.hash(newPassword) // caro: fora da transação
 	if err != nil {
 		return err
 	}
