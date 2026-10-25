@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult, WalletAdjustment, WalletAdjustmentInput, SignupInvite, SignupInviteCreated, ReserveStatus, ReserveInput } from './types'
+import type { Category, CategoryHistory, CategoryInput, CategoryPatch, CnpjInfo, DateRule, DocumentExtraction, Income, IncomeDatePreview, IncomeInput, IncomePatch, IncomeSource, IncomeSourceInput, IncomeSourcePatch, InviteCreated, Invoice, InvoiceInput, InvoicePatch, Member, MonthlySummary, Payee, PayeeInput, PayeePatch, Problem, Purchase, PurchaseInput, Recurrence, RecurrenceInput, RecurrencePatch, ReferenceRates, ReserveInput, ReserveStatus, Role, SeriesScope, SignupInvite, SignupInviteCreated, TaxEstimate, Transfer, TransferInput, TransferResult, Wallet, WalletAdjustment, WalletAdjustmentInput, WalletInput, WalletPatch } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -544,6 +544,19 @@ export function useCreateHousehold() {
 }
 
 /** Meta da reserva de emergência e progresso no mês (`targetMonths` nulo = a casa não configurou: a tela não mostra nada). */
+/**
+ * Taxas de referência (CDI, Selic, IPCA em 12 meses) da BrasilAPI, pelo servidor (que guarda por 12 h). Só para comparar
+ * investimentos: sem elas (available=false e lista vazia) a tela só não mostra a comparação.
+ */
+export function useReferenceRates(enabled: boolean) {
+  return useQuery({
+    queryKey: ['rates'] as const,
+    enabled,
+    staleTime: 60 * 60 * 1000,
+    queryFn: (): Promise<ReferenceRates> => unwrap(api.GET('/rates')),
+  })
+}
+
 export function useReserve(houseId: string, month: string) {
   return useQuery({
     queryKey: ['reserve', houseId, month] as const,

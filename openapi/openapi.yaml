@@ -22,6 +22,7 @@ tags:
   - { name: households, description: "Casas, membros e convites" }
   - { name: categories, description: "Categorias de despesa" }
   - { name: payees, description: "Favorecidos (apelido + CNPJ opcional)" }
+  - { name: rates, description: "Taxas de referência (CDI, Selic, IPCA) da BrasilAPI, com cache" }
   - { name: wallets, description: "Carteiras da casa (saldo por carteira)" }
   - { name: transfers, description: "Transferências entre carteiras" }
   - { name: adjustments, description: "Ajustes de saldo das carteiras (Conferir saldo)" }
@@ -425,6 +426,15 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
 
   # ------------------------------------------------------------------ cnpj
+  /rates:
+    get:
+      tags: [rates]
+      operationId: getReferenceRates
+      summary: CDI, Selic e IPCA (12 meses) da BrasilAPI, com cache no servidor. Nunca falha por causa da BrasilAPI
+      description: "Sem a BrasilAPI (fora do ar ou RATES_URL=off), responde 200 com available=false e a última leitura boa, se houver."
+      responses:
+        '200': { description: "Taxas", content: { application/json: { schema: { $ref: '#/components/schemas/ReferenceRates' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /cnpj/{cnpj}:
     parameters:
       - { name: cnpj, in: path, required: true, description: "14 dígitos", schema: { type: string, maxLength: 30 } }
@@ -1428,6 +1438,20 @@ components:
         archived: { type: boolean }
         parentId: { type: string, format: uuid, nullable: true, description: "Move para dentro de uma categoria principal; null = volta ao topo" }
 
+    ReferenceRates:
+      type: object
+      required: [available, rates]
+      properties:
+        available: { type: boolean, description: "false = a última consulta falhou ou está desligada (rates pode trazer a última leitura boa, ou vir vazia)" }
+        fetchedAt: { type: string, format: date-time, nullable: true, description: "Quando as taxas foram lidas da BrasilAPI" }
+        rates: { type: array, items: { $ref: '#/components/schemas/ReferenceRate' }, description: "Na ordem CDI, Selic, IPCA; só as que vieram" }
+    ReferenceRate:
+      type: object
+      required: [code, name, basisPoints]
+      properties:
+        code: { type: string, enum: [cdi, selic, ipca] }
+        name: { type: string, description: "Para exibir: CDI, Selic, IPCA" }
+        basisPoints: { type: integer, description: "Centésimos de ponto percentual: 1490 = 14,90% ao ano (IPCA: acumulado em 12 meses)" }
     CnpjInfo:
       type: object
       required: [cnpj, legalName]

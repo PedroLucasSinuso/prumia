@@ -65,7 +65,7 @@ Funções puras e testadas em tabela com os feriados reais de 2026: `IsBusinessD
 `[{date,name,type}]`, só `national`), com cache em memória por ano (30 dias; 10 minutos depois de uma falha), prazo de 4 s e resposta
 limitada a 1 MB. Se a API cair, devolver lixo (menos de 8 feriados) ou `HOLIDAYS_URL=off`, usa o **cálculo local** (`fallback.go`):
 feriados fixos, Páscoa (algoritmo de Meeus/Jones/Butcher), Carnaval (segunda e terça), Sexta-feira Santa, Corpus Christi e a
-Consciência Negra (nacional desde 2024). Feriados estaduais e municipais **não** entram. É, com a consulta de CNPJ, a única saída de
+Consciência Negra (nacional desde 2024). Feriados estaduais e municipais **não** entram. Com a consulta de CNPJ e as taxas de referência, é uma das três saídas de
 rede da API (ver [security.md](security.md)). `GET /income-dates` devolve a prévia de uma regra (próximas datas e dias úteis de cada mês),
 sem gravar nada. O endpoint não conhece "hoje": quem filtra as datas já passadas é o front (`lib/income.upcomingDates`, relógio injetado).
 
@@ -333,7 +333,16 @@ entidade à parte: reaproveita o saldo transportado, as transferências e o Conf
 | Resumo | `WalletBalance.kind` vai na resposta; o cálculo é o mesmo de qualquer carteira. O **front** separa: o saldo projetado da casa soma só as `regular`, e os investimentos aparecem no bloco "investimentos" (`InvestmentCard`: valor, aportes, resgates, rendimento e atualizações). |
 | Reserva | Um investimento pode contar como reserva (5.5), como qualquer carteira. |
 
-Fora de escopo: taxa contratada e comparação com CDI (PT-5c), cotação de ações e fundos.
+**Taxas de referência (PT-5c).** `GET /rates` (só logado; não é recurso da casa) devolve CDI, Selic e IPCA acumulado em 12 meses
+da BrasilAPI (`GET {RATES_URL}`, padrão `https://brasilapi.com.br/api/taxas/v1`, resposta `[{nome, valor}]` com `valor` em % ao ano).
+Os valores viram **basis points** inteiros (`1490` = 14,90%) com aritmética exata (`big.Rat`, sem float); resposta com valor fora de
+-50% a 100% ou sem nenhuma taxa conhecida é descartada. Cache de 12 h; depois de uma falha, `available: false` com a última leitura boa
+(ou lista vazia) e nova tentativa em 10 min; uma consulta por vez. Código em `api/internal/rates` e `api/internal/api/rates.go`
+(ligado por `Server.WithRates`). No front, o bloco "investimentos" mostra as referências e cada `InvestmentCard` compara o
+**rendimento do mês** (ajustes ÷ valor antes deles: saldo anterior + aportes − resgates) com o CDI mensal equivalente
+(`lib/rates.ts`; conta só de exibição). Testes: `rates/rates_test.go`, `api/rates_test.go` e `web/src/pages/Investments.test.tsx`.
+
+Fora de escopo: taxa contratada por investimento, cotação de ações e fundos.
 Testes: `api/investments_test.go`, `platform/db/migrate_investment_wallets_test.go` e `web/src/pages/Investments.test.tsx`.
 
 ## 6. Resumo mensal (`GET /summary?month=`)

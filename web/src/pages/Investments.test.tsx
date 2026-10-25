@@ -40,6 +40,24 @@ describe('investimentos (carteira especial)', () => {
     expect(screen.queryByRole('region', { name: 'Geral' })).toBeInTheDocument()
   })
 
+  it('com as taxas da BrasilAPI, compara o rendimento do mês com o CDI', async () => {
+    const rates = { available: true, fetchedAt: '2026-10-22T09:00:00Z', rates: [{ code: 'cdi', name: 'CDI', basisPoints: 1490 }, { code: 'selic', name: 'Selic', basisPoints: 1500 }, { code: 'ipca', name: 'IPCA', basisPoints: 517 }] }
+    mockApi({ me: ok(me), wallets: ok([...wallets, cdb]), summary: ok(summary), rates: ok(rates) })
+    renderAt('/resumo?mes=2026-10')
+    const inv = await screen.findByRole('region', { name: 'Investimentos' })
+    expect(await within(inv).findByText(/referências:/)).toHaveTextContent('CDI 14,90% ao ano · Selic 15,00% ao ano · IPCA 5,17% em 12 meses (BrasilAPI)')
+    const card = within(inv).getByRole('region', { name: 'CDB' })
+    expect(within(card).getByText('rendeu no mês').nextSibling).toHaveTextContent('1,50% · CDI ≈ 1,16%') // 15 / 1.000
+  })
+
+  it('sem a BrasilAPI, o bloco aparece sem a comparação', async () => {
+    mockApi({ me: ok(me), wallets: ok([...wallets, cdb]), summary: ok(summary) })
+    renderAt('/resumo?mes=2026-10')
+    const inv = await screen.findByRole('region', { name: 'Investimentos' })
+    expect(within(inv).queryByText(/referências/)).not.toBeInTheDocument()
+    expect(within(inv).getByText('rendeu no mês').nextSibling).toHaveTextContent(/^1,50%$/)
+  })
+
   it('o Responsável cria um investimento com instituição', async () => {
     mockApi({ me: ok(me) })
     renderAt('/ajustes/carteiras')

@@ -29,8 +29,11 @@ type Config struct {
 	// CNPJLookupURL é a base da consulta de CNPJ (CNPJ_LOOKUP_URL; padrão BrasilAPI). "off" desliga a consulta externa.
 	CNPJLookupURL string
 	// HolidaysURL é a base da consulta de feriados nacionais (HOLIDAYS_URL; padrão BrasilAPI). "off" desliga a consulta
-	// externa e usa só o cálculo local. Com a consulta de CNPJ, é a única saída de rede da API.
+	// externa e usa só o cálculo local. Com a consulta de CNPJ e as taxas (RatesURL), são as saídas de rede da API.
 	HolidaysURL string
+	// RatesURL é a consulta das taxas de referência CDI, Selic e IPCA (RATES_URL; padrão BrasilAPI /taxas/v1). "off" desliga:
+	// a tela de investimentos só deixa de mostrar a comparação. Nenhum dado vai na requisição.
+	RatesURL string
 	// PublicURL é o endereço pelo qual as pessoas abrem o app (PUBLIC_URL, ex.: https://app.exemplo.com.br). Vai nos links de
 	// convite e de nova senha: sem ele o front usaria o endereço do navegador de quem gera o link (localhost no seu computador,
 	// que não abre no celular de quem recebe). Vazio = usa o endereço do navegador.
@@ -56,6 +59,7 @@ func load(get func(string) string) (Config, error) {
 		OpenRegistration: get("OPEN_REGISTRATION") == "true",
 		CNPJLookupURL:    valueOr(get("CNPJ_LOOKUP_URL"), "https://brasilapi.com.br/api/cnpj/v1"),
 		HolidaysURL:      valueOr(get("HOLIDAYS_URL"), "https://brasilapi.com.br/api/feriados/v1"),
+		RatesURL:         valueOr(get("RATES_URL"), "https://brasilapi.com.br/api/taxas/v1"),
 	}
 
 	var problems []error

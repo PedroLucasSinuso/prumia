@@ -312,6 +312,27 @@ func (e MonthOffset) Valid() bool {
 	}
 }
 
+// Defines values for ReferenceRateCode.
+const (
+	Cdi   ReferenceRateCode = "cdi"
+	Ipca  ReferenceRateCode = "ipca"
+	Selic ReferenceRateCode = "selic"
+)
+
+// Valid indicates whether the value is a known member of the ReferenceRateCode enum.
+func (e ReferenceRateCode) Valid() bool {
+	switch e {
+	case Cdi:
+		return true
+	case Ipca:
+		return true
+	case Selic:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	RoleAdmin  Role = "admin"
@@ -1402,6 +1423,31 @@ type RecurrencePatch struct {
 	ResponsibleUserId *openapi_types.UUID `json:"responsibleUserId,omitempty"`
 }
 
+// ReferenceRate defines model for ReferenceRate.
+type ReferenceRate struct {
+	// BasisPoints Centésimos de ponto percentual: 1490 = 14,90% ao ano (IPCA: acumulado em 12 meses)
+	BasisPoints int               `json:"basisPoints"`
+	Code        ReferenceRateCode `json:"code"`
+
+	// Name Para exibir: CDI, Selic, IPCA
+	Name string `json:"name"`
+}
+
+// ReferenceRateCode defines model for ReferenceRate.Code.
+type ReferenceRateCode string
+
+// ReferenceRates defines model for ReferenceRates.
+type ReferenceRates struct {
+	// Available false = a última consulta falhou ou está desligada (rates pode trazer a última leitura boa, ou vir vazia)
+	Available bool `json:"available"`
+
+	// FetchedAt Quando as taxas foram lidas da BrasilAPI
+	FetchedAt *time.Time `json:"fetchedAt,omitempty"`
+
+	// Rates Na ordem CDI, Selic, IPCA; só as que vieram
+	Rates []ReferenceRate `json:"rates"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email string `json:"email"`
@@ -2341,6 +2387,9 @@ type ServerInterface interface {
 	// AcceptInvite Usuário logado entra em outra casa com um token de convite
 	// (POST /invites/accept)
 	AcceptInvite(c *gin.Context)
+	// GetReferenceRates CDI, Selic e IPCA (12 meses) da BrasilAPI, com cache no servidor. Nunca falha por causa da BrasilAPI
+	// (GET /rates)
+	GetReferenceRates(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -4900,6 +4949,19 @@ func (siw *ServerInterfaceWrapper) AcceptInvite(c *gin.Context) {
 	siw.Handler.AcceptInvite(c)
 }
 
+// GetReferenceRates operation middleware
+func (siw *ServerInterfaceWrapper) GetReferenceRates(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetReferenceRates(c)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -4954,6 +5016,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/categories", wrapper.CreateCategory)
 	router.DELETE(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.DeleteCategory)
 	router.PATCH(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.UpdateCategory)
+	router.GET(options.BaseURL+"/rates", wrapper.GetReferenceRates)
 	router.GET(options.BaseURL+"/cnpj/:cnpj", wrapper.LookupCnpj)
 	router.GET(options.BaseURL+"/households/:householdId/payees", wrapper.ListPayees)
 	router.POST(options.BaseURL+"/households/:householdId/payees", wrapper.CreatePayee)

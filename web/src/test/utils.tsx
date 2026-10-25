@@ -115,6 +115,8 @@ type Routes = {
   restoreTransfer?: Reply
   /** GET /auth/signup-invites (convites de cadastro pendentes). Padrão: vazia. */
   signupInvites?: Reply
+  /** GET /rates (taxas de referência). Padrão: indisponível, sem taxas. */
+  rates?: Reply
   /** GET /reserve (meta da reserva). Padrão: sem meta. */
   reserve?: Reply
   /** PUT /reserve. Padrão: devolve o que foi enviado como status. */
@@ -202,6 +204,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
     if (url === '/households/{householdId}/transfers') return r.transfers ?? ok([])
     if (url === '/auth/signup-invites') return r.signupInvites ?? ok([])
+    if (url === '/rates') return r.rates ?? ok({ available: false, fetchedAt: null, rates: [] })
     if (url === '/households/{householdId}/reserve') return r.reserve ?? ok(noReserve)
     if (url === '/households/{householdId}/wallet-adjustments') return r.adjustments ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })

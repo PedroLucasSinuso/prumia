@@ -13,7 +13,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 )
 
-// Esta é, com a consulta de CNPJ, a única saída de rede da API. Só o ANO vai na URL (nenhum dado pessoal).
+// Esta é, com a consulta de CNPJ e as taxas de referência (internal/rates), uma das três saídas de rede da API. Só o ANO vai na URL (nenhum dado pessoal).
 // Regras (as mesmas do pacote brasilapi): prazo curto, resposta com tamanho máximo, cache e degradação graciosa:
 // se a API cair, o app segue com os feriados calculados localmente (fallback.go).
 const (
