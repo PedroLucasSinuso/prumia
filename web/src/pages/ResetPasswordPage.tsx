@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { api } from '../api/client'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
@@ -7,11 +7,12 @@ import { AuthLayout } from '../components/AuthLayout'
 import { Button } from '../components/ui/Button'
 import { Field } from '../components/Field'
 import { FormError } from '../components/FormError'
+import { useLinkToken } from '../lib/useLinkToken'
 
-/** Destino do link de nova senha gerado por um admin (/redefinir-senha?token=…). Ao concluir, as sessões antigas caem e a pessoa entra de novo. */
+/** Destino do link de nova senha gerado por um admin (/redefinir-senha#token=…; o formato antigo ?token=… ainda vale). Ao concluir, as sessões antigas caem e a pessoa entra de novo. */
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
-  const token = useSearchParams()[0].get('token') ?? ''
+  const token = useLinkToken()
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [fields, setFields] = useState<Record<string, string>>({})

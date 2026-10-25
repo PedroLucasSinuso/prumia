@@ -16,7 +16,7 @@ describe('casa', () => {
     renderAt('/ajustes/casa')
     await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de convite' }))
     const box = await screen.findByLabelText('Link do convite')
-    expect(box).toHaveValue(`${window.location.origin}/convite?token=tok123`)
+    expect(box).toHaveValue(`${window.location.origin}/convite#token=tok123`)
     expect(api.POST).toHaveBeenCalledWith('/households/{householdId}/invites', expect.objectContaining({ body: { role: 'member', expiresInHours: 48 } }))
   })
 
@@ -27,7 +27,7 @@ describe('casa', () => {
     })
     renderAt('/ajustes/casa')
     await userEvent.click(await screen.findByRole('button', { name: 'Gerar link de convite' }))
-    expect(await screen.findByLabelText('Link do convite')).toHaveValue('https://app.exemplo.com.br/convite?token=tok123')
+    expect(await screen.findByLabelText('Link do convite')).toHaveValue('https://app.exemplo.com.br/convite#token=tok123')
   })
 
   it('admin troca o papel de outra pessoa', async () => {
@@ -60,7 +60,7 @@ describe('casa', () => {
     mockApi({ me: ok(me), resetLink: ok({ token: 'rst9', expiresAt: '2026-10-21T12:00:00Z' }) })
     renderAt('/ajustes/casa')
     await userEvent.click(await screen.findByRole('button', { name: 'link de nova senha' }))
-    expect(await screen.findByLabelText('Link de nova senha para Ana')).toHaveValue(`${window.location.origin}/redefinir-senha?token=rst9`)
+    expect(await screen.findByLabelText('Link de nova senha para Ana')).toHaveValue(`${window.location.origin}/redefinir-senha#token=rst9`)
   })
 
   it('leitura só vê as pessoas: sem convite, sem exclusão, sem troca de papel', async () => {

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../api/errors'
 import { useAcceptInvite } from '../api/queries'
@@ -9,9 +9,10 @@ import { AuthLayout } from '../components/AuthLayout'
 import { Button } from '../components/ui/Button'
 import { Field } from '../components/Field'
 import { FormError } from '../components/FormError'
+import { useLinkToken } from '../lib/useLinkToken'
 
 /**
- * Destino do link de convite (/convite?token=…). Pública: quem recebe o link pode ainda não ter conta.
+ * Destino do link de convite (/convite#token=…; o formato antigo ?token=… ainda vale). Pública: quem recebe o link pode ainda não ter conta.
  * - Sem conta: cadastrar com o token coloca a pessoa direto na casa de quem convidou (sem criar uma casa nova).
  * - Com conta e logada: "Entrar na casa" aceita o convite (POST /invites/accept) e já ativa a casa nova.
  * - Com conta e deslogada: "entrar e aceitar" leva ao login e volta para cá com o mesmo token.
@@ -19,7 +20,7 @@ import { FormError } from '../components/FormError'
 export default function InvitePage() {
   const { session, register, refresh, selectHouse } = useAuth()
   const navigate = useNavigate()
-  const token = useSearchParams()[0].get('token') ?? ''
+  const token = useLinkToken()
   const accept = useAcceptInvite()
 
   const [name, setName] = useState('')
@@ -109,7 +110,7 @@ export default function InvitePage() {
         Já tem conta?{' '}
         <Link
           to="/entrar"
-          state={{ from: `/convite?token=${encodeURIComponent(token)}` }}
+          state={{ from: `/convite#token=${encodeURIComponent(token)}` }}
           className="font-semibold text-accent underline underline-offset-2"
         >
           Entrar e aceitar o convite

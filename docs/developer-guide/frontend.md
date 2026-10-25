@@ -131,11 +131,13 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   há endpoint em lote, então `reorder` grava `sortOrder = posição` só nas que mudaram, um PATCH por vez. Ações por linha no `ActionMenu` (⋯).
   Não há excluir: categoria em uso é arquivada. Testes: `pages/Ajustes.test.tsx`, `SettingsPage.test.tsx`, `SettingsHouse.test.tsx`
   (para simular computador, `matchMedia` falso com `min-width`).
-- **Links públicos** `/convite?token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha?token=`
-  (`ResetPasswordPage`). Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
+- **Links públicos** `/convite#token=` (`InvitePage`: cadastro direto na casa de quem convidou) e `/redefinir-senha#token=`
+  (`ResetPasswordPage`). O token vai no **fragmento** (`lib/links.ts`), que nunca sai do navegador: não chega ao servidor, ao túnel nem a
+  logs de proxy. As páginas leem com `useLinkToken` (`lib/useLinkToken.ts`), que também aceita o formato antigo `?token=` (links gerados
+  antes, ainda válidos) e reescreve a barra de endereço para o formato com `#`, sem recarregar. Ficam fora de `RequireAuth`/`RedirectIfAuthenticated` porque valem com ou sem sessão. Quem já está logado
   e abre um convite vê **Entrar na casa** (`useAcceptInvite` → `POST /invites/accept`, relê `/auth/me` e ativa a casa nova); nada é
   consumido sem o toque. Sem sessão, além do cadastro há **Entrar e aceitar o convite**: vai a `/entrar` com
-  `state.from = /convite?token=…` e, logado, `RedirectIfAuthenticated` volta para o convite (o `from` vem do estado da navegação, nunca da URL).
+  `state.from = /convite#token=…` e, logado, `RedirectIfAuthenticated` volta para o convite (o `from` vem do estado da navegação, nunca da URL).
 - **Casa ativa** (`auth/useActiveHouse.ts`): toda tela usa `useActiveHouse().house` (nunca `me.households[0]`). A escolha fica no
   `AuthProvider` e no `localStorage` (`prumia.casaAtiva.<userId>`, por usuário; falha de armazenamento é ignorada). Casa guardada
   que não está mais em `me.households` (saiu, removido, excluída) cai na 1ª. `selectHouse` grava a escolha e faz `queryClient.clear()`:

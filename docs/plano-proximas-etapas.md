@@ -84,7 +84,7 @@ Depende do PT-2. Novas tabelas, sem backfill. **Antes de desenhar**, escreva no 
 
 ### PT-6 · Segurança e infraestrutura — risco alto (cada item é um PR)
 
-- **Token no fragmento**: links de convite e de nova senha levam o token na query (`?token=`); mover para o fragmento (`#`), que não vai ao servidor nem aos logs de proxy. Ajustar front, `lib/links.ts`, testes e guias.
+- **Token no fragmento** — **feito**: links de convite e de nova senha levam o token no fragmento (`#token=`), que não vai ao servidor nem aos logs de proxy; links antigos com `?token=` continuam abrindo.
 - **Exposição pública**: revisar rate limit, cookies e HSTS agora que o app está na internet; limite de login por IP **e** por e-mail já existe: avaliar bloqueio progressivo.
 - **CI mais rápido**: o job `api` leva ~10 min (cache dos pacotes do sistema, testes de integração em paralelo).
 - **Coleção Postman** ([developer-guide/postman](developer-guide/postman)): atualizar com carteiras, transferências, convites e `income-dates` (já defasada).
