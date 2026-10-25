@@ -24,6 +24,6 @@ export function LinkBox({ label, link, note }: { label: string; link: string; no
       >
         Copiar link
       </Button>
-    </div>
+    </Surface>
   )
 }
