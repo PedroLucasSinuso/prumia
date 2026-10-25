@@ -1864,10 +1864,12 @@ components:
 
     Wallet:
       type: object
-      required: [id, name, isDefault, warnOnOverdraft, openingBalanceCents, sortOrder, archived]
+      required: [id, name, kind, isDefault, warnOnOverdraft, openingBalanceCents, sortOrder, archived]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+        kind: { $ref: '#/components/schemas/WalletKind' }
+        institution: { type: string, nullable: true, description: "Onde o investimento está (banco, corretora); só etiqueta" }
         ownerUserId: { type: string, format: uuid, nullable: true, description: "Só etiqueta (de quem é a carteira); não restringe o uso" }
         isDefault: { type: boolean, description: "Exatamente uma por casa" }
         warnOnOverdraft: { type: boolean, description: "Avisa ao pagar se o saldo realizado desta carteira ficar negativo" }
@@ -1880,6 +1882,8 @@ components:
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 40, description: "Único entre as carteiras ativas da casa (sem diferenciar maiúsculas)" }
+        kind: { allOf: [ { $ref: '#/components/schemas/WalletKind' } ], description: "Padrão regular. Não muda depois de criada" }
+        institution: { type: string, nullable: true, maxLength: 60 }
         ownerUserId: { type: string, format: uuid, nullable: true, description: "Deve ser membro da casa" }
         warnOnOverdraft: { type: boolean, default: true }
         openingBalanceCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Padrão 0" }
@@ -1889,12 +1893,17 @@ components:
       type: object
       properties:
         name: { type: string, minLength: 1, maxLength: 40 }
+        institution: { type: string, nullable: true, maxLength: 60, description: "null ou vazio limpa" }
         ownerUserId: { type: string, format: uuid, nullable: true, description: "null limpa o dono" }
         warnOnOverdraft: { type: boolean }
         openingBalanceCents: { $ref: '#/components/schemas/Cents' }
         openingBalanceMonth: { type: string, format: date, nullable: true, description: "null limpa o mês de início (volta a valer desde o início); dia diferente de 1 = 400 no campo" }
-        isDefault: { type: boolean, description: "true troca a carteira padrão da casa; false = 400" }
+        isDefault: { type: boolean, description: "true troca a carteira padrão da casa (investimento não pode ser a padrão); false = 400" }
         sortOrder: { type: integer }
+    WalletKind:
+      type: string
+      enum: [regular, investment]
+      description: "regular = conta do dia a dia. investment = investimento: só se move por transferência (aporte e resgate) e por Conferir saldo (valor atual); não paga conta, não recebe receita e não entra no saldo projetado"
     Transfer:
       type: object
       required: [id, fromWalletId, toWalletId, amountCents, transferDate, competenceMonth]
@@ -1964,10 +1973,11 @@ components:
           items: { $ref: '#/components/schemas/PayWarning' }
     WalletBalance:
       type: object
-      required: [walletId, name, isDefault, archived, openingBalanceCents, carryOverCents, expectedIncomeCents, receivedIncomeCents, paidCents, transfersInCents, transfersOutCents, adjustmentsCents, balanceCents, monthBalanceCents, pendingCents, projectedCents]
+      required: [walletId, name, kind, isDefault, archived, openingBalanceCents, carryOverCents, expectedIncomeCents, receivedIncomeCents, paidCents, transfersInCents, transfersOutCents, adjustmentsCents, balanceCents, monthBalanceCents, pendingCents, projectedCents]
       properties:
         walletId: { type: string, format: uuid }
         name: { type: string }
+        kind: { $ref: '#/components/schemas/WalletKind' }
         ownerUserId: { type: string, format: uuid, nullable: true }
         isDefault: { type: boolean }
         archived: { type: boolean, description: "Carteira arquivada só aparece se tem saldo anterior diferente de zero ou movimento (inclusive transferência) no mês" }

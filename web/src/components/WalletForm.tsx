@@ -27,11 +27,15 @@ type Props = {
 }
 
 /**
- * Carteira: nome, de quem é (só uma etiqueta: todo mundo da casa usa), saldo inicial, aviso de saldo insuficiente e,
+ * Carteira: tipo (só ao criar: conta ou investimento), nome, instituição (investimento), de quem é (só uma etiqueta: todo mundo da casa usa), saldo inicial, aviso de saldo insuficiente e,
  * em carteira existente, tornar padrão / arquivar. A carteira padrão recebe os lançamentos quando ninguém escolhe outra.
  */
 export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onArchive, onRestore, onDone }: Props) {
   const [name, setName] = useState(wallet?.name ?? '')
+  // O tipo só é escolhido ao criar: depois não muda (o histórico de uma conta não vira investimento).
+  const [kind, setKind] = useState<Wallet['kind']>(wallet?.kind ?? 'regular')
+  const [institution, setInstitution] = useState(wallet?.institution ?? '')
+  const investment = kind === 'investment'
   const [ownerId, setOwnerId] = useState(wallet?.ownerUserId ?? '')
   const [opening, setOpening] = useState(Math.max(wallet?.openingBalanceCents ?? 0, 0))
   // Mês em que o saldo inicial passa a valer, "AAAA-MM" ('' = desde o início).
@@ -81,6 +85,7 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
         () =>
           onUpdate(wallet.id, {
             name: clean, ownerUserId: ownerId || null, warnOnOverdraft: warn,
+            ...(investment ? { institution: institution.trim() || null } : {}),
             ...(openingChanged ? { openingBalanceCents: opening } : {}),
             // null no PATCH limpa o mês de início ("sem data: conta desde o início").
             ...(startChanged ? { openingBalanceMonth: startMonth ? `${startMonth}-01` : null } : {}),
@@ -88,15 +93,34 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
         `${clean} salva.`,
       )
     } else {
-      void run(() => onCreate({ name: clean, ...(ownerId ? { ownerUserId: ownerId } : {}), warnOnOverdraft: warn, openingBalanceCents: opening, ...(startMonth ? { openingBalanceMonth: `${startMonth}-01` } : {}) }), `${clean} criada.`)
+      void run(() => onCreate({ name: clean, kind, ...(investment && institution.trim() ? { institution: institution.trim() } : {}), ...(ownerId ? { ownerUserId: ownerId } : {}), warnOnOverdraft: warn, openingBalanceCents: opening, ...(startMonth ? { openingBalanceMonth: `${startMonth}-01` } : {}) }), `${clean} criada.`)
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="flex min-h-full flex-col gap-4">
       <FormError message={error} />
-      <Field label="Nome" value={name} maxLength={40} disabled={!canWrite} hint="Ex.: Geral, Benefício, Reserva." error={fields.name}
+      {wallet ? (
+        investment && <p className="text-sm text-muted">Investimento: o valor muda por transferência (aporte e resgate) e pelo Conferir saldo (rendimento). Não paga conta nem recebe receita.</p>
+      ) : (
+        <>
+          <Segmented
+            label="Tipo" value={kind} disabled={!canWrite} onChange={(v) => { setKind(v as Wallet['kind']); clear('kind') }}
+            options={[{ value: 'regular', label: 'conta do dia a dia' }, { value: 'investment', label: 'investimento' }]}
+          />
+          {investment && (
+            <p className="-mt-2 text-meta text-muted">
+              Para CDB, Tesouro, poupança... Aporte e resgate são transferências; o rendimento entra pelo Conferir saldo, no resumo. Não paga conta, não recebe receita e fica fora do saldo projetado do mês. O tipo não muda depois.
+            </p>
+          )}
+        </>
+      )}
+      <Field label="Nome" value={name} maxLength={40} disabled={!canWrite} hint={investment ? 'Ex.: CDB, Tesouro Selic, Poupança.' : 'Ex.: Geral, Benefício, Reserva.'} error={fields.name}
         onChange={(e) => { setName(e.target.value); clear('name') }} />
+      {investment && (
+        <Field label="Instituição (opcional)" value={institution} maxLength={60} disabled={!canWrite} hint="Banco ou corretora. Só para você lembrar onde está." error={fields.institution}
+          onChange={(e) => { setInstitution(e.target.value); clear('institution') }} />
+      )}
       <Combobox
         label="de quem é (opcional)"
         options={members.map((m) => ({ value: m.userId, label: m.name }))}
@@ -135,9 +159,12 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
             </>
           ) : (
             <>
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(wallet.id, { isDefault: true }), `${wallet.name} agora é a padrão.`)}>
-                Tornar padrão
-              </Button>
+              {/* Investimento não pode ser a padrão (a padrão recebe as contas sem carteira definida). */}
+              {!investment && (
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onUpdate(wallet.id, { isDefault: true }), `${wallet.name} agora é a padrão.`)}>
+                  Tornar padrão
+                </Button>
+              )}
               <p className="text-sm text-muted">Arquivar tira a carteira da lista ao lançar. O que já foi lançado nela continua.</p>
               <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => onArchive(wallet.id), `${wallet.name} arquivada.`)}>
                 Arquivar carteira

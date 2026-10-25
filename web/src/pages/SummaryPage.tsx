@@ -17,6 +17,7 @@ import { SlideOver } from '../components/SlideOver'
 import { useToast } from '../components/toastContext'
 import { TransferForm } from '../components/TransferForm'
 import { TransfersSection } from '../components/TransfersSection'
+import { InvestmentCard } from '../components/InvestmentCard'
 import { WalletCard } from '../components/WalletCard'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { Eyebrow } from '../components/ui/Eyebrow'
@@ -110,9 +111,13 @@ export default function SummaryPage() {
   }
   const s = summary.data
   const cats = categories.data ?? []
-  const noIncome = s !== undefined && s.wallets.every((w) => w.expectedIncomeCents === 0)
+  // Investimento fica à parte: não paga conta nem recebe receita, então não entra no saldo projetado do mês (o aporte já
+  // sai da carteira de origem como transferência).
+  const regular = s ? s.wallets.filter((w) => w.kind !== 'investment') : []
+  const investments = s ? s.wallets.filter((w) => w.kind === 'investment') : []
+  const noIncome = s !== undefined && regular.every((w) => w.expectedIncomeCents === 0)
   const rows = rollup(s?.byCategory ?? [], cats)
-  const projected = s ? s.wallets.reduce((sum, w) => sum + w.projectedCents, 0) : 0
+  const projected = regular.reduce((sum, w) => sum + w.projectedCents, 0)
   // No computador o painel nunca fica vazio: sem escolha, mostra a categoria que mais pesa.
   const selected = picked ?? (desktop ? (rows[0]?.id ?? null) : null)
   const selectedName = selected ? (cats.find((c) => c.id === selected)?.name ?? 'Sem categoria') : ''
@@ -194,7 +199,7 @@ export default function SummaryPage() {
             </section>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {s.wallets.map((w) => (
+              {regular.map((w) => (
                 <WalletCard
                   key={w.walletId}
                   title={w.name}
@@ -206,6 +211,22 @@ export default function SummaryPage() {
                 />
               ))}
             </div>
+            {investments.length > 0 && (
+              <section aria-label="Investimentos" className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className={label}>investimentos</h2>
+                  <p className="font-mono text-ui tabular-nums text-muted">
+                    total {formatCents(investments.reduce((sum, w) => sum + w.balanceCents, 0))}
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {investments.map((w) => (
+                    <InvestmentCard key={w.walletId} balance={w} institution={walletList.find((x) => x.id === w.walletId)?.institution ?? undefined}
+                      onCheck={canCheck && !w.archived ? () => setChecking(w) : undefined} />
+                  ))}
+                </div>
+              </section>
+            )}
             {reserve.data && <ReserveBlock reserve={reserve.data} />}
             <TransfersSection transfers={transfers.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteTransfer} />
             <AdjustmentsSection adjustments={adjustments.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteAdjustment} />

@@ -4,7 +4,7 @@ import { ApiError } from '../api/errors'
 import { useWallets } from '../api/queries'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import type { Category, CategoryInput, CategoryPatch } from '../api/types'
-import { activeWallets } from '../lib/wallets'
+import { spendableWallets } from '../lib/wallets'
 import { networkErrorMessage, problemFields, problemMessage } from '../auth/errors'
 import { Button } from './ui/Button'
 import { Field } from './Field'
@@ -34,7 +34,7 @@ type Props = {
 export function CategoryForm({ category, all, defaultParentId, canWrite, onCreate, onUpdate, onDone }: Props) {
   const { house } = useActiveHouse()
   const walletList = useWallets(house?.id ?? '').data
-  const walletOptions = [...activeWallets(walletList ?? []).map((w) => ({ value: w.id, label: w.name })), { value: 'none', label: 'nenhuma' }]
+  const walletOptions = [...spendableWallets(walletList ?? []).map((w) => ({ value: w.id, label: w.name })), { value: 'none', label: 'nenhuma' }]
   const [name, setName] = useState(category?.name ?? '')
   // Subcategoria nasce com a carteira e o "essencial" da mãe (a pessoa pode mudar): menos coisa para preencher.
   const initialParent = category?.parentId ?? defaultParentId ?? ''

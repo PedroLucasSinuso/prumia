@@ -11,7 +11,7 @@ configure({ asyncUtilTimeout: 5000 })
 
 beforeEach(() => vi.restoreAllMocks())
 
-const conta: Wallet = { id: 'w3', name: 'Conta', isDefault: false, warnOnOverdraft: true, openingBalanceCents: 100000, openingBalanceMonth: '2026-10-01', sortOrder: 2, archived: false }
+const conta: Wallet = { id: 'w3', name: 'Conta', kind: 'regular', isDefault: false, warnOnOverdraft: true, openingBalanceCents: 100000, openingBalanceMonth: '2026-10-01', sortOrder: 2, archived: false }
 
 const patchBodies = () => vi.mocked(api.PATCH).mock.calls.map((c) => (c[1] as { body: unknown }).body)
 

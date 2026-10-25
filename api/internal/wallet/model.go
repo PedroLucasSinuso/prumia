@@ -19,11 +19,23 @@ const (
 	BenefitName = "Benefício"
 )
 
+// Kind: o tipo da carteira. Investimento só se move por transferência (aporte/resgate) e por ajuste ("Conferir saldo",
+// que registra o rendimento); não paga conta, não recebe receita e fica fora do saldo projetado. Não muda depois de criada.
+type Kind string
+
+const (
+	KindRegular    Kind = "regular"
+	KindInvestment Kind = "investment"
+)
+
 // Wallet espelha a tabela `wallets`.
 type Wallet struct {
 	dbmodel.Base
 	HouseholdID uuid.UUID `gorm:"type:uuid"`
 	Name        string
+	Kind        Kind `gorm:"default:regular"`
+	// Institution: onde o investimento está (banco, corretora). Só etiqueta; nil = não informado.
+	Institution *string
 	// OwnerUserID é só uma etiqueta ("carteira da Ana"): não restringe quem pode usar a carteira.
 	OwnerUserID *uuid.UUID `gorm:"type:uuid"`
 	// IsDefault: exatamente uma por casa (índice único parcial no banco). A padrão não pode ser arquivada.
@@ -43,3 +55,5 @@ type Wallet struct {
 func (Wallet) TableName() string { return "wallets" }
 
 func (w Wallet) Archived() bool { return w.ArchivedAt != nil }
+
+func (w Wallet) IsInvestment() bool { return w.Kind == KindInvestment }

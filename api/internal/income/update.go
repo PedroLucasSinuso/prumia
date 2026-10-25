@@ -119,7 +119,7 @@ func (s *Service) updateThis(ctx context.Context, tx *gorm.DB, cur Income, p Pat
 		cols["kind"] = *p.Kind // trocar o tipo NÃO troca a carteira (use WalletID)
 	}
 	if p.WalletID != nil {
-		if err := wallet.CheckUsable(tx, cur.HouseholdID, *p.WalletID, "walletId", &v); err != nil {
+		if err := wallet.CheckSpendable(tx, cur.HouseholdID, *p.WalletID, "walletId", &v); err != nil {
 			return err
 		}
 		cols["wallet_id"] = *p.WalletID

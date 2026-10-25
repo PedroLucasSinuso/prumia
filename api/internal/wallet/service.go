@@ -86,6 +86,21 @@ func checkBalance(c money.Cents, v *validation.Collector) {
 	}
 }
 
+// cleanInstitution: vazio (só espaços) = sem instituição (nil). Até 60 caracteres.
+func cleanInstitution(in *string, v *validation.Collector) *string {
+	if in == nil {
+		return nil
+	}
+	t := strings.TrimSpace(*in)
+	if t == "" {
+		return nil
+	}
+	if len([]rune(t)) > 60 {
+		v.Add("institution", "informe até 60 caracteres")
+	}
+	return &t
+}
+
 // checkOpeningMonth: o mês de início tem de ser o dia 1 (nil = sem mês de início).
 func checkOpeningMonth(m *caldate.Date, v *validation.Collector) {
 	if m != nil && (m.IsZero() || !m.IsStartOfMonth()) {
@@ -112,6 +127,8 @@ func checkOwner(db *gorm.DB, householdID uuid.UUID, owner *uuid.UUID, v *validat
 
 type CreateInput struct {
 	Name                string
+	Kind                Kind    // "" = regular
+	Institution         *string // nil ou vazio = sem instituição
 	OwnerUserID         *uuid.UUID
 	WarnOnOverdraft     *bool // nil = true
 	OpeningBalanceCents money.Cents
@@ -127,6 +144,14 @@ func (s *Service) Create(ctx context.Context, householdID, actor uuid.UUID, in C
 	db := s.db.WithContext(ctx)
 	var v validation.Collector
 	in.Name = cleanName(in.Name, &v)
+	switch in.Kind {
+	case "":
+		in.Kind = KindRegular
+	case KindRegular, KindInvestment:
+	default:
+		v.Add("kind", "tipo de carteira inválido")
+	}
+	in.Institution = cleanInstitution(in.Institution, &v)
 	checkBalance(in.OpeningBalanceCents, &v)
 	checkOpeningMonth(in.OpeningBalanceMonth, &v)
 	if err := checkOwner(db, householdID, in.OwnerUserID, &v); err != nil {
@@ -135,7 +160,7 @@ func (s *Service) Create(ctx context.Context, householdID, actor uuid.UUID, in C
 	if err := v.Err(); err != nil {
 		return Wallet{}, err
 	}
-	w := Wallet{HouseholdID: householdID, Name: in.Name, OwnerUserID: in.OwnerUserID, WarnOnOverdraft: true,
+	w := Wallet{HouseholdID: householdID, Name: in.Name, Kind: in.Kind, Institution: in.Institution, OwnerUserID: in.OwnerUserID, WarnOnOverdraft: true,
 		OpeningBalanceCents: in.OpeningBalanceCents, OpeningBalanceMonth: in.OpeningBalanceMonth}
 	if in.WarnOnOverdraft != nil {
 		w.WarnOnOverdraft = *in.WarnOnOverdraft
@@ -161,7 +186,10 @@ func (s *Service) Create(ctx context.Context, householdID, actor uuid.UUID, in C
 // Patch: campos nil = não mexer. Dono aceita "limpar", então tem o flag OwnerSet (nil sozinho não diferencia
 // "ausente" de "null").
 type Patch struct {
-	Name                *string
+	Name *string
+	// InstitutionSet: o campo veio no PATCH (Institution nil ou vazio + InstitutionSet = limpar).
+	InstitutionSet      bool
+	Institution         *string
 	OwnerSet            bool
 	OwnerUserID         *uuid.UUID
 	WarnOnOverdraft     *bool
@@ -198,6 +226,9 @@ func (s *Service) Update(ctx context.Context, householdID, actor, id uuid.UUID, 
 		if p.Name != nil {
 			updates["name"] = cleanName(*p.Name, &v)
 		}
+		if p.InstitutionSet {
+			updates["institution"] = cleanInstitution(p.Institution, &v) // nil grava NULL
+		}
 		if p.OwnerSet {
 			if err := checkOwner(tx, householdID, p.OwnerUserID, &v); err != nil {
 				return err
@@ -224,6 +255,9 @@ func (s *Service) Update(ctx context.Context, householdID, actor, id uuid.UUID, 
 			case *p.IsDefault && !cur.IsDefault:
 				if cur.Archived() {
 					v.Add("isDefault", "restaure a carteira antes de torná-la a padrão")
+				}
+				if cur.IsInvestment() {
+					v.Add("isDefault", "carteira de investimento não pode ser a padrão")
 				}
 				makeDefault = true
 			case !*p.IsDefault && cur.IsDefault:
@@ -291,8 +325,8 @@ func (s *Service) SetArchived(ctx context.Context, householdID, actor, id uuid.U
 // transação de quem cria a casa, então ou tudo é gravado, ou nada.
 // Devolve as duas (em Go uma função pode devolver vários valores) porque a categoria Mercado sugere a de benefício.
 func CreateDefaults(tx *gorm.DB, householdID uuid.UUID) (general, benefit Wallet, err error) {
-	general = Wallet{HouseholdID: householdID, Name: DefaultName, IsDefault: true, WarnOnOverdraft: false, SortOrder: 0}
-	benefit = Wallet{HouseholdID: householdID, Name: BenefitName, WarnOnOverdraft: true, SortOrder: 1}
+	general = Wallet{HouseholdID: householdID, Name: DefaultName, Kind: KindRegular, IsDefault: true, WarnOnOverdraft: false, SortOrder: 0}
+	benefit = Wallet{HouseholdID: householdID, Name: BenefitName, Kind: KindRegular, WarnOnOverdraft: true, SortOrder: 1}
 	if err := tx.Create(&general).Error; err != nil {
 		return Wallet{}, Wallet{}, fmt.Errorf("criando carteira padrão: %w", err)
 	}

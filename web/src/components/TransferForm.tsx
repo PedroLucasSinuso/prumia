@@ -28,7 +28,8 @@ type Props = {
  * O servidor avisa (sem bloquear) se o saldo da origem ficar negativo: quem trata o aviso é `onDone`.
  */
 export function TransferForm({ wallets, month, onCreate, onDone }: Props) {
-  const options = activeWallets(wallets).map((w) => ({ value: w.id, label: w.name }))
+  // Investimento entra aqui: aporte = transferir para ele; resgate = transferir dele.
+  const options = activeWallets(wallets).map((w) => ({ value: w.id, label: w.kind === 'investment' ? `${w.name} (investimento)` : w.name }))
   const firstFrom = defaultWallet(activeWallets(wallets))?.id ?? options[0]?.value ?? ''
   const [from, setFrom] = useState(firstFrom)
   const [to, setTo] = useState(options.find((o) => o.value !== firstFrom)?.value ?? '')

@@ -964,7 +964,7 @@ func (s *Service) Pay(ctx context.Context, householdID, id, userID uuid.UUID, in
 	var v validation.Collector
 	if in.WalletID == uuid.Nil {
 		v.Add("walletId", "informe a carteira")
-	} else if err := wallet.CheckUsable(s.db.WithContext(ctx), householdID, in.WalletID, "walletId", &v); err != nil {
+	} else if err := wallet.CheckSpendable(s.db.WithContext(ctx), householdID, in.WalletID, "walletId", &v); err != nil {
 		return View{}, err
 	}
 	paidAt := s.today()

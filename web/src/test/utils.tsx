@@ -32,15 +32,15 @@ export const twoHousesMe: Me = {
 export const viewerMe: Me = { ...me, households: [{ id: 'h1', name: 'Casa do Pedro', role: 'viewer' }] }
 
 export const wallets: Wallet[] = [
-  { id: 'w1', name: 'Geral', isDefault: true, warnOnOverdraft: false, openingBalanceCents: 0, openingBalanceMonth: null, sortOrder: 0, archived: false },
-  { id: 'w2', name: 'Benefício', isDefault: false, warnOnOverdraft: true, openingBalanceCents: 0, openingBalanceMonth: null, sortOrder: 1, archived: false },
+  { id: 'w1', name: 'Geral', kind: 'regular', isDefault: true, warnOnOverdraft: false, openingBalanceCents: 0, openingBalanceMonth: null, sortOrder: 0, archived: false },
+  { id: 'w2', name: 'Benefício', kind: 'regular', isDefault: false, warnOnOverdraft: true, openingBalanceCents: 0, openingBalanceMonth: null, sortOrder: 1, archived: false },
 ]
 
 /** Item de `summary.wallets` (zerado); passe só o que o teste usa. */
 export function walletBalance(walletId: string, over: Partial<WalletBalance> = {}): WalletBalance {
   const w = wallets.find((x) => x.id === walletId)!
   return {
-    walletId, name: w.name, isDefault: w.isDefault, archived: false, openingBalanceCents: 0, openingBalanceMonth: null, carryOverCents: 0,
+    walletId, name: w.name, kind: w.kind, isDefault: w.isDefault, archived: false, openingBalanceCents: 0, openingBalanceMonth: null, carryOverCents: 0,
     expectedIncomeCents: 0, receivedIncomeCents: 0, paidCents: 0, transfersInCents: 0, transfersOutCents: 0, adjustmentsCents: 0, balanceCents: 0, monthBalanceCents: 0, pendingCents: 0, projectedCents: 0, ...over,
   }
 }

@@ -76,6 +76,7 @@ type srcT struct {
 type walletT struct {
 	WalletID            string  `json:"walletId"`
 	Name                string  `json:"name"`
+	Kind                string  `json:"kind"`
 	IsDefault           bool    `json:"isDefault"`
 	Archived            bool    `json:"archived"`
 	OpeningBalanceCents int64   `json:"openingBalanceCents"`

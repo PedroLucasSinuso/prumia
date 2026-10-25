@@ -35,7 +35,7 @@ import { formatCents } from '../lib/money'
 import { usePref } from '../lib/storage'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
-import { activeWallets, defaultWallet, walletName } from '../lib/wallets'
+import { defaultWallet, spendableWallets, walletName } from '../lib/wallets'
 
 /** A conta aberta: em leitura (detalhe) ou no formulário (editar). */
 type Panel = { id: string; mode: 'view' | 'edit' } | null
@@ -114,7 +114,7 @@ export default function MonthPage() {
 
   // Um toque: paga com a carteira sugerida pela categoria (Mercado -> Benefício); sem sugestão, a padrão da casa.
   const walletList = useWallets(houseId).data
-  const payable = useMemo(() => activeWallets(walletList ?? []), [walletList])
+  const payable = useMemo(() => spendableWallets(walletList ?? []), [walletList])
   const walletFor = (inv: Invoice) => {
     const wanted = categoryById.get(inv.categoryId)?.defaultWalletId
     return payable.find((w) => w.id === wanted)?.id ?? defaultWallet(payable)?.id ?? ''

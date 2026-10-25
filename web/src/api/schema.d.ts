@@ -2007,6 +2007,9 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            kind: components["schemas"]["WalletKind"];
+            /** @description Onde o investimento está (banco, corretora); só etiqueta */
+            institution?: string | null;
             /**
              * Format: uuid
              * @description Só etiqueta (de quem é a carteira); não restringe o uso
@@ -2029,6 +2032,9 @@ export interface components {
         WalletInput: {
             /** @description Único entre as carteiras ativas da casa (sem diferenciar maiúsculas) */
             name: string;
+            /** @description Padrão regular. Não muda depois de criada */
+            kind?: components["schemas"]["WalletKind"];
+            institution?: string | null;
             /**
              * Format: uuid
              * @description Deve ser membro da casa
@@ -2048,6 +2054,8 @@ export interface components {
         };
         WalletPatch: {
             name?: string;
+            /** @description null ou vazio limpa */
+            institution?: string | null;
             /**
              * Format: uuid
              * @description null limpa o dono
@@ -2060,10 +2068,15 @@ export interface components {
              * @description null limpa o mês de início (volta a valer desde o início); dia diferente de 1 = 400 no campo
              */
             openingBalanceMonth?: string | null;
-            /** @description true troca a carteira padrão da casa; false = 400 */
+            /** @description true troca a carteira padrão da casa (investimento não pode ser a padrão); false = 400 */
             isDefault?: boolean;
             sortOrder?: number;
         };
+        /**
+         * @description regular = conta do dia a dia. investment = investimento: só se move por transferência (aporte e resgate) e por Conferir saldo (valor atual); não paga conta, não recebe receita e não entra no saldo projetado
+         * @enum {string}
+         */
+        WalletKind: "regular" | "investment";
         Transfer: {
             /** Format: uuid */
             id: string;
@@ -2151,6 +2164,7 @@ export interface components {
             /** Format: uuid */
             walletId: string;
             name: string;
+            kind: components["schemas"]["WalletKind"];
             /** Format: uuid */
             ownerUserId?: string | null;
             isDefault: boolean;
