@@ -94,7 +94,7 @@ PT-5 do [plano](plano-proximas-etapas.md), em 3 PRs; cada um começa com uma pro
 
 ## Ideias sem prioridade
 
-- **Só se o prumia virar um produto comercial** (hoje são duas pessoas usando): **modo demo** (casa de exemplo, sem cadastro), **onboarding simplificado** e **disparo de e-mails** (boas-vindas, convite, nova senha, avisos). Isso traria decisões novas (provedor de e-mail, domínio e reputação de envio, LGPD, planos e cobrança, limites por casa) e **não deve ser antecipado** nas escolhas de hoje além de manter o cadastro e os convites desacoplados da tela.
+- **Modo demo e onboarding**: saíram desta lista em 10/2026, a pedido do dono; ver [plano-docs-onboarding.md](plano-docs-onboarding.md). Continua aqui: **disparo de e-mails** (boas-vindas, convite, nova senha, avisos). Isso traria decisões novas (provedor de e-mail, domínio e reputação de envio, LGPD, planos e cobrança, limites por casa) e **não deve ser antecipado** nas escolhas de hoje além de manter o cadastro e os convites desacoplados da tela.
 - Offline parcial no PWA (hoje: instalável, sem offline).
 - Exportação (CSV) e importação de extratos.
 - Notificação de vencimento próximo.
