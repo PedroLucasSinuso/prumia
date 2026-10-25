@@ -24,8 +24,37 @@ const maxWeakReais = 100000
 const maxPlainDescription = 40
 
 // listLineRe separa uma linha em: descrição (preguiçosa), separador, "R$", número e lixo curto no fim (OCR: "M", "2519 ,").
+// O lixo do fim também é capturado (grupo 5): valor com ponto decimal sem "R$" só é forte se não houver nada depois dele.
 // RE2, o regex do Go, não tem lookahead/lookbehind: por isso tudo vai em grupos e a decisão fica no código (parseListLine).
-var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*([:=\-–])?[ \t]*(R[ \t]?[$S][ \t]*)?(\d[\d.,]*)[|\[\])_]*[ \t]*[✓✔]*(?:[ \t]+\S{1,8}){0,3}[ \t]*$`)
+var listLineRe = regexp.MustCompile(`^[ \t]*(?:[-•*·–][ \t]*)?(.*?)[ \t]*([:=\-–])?[ \t]*(R[ \t]?[$S][ \t]*)?(\d[\d.,]*)[|\[\])_]*[ \t]*[✓✔]*((?:[ \t]+\S{1,8}){0,3})[ \t]*$`)
+
+// Ponto decimal sem "R$" ("Gás: 98.40", teclado com ponto): só a forma simples, sem separador de milhar.
+var plainDotDecimalRe = regexp.MustCompile(`^\d{1,6}\.\d{2}$`)
+
+// Quantidade ("2x"). O valor da linha é sempre o que está escrito (não multiplica: "Notebook: 10x R$ 300,00" é a parcela,
+// não R$ 3.000); a quantidade só sai do meio do caminho e vai para o fim da descrição, "Pão (2x)", para a pessoa conferir.
+var (
+	// "Pão: 2x R$ 5,00", "Pão: 2 x 5,00": a quantidade logo antes do valor.
+	qtyBeforeValueRe = regexp.MustCompile(`(?i)(^|[ \t:=\-–])(\d{1,3})[ \t]*[x×][ \t]*((?:R[ \t]?[$S][ \t]*)?\d)`)
+	// "2x Pão", "Pão 2x", "Pão x2": a quantidade na descrição.
+	qtyInDescRe = regexp.MustCompile(`(?i)(?:^|[ \t])(?:(\d{1,3})[ \t]*[x×]|[x×][ \t]*(\d{1,3}))(?:[ \t]|$)`)
+)
+
+// withQuantity tira a quantidade da descrição e a põe no fim: "2x Pão" -> "Pão (2x)". qty > 0 vem de antes do valor.
+func withQuantity(desc string, qty int) string {
+	if m := qtyInDescRe.FindStringSubmatchIndex(desc); m != nil && qty == 0 {
+		if m[2] >= 0 { // "2x"
+			qty = toInt(desc[m[2]:m[3]])
+		} else { // "x2"
+			qty = toInt(desc[m[4]:m[5]])
+		}
+		desc = strings.TrimSpace(desc[:m[0]] + " " + desc[m[1]:])
+	}
+	if qty <= 1 || desc == "" {
+		return desc
+	}
+	return desc + " (" + strconv.Itoa(qty) + "x)"
+}
 
 // Hora da mensagem no fim da linha ("14:32 ✓✓"): é tirada antes de ler; hora no meio da linha descarta a linha.
 var (
@@ -184,17 +213,29 @@ func parseListLine(line string, ref time.Time) (listItem, bool) {
 	if ignoredLine(line) {
 		return listItem{}, false
 	}
+	// "Pão: 2x R$ 5,00": a quantidade sai da frente do valor (senão ela grudaria na descrição) e volta no fim do nome.
+	qty := 0
+	if q := qtyBeforeValueRe.FindStringSubmatchIndex(line); q != nil {
+		qty = toInt(line[q[4]:q[5]])
+		line = line[:q[3]] + line[q[6]:]
+	}
 	m := listLineRe.FindStringSubmatch(line)
 	if m == nil {
 		return listItem{}, false
 	}
-	desc, sep, hasRS := cleanDescription(m[1]), m[2], m[3] != ""
+	desc, sep, hasRS := withQuantity(cleanDescription(m[1]), qty), m[2], m[3] != ""
 	if desc == "" || notItemRe.MatchString(desc) {
 		return listItem{}, false
 	}
-	cents, twoDecimals, ok := parseMoney(m[4], hasRS)
+	// "98.40" sem R$: lê como se tivesse R$ (ponto decimal); é forte só se a linha termina no valor ("Consumo: 123.45 kWh"
+	// de uma fatura fica fraco e precisa de 2 itens fortes no texto, como os inteiros).
+	dotDecimal := !hasRS && plainDotDecimalRe.MatchString(m[4])
+	cents, twoDecimals, ok := parseMoney(m[4], hasRS || dotDecimal)
 	if !ok {
 		return listItem{}, false
+	}
+	if dotDecimal {
+		twoDecimals = strings.TrimSpace(m[5]) == ""
 	}
 	if !hasRS {
 		// Sem "R$" o separador é obrigatório ("Gás: 98,40"), a descrição é curta e sem número solto, e o número não pode

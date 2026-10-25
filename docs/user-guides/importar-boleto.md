@@ -11,6 +11,8 @@ Use quando chegaram várias contas juntas, ou uma foto de lista.
    **[ ▪ ] boleto**, **[ ▪ ] conta** (sem linha digitável) ou **[ ▪ ] lista**; **[ ✖ ] OCR: confira** pede atenção extra.
 5. Corrija o que precisar, remova linhas que não quer e, nas marcadas como duplicadas, escolha **pular**.
 6. Toque em **Criar N contas**. Ou todas entram, ou nenhuma (se algo falhar, a tela indica a linha).
+7. Você continua no mês em que estava. O aviso diz em que mês as contas caíram ("3 contas criadas em junho e outubro.") e oferece
+   **Desfazer** e, se alguma caiu em outro mês, **Ver**, que abre esse mês.
 
 Fotos de lista ("Gás R$ 157,82", "Mercado R$ 568,99", uma por linha) viram uma conta por linha. Contas de consumo sem código de barras
 (só "total a pagar" e vencimento) viram uma conta sem linha digitável. Quando o documento traz o CNPJ, a linha oferece cadastrar o favorecido.
@@ -24,7 +26,7 @@ No formulário de conta, o botão de importar também aceita conta sem boleto; s
 
 **Uma conta por linha: `descrição: valor`.** Vale para print de lista, foto de caderno e texto colado.
 
-Valores aceitos: `R$ 1.234,56`, `R$1234,56`, `R$150` (sem centavos), `1234,56`, `154,72`, `150` e `150,5` (= R$ 150,50).
+Valores aceitos: `R$ 1.234,56`, `R$1234,56`, `R$150` (sem centavos), `1234,56`, `154,72`, `98.40` (ponto no lugar da vírgula), `150` e `150,5` (= R$ 150,50).
 Separador entre a descrição e o valor: `:`, `=` ou `-`; só um espaço também serve quando o valor tem `R$`.
 A descrição precisa de ao menos uma letra e tem até uns 40 caracteres, sem número solto no meio ("Gás 2 botijões: 50" não vale; "Gás: 50" vale).
 
@@ -36,6 +38,8 @@ A descrição precisa de ao menos uma letra e tem até uns 40 caracteres, sem n�
 | `Ração gatos R$24,99` | R$ dispensa o separador |
 | `Gás: 98,40 / Luz: R$ 120` | várias contas na mesma linha, separadas por `/`, `;` ou `|` |
 | `Teste: 567` **junto de 2 ou mais** linhas com R$ ou vírgula | número inteiro só vale dentro de uma lista |
+| `Gás: 98.40` | ponto com 2 casas vale como vírgula (se a linha termina no valor) |
+| `Pão: 2x R$ 5,00`, `2x Pão: R$ 10,00`, `Pilha x4: 20,00` | a quantidade vai para o fim do nome: "Pão (2x)" |
 
 | Não funciona | Por quê |
 |---|---|
@@ -44,6 +48,10 @@ A descrição precisa de ao menos uma letra e tem até uns 40 caracteres, sem n�
 | `Estava aparecendo westgroup 727` | número solto na descrição |
 | Links, e-mails, horas (`22:45`), CNPJ/CPF e linhas só com data | ignorados de propósito (por isso um print inteiro de conversa funciona) |
 | `Total: R$ 926,80` | "total" e "saldo" não são contas |
+| `Consumo: 123.45 kWh` sozinho | ponto com algo depois do valor é ambíguo (leitura de medidor): precisa de 2 contas "fortes" |
+
+**Quantidade não multiplica**: o valor da conta é sempre o que está escrito. `Notebook: 10x R$ 300,00` vira "Notebook (10x)" de
+R$ 300,00 (a parcela), não R$ 3.000,00. Se o valor escrito for o preço de cada um, corrija na tela antes de criar.
 
 ### Vencimento na própria linha
 

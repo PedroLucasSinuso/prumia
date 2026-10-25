@@ -46,6 +46,16 @@ func TestPadraoDeLista(t *testing.T) {
 		"lixo colado em fortes":  {"Gás: R$150|\nInternet: 119,90]\nLuz: R$ 90_ )", KindList, []want{{"Gás", 15000}, {"Internet", 11990}, {"Luz", 9000}}},
 		"fraco colado sozinho":   {"Medidor: 123456|", "", nil},
 		"total nao e item":       {"Gás: R$ 100,00\nLuz: R$ 50,00\nTotal: R$ 150,00", KindList, []want{{"Gás", 10000}, {"Luz", 5000}}},
+		// ponto decimal sem R$ (teclado com ponto): forte quando a linha termina no valor
+		"ponto decimal":              {"Gás: 98.40\nLuz: 210.35\nÁgua - 75.10", KindList, []want{{"Gás", 9840}, {"Luz", 21035}, {"Água", 7510}}},
+		"ponto decimal misturado":    {"Gás: 98.40\nMercado: 310,25\nLuz: R$ 90", KindList, []want{{"Gás", 9840}, {"Mercado", 31025}, {"Luz", 9000}}},
+		"ponto com unidade é fraco":  {"Consumo: 123.45 kWh\nLeitura: 4523.10 m3", "", nil},
+		"ponto com unidade e fortes": {"Gás: R$ 98,40\nLuz: R$ 210,35\nConsumo: 123.45 kWh", KindList, []want{{"Gás", 9840}, {"Luz", 21035}, {"Consumo", 12345}}},
+		// quantidade: o valor é o que está escrito; a quantidade vai para o fim da descrição
+		"quantidade antes do valor":      {"Pão: 2x R$ 5,00\nLeite: 3 x 4,50\nCafé: R$ 18,90", KindList, []want{{"Pão (2x)", 500}, {"Leite (3x)", 450}, {"Café", 1890}}},
+		"quantidade na descrição":        {"2x Pão: R$ 10,00\nRação 3x: 120,00\nPilha x4: R$ 20,00", KindList, []want{{"Pão (2x)", 1000}, {"Ração (3x)", 12000}, {"Pilha (4x)", 2000}}},
+		"parcela não multiplica":         {"Notebook: 10x R$ 300,00\nCelular: 12x R$ 150,00", KindList, []want{{"Notebook (10x)", 30000}, {"Celular (12x)", 15000}}},
+		"palavra com x não é quantidade": {"Táxi: R$ 35,00\nBox 2: R$ 80,00", KindList, []want{{"Táxi", 3500}, {"Box 2", 8000}}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			d, ok := analyze(tc.body, testRef)
