@@ -24,7 +24,7 @@ Favorecidos, subcategorias, gráficos, temas (9), Receitas v2 (recebimento autom
 ## 3. Ordem e dependências
 
 ```
-PT-1 Auditoria de interface ──────────────┐ (baixo risco, pode ir em paralelo a tudo)
+(PT-1, auditoria de interface: já feito)
 PT-2 Conferir saldo (00012) ──► PT-5a Meta da reserva ──► PT-5b Investimentos ──► PT-5c Taxas (BrasilAPI)
 PT-3 Convite de cadastro (00013, auth)    (independente; um PR com migration por vez)
 PT-4 Importação: pequenos ajustes          (baixo risco)
@@ -32,17 +32,13 @@ PT-6 Segurança e infraestrutura            (itens independentes)
 PT-7 Manutenção recorrente                 (baixo risco)
 ```
 
-Regra prática: **um PR com migration aberto por vez**. PTs de baixo risco (1, 4, 7, partes do 6) podem andar em paralelo, desde que não toquem os mesmos arquivos.
+Regra prática: **um PR com migration aberto por vez**. PTs de baixo risco (4, 7, partes do 6) podem andar em paralelo, desde que não toquem os mesmos arquivos.
 
 ## 4. Pacotes de trabalho
 
-### PT-1 · Correções da auditoria de interface — risco baixo
+### PT-1 · Correções da auditoria de interface — **feito pelo dono**
 
-O dono fez uma auditoria de interface; os achados entram aqui.
-
-> **Achados da auditoria (o dono cola aqui antes de enviar este documento):** _(preencher: tela, o que está errado, onde viu — celular ou computador — e prioridade)_
-
-Como tratar: um PR por tela ou tema coerente (não um PR gigante). Cada achado vira um critério de aceite verificável e, quando for comportamento, um teste do front. Conferir no navegador em largura de celular (≈390 px) e de computador, nos temas Marfim e Dracula (e no Alto contraste quando mexer em cor); `python3 scripts/contraste-temas.py` para qualquer cor nova. Respeitar `prefers-reduced-motion`.
+A auditoria de interface já foi feita e as correções já estão no código (feitas pelo dono). **Não executar este pacote.** Se uma tela ainda parecer errada, abra uma pergunta no PR em vez de refazer o trabalho.
 
 ### PT-2 · Conferir saldo (ajuste de saldo) — risco alto (migration 00012)
 
