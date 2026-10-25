@@ -22,7 +22,7 @@ export default defineConfig({
       ],
       lastUpdated: false,
       pagination: true,
-      plugins: [starlightLinksValidator({ errorOnLocalLinks: false })], // o guia técnico cita http://localhost:8080 de propósito
+      plugins: [starlightLinksValidator({ errorOnLocalLinks: false, exclude: ['/demo/', '/demo/**'] })], // o guia técnico cita http://localhost:8080 de propósito
       sidebar: [
         {
           label: 'Comece aqui',
