@@ -108,6 +108,23 @@ Para **tirar** dinheiro da Reserva, é o mesmo caminho ao contrário: **De** = R
 - Carteira arquivada não recebe nem envia transferências novas; as que já existiam continuam valendo no saldo.
 - Quem só tem permissão de leitura vê as transferências, mas não cria nem exclui.
 
+## Investimentos
+
+Um investimento (CDB, Tesouro, poupança...) é uma carteira do tipo **investimento**. Ele não paga conta nem recebe receita: o dinheiro
+entra e sai por transferência, e o rendimento entra quando você atualiza o valor.
+
+1. Em **Ajustes > Carteiras**, toque em **Nova carteira** e, em **Tipo**, escolha **investimento**. O tipo não muda depois.
+2. Dê um nome (por exemplo, "CDB") e, se quiser, a **instituição** (o banco ou a corretora). Toque em **Criar carteira**.
+3. **Aporte**: no Resumo, toque em **Transferir**, com **De** = a carteira de onde o dinheiro sai e **Para** = o investimento.
+4. **Resgate**: o mesmo caminho ao contrário (**De** = o investimento).
+5. **Rendimento**: no Resumo, no bloco **investimentos**, toque em **Atualizar valor** e digite quanto o investimento vale hoje. A
+   diferença entra como "rendimento e atualizações".
+
+- O **saldo projetado** do mês não conta os investimentos: o aporte sai da carteira de origem como uma transferência.
+- O bloco **investimentos** mostra o total e, em cada um, o valor, os aportes, os resgates e o rendimento do mês.
+- Um investimento pode contar como **reserva de emergência** (marque-o no card da reserva).
+- Investimento não pode ser a carteira padrão.
+
 ## Qual carteira recebe a receita
 
 Em **Nova receita**, o campo **Carteira** já vem preenchido: **Vale (VR)** sugere a carteira *Benefício* (se existir); os demais tipos,
