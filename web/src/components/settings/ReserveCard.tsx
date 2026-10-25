@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 
 import { useReserve, useSetReserve } from '../../api/queries'
 import { ApiError } from '../../api/errors'
-import type { Wallet } from '../../api/types'
+import type { ReserveStatus, Wallet } from '../../api/types'
 import { networkErrorMessage, problemMessage } from '../../auth/errors'
 import { currentMonth } from '../../lib/dates'
 import { Button } from '../ui/Button'
@@ -20,19 +20,6 @@ const OPTIONS = [3, 6, 9, 12]
  */
 export function ReserveCard({ houseId, wallets, isAdmin }: { houseId: string; wallets: Wallet[]; isAdmin: boolean }) {
   const reserve = useReserve(houseId, currentMonth())
-  const save = useSetReserve(houseId)
-  const toast = useToast()
-  const [target, setTarget] = useState<string>('')
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string>()
-
-  // Preenche o formulário quando a configuração chega (ou muda depois de salvar).
-  useEffect(() => {
-    if (!reserve.data) return
-    setTarget(reserve.data.targetMonths == null ? '' : String(reserve.data.targetMonths))
-    setChosen(new Set(reserve.data.walletIds))
-  }, [reserve.data])
-
   if (!reserve.isSuccess) return null
   const configured = reserve.data.targetMonths != null
   if (!isAdmin && !configured) return null
@@ -48,8 +35,18 @@ export function ReserveCard({ houseId, wallets, isAdmin }: { houseId: string; wa
       </Card>
     )
   }
+  // A key recria o formulário quando a configuração salva muda (o estado nasce dela, sem efeito para copiar).
+  return <ReserveForm key={`${reserve.data.targetMonths ?? ''}|${reserve.data.walletIds.join(',')}`} houseId={houseId} wallets={wallets} reserve={reserve.data} />
+}
 
-  const options = Array.from(new Set([...OPTIONS, ...(reserve.data.targetMonths ? [reserve.data.targetMonths] : [])])).sort((a, b) => a - b)
+function ReserveForm({ houseId, wallets, reserve }: { houseId: string; wallets: Wallet[]; reserve: ReserveStatus }) {
+  const save = useSetReserve(houseId)
+  const toast = useToast()
+  const [target, setTarget] = useState(reserve.targetMonths == null ? '' : String(reserve.targetMonths))
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(reserve.walletIds))
+  const [error, setError] = useState<string>()
+
+  const options = Array.from(new Set([...OPTIONS, ...(reserve.targetMonths ? [reserve.targetMonths] : [])])).sort((a, b) => a - b)
   const active = wallets.filter((w) => !w.archived || chosen.has(w.id))
 
   async function onSave(e: FormEvent) {
