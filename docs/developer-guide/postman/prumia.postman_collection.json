@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "prumia API",
-    "description": "Coleção de testes manuais da API (Fases 0-2: inclui compras parceladas, contas fixas, receitas, fontes de receita e resumo do mês). Rode as pastas em ordem, com o Collection Runner ou uma a uma. O Postman guarda o cookie de sessão sozinho. Contrato completo: openapi/openapi.yaml.",
+    "description": "Coleção de testes manuais da API: cadastro e sessão, casas, categorias, invoices, compras parceladas, contas fixas, receitas (v2) e resumo, carteiras, transferências, conferir saldo, reserva, investimentos, taxas de referência, convites (de casa e de cadastro), papéis e redefinição de senha. Use um banco NOVO (o primeiro cadastro vira o dono do sistema) e rode as pastas em ordem. A pasta 9b (boleto) precisa de arquivos reais e fica de fora do newman. O Postman guarda o cookie de sessão sozinho. Contrato completo: openapi/openapi.yaml.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -179,6 +179,50 @@
     },
     {
       "key": "base_ben_paid",
+      "value": ""
+    },
+    {
+      "key": "adjustment_id",
+      "value": ""
+    },
+    {
+      "key": "base_ben_in",
+      "value": ""
+    },
+    {
+      "key": "base_geral_received",
+      "value": ""
+    },
+    {
+      "key": "beneficio_id",
+      "value": ""
+    },
+    {
+      "key": "cdb_id",
+      "value": ""
+    },
+    {
+      "key": "geral_id",
+      "value": ""
+    },
+    {
+      "key": "reserva_id",
+      "value": ""
+    },
+    {
+      "key": "signup_invite_id",
+      "value": ""
+    },
+    {
+      "key": "signup_token",
+      "value": ""
+    },
+    {
+      "key": "transfer_id",
+      "value": ""
+    },
+    {
+      "key": "vr_transfer_id",
       "value": ""
     }
   ],
@@ -626,12 +670,12 @@
           ]
         },
         {
-          "name": "Operação ainda não implementada",
+          "name": "Carteiras da casa (guarda os ids)",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/boletos/extract",
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets",
               "host": [
                 "{{base_url}}"
               ],
@@ -639,8 +683,7 @@
                 "api",
                 "households",
                 "{{household_id}}",
-                "boletos",
-                "extract"
+                "wallets"
               ]
             }
           },
@@ -650,7 +693,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"501 not_implemented (boleto vem na Fase 3)\", () => { pm.response.to.have.status(501); pm.expect(pm.response.json().code).to.eql(\"not_implemented\"); });"
+                  "pm.test('200; Geral (padrão) e Benefício', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const ws = pm.response.json();",
+                  "  const geral = ws.find(w => w.isDefault);",
+                  "  const vr = ws.find(w => w.name === 'Benefício');",
+                  "  pm.expect(geral.name).to.eql('Geral');",
+                  "  pm.expect(geral.kind).to.eql('regular');",
+                  "  pm.collectionVariables.set('geral_id', geral.id);",
+                  "  pm.collectionVariables.set('beneficio_id', vr.id);",
+                  "});"
                 ]
               }
             }
@@ -722,7 +774,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Pets {{$randomInt}}\",\n  \"defaultWallet\": \"free\",\n  \"isEssential\": true\n}",
+              "raw": "{\n  \"name\": \"Pets {{$randomInt}}\",\n  \"defaultWalletId\": \"{{geral_id}}\",\n  \"isEssential\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -736,7 +788,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"201\", () => { pm.response.to.have.status(201); pm.collectionVariables.set(\"new_category_id\", pm.response.json().id); });"
+                  "pm.test(\"201; carteira padrão = Geral\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().defaultWalletId).to.eql(pm.collectionVariables.get('geral_id'));",
+                  "  pm.collectionVariables.set(\"new_category_id\", pm.response.json().id);",
+                  "});"
                 ]
               }
             }
@@ -811,7 +867,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"isEssential\": false,\n  \"defaultWallet\": null\n}",
+              "raw": "{\n  \"isEssential\": false,\n  \"defaultWalletId\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -825,7 +881,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; defaultWallet limpa\", () => { pm.response.to.have.status(200); const c = pm.response.json(); pm.expect(c.isEssential).to.be.false; pm.expect(c.defaultWallet).to.be.undefined; });"
+                  "pm.test(\"200; defaultWalletId limpa\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const c = pm.response.json();",
+                  "  pm.expect(c.isEssential).to.be.false;",
+                  "  pm.expect(c.defaultWalletId).to.be.oneOf([null, undefined]);",
+                  "});"
                 ]
               }
             }
@@ -1178,7 +1239,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"wallet\": \"free\"\n}",
+              "raw": "{\n  \"walletId\": \"{{geral_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1193,11 +1254,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200, paga, na carteira livre, valor da invoice\", () => {",
+                  "pm.test(\"200, paga, na Geral, valor da invoice\", () => {",
                   "  pm.response.to.have.status(200);",
                   "  const r = pm.response.json();",
                   "  pm.expect(r.invoice.status).to.eql(\"paid\");",
-                  "  pm.expect(r.invoice.paid.wallet).to.eql(\"free\");",
+                  "  pm.expect(r.invoice.paid.walletId).to.eql(pm.collectionVariables.get('geral_id'));",
                   "  pm.expect(r.invoice.paid.amountCents).to.eql(160000);",
                   "});"
                 ]
@@ -1231,7 +1292,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"wallet\": \"benefit\"\n}",
+              "raw": "{\n  \"walletId\": \"{{beneficio_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1757,7 +1818,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"wallet\": \"free\"\n}",
+              "raw": "{\n  \"walletId\": \"{{geral_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2938,7 +2999,7 @@
     },
     {
       "name": "8. Receitas, fontes de receita e resumo do mês",
-      "description": "Fase 2. Salário bruto com descontos itemizados e previsão mensal, VR na carteira de benefício, receber/desfazer, reaplicar o template (applyFrom), aviso de saldo de benefício ao pagar e o resumo do mês. Rode logado como o admin (depois da pasta 7). Os valores de invoices vêm de comparações com o resumo de ANTES, porque as pastas anteriores deixam despesas no mês atual. Datas e meses são calculados por script (sempre relativos a hoje).",
+      "description": "Receitas v2 e carteiras configuráveis. Fontes com descontos itemizados e regra de data (a partir do mês que vem, para nada contar como recebido sozinho), ajuste de um mês, \"caiu\" e \"não caiu\", reaplicar o molde (applyFrom), receita avulsa, aviso de saldo ao pagar (wallet_balance_insufficient), resumo por carteira e prévia de datas. Rode logado como o admin, depois da pasta 7. Datas relativas a hoje.",
       "item": [
         {
           "name": "Quem sou eu (guarda o id para as receitas)",
@@ -2963,20 +3024,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "function addMonths(ymd, n) {",
-                  "  const [y, m, day] = ymd.split('-').map(Number);",
-                  "  const t = new Date(Date.UTC(y, m - 1 + n, 1));",
-                  "  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();",
-                  "  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), Math.min(day, last))).toISOString().slice(0, 10);",
-                  "}",
                   "const today = new Date().toISOString().slice(0, 10);",
-                  "const thisMonth = today.slice(0, 8) + '01';",
-                  "pm.collectionVariables.set('today_ymd', today);",
-                  "pm.collectionVariables.set('this_month', thisMonth);",
-                  "pm.collectionVariables.set('next_month', addMonths(thisMonth, 1));",
-                  "pm.collectionVariables.set('month_plus_3', addMonths(thisMonth, 3));",
-                  "pm.collectionVariables.set('month_plus_12', addMonths(thisMonth, 12));",
-                  "pm.collectionVariables.set('month_plus_24', addMonths(thisMonth, 24));"
+                  "pm.collectionVariables.set('today_ymd', today);"
                 ]
               }
             },
@@ -3013,8 +3062,7 @@
                   "value": "{{this_month}}"
                 }
               ]
-            },
-            "description": "Estrutura do resumo: carteiras livre e benefício, total pago/pendente, por categoria."
+            }
           },
           "event": [
             {
@@ -3022,17 +3070,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200 com a estrutura completa\", () => {",
+                  "pm.test(\"200; uma linha por carteira\", () => {",
                   "  pm.response.to.have.status(200);",
                   "  const r = pm.response.json();",
                   "  pm.expect(r.month).to.eql(pm.collectionVariables.get('this_month'));",
-                  "  pm.expect(r.wallets.free).to.have.all.keys('expectedIncomeCents', 'receivedIncomeCents', 'paidCents', 'balanceCents');",
-                  "  pm.expect(r.wallets.benefit.expectedIncomeCents).to.eql(0);",
-                  "  pm.expect(r.byCategory).to.be.an('array');",
-                  "  pm.collectionVariables.set('base_paid', r.totalPaidCents);",
-                  "  pm.collectionVariables.set('base_pending', r.totalPendingCents);",
-                  "  pm.collectionVariables.set('base_free_paid', r.wallets.free.paidCents);",
-                  "  pm.collectionVariables.set('base_ben_paid', r.wallets.benefit.paidCents);",
+                  "  const g = r.wallets.find(w => w.walletId === pm.collectionVariables.get('geral_id'));",
+                  "  const b = r.wallets.find(w => w.walletId === pm.collectionVariables.get('beneficio_id'));",
+                  "  pm.expect(g).to.include.keys('expectedIncomeCents', 'receivedIncomeCents', 'paidCents', 'balanceCents', 'projectedCents', 'kind');",
+                  "  pm.collectionVariables.set('base_ben_paid', b.paidCents);",
+                  "  pm.collectionVariables.set('base_ben_in', b.transfersInCents);",
+                  "  pm.collectionVariables.set('base_geral_received', g.receivedIncomeCents);",
                   "});"
                 ]
               }
@@ -3040,7 +3087,7 @@
           ]
         },
         {
-          "name": "Criar fonte: salário bruto com INSS, IRRF, plano e coparticipação",
+          "name": "Criar fonte: salário bruto com descontos (a partir do mês que vem)",
           "request": {
             "method": "POST",
             "header": [
@@ -3063,14 +3110,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"salary\",\n  \"name\": \"Salário Postman\",\n  \"grossAmountCents\": 800000,\n  \"dayOfMonth\": 31,\n  \"startMonth\": \"{{this_month}}\",\n  \"deductions\": [\n    {\n      \"kind\": \"inss\",\n      \"name\": \"INSS\",\n      \"amountCents\": 90800\n    },\n    {\n      \"kind\": \"irrf\",\n      \"name\": \"IRRF\",\n      \"amountCents\": 61200\n    },\n    {\n      \"kind\": \"health_plan\",\n      \"name\": \"Plano de saúde\",\n      \"amountCents\": 35000\n    },\n    {\n      \"kind\": \"health_copay\",\n      \"name\": \"Coparticipação\",\n      \"amountCents\": 4590\n    }\n  ]\n}",
+              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"salary\",\n  \"name\": \"Salário Postman\",\n  \"grossAmountCents\": 800000,\n  \"dateRule\": {\n    \"rule\": \"nth_business_day\",\n    \"n\": 5\n  },\n  \"startMonth\": \"{{next_month}}\",\n  \"deductions\": [\n    {\n      \"kind\": \"inss\",\n      \"name\": \"INSS\",\n      \"amountCents\": 90800\n    },\n    {\n      \"kind\": \"irrf\",\n      \"name\": \"IRRF\",\n      \"amountCents\": 61200\n    },\n    {\n      \"kind\": \"health_plan\",\n      \"name\": \"Plano de saúde\",\n      \"amountCents\": 35000\n    },\n    {\n      \"kind\": \"health_copay\",\n      \"name\": \"Coparticipação\",\n      \"amountCents\": 4590\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "description": "Gera os lançamentos PREVISTOS do mês atual até 12 meses à frente, já com bruto e descontos. Dia 31 vira o último dia dos meses curtos."
+            }
           },
           "event": [
             {
@@ -3078,11 +3124,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"201; carteira livre; gerada até 12 meses à frente\", () => {",
+                  "pm.test(\"201; Geral (padrão); regra 5º dia útil; 4 descontos\", () => {",
                   "  pm.response.to.have.status(201);",
                   "  const r = pm.response.json();",
-                  "  pm.expect(r.wallet).to.eql('free');",
-                  "  pm.expect(r.generatedThrough).to.eql(pm.collectionVariables.get('month_plus_12'));",
+                  "  pm.expect(r.walletId).to.eql(pm.collectionVariables.get('geral_id'));",
+                  "  pm.expect(r.dateRule.rule).to.eql('nth_business_day');",
                   "  pm.expect(r.deductions).to.have.length(4);",
                   "  pm.collectionVariables.set('src_id', r.id);",
                   "});"
@@ -3092,12 +3138,12 @@
           ]
         },
         {
-          "name": "Lançamento previsto deste mês (líquido calculado)",
+          "name": "Lançamento previsto do mês que vem (líquido calculado)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/incomes?month={{this_month}}",
+              "raw": "{{base_url}}/api/households/{{household_id}}/incomes?month={{next_month}}",
               "host": [
                 "{{base_url}}"
               ],
@@ -3110,7 +3156,7 @@
               "query": [
                 {
                   "key": "month",
-                  "value": "{{this_month}}"
+                  "value": "{{next_month}}"
                 }
               ]
             }
@@ -3123,14 +3169,10 @@
                 "exec": [
                   "pm.test(\"200; previsto; líquido = bruto - descontos\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  const i = r.find(x => x.sourceId === pm.collectionVariables.get('src_id'));",
-                  "  pm.expect(i).to.exist;",
-                  "  pm.expect(i.received).to.eql(false);",
+                  "  const i = pm.response.json().find(x => x.sourceId === pm.collectionVariables.get('src_id'));",
+                  "  pm.expect(i.received).to.be.false;",
                   "  pm.expect(i.grossAmountCents).to.eql(800000);",
                   "  pm.expect(i.netAmountCents).to.eql(608410);",
-                  "  pm.expect(i.competenceMonth).to.eql(pm.collectionVariables.get('this_month'));",
-                  "  pm.expect(i.expectedDate.slice(0, 7)).to.eql(i.competenceMonth.slice(0, 7));",
                   "  pm.collectionVariables.set('inc_id', i.id);",
                   "});"
                 ]
@@ -3139,7 +3181,7 @@
           ]
         },
         {
-          "name": "Ajustar a coparticipação só deste mês",
+          "name": "Ajustar a coparticipação só deste lançamento",
           "request": {
             "method": "PATCH",
             "header": [
@@ -3163,14 +3205,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"deductions\": [\n    {\n      \"kind\": \"inss\",\n      \"name\": \"INSS\",\n      \"amountCents\": 90800\n    },\n    {\n      \"kind\": \"irrf\",\n      \"name\": \"IRRF\",\n      \"amountCents\": 61200\n    },\n    {\n      \"kind\": \"health_plan\",\n      \"name\": \"Plano de saúde\",\n      \"amountCents\": 35000\n    },\n    {\n      \"kind\": \"health_copay\",\n      \"name\": \"Coparticipação\",\n      \"amountCents\": 19990\n    }\n  ],\n  \"notes\": \"consulta extra\"\n}",
+              "raw": "{\n  \"deductions\": [\n    {\n      \"kind\": \"inss\",\n      \"name\": \"INSS\",\n      \"amountCents\": 90800\n    },\n    {\n      \"kind\": \"irrf\",\n      \"name\": \"IRRF\",\n      \"amountCents\": 61200\n    },\n    {\n      \"kind\": \"health_plan\",\n      \"name\": \"Plano de saúde\",\n      \"amountCents\": 35000\n    },\n    {\n      \"kind\": \"health_copay\",\n      \"name\": \"Coparticipação\",\n      \"amountCents\": 6000\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "description": "Os descontos enviados SUBSTITUEM a lista. Editar o lançamento não altera a fonte."
+            }
           },
           "event": [
             {
@@ -3178,19 +3219,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; líquido recalculado\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.netAmountCents).to.eql(593010);",
-                  "  pm.expect(r.notes).to.eql('consulta extra');",
-                  "});"
+                  "pm.test(\"200; líquido recalculado\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().netAmountCents).to.eql(607000); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "A fonte (template) não mudou",
+          "name": "A fonte (molde) não mudou",
           "request": {
             "method": "GET",
             "header": [],
@@ -3213,11 +3249,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; coparticipação do template continua 45,90\", () => {",
+                  "pm.test(\"200; coparticipação do molde continua 45,90\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  const s = r.find(x => x.id === pm.collectionVariables.get('src_id'));",
-                  "  pm.expect(s.deductions.find(d => d.kind === 'health_copay').amountCents).to.eql(4590);",
+                  "  const s = pm.response.json().find(x => x.id === pm.collectionVariables.get('src_id'));",
+                  "  pm.expect(s.deductions.find(x => x.kind === 'health_copay').amountCents).to.eql(4590);",
                   "});"
                 ]
               }
@@ -3249,7 +3284,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"deductions\": [\n    {\n      \"kind\": \"other\",\n      \"name\": \"Absurdo\",\n      \"amountCents\": 900000\n    }\n  ]\n}",
+              "raw": "{\n  \"deductions\": [\n    {\n      \"kind\": \"other\",\n      \"name\": \"Demais\",\n      \"amountCents\": 900000\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3265,9 +3300,7 @@
                 "exec": [
                   "pm.test(\"400 com erro no campo deductions\", () => {",
                   "  pm.response.to.have.status(400);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.code).to.eql('validation_error');",
-                  "  pm.expect(r.fields).to.have.property(\"deductions\");",
+                  "  pm.expect(pm.response.json().fields).to.have.property('deductions');",
                   "});"
                 ]
               }
@@ -3275,10 +3308,15 @@
           ]
         },
         {
-          "name": "Receber o salário (padrão: hoje)",
+          "name": "\"Caiu\" antes da data (marca como recebida hoje)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/households/{{household_id}}/incomes/{{inc_id}}/receive",
               "host": [
@@ -3292,6 +3330,15 @@
                 "{{inc_id}}",
                 "receive"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -3300,22 +3347,22 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; recebido hoje\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.received).to.eql(true);",
-                  "  pm.expect(r.receivedAt).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
-                  "});"
+                  "pm.test(\"200; recebida\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().received).to.be.true; });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Receber de novo",
+          "name": "\"Caiu\" de novo",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/households/{{household_id}}/incomes/{{inc_id}}/receive",
               "host": [
@@ -3329,6 +3376,15 @@
                 "{{inc_id}}",
                 "receive"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -3337,17 +3393,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"409 already_received\", () => {",
-                  "  pm.response.to.have.status(409);",
-                  "  pm.expect(pm.response.json().code).to.eql(\"already_received\");",
-                  "});"
+                  "pm.test(\"409 already_received\", () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql('already_received'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Desfazer o recebimento",
+          "name": "\"Não caiu\" (desfaz)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -3372,68 +3425,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; volta a previsto\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.received).to.eql(false);",
-                  "});"
+                  "pm.test(\"200; não conta mais como recebida\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().received).to.be.false; });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Receber com data informada",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/incomes/{{inc_id}}/receive",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "households",
-                "{{household_id}}",
-                "incomes",
-                "{{inc_id}}",
-                "receive"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"receivedAt\": \"{{today_ymd}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200; recebido\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.received).to.eql(true);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Reaplicar o template a partir do mês que vem (applyFrom)",
+          "name": "Reaplicar o molde a partir de 3 meses (applyFrom)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -3443,7 +3442,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/income-sources/{{src_id}}?applyFrom={{next_month}}",
+              "raw": "{{base_url}}/api/households/{{household_id}}/income-sources/{{src_id}}?applyFrom={{month_plus_3}}",
               "host": [
                 "{{base_url}}"
               ],
@@ -3457,20 +3456,19 @@
               "query": [
                 {
                   "key": "applyFrom",
-                  "value": "{{next_month}}"
+                  "value": "{{month_plus_3}}"
                 }
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"grossAmountCents\": 900000,\n  \"deductions\": [\n    {\n      \"kind\": \"inss\",\n      \"name\": \"INSS\",\n      \"amountCents\": 100000\n    }\n  ]\n}",
+              "raw": "{\n  \"grossAmountCents\": 900000\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "description": "Só os lançamentos PREVISTOS do mês que vem em diante recebem o template novo. Os recebidos nunca mudam."
+            }
           },
           "event": [
             {
@@ -3478,11 +3476,46 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; template novo\", () => {",
+                  "pm.test(\"200; molde novo\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().grossAmountCents).to.eql(900000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daqui a 3 meses recebeu o molde novo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/incomes?month={{month_plus_3}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "incomes"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month_plus_3}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; bruto 9.000,00\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.grossAmountCents).to.eql(900000);",
-                  "  pm.expect(r.deductions).to.have.length(1);",
+                  "  const i = pm.response.json().find(x => x.sourceId === pm.collectionVariables.get('src_id'));",
+                  "  pm.expect(i.grossAmountCents).to.eql(900000);",
                   "});"
                 ]
               }
@@ -3490,7 +3523,7 @@
           ]
         },
         {
-          "name": "Mês que vem recebeu o template novo",
+          "name": "O mês que vem não foi tocado",
           "request": {
             "method": "GET",
             "header": [],
@@ -3519,105 +3552,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; bruto 9.000,00 e líquido 8.000,00\", () => {",
+                  "pm.test(\"200; continua 8.000,00 e com a coparticipação ajustada\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  const i = r.find(x => x.sourceId === pm.collectionVariables.get('src_id'));",
-                  "  pm.expect(i.grossAmountCents).to.eql(900000);",
-                  "  pm.expect(i.netAmountCents).to.eql(800000);",
-                  "  pm.collectionVariables.set('inc_next_id', i.id);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Este mês (já recebido) não foi tocado",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/incomes?month={{this_month}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "households",
-                "{{household_id}}",
-                "incomes"
-              ],
-              "query": [
-                {
-                  "key": "month",
-                  "value": "{{this_month}}"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200; continua 8.000,00 bruto e recebido\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  const i = r.find(x => x.id === pm.collectionVariables.get('inc_id'));",
+                  "  const i = pm.response.json().find(x => x.sourceId === pm.collectionVariables.get('src_id'));",
                   "  pm.expect(i.grossAmountCents).to.eql(800000);",
-                  "  pm.expect(i.netAmountCents).to.eql(593010);",
-                  "  pm.expect(i.received).to.eql(true);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "VR em carteira livre é recusado",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/income-sources",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "households",
-                "{{household_id}}",
-                "income-sources"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"benefit\",\n  \"wallet\": \"free\",\n  \"name\": \"VR errado\",\n  \"grossAmountCents\": 60000,\n  \"dayOfMonth\": 5,\n  \"startMonth\": \"{{this_month}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400 com erro no campo wallet\", () => {",
-                  "  pm.response.to.have.status(400);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.code).to.eql('validation_error');",
-                  "  pm.expect(r.fields).to.have.property(\"wallet\");",
+                  "  pm.expect(i.netAmountCents).to.eql(607000);",
                   "});"
                 ]
               }
@@ -3648,7 +3587,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"00000000-0000-7000-8000-000000000000\",\n  \"kind\": \"salary\",\n  \"name\": \"Fantasma\",\n  \"grossAmountCents\": 60000,\n  \"dayOfMonth\": 5,\n  \"startMonth\": \"{{this_month}}\"\n}",
+              "raw": "{\n  \"userId\": \"00000000-0000-7000-8000-000000000000\",\n  \"kind\": \"benefit\",\n  \"name\": \"VR errado\",\n  \"grossAmountCents\": 60000,\n  \"dateRule\": {\n    \"rule\": \"day_of_month\",\n    \"n\": 5\n  },\n  \"startMonth\": \"{{next_month}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3662,19 +3601,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"400 com erro no campo userId\", () => {",
-                  "  pm.response.to.have.status(400);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.code).to.eql('validation_error');",
-                  "  pm.expect(r.fields).to.have.property(\"userId\");",
-                  "});"
+                  "pm.test(\"400 com erro no campo userId\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('userId'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Criar fonte de VR (carteira de benefício)",
+          "name": "Carteira de outra casa é recusada",
           "request": {
             "method": "POST",
             "header": [
@@ -3697,7 +3631,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"benefit\",\n  \"name\": \"VR Postman\",\n  \"grossAmountCents\": 60000,\n  \"dayOfMonth\": 5,\n  \"startMonth\": \"{{this_month}}\"\n}",
+              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"benefit\",\n  \"walletId\": \"00000000-0000-7000-8000-000000000000\",\n  \"name\": \"VR errado\",\n  \"grossAmountCents\": 60000,\n  \"dateRule\": {\n    \"rule\": \"day_of_month\",\n    \"n\": 5\n  },\n  \"startMonth\": \"{{next_month}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3711,11 +3645,54 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"201; carteira de benefício\", () => {",
+                  "pm.test(\"400 com erro no campo walletId\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('walletId'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar fonte de VR (vai para a carteira Benefício)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/income-sources",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "income-sources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"benefit\",\n  \"name\": \"VR Postman\",\n  \"grossAmountCents\": 60000,\n  \"dateRule\": {\n    \"rule\": \"day_of_month\",\n    \"n\": 5\n  },\n  \"startMonth\": \"{{next_month}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; carteira Benefício\", () => {",
                   "  pm.response.to.have.status(201);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.wallet).to.eql('benefit');",
-                  "  pm.collectionVariables.set('vr_src_id', r.id);",
+                  "  pm.expect(pm.response.json().walletId).to.eql(pm.collectionVariables.get('beneficio_id'));",
+                  "  pm.collectionVariables.set('vr_src_id', pm.response.json().id);",
                   "});"
                 ]
               }
@@ -3723,7 +3700,7 @@
           ]
         },
         {
-          "name": "Receita avulsa (bônus)",
+          "name": "Receita avulsa de hoje (bônus)",
           "request": {
             "method": "POST",
             "header": [
@@ -3760,12 +3737,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"201; sem fonte, carteira livre, previsto\", () => {",
+                  "pm.test(\"201; sem fonte, Geral, já recebida (a data chegou)\", () => {",
                   "  pm.response.to.have.status(201);",
                   "  const r = pm.response.json();",
                   "  pm.expect(r.sourceId).to.be.oneOf([null, undefined]);",
-                  "  pm.expect(r.wallet).to.eql('free');",
+                  "  pm.expect(r.walletId).to.eql(pm.collectionVariables.get('geral_id'));",
                   "  pm.expect(r.netAmountCents).to.eql(50000);",
+                  "  pm.expect(r.received).to.be.true;",
                   "  pm.collectionVariables.set('bonus_id', r.id);",
                   "});"
                 ]
@@ -3798,7 +3776,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"grossAmountCents\": 70000,\n  \"description\": \"Bônus de outubro\"\n}",
+              "raw": "{\n  \"description\": \"Bônus Postman (editado)\",\n  \"grossAmountCents\": 60000\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3812,12 +3790,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.grossAmountCents).to.eql(70000);",
-                  "  pm.expect(r.description).to.eql('Bônus de outubro');",
-                  "});"
+                  "pm.test(\"200\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().netAmountCents).to.eql(60000); });"
                 ]
               }
             }
@@ -3848,7 +3821,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('204', () => pm.response.to.have.status(204));"
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
                 ]
               }
             }
@@ -3886,8 +3859,7 @@
                 "exec": [
                   "pm.test(\"200; sem o bônus\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.find(x => x.id === pm.collectionVariables.get('bonus_id'))).to.eql(undefined);",
+                  "  pm.expect(pm.response.json().find(x => x.id === pm.collectionVariables.get('bonus_id'))).to.be.undefined;",
                   "});"
                 ]
               }
@@ -3918,7 +3890,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryId\": \"{{mercado_id}}\",\n  \"description\": \"Mercado Postman\",\n  \"amountCents\": 40000,\n  \"dueDate\": \"{{today_ymd}}\",\n  \"competenceMonth\": \"{{this_month}}\"\n}",
+              "raw": "{\n  \"categoryId\": \"{{mercado_id}}\",\n  \"description\": \"Mercado Postman\",\n  \"amountCents\": 40000,\n  \"dueDate\": \"{{today_ymd}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3932,18 +3904,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"201\", () => {",
-                  "  pm.response.to.have.status(201);",
-                  "  const r = pm.response.json();",
-                  "  pm.collectionVariables.set('sm_inv_id', r.id);",
-                  "});"
+                  "pm.test(\"201\", () => { pm.response.to.have.status(201); pm.collectionVariables.set('sm_inv_id', pm.response.json().id); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Pagar com o VR ainda não recebido: avisa, mas paga",
+          "name": "Pagar com o Benefício sem saldo: avisa, mas paga",
           "request": {
             "method": "POST",
             "header": [
@@ -3968,14 +3936,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"wallet\": \"benefit\"\n}",
+              "raw": "{\n  \"walletId\": \"{{beneficio_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "description": "Saldo estimado do benefício = recebido - pago. VR previsto (não recebido) não conta, então o saldo fica negativo: aviso, sem bloqueio."
+            }
           },
           "event": [
             {
@@ -3983,89 +3950,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; paga; warnings = benefit_balance_insufficient\", () => {",
+                  "pm.test(\"200; paga; aviso wallet_balance_insufficient na carteira Benefício\", () => {",
                   "  pm.response.to.have.status(200);",
                   "  const r = pm.response.json();",
                   "  pm.expect(r.invoice.status).to.eql('paid');",
-                  "  pm.expect(r.warnings).to.eql(['benefit_balance_insufficient']);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Receber o VR do mês",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/incomes?month={{this_month}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "households",
-                "{{household_id}}",
-                "incomes"
-              ],
-              "query": [
-                {
-                  "key": "month",
-                  "value": "{{this_month}}"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200; guarda o id do VR do mês\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  const i = r.find(x => x.sourceId === pm.collectionVariables.get('vr_src_id'));",
-                  "  pm.expect(i.wallet).to.eql('benefit');",
-                  "  pm.collectionVariables.set('vr_inc_id', i.id);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "... receber",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/incomes/{{vr_inc_id}}/receive",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "households",
-                "{{household_id}}",
-                "incomes",
-                "{{vr_inc_id}}",
-                "receive"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.received).to.eql(true);",
+                  "  pm.expect(r.warnings).to.include('wallet_balance_insufficient');",
+                  "  pm.expect(r.warningDetails[0].walletId).to.eql(pm.collectionVariables.get('beneficio_id'));",
                   "});"
                 ]
               }
@@ -4098,18 +3988,58 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; volta a pendente\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.status).to.be.oneOf(['pending', 'overdue']);",
-                  "});"
+                  "pm.test(\"200; volta a pendente\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.not.eql('paid'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Pagar de novo com o VR recebido: sem aviso",
+          "name": "Transferir R$ 1.000,00 da Geral para o Benefício",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWalletId\": \"{{geral_id}}\",\n  \"toWalletId\": \"{{beneficio_id}}\",\n  \"amountCents\": 100000,\n  \"notes\": \"Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201\", () => { pm.response.to.have.status(201); pm.collectionVariables.set('vr_transfer_id', pm.response.json().transfer.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pagar de novo com saldo: sem aviso",
           "request": {
             "method": "POST",
             "header": [
@@ -4134,7 +4064,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"wallet\": \"benefit\"\n}",
+              "raw": "{\n  \"walletId\": \"{{beneficio_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4148,18 +4078,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; warnings vazio (R$ 600,00 - R$ 400,00 >= 0)\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.warnings).to.eql([]);",
-                  "});"
+                  "pm.test(\"200; sem avisos\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().warnings || []).to.eql([]); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Resumo do mês: receita e despesa em carteiras diferentes",
+          "name": "Resumo do mês: pagamento e transferência por carteira",
           "request": {
             "method": "GET",
             "header": [],
@@ -4180,8 +4106,7 @@
                   "value": "{{this_month}}"
                 }
               ]
-            },
-            "description": "Livre: salário líquido recebido. Benefício: VR recebido menos o mercado pago. Despesas por competência."
+            }
           },
           "event": [
             {
@@ -4189,23 +4114,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; saldos por carteira e totais\", () => {",
+                  "pm.test(\"200; Benefício: +R$ 400,00 pago e +R$ 1.000,00 recebidos por transferência\", () => {",
                   "  pm.response.to.have.status(200);",
                   "  const r = pm.response.json();",
                   "  const base = k => Number(pm.collectionVariables.get(k));",
-                  "  pm.expect(r.wallets.free.expectedIncomeCents).to.eql(593010);",
-                  "  pm.expect(r.wallets.free.receivedIncomeCents).to.eql(593010);",
-                  "  pm.expect(r.wallets.free.balanceCents).to.eql(593010 - r.wallets.free.paidCents);",
-                  "  pm.expect(r.wallets.benefit.expectedIncomeCents).to.eql(60000);",
-                  "  pm.expect(r.wallets.benefit.receivedIncomeCents).to.eql(60000);",
-                  "  pm.expect(r.wallets.benefit.paidCents - base('base_ben_paid')).to.eql(40000);",
-                  "  pm.expect(r.wallets.benefit.balanceCents).to.eql(60000 - r.wallets.benefit.paidCents);",
-                  "  pm.expect(r.totalPaidCents - base('base_paid')).to.eql(40000);",
-                  "  pm.expect(r.totalPendingCents).to.eql(base('base_pending'));",
-                  "  const mercado = r.byCategory.find(c => c.categoryId === pm.collectionVariables.get('mercado_id'));",
-                  "  pm.expect(mercado.paidCents).to.be.at.least(40000);",
-                  "  const totals = r.byCategory.map(c => c.totalCents);",
-                  "  pm.expect(totals).to.eql([...totals].sort((a, b) => b - a));",
+                  "  const b = r.wallets.find(w => w.walletId === pm.collectionVariables.get('beneficio_id'));",
+                  "  pm.expect(b.paidCents - base('base_ben_paid')).to.eql(40000);",
+                  "  pm.expect(b.transfersInCents - base('base_ben_in')).to.eql(100000);",
+                  "  pm.expect(b.balanceCents).to.eql(b.carryOverCents + b.receivedIncomeCents - b.paidCents + b.transfersInCents - b.transfersOutCents + b.adjustmentsCents);",
                   "});"
                 ]
               }
@@ -4242,12 +4158,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"400 com erro no campo month\", () => {",
-                  "  pm.response.to.have.status(400);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.code).to.eql('validation_error');",
-                  "  pm.expect(r.fields).to.have.property(\"month\");",
-                  "});"
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
                 ]
               }
             }
@@ -4259,7 +4170,7 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/incomes/{{inc_next_id}}",
+              "raw": "{{base_url}}/api/households/{{household_id}}/incomes/{{inc_id}}",
               "host": [
                 "{{base_url}}"
               ],
@@ -4268,7 +4179,7 @@
                 "households",
                 "{{household_id}}",
                 "incomes",
-                "{{inc_next_id}}"
+                "{{inc_id}}"
               ]
             }
           },
@@ -4278,7 +4189,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('204', () => pm.response.to.have.status(204));"
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
                 ]
               }
             }
@@ -4306,8 +4217,7 @@
                   "value": "{{month_plus_24}}"
                 }
               ]
-            },
-            "description": "Como nas contas fixas, a previsão é gerada sob demanda até o mês pedido."
+            }
           },
           "event": [
             {
@@ -4318,8 +4228,8 @@
                   "pm.test(\"200; salário e VR previstos naquele mês\", () => {",
                   "  pm.response.to.have.status(200);",
                   "  const r = pm.response.json();",
-                  "  pm.expect(r.length).to.eql(2);",
-                  "  pm.expect(r.every(i => i.received === false)).to.eql(true);",
+                  "  pm.expect(r.find(x => x.sourceId === pm.collectionVariables.get('src_id'))).to.not.be.undefined;",
+                  "  pm.expect(r.find(x => x.sourceId === pm.collectionVariables.get('vr_src_id'))).to.not.be.undefined;",
                   "});"
                 ]
               }
@@ -4356,11 +4266,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200; só o VR do mês que vem\", () => {",
+                  "pm.test(\"200; só o VR no mês que vem\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
+                  "  const r = pm.response.json().filter(x => x.sourceId);",
                   "  pm.expect(r).to.have.length(1);",
-                  "  pm.expect(r[0].wallet).to.eql('benefit');",
+                  "  pm.expect(r[0].walletId).to.eql(pm.collectionVariables.get('beneficio_id'));",
                   "});"
                 ]
               }
@@ -4398,56 +4308,6 @@
                   "language": "json"
                 }
               }
-            },
-            "description": "Só antecipa o fim: os previstos depois dele são excluídos (os recebidos ficam)."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200\", () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.endMonth).to.eql(pm.collectionVariables.get('month_plus_3'));",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Adiar o fim é recusado",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/households/{{household_id}}/income-sources/{{vr_src_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "households",
-                "{{household_id}}",
-                "income-sources",
-                "{{vr_src_id}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"endMonth\": \"{{month_plus_12}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           },
           "event": [
@@ -4456,12 +4316,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"400 com erro no campo endMonth\", () => {",
-                  "  pm.response.to.have.status(400);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r.code).to.eql('validation_error');",
-                  "  pm.expect(r.fields).to.have.property(\"endMonth\");",
-                  "});"
+                  "pm.test(\"200\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().endMonth).to.eql(pm.collectionVariables.get('month_plus_3')); });"
                 ]
               }
             }
@@ -4499,10 +4354,1058 @@
                 "exec": [
                   "pm.test(\"200; só o salário\", () => {",
                   "  pm.response.to.have.status(200);",
-                  "  const r = pm.response.json();",
-                  "  pm.expect(r).to.have.length(1);",
-                  "  pm.expect(r[0].kind).to.eql('salary');",
+                  "  const r = pm.response.json().filter(x => x.sourceId);",
+                  "  pm.expect(r.map(x => x.sourceId)).to.eql([pm.collectionVariables.get('src_id')]);",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prévia de datas: 5º dia útil nos próximos 3 meses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/income-dates?month={{this_month}}&rule=nth_business_day&n=5&count=3",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "income-dates"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{this_month}}"
+                },
+                {
+                  "key": "rule",
+                  "value": "nth_business_day"
+                },
+                {
+                  "key": "n",
+                  "value": "5"
+                },
+                {
+                  "key": "count",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; 3 meses, cada um com data e dias úteis\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.length(3);",
+                  "  pm.expect(r[0].month).to.eql(pm.collectionVariables.get('this_month'));",
+                  "  pm.expect(r[0].businessDays).to.be.within(17, 23);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8b. Carteiras, transferências, conferir saldo, reserva e investimentos",
+      "description": "Carteiras configuráveis (só o Responsável cria e altera), transferência com Desfazer, Conferir saldo (ajuste), meta da reserva de emergência, investimento como carteira especial e taxas de referência. Rode depois da pasta 8, logado como o admin.",
+      "item": [
+        {
+          "name": "Criar carteira Reserva com saldo inicial",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Reserva Postman\",\n  \"openingBalanceCents\": 100000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; regular, avisa saldo negativo\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const w = pm.response.json();",
+                  "  pm.expect(w.kind).to.eql('regular');",
+                  "  pm.expect(w.warnOnOverdraft).to.be.true;",
+                  "  pm.collectionVariables.set('reserva_id', w.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nome repetido é recusado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"reserva postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 wallet_exists\", () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql('wallet_exists'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transferir R$ 200,00 da Geral para a Reserva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWalletId\": \"{{geral_id}}\",\n  \"toWalletId\": \"{{reserva_id}}\",\n  \"amountCents\": 20000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201\", () => { pm.response.to.have.status(201); pm.collectionVariables.set('transfer_id', pm.response.json().transfer.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Origem igual ao destino é recusada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWalletId\": \"{{reserva_id}}\",\n  \"toWalletId\": \"{{reserva_id}}\",\n  \"amountCents\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 no campo toWalletId\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('toWalletId'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transferências do mês",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers?month={{this_month}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{this_month}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; inclui a transferência\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().map(t => t.id)).to.include(pm.collectionVariables.get('transfer_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir a transferência",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desfazer a exclusão da transferência",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers/{{transfer_id}}/restore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers",
+                "{{transfer_id}}",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conferir saldo da Reserva (o real é R$ 1.250,00)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallet-adjustments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallet-adjustments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{reserva_id}}\",\n  \"actualBalanceCents\": 125000,\n  \"notes\": \"Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; ajuste = 1.250,00 - (1.000,00 + 200,00) = +50,00\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const a = pm.response.json();",
+                  "  pm.expect(a.amountCents).to.eql(5000);",
+                  "  pm.expect(a.competenceMonth).to.eql(pm.collectionVariables.get('this_month'));",
+                  "  pm.collectionVariables.set('adjustment_id', a.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conferir de novo com o mesmo saldo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallet-adjustments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallet-adjustments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{reserva_id}}\",\n  \"actualBalanceCents\": 125000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400: o saldo já confere\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('actualBalanceCents'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir o ajuste e desfazer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallet-adjustments/{{adjustment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallet-adjustments",
+                "{{adjustment_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "... desfazer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallet-adjustments/{{adjustment_id}}/restore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallet-adjustments",
+                "{{adjustment_id}}",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reserva no resumo: R$ 1.250,00",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/summary?month={{this_month}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{this_month}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; saldo da Reserva = inicial + transferência + ajuste\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const w = pm.response.json().wallets.find(x => x.walletId === pm.collectionVariables.get('reserva_id'));",
+                  "  pm.expect(w.transfersInCents).to.eql(20000);",
+                  "  pm.expect(w.adjustmentsCents).to.eql(5000);",
+                  "  pm.expect(w.balanceCents).to.eql(125000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Meta da reserva: 6 meses, carteira Reserva",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/reserve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "reserve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMonths\": 6,\n  \"walletIds\": [\n    \"{{reserva_id}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; guardado = saldo da Reserva\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.targetMonths).to.eql(6);",
+                  "  pm.expect(r.walletIds).to.eql([pm.collectionVariables.get('reserva_id')]);",
+                  "  pm.expect(r.savedCents).to.eql(125000);",
+                  "  pm.expect(r.targetCents).to.eql(6 * r.essentialMonthlyCents);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Meta fora de 1 a 36 meses é recusada",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/reserve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "reserve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMonths\": 40,\n  \"walletIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 no campo targetMonths\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('targetMonths'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar investimento (carteira especial)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CDB Postman\",\n  \"kind\": \"investment\",\n  \"institution\": \"Banco Fictício\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; investment com instituição\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const w = pm.response.json();",
+                  "  pm.expect(w.kind).to.eql('investment');",
+                  "  pm.expect(w.institution).to.eql('Banco Fictício');",
+                  "  pm.collectionVariables.set('cdb_id', w.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Investimento não recebe receita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/incomes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "incomes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{me_id}}\",\n  \"kind\": \"other\",\n  \"walletId\": \"{{cdb_id}}\",\n  \"description\": \"Errada\",\n  \"competenceMonth\": \"{{this_month}}\",\n  \"expectedDate\": \"{{today_ymd}}\",\n  \"grossAmountCents\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 no campo walletId\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('walletId'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Investimento não vira carteira padrão",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets/{{cdb_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallets",
+                "{{cdb_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isDefault\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 no campo isDefault\", () => { pm.response.to.have.status(400); pm.expect(pm.response.json().fields).to.have.property('isDefault'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aporte: transferir R$ 500,00 da Geral para o CDB",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWalletId\": \"{{geral_id}}\",\n  \"toWalletId\": \"{{cdb_id}}\",\n  \"amountCents\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rendimento: atualizar o valor do CDB para R$ 507,50",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallet-adjustments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallet-adjustments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{cdb_id}}\",\n  \"actualBalanceCents\": 50750\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; +R$ 7,50\", () => { pm.response.to.have.status(201); pm.expect(pm.response.json().amountCents).to.eql(750); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CDB no resumo (kind investment)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/summary?month={{this_month}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{this_month}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; investimento com aporte e rendimento\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const w = pm.response.json().wallets.find(x => x.walletId === pm.collectionVariables.get('cdb_id'));",
+                  "  pm.expect(w.kind).to.eql('investment');",
+                  "  pm.expect(w.transfersInCents).to.eql(50000);",
+                  "  pm.expect(w.balanceCents).to.eql(50750);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Taxas de referência (CDI, Selic, IPCA)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/rates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rates"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; sem a BrasilAPI (RATES_URL=off) vem available=false e lista vazia\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.available).to.be.a('boolean');",
+                  "  pm.expect(r.rates).to.be.an('array');",
+                  "  r.rates.forEach(x => pm.expect(x.code).to.be.oneOf(['cdi', 'selic', 'ipca']));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desligar a meta da reserva",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/reserve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "reserve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMonths\": null,\n  \"walletIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; sem meta\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().targetMonths).to.be.null; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Arquivar a Reserva e o CDB",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets/{{reserva_id}}/archive",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallets",
+                "{{reserva_id}}",
+                "archive"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; arquivada\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().archived).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "... arquivar o CDB",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/households/{{household_id}}/wallets/{{cdb_id}}/archive",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "households",
+                "{{household_id}}",
+                "wallets",
+                "{{cdb_id}}",
+                "archive"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; arquivada\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().archived).to.be.true; });"
                 ]
               }
             }
@@ -6159,6 +7062,390 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('422 boleto_not_found', () => { pm.response.to.have.status(422); pm.expect(pm.response.json().code).to.eql('boleto_not_found'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9c. Convites de cadastro (conta e casa próprias)",
+      "description": "Só o dono do sistema (a primeira conta) gera links de cadastro de uso único. Rode logado como o Pedro, depois da pasta 9. O cadastro troca a sessão para a conta nova; depois o Pedro entra de novo. Reusar o link dá 400 invalid_signup_invite (teste à mão: o cadastro tem limite de 5 por IP e a coleção já usa vários).",
+      "item": [
+        {
+          "name": "Pedro é o dono do sistema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; isSystemOwner\", () => { pm.response.to.have.status(200); pm.expect(pm.response.json().isSystemOwner).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gerar link de cadastro (24 h)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup-invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup-invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expiresInHours\": 24\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; token só aparece aqui\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.token).to.be.a('string');",
+                  "  pm.collectionVariables.set('signup_token', r.token);",
+                  "  pm.collectionVariables.set('signup_invite_id', r.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Links pendentes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup-invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup-invites"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; inclui o link\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().map(i => i.id)).to.include(pm.collectionVariables.get('signup_invite_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validade fora de 1 a 168 h é recusada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup-invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup-invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expiresInHours\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout do Pedro",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastro com o link: conta e casa próprias",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Carla\",\n  \"email\": \"carla.{{$timestamp}}@exemplo.com\",\n  \"password\": \"senha-muito-segura\",\n  \"householdName\": \"Casa da Carla\",\n  \"signupToken\": \"{{signup_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201; uma casa só, como admin; não é dona do sistema\", () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const me = pm.response.json();",
+                  "  pm.expect(me.households).to.have.length(1);",
+                  "  pm.expect(me.households[0].role).to.eql('admin');",
+                  "  pm.expect(me.isSystemOwner).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Carla não gera link de cadastro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup-invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup-invites"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout da Carla",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login do Pedro (volta para o dono)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pedro@exemplo.com\",\n  \"password\": \"senha-muito-segura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "O link usado saiu dos pendentes (uso único)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup-invites",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup-invites"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200; sem o link usado\", () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().map(i => i.id)).to.not.include(pm.collectionVariables.get('signup_invite_id'));",
+                  "});"
                 ]
               }
             }
