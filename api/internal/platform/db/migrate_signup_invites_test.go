@@ -29,11 +29,12 @@ func TestMigracaoConvitesDeCadastroUpDownUpComDados(t *testing.T) {
 	if err := gdb.Exec(`UPDATE users SET is_system_owner = true WHERE id = ?`, f.userB).Error; err == nil {
 		t.Error("o índice único deveria recusar um segundo dono do sistema")
 	}
-	ins := `INSERT INTO signup_invites (token_hash, created_by, expires_at, used_at, used_by) VALUES (?, ?, now() + interval '1 day', ?, ?)`
-	if err := gdb.Exec(ins, []byte("h1"), f.userA, nil, nil).Error; err != nil {
+	// hash como literal bytea: parâmetros []byte/nil no Exec do GORM viram listas e quebram o INSERT
+	ins := `INSERT INTO signup_invites (token_hash, created_by, expires_at) VALUES ('\x6831'::bytea, ?, now() + interval '1 day')`
+	if err := gdb.Exec(ins, f.userA).Error; err != nil {
 		t.Fatalf("convite válido recusado: %v", err)
 	}
-	if err := gdb.Exec(ins, []byte("h1"), f.userA, nil, nil).Error; err == nil {
+	if err := gdb.Exec(ins, f.userA).Error; err == nil {
 		t.Error("token_hash deveria ser único")
 	}
 	if err := gdb.Exec(`INSERT INTO signup_invites (token_hash, created_by, expires_at, used_at) VALUES ('h2', ?, now() + interval '1 day', now())`, f.userA).Error; err == nil {
