@@ -118,3 +118,35 @@ func TestCorpoJSONGrandeEhRecusado(t *testing.T) {
 		t.Errorf("corpo de 2 MB: %d (quer 413)", r.Code)
 	}
 }
+
+// Bloqueio progressivo: 5 senhas erradas seguidas trancam o e-mail (até a senha certa recebe 429, com o tempo que falta
+// no Retry-After), de qualquer IP. Outro e-mail segue livre. E-mail inexistente também conta, para não revelar se existe.
+func TestBloqueioProgressivoDoLoginPorEmail(t *testing.T) {
+	a := newApp(t, opts{openRegistration: true})
+	a.register("Ana", "ana@x.com", "Casa")
+	a.register("Beto", "beto@x.com", "Outra")
+	login := func(ip int, email, pass string) resp {
+		return a.doFrom(fmt.Sprintf("203.0.113.%d:1000", ip), "POST", "/api/auth/login", map[string]any{"email": email, "password": pass}, nil)
+	}
+	for i := 0; i < 5; i++ {
+		if r := login(20+i, "ana@x.com", "errada-errada"); r.Code != http.StatusUnauthorized {
+			t.Fatalf("falha %d: %d %s", i+1, r.Code, r.Body)
+		}
+	}
+	r := login(40, "ANA@x.com", "senha-muito-segura")
+	if r.Code != http.StatusTooManyRequests || !strings.Contains(r.Body.String(), "senhas erradas") {
+		t.Fatalf("depois de 5 erros, a senha certa deveria esperar: %d %s", r.Code, r.Body)
+	}
+	if ra := r.Header().Get("Retry-After"); ra == "" || ra == "0" {
+		t.Errorf("Retry-After = %q", ra)
+	}
+	if r := login(41, "beto@x.com", "senha-muito-segura"); r.Code != http.StatusOK {
+		t.Errorf("outro e-mail não é afetado: %d", r.Code)
+	}
+	for i := 0; i < 5; i++ {
+		login(50+i, "ninguem@x.com", "errada-errada")
+	}
+	if r := login(60, "ninguem@x.com", "errada-errada"); r.Code != http.StatusTooManyRequests {
+		t.Errorf("e-mail inexistente também é bloqueado: %d", r.Code)
+	}
+}
