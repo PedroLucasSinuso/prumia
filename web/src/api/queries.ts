@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
-import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult, WalletAdjustment, WalletAdjustmentInput, SignupInvite, SignupInviteCreated } from './types'
+import type { DocumentExtraction, CnpjInfo, Payee, PayeeInput, PayeePatch, Category, CategoryHistory, CategoryInput, CategoryPatch, Income, IncomeDatePreview, IncomeInput, IncomePatch, TaxEstimate, DateRule, IncomeSource, IncomeSourceInput, IncomeSourcePatch, Invoice, InvoiceInput, InvoicePatch, Purchase, PurchaseInput, Problem, Recurrence, RecurrenceInput, RecurrencePatch, SeriesScope, InviteCreated, Member, MonthlySummary, Role, Wallet, WalletInput, WalletPatch, Transfer, TransferInput, TransferResult, WalletAdjustment, WalletAdjustmentInput, SignupInvite, SignupInviteCreated, ReserveStatus, ReserveInput } from './types'
 
 // Chaves de cache. Toda mutação invalida ['invoices', casa] e a lista do mês é refeita sozinha.
 const keys = {
@@ -541,6 +541,26 @@ export function useHouseActions(houseId: string) {
 /** Cria uma casa nova (quem cria vira admin). Passou do limite de casas: ApiError com code=household_limit. */
 export function useCreateHousehold() {
   return useMutation({ mutationFn: (name: string) => unwrap(api.POST('/households', { body: { name } })) })
+}
+
+/** Meta da reserva de emergência e progresso no mês (`targetMonths` nulo = a casa não configurou: a tela não mostra nada). */
+export function useReserve(houseId: string, month: string) {
+  return useQuery({
+    queryKey: ['reserve', houseId, month] as const,
+    enabled: houseId !== '',
+    queryFn: (): Promise<ReserveStatus> =>
+      unwrap(api.GET('/households/{householdId}/reserve', { params: { path: { householdId: houseId }, query: { month } } })),
+  })
+}
+
+/** Grava a meta e as carteiras de reserva (só o Responsável). Refaz a reserva de todos os meses em cache. */
+export function useSetReserve(houseId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ReserveInput): Promise<ReserveStatus> =>
+      unwrap(api.PUT('/households/{householdId}/reserve', { params: { path: { householdId: houseId } }, body })),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['reserve', houseId] }),
+  })
 }
 
 /** Convites de cadastro (conta e casa próprias): só o dono do sistema vê e gera (`enabled` = me.isSystemOwner). */

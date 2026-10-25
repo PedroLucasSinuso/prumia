@@ -2,12 +2,13 @@ import { ArrowLeftRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
-import { useAdjustmentActions, useAdjustments, useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
+import { useAdjustmentActions, useAdjustments, useReserve, useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
 import type { Transfer, TransferInput, TransferResult, WalletAdjustment, WalletBalance } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AdjustmentsSection } from '../components/AdjustmentsSection'
 import { AppShell } from '../components/AppShell'
 import { BalanceCheckForm } from '../components/BalanceCheckForm'
+import { ReserveBlock } from '../components/ReserveBlock'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
@@ -55,6 +56,7 @@ export default function SummaryPage() {
   const transferActions = useTransferActions(houseId)
   const adjustments = useAdjustments(houseId, month)
   const adjustmentActions = useAdjustmentActions(houseId)
+  const reserve = useReserve(houseId, month)
   const toast = useToast()
   const desktop = useIsDesktop()
   const [picked, setPicked] = useState<string | null>(null)
@@ -204,6 +206,7 @@ export default function SummaryPage() {
                 />
               ))}
             </div>
+            {reserve.data && <ReserveBlock reserve={reserve.data} />}
             <TransfersSection transfers={transfers.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteTransfer} />
             <AdjustmentsSection adjustments={adjustments.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteAdjustment} />
             {desktop && (

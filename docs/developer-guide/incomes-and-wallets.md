@@ -300,6 +300,23 @@ com saldo anterior ≠ 0 ou movimento no mês, já com a regra nova. `WalletBala
 Testes: `api/wallet_opening_month_test.go` (cenário das parcelas, NULL, PATCH, M<S/=S/>S, início depois do último movimento, aviso,
 isolamento), `summary/summary_test.go` e `platform/db/migrate_opening_month_test.go` (Up/Down/Up com dados).
 
+### 5.5 Reserva de emergência (meta)
+
+Opcional (PT-5a): a casa define quantos **meses de gasto essencial** quer guardados e quais carteiras contam como reserva.
+Nada é gravado além da configuração: `households.reserve_target_months` (1 a 36, `NULL` = sem meta) e `wallets.counts_as_reserve`
+(migration `00014`). Código em `api/internal/reserve` e `api/internal/api/reserve.go`.
+
+| Regra | Detalhe |
+|---|---|
+| Gasto essencial médio | Média, nos **6 meses anteriores** ao consultado **que tiveram alguma conta** na casa, das contas de categorias essenciais (`is_essential` da categoria **ou da categoria principal dela**): valor pago (`paid_amount_cents`) se paga, senão o valor da conta. Meses sem nenhuma conta (antes de começar a usar o app) não puxam a média para baixo. Sem histórico, usa o próprio mês. |
+| Guardado | Soma do saldo **realizado** (o `balanceCents` do resumo, via `summary.Month`) das carteiras marcadas, no mês consultado. |
+| Meta | `targetCents = meses × gasto essencial médio`. |
+| Rotas | `GET /reserve?month=` (qualquer membro), `PUT /reserve {targetMonths, walletIds}` (só o Responsável, como as carteiras; responde o status do mês atual). Carteira de outra casa = 400 em `walletIds`; meses fora de 1 a 36 = 400 em `targetMonths`. |
+
+Na UI: card "Reserva de emergência (opcional)" em Ajustes > Carteiras (o Responsável escolhe a meta e marca as carteiras; os outros só
+veem quando há meta) e o bloco "Reserva de emergência" no Resumo (só com meta): guardado, quantos meses cobre, a meta e o medidor.
+Testes: `api/reserve_test.go`, `platform/db/migrate_reserve_test.go` e `web/src/pages/Reserve.test.tsx`.
+
 ## 6. Resumo mensal (`GET /summary?month=`)
 
 Escopado por `household_id`, tudo por competência, em **7 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses

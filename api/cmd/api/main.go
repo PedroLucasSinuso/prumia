@@ -32,6 +32,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/reserve"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
 	"github.com/PedroLucasSinuso/prumia/api/internal/transfer"
@@ -111,6 +112,7 @@ func run(args []string) error {
 		&api.Wallets{Svc: wallet.NewService(gdb), Log: log},
 		&api.Transfers{Svc: transfer.NewService(gdb, today), Log: log, Balance: summaries},
 		&api.Adjustments{Svc: adjustment.NewService(gdb, summaries, today), Log: log},
+		&api.Reserves{Svc: reserve.NewService(gdb, summaries), Log: log, Today: today},
 		api.NewCNPJLookups(cnpjClient, log),
 		&api.Invoices{Svc: invoices, Log: log, Horizon: recurrences, Balance: summaries},
 		&api.Purchases{Svc: series.NewPurchaseService(gdb, invoices), Invoices: invoices, Log: log},

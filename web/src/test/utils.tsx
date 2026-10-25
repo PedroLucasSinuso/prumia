@@ -115,6 +115,10 @@ type Routes = {
   restoreTransfer?: Reply
   /** GET /auth/signup-invites (convites de cadastro pendentes). Padrão: vazia. */
   signupInvites?: Reply
+  /** GET /reserve (meta da reserva). Padrão: sem meta. */
+  reserve?: Reply
+  /** PUT /reserve. Padrão: devolve o que foi enviado como status. */
+  setReserve?: Reply
   createSignupInvite?: Reply
   /** GET /wallet-adjustments (ajustes de saldo do mês). Padrão: vazia. */
   adjustments?: Reply
@@ -179,6 +183,9 @@ function asDocument(reply: Reply): Reply {
   })
 }
 
+/** Reserva de emergência sem meta (o padrão de toda casa). */
+export const noReserve = { targetMonths: null, walletIds: [], essentialMonthlyCents: 0, basisMonths: 0, savedCents: 0, targetCents: 0 }
+
 /** Simula a API por rota (o cliente tipado é espionado). Rotas omitidas: me=401, listas vazias, ações ok. */
 export function mockApi(r: Routes = {}) {
   const unauth = fail(401, 'unauthenticated')
@@ -195,6 +202,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
     if (url === '/households/{householdId}/transfers') return r.transfers ?? ok([])
     if (url === '/auth/signup-invites') return r.signupInvites ?? ok([])
+    if (url === '/households/{householdId}/reserve') return r.reserve ?? ok(noReserve)
     if (url === '/households/{householdId}/wallet-adjustments') return r.adjustments ?? ok([])
     if (url === '/households/{householdId}/invoices') return r.invoices ?? ok({ items: [] })
     if (url === '/households/{householdId}/members') return r.members ?? ok(members)
@@ -280,6 +288,10 @@ export function mockApi(r: Routes = {}) {
     if (!reply && url.endsWith('/pay')) return ok({ invoice: {}, warnings: [] })
     if (!reply && url === '/households/{householdId}/transfers') return ok({ transfer: transfer({ id: 't-new' }), warnings: [] })
     return reply ?? ok()
+  }) as never)
+  vi.spyOn(api, 'PUT').mockImplementation((async (url: string, init?: { body?: { targetMonths: number | null; walletIds: string[] } }) => {
+    if (url === '/households/{householdId}/reserve') return r.setReserve ?? ok({ ...noReserve, ...init?.body })
+    return ok()
   }) as never)
   vi.spyOn(api, 'PATCH').mockImplementation((async (url: string) => {
     if (url === '/auth/me') return r.updateMe ?? ok()

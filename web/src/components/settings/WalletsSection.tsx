@@ -9,6 +9,7 @@ import { Button } from '../ui/Button'
 import { useToast } from '../toastContext'
 import { WalletForm } from '../WalletForm'
 import { DetailLayout, DetailPanel } from './DetailPanel'
+import { ReserveCard } from './ReserveCard'
 import { LoadError, SectionHeader } from './ui'
 
 type Editing = { kind: 'new' } | { kind: 'edit'; id: string } | null
@@ -69,6 +70,7 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
               <ul aria-label="Carteiras arquivadas" className="flex flex-col">{archived.map(item)}</ul>
             </details>
           )}
+          {wallets.isSuccess && <ReserveCard houseId={houseId} wallets={all} isAdmin={isAdmin} />}
         </div>
 
         {panelOpen && (

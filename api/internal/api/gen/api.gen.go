@@ -1400,6 +1400,33 @@ type RegisterRequest struct {
 	SignupToken *string `json:"signupToken,omitempty"`
 }
 
+// ReserveInput defines model for ReserveInput.
+type ReserveInput struct {
+	TargetMonths *int                 `json:"targetMonths"`
+	WalletIds    []openapi_types.UUID `json:"walletIds"`
+}
+
+// ReserveStatus defines model for ReserveStatus.
+type ReserveStatus struct {
+	// BasisMonths Quantos meses entraram na média (0 = ainda sem gasto essencial)
+	BasisMonths int `json:"basisMonths"`
+
+	// EssentialMonthlyCents Gasto essencial médio por mês
+	EssentialMonthlyCents Cents `json:"essentialMonthlyCents"`
+
+	// SavedCents Saldo realizado das carteiras de reserva no mês
+	SavedCents Cents `json:"savedCents"`
+
+	// TargetCents Meses × gasto essencial médio (0 sem meta ou sem gasto)
+	TargetCents Cents `json:"targetCents"`
+
+	// TargetMonths Meta em meses de gasto essencial; null = sem meta
+	TargetMonths *int `json:"targetMonths"`
+
+	// WalletIds Carteiras que contam como reserva
+	WalletIds []openapi_types.UUID `json:"walletIds"`
+}
+
 // Role defines model for Role.
 type Role string
 
@@ -1877,6 +1904,11 @@ type ListPurchasesParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// GetReserveParams defines parameters for GetReserve.
+type GetReserveParams struct {
+	Month caldate.Date `form:"month" json:"month"`
+}
+
 // GetMonthlySummaryParams defines parameters for GetMonthlySummary.
 type GetMonthlySummaryParams struct {
 	Month caldate.Date `form:"month" json:"month"`
@@ -2004,6 +2036,9 @@ type CreateRecurrenceJSONRequestBody = RecurrenceInput
 
 // UpdateRecurrenceJSONRequestBody defines body for UpdateRecurrence for application/json ContentType.
 type UpdateRecurrenceJSONRequestBody = RecurrencePatch
+
+// SetReserveJSONRequestBody defines body for SetReserve for application/json ContentType.
+type SetReserveJSONRequestBody = ReserveInput
 
 // CreateTransferJSONRequestBody defines body for CreateTransfer for application/json ContentType.
 type CreateTransferJSONRequestBody = TransferInput
@@ -2211,6 +2246,12 @@ type ServerInterface interface {
 	// UpdateRecurrence Edita ou encerra (end_month) a recorrência
 	// (PATCH /households/{householdId}/recurrences/{recurrenceId})
 	UpdateRecurrence(c *gin.Context, householdId HouseholdId, recurrenceId openapi_types.UUID)
+	// GetReserve Meta da reserva de emergência e progresso no mês (qualquer membro)
+	// (GET /households/{householdId}/reserve)
+	GetReserve(c *gin.Context, householdId HouseholdId, params GetReserveParams)
+	// SetReserve Define a meta e as carteiras de reserva (só o Responsável, como as carteiras)
+	// (PUT /households/{householdId}/reserve)
+	SetReserve(c *gin.Context, householdId HouseholdId)
 	// GetMonthlySummary Resumo do mês por competência, com saldos por carteira
 	// (GET /households/{householdId}/summary)
 	GetMonthlySummary(c *gin.Context, householdId HouseholdId, params GetMonthlySummaryParams)
@@ -4194,6 +4235,67 @@ func (siw *ServerInterfaceWrapper) UpdateRecurrence(c *gin.Context) {
 	siw.Handler.UpdateRecurrence(c, householdId, recurrenceId)
 }
 
+// GetReserve operation middleware
+func (siw *ServerInterfaceWrapper) GetReserve(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetReserveParams
+
+	// ------------- Required query parameter "month" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "month", c.Request.URL.Query(), &params.Month, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter month: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetReserve(c, householdId, params)
+}
+
+// SetReserve operation middleware
+func (siw *ServerInterfaceWrapper) SetReserve(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "householdId" -------------
+	var householdId HouseholdId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "householdId", c.Param("householdId"), &householdId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter householdId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SetReserve(c, householdId)
+}
+
 // GetMonthlySummary operation middleware
 func (siw *ServerInterfaceWrapper) GetMonthlySummary(c *gin.Context) {
 
@@ -4828,6 +4930,8 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/households/:householdId/transfers", wrapper.CreateTransfer)
 	router.DELETE(options.BaseURL+"/households/:householdId/transfers/:transferId", wrapper.DeleteTransfer)
 	router.POST(options.BaseURL+"/households/:householdId/transfers/:transferId/restore", wrapper.RestoreTransfer)
+	router.GET(options.BaseURL+"/households/:householdId/reserve", wrapper.GetReserve)
+	router.PUT(options.BaseURL+"/households/:householdId/reserve", wrapper.SetReserve)
 	router.GET(options.BaseURL+"/households/:householdId/wallet-adjustments", wrapper.ListWalletAdjustments)
 	router.POST(options.BaseURL+"/households/:householdId/wallet-adjustments", wrapper.CreateWalletAdjustment)
 	router.DELETE(options.BaseURL+"/households/:householdId/wallet-adjustments/:adjustmentId", wrapper.DeleteWalletAdjustment)

@@ -25,6 +25,7 @@ tags:
   - { name: wallets, description: "Carteiras da casa (saldo por carteira)" }
   - { name: transfers, description: "Transferências entre carteiras" }
   - { name: adjustments, description: "Ajustes de saldo das carteiras (Conferir saldo)" }
+  - { name: reserve, description: "Meta da reserva de emergência" }
   - { name: invoices, description: "Despesas (contas, parcelas, recorrências)" }
   - { name: incomes, description: "Receitas (salário, benefício)" }
   - { name: summary, description: "Resumo mensal" }
@@ -609,6 +610,38 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  # --------------------------------------------------------------- reserve
+  /households/{householdId}/reserve:
+    parameters: [ { $ref: '#/components/parameters/HouseholdId' } ]
+    get:
+      tags: [reserve]
+      operationId: getReserve
+      summary: Meta da reserva de emergência e progresso no mês (qualquer membro)
+      description: |
+        `targetMonths` nulo = a casa não configurou meta (a tela não mostra nada). Gasto essencial médio = média, nos 6 meses
+        ANTES de `month` que tiveram alguma conta, das contas de categorias essenciais (ou filhas de uma essencial): valor pago,
+        ou o da conta se pendente; sem histórico, usa o próprio mês. `savedCents` = soma do saldo realizado (o `balanceCents`
+        do resumo) das carteiras marcadas como reserva. `targetCents` = meses × gasto essencial médio.
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/ReserveStatus' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    put:
+      tags: [reserve]
+      operationId: setReserve
+      summary: Define a meta e as carteiras de reserva (só o Responsável, como as carteiras)
+      description: |
+        `targetMonths` de 1 a 36 (nulo desliga a meta). `walletIds` substitui a lista de carteiras que contam como reserva
+        (vazia = nenhuma). Carteira que não é da casa = 400 em `walletIds`. Responde o status do mês atual.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReserveInput' } } }
+      responses:
+        '200': { description: "OK", content: { application/json: { schema: { $ref: '#/components/schemas/ReserveStatus' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   # --------------------------------------------------------------- adjustments
   /households/{householdId}/wallet-adjustments:
@@ -1883,6 +1916,22 @@ components:
         transferDate: { type: string, format: date, description: "Padrão hoje" }
         competenceMonth: { allOf: [ { $ref: '#/components/schemas/Month' } ], description: "Padrão = mês da data da transferência" }
         notes: { type: string, nullable: true, maxLength: 500 }
+    ReserveStatus:
+      type: object
+      required: [targetMonths, walletIds, essentialMonthlyCents, basisMonths, savedCents, targetCents]
+      properties:
+        targetMonths: { type: integer, nullable: true, description: "Meta em meses de gasto essencial; null = sem meta" }
+        walletIds: { type: array, items: { type: string, format: uuid }, description: "Carteiras que contam como reserva" }
+        essentialMonthlyCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Gasto essencial médio por mês" }
+        basisMonths: { type: integer, description: "Quantos meses entraram na média (0 = ainda sem gasto essencial)" }
+        savedCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Saldo realizado das carteiras de reserva no mês" }
+        targetCents: { allOf: [ { $ref: '#/components/schemas/Cents' } ], description: "Meses × gasto essencial médio (0 sem meta ou sem gasto)" }
+    ReserveInput:
+      type: object
+      required: [targetMonths, walletIds]
+      properties:
+        targetMonths: { type: integer, nullable: true, minimum: 1, maximum: 36 }
+        walletIds: { type: array, items: { type: string, format: uuid } }
     WalletAdjustment:
       type: object
       required: [id, walletId, competenceMonth, amountCents, createdAt]
