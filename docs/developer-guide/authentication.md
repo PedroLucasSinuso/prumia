@@ -12,7 +12,9 @@ Responde: como o login funciona, onde ficam as regras de acesso e como testá-la
   [Validade absoluta da sessão](#validade-absoluta-da-sessão)).
 - **Login**: e-mail desconhecido e senha errada dão a **mesma resposta e levam o mesmo tempo** (verificamos contra um hash
   descartável), para não revelar quais e-mails existem. Limite de tentativas: 10/min por IP e 5/min por e-mail normalizado
-  (429). O IP vem só do `X-Real-IP` que o nginx sobrescreve (ver [security.md](security.md#ip-real-e-limite-de-tentativas)).
+  (429) e, por cima, **bloqueio progressivo por e-mail**: da 5ª senha errada seguida em diante, o e-mail fica bloqueado por 1, 2,
+  4, 8 e no máximo 15 minutos (429 com `Retry-After` = o que falta), de qualquer IP; o acerto zera. E-mail inexistente também conta
+  (a resposta não pode revelar se a conta existe). Em memória (`ratelimit.Lockout`): reiniciar a API zera. O IP vem só do `X-Real-IP` que o nginx sobrescreve (ver [security.md](security.md#ip-real-e-limite-de-tentativas)).
   Entrar de novo no mesmo navegador encerra a sessão anterior dele.
 - **CSRF**: cookie `SameSite=Lax` + checagem de `Origin` em toda escrita (POST/PUT/PATCH/DELETE): se o navegador informar
   uma origem diferente do `Host`, 403 `bad_origin`. Clientes sem `Origin` (Postman, curl) passam.

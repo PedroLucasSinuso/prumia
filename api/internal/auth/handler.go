@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ type Handler struct {
 
 	// Limites contra força bruta: por IP e por e-mail (o do e-mail impede varrer uma conta de vários IPs).
 	loginIP, loginEmail, registerIP, resetIP *ratelimit.Limiter
+	loginLock                                *ratelimit.Lockout
 	// Troca de senha: limite por usuário (quem roubou a sessão não pode testar senhas à vontade) e por IP.
 	passwordUser, passwordIP *ratelimit.Limiter
 }
@@ -41,6 +43,9 @@ func NewHandler(svc *Service, cookie CookieConfig, log *slog.Logger) *Handler {
 		svc: svc, cookie: cookie, log: log,
 		loginIP:    ratelimit.New(6*time.Second, 10), // 10 tentativas seguidas, depois 10/min
 		loginEmail: ratelimit.New(12*time.Second, 5), // 5 seguidas, depois 5/min
+		// Bloqueio progressivo por e-mail: da 5ª senha errada seguida em diante, 1, 2, 4, 8 e no máximo 15 min. O teto limita
+		// quanto alguém consegue trancar o dono da conta errando de propósito; o acerto zera.
+		loginLock:  ratelimit.NewLockout(5, time.Minute, 15*time.Minute),
 		registerIP: ratelimit.New(12*time.Second, 5),
 		resetIP:    ratelimit.New(12*time.Second, 5),
 		// mesmos limites do login
@@ -54,6 +59,14 @@ func meta(c *gin.Context) Meta { return Meta{UserAgent: c.Request.UserAgent(), I
 func tooMany(c *gin.Context) {
 	c.Header("Retry-After", "60")
 	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusTooManyRequests, Code: "too_many_requests", Detail: "muitas tentativas; aguarde um minuto"})
+}
+
+// lockedOut: 429 do bloqueio progressivo, com o tempo que falta (em segundos, arredondado para cima) no Retry-After.
+func lockedOut(c *gin.Context, left time.Duration) {
+	secs := int((left + time.Second - 1) / time.Second)
+	c.Header("Retry-After", strconv.Itoa(secs))
+	httpx.WriteProblem(c, httpx.Problem{Status: http.StatusTooManyRequests, Code: "too_many_requests",
+		Detail: "muitas senhas erradas seguidas; aguarde alguns minutos"})
 }
 
 // writeError converte erros do serviço em respostas HTTP. É o ÚNICO lugar que faz esse mapeamento.
@@ -146,15 +159,23 @@ func (h *Handler) Login(c *gin.Context) {
 	// A chave do limite por e-mail é o e-mail NORMALIZADO, igual ao que o serviço usa na busca: senão "Ana@x.com",
 	// "ANA@x.com" e " ana@x.com" seriam baldes diferentes para a mesma conta.
 	emailKey := strings.ToLower(strings.TrimSpace(string(body.Email)))
+	if locked, left := h.loginLock.Blocked(emailKey); locked {
+		lockedOut(c, left)
+		return
+	}
 	if !h.loginIP.Allow(c.ClientIP()) || !h.loginEmail.Allow(emailKey) {
 		tooMany(c)
 		return
 	}
 	user, token, err := h.svc.Login(c.Request.Context(), string(body.Email), body.Password, meta(c))
 	if err != nil {
+		if errors.Is(err, ErrInvalidCredentials) {
+			h.loginLock.Fail(emailKey) // e-mail inexistente também conta: a resposta não pode revelar se a conta existe
+		}
 		h.writeError(c, err)
 		return
 	}
+	h.loginLock.Reset(emailKey)
 	// A sessão que este navegador já tinha (de outra pessoa, ou antiga) é encerrada: o cookie vai ser trocado e
 	// a sessão anterior não deve continuar viva no banco.
 	if old := h.cookie.Token(c); old != "" {
