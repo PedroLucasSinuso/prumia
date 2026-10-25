@@ -37,11 +37,21 @@ jobs:
       - run: npm ci
         working-directory: web
 
-      # Ferramentas da leitura de boleto: sem elas o TestRealPDFTools é pulado.
+      # Ferramentas da leitura de boleto: sem elas o TestRealPDFTools é pulado. Os .deb ficam em cache: o espelho do apt às
+      # vezes leva minutos para entregar ~30 MB. Primeiro tenta sem `apt-get update` (índice da imagem + .deb do cache); se a
+      # imagem mudou e o índice não bate, atualiza e baixa de novo.
+      - uses: actions/cache@v4
+        with:
+          path: ~/apt-archives
+          key: apt-boleto-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: apt-boleto-${{ runner.os }}-
       - name: Instala poppler, Ghostscript e Tesseract
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends poppler-utils ghostscript tesseract-ocr tesseract-ocr-por
+          mkdir -p ~/apt-archives/partial
+          PKGS="poppler-utils ghostscript tesseract-ocr tesseract-ocr-por"
+          OPTS="-y -q --no-install-recommends -o Dir::Cache::Archives=$HOME/apt-archives"
+          sudo apt-get install $OPTS $PKGS || { sudo apt-get update -q && sudo apt-get install $OPTS $PKGS; }
+          sudo chown -R "$USER" ~/apt-archives
 
       - name: Lint (gofmt, vet, OpenAPI, código gerado em dia)
         run: make lint

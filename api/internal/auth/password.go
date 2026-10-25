@@ -29,15 +29,26 @@ const (
 	MaxPasswordLen = 128
 )
 
+// fastMemoryKiB/fastTime: custo baixo usado SÓ nos testes (Config.FastPasswordHash). O hash continua argon2id e o formato
+// é o mesmo; como os parâmetros vão dentro do hash, a verificação não muda.
+const (
+	fastMemoryKiB = 8 * 1024
+	fastTime      = 1
+)
+
 // HashPassword devolve o hash no formato PHC: $argon2id$v=19$m=...,t=...,p=...$salt$hash
 func HashPassword(password string) (string, error) {
+	return hashPassword(password, argonTime, argonMemoryKiB)
+}
+
+func hashPassword(password string, passes, memKiB uint32) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("gerando salt: %w", err)
 	}
-	key := argon2.IDKey([]byte(password), salt, argonTime, argonMemoryKiB, argonThreads, argonKeyLen)
+	key := argon2.IDKey([]byte(password), salt, passes, memKiB, argonThreads, argonKeyLen)
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version, argonMemoryKiB, argonTime, argonThreads,
+		argon2.Version, memKiB, passes, argonThreads,
 		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(key)), nil
 }
 
