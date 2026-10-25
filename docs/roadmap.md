@@ -10,6 +10,8 @@ Legenda de risco: **alto** = migration, auth, séries, boleto ou deploy (branch 
 
 MVP completo no `main` (PRs #1–#31): cadastro e login, casas e convites, contas avulsas/parceladas/fixas, receitas, resumo mensal, categorias e ajustes, leitura de boleto (linha digitável, valor, vencimento, beneficiário e competência), backup/restore, CI, Tailscale com HTTPS, PWA e seletor de casa.
 
+Depois do MVP (até o #61): favorecidos, subcategorias e gráficos, 9 temas, Receitas v2, importação em massa (boleto, conta sem boleto, lista por foto ou texto), carteiras configuráveis com transferência, mês de início e **Conferir saldo** (#60), papéis com nomes claros, acesso por domínio (Cloudflare Tunnel), redesign "Instrumento calmo" (#58) e os ajustes de importação do PT-4 (#61). A ordem do que falta está no [plano das próximas etapas](plano-proximas-etapas.md).
+
 ## Pendências do dono (testes que só rodam no mundo real)
 
 - [ ] Uso no celular real, pelo Tailscale com HTTPS.
@@ -27,56 +29,26 @@ MVP completo no `main` (PRs #1–#31): cadastro e login, casas e convites, conta
 
 O favorecido é opcional e só serve para reconhecer boletos (CNPJ) e sugerir categoria; a **duplicidade** de boleto é pela linha digitável, não pelo CNPJ. Tem apelido (editável a qualquer hora) e nome oficial (razão social, informativo, vem da BrasilAPI). Rótulos: "Descrição" (texto livre da conta), "Apelido" e "Nome oficial".
 
-## Próximo: subcategorias e gráficos por categoria
+## Feito: subcategorias e gráficos por categoria
 
-Quer ver o gasto de "Gás" **e** o de "Moradia" (que soma gás, luz, internet…). Hierarquia de **dois níveis**, não tag. Risco: **alto** (migration). Em PRs separados:
+Hierarquia de **dois níveis** (`categories.parent_id`, sem backfill), "Por categoria" no Resumo com o histórico de cada categoria (6 ou 12 meses), "Gasto por mês" da casa, criar categoria na hora de lançar e "Mover para…" em Ajustes > Categorias. Endpoint `GET /summary/categories` (competência), gráficos em SVG próprio.
 
-1. **Subcategorias**: `categories.parent_id` opcional (FK composta por casa; filha não tem filha; nome único por mãe). Aditiva, sem backfill: o que existe continua no topo. Fluxo: quem não usa não vê diferença; ao lançar, tocar numa mãe com filhas abre uma 2ª linha de botões (geral · Gás · Luz…). Arquivar a mãe esconde as filhas junto e restaurar a traz de volta. A soma da mãe é feita no front (o resumo continua por categoria folha).
-2. ~~**Gráficos**~~ **feito** (PR `feat/resumo-graficos`): em "Por categoria" (resumo), cada categoria abre o histórico dela (6 ou 12 meses; mãe = filhas empilhadas; a pagar tracejado), "Gasto por mês" da casa no computador, saldo projetado como número principal e compromissos futuros. Endpoint `GET /summary/categories` (competência). SVG próprio com a paleta da marca, sem biblioteca.
-3. Criar categoria na hora de lançar (sem ir a Ajustes) e "mover para dentro de…".
+## Feito: Receitas v2 e acabamento da interface
 
-## Em andamento: Receitas v2
-
-Decisões do dono (24/10/2026), a partir dos casos de uso reais dele e da noiva, abstraídos para servir a qualquer casa:
-- **Recebimento automático**: a receita vira "recebida" na data, sem check. A exceção é "não caiu".
-- **Valor**: fixo (padrão, "valor cheio") ou, como configuração à parte, **preço × quantidade** (ex.: R$ 65 × dias úteis do mês), com rótulo da unidade editável.
-- **Data**: dia do mês, N-ésimo dia útil ou último dia útil. Nunca cai em sábado, domingo ou feriado nacional: **arredonda para a frente**. Feriados pela BrasilAPI, com cálculo offline de reserva.
-- **Topo da tela**: "Recebido" em destaque, "A receber" pequeno, total por pessoa e "Sobra do mês". O bloco grande de "Previsto" some.
-- **Editar e excluir** com escopo ("só este mês" / "este e os seguintes") e Desfazer, como nas contas; o formulário muda pessoa, tipo, mês e valor.
-- **Descontos opcionais**, com sugestão de INSS e IRRF por **tabela versionada por ano** (não existe API oficial). Estimativa que o dono ajusta.
-
-## Em andamento: acabamento da interface
-
-DatePicker com calendário, categoria em combobox pesquisável (fim do "spam de botões"), tooltips, painéis com rodapé fixo, animações e feedback visual (tudo respeitando `prefers-reduced-motion`). Depois, aplicar nos formulários de Receitas.
+Receitas v2 (detalhes na seção "Feito: receitas v2" abaixo) e o acabamento da interface (DatePicker, combobox de categoria, tooltips, painéis com rodapé fixo, animações com `prefers-reduced-motion`), depois redesenhado na direção "Instrumento calmo" (#58).
 
 ## Anotado para o futuro
 
 - [feito] **Importação em massa no computador** abre num modal grande sobre o Mês (`ImportModal`); no celular continua a página `/importar`. Falta o dono avaliar no uso real se ainda quer a revisão como segundo modal sobre o primeiro.
-- **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem); padrão de lista (`descrição: valor`) e "colar texto" já cobrem listas e prints.
-- Cobrir mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x").
-- **Convite de cadastro**: link de uso único e com validade para a pessoa criar a **própria conta e a própria casa** (hoje o convite só leva a uma casa existente e o cadastro sem convite vale só para o primeiro usuário). Mesmo mecanismo do convite atual (token só em hash, validade, uso único) com um tipo novo. Quem gera: só o "dono do sistema" (a primeira conta), com tela em Ajustes (gerar, pendentes, revogar) e teto de links pendentes. Útil para ter um usuário e uma casa de testes em produção. Ponto em aberto: passar a condição de dono do sistema para outra pessoa. Mudança de autenticação: branch separada e testada.
-- **Aviso do mês depois de importar**: ao criar as contas, o app vai para a competência da primeira conta; pode ficar no mês que a pessoa estava olhando ou avisar para onde foi.
+- **Foto de conta**: nome e CNPJ do cabeçalho colorido não são lidos (pré-processamento de imagem). Só vale fazer se melhorar em imagens sintéticas sem piorar os casos atuais; falta montar esse conjunto de imagens de teste.
+- [feito no #61] Mais formatos de lista (ponto decimal "98.40" sem R$, quantidades "2x") e aviso do mês depois de importar (a pessoa fica no mês em que estava; o aviso diz onde as contas caíram, com "Ver").
+- **Convite de cadastro**: PT-3 do [plano](plano-proximas-etapas.md). Ponto em aberto: passar a condição de dono do sistema para outra pessoa (sem decisão, não implementar).
 
-## Feito: carteiras configuráveis (#50); em andamento: transferência entre carteiras
+## Feito: carteiras configuráveis, transferência e Conferir saldo (#50, #54, #56, #60)
 
-**Pronto (#50)**: tabela `wallets` (migration `00008` com backfill `free`/`benefit` → "Geral"/"Benefício"), Ajustes > Carteiras (só o Responsável escreve), `walletId` em receita, fonte, pagamento e categoria (`defaultWalletId`), resumo com um cartão por carteira e **saldo anterior transportado** entre meses, aviso `wallet_balance_insufficient`. Ver [incomes-and-wallets.md](developer-guide/incomes-and-wallets.md) e [carteiras.md](user-guides/carteiras.md).
+Tabela `wallets` (migration `00008` com backfill `free`/`benefit` → "Geral"/"Benefício"), Ajustes > Carteiras, `walletId` em receita, fonte, pagamento e categoria (`defaultWalletId`), resumo com um cartão por carteira e **saldo anterior transportado** entre meses, aviso `wallet_balance_insufficient`; **transferência** entre carteiras (#54); **mês de início** do saldo inicial (#56); **Conferir saldo** (#60, migration `00012`): o saldo real informado vira um ajuste no mês e os meses seguintes partem dele. Ver [incomes-and-wallets.md](developer-guide/incomes-and-wallets.md) e [carteiras.md](user-guides/carteiras.md).
 
-**Em andamento**: **transferência entre carteiras** (guardar na Reserva e tirar de lá): não é receita nem despesa, só move saldo; criar, excluir e desfazer; aviso de saldo na origem.
-
-Registro do desenho original (o que estava em aberto na época):
-
-Hoje são 2 valores fixos (`free`/`benefit`) e o saldo é "recebido − pago" **sem** carregar de um mês para o outro. A ideia é carteira = **conta** (ex.: bancos diferentes, benefício, dinheiro vivo), com saldo real. Risco: **muito alto** (migration **com migração de dados**: `paid_wallet`/`wallet` em texto viram referência a uma carteira).
-
-Decidido:
-- O saldo **continua de um mês para o outro** (conta de verdade), com algum feedback visual. Isso é a base para acompanhar o que sobra e para o pós-MVP de investimentos.
-
-Em aberto (decidir antes de desenhar):
-- Carteiras **da casa** (todos veem) ou também **pessoais** (só o dono vê o saldo)? Há quem prefira sigilo do próprio dinheiro; isso mexe em autorização e no resumo.
-- Carteira **padrão** ao pagar (por pessoa? uma "carteira geral da casa" criada automaticamente na 1ª vez?): o app deve induzir uma carteira geral da casa sem exigir configuração.
-- **Transferência** entre carteiras; saldo inicial; o que fazer com o histórico (backfill das duas carteiras atuais).
-- Salário não unificado: receitas por pessoa caindo em carteiras diferentes.
-
-Pontos de atenção: manter o fluxo de pagar em poucos toques; casas existentes migram sem ação do usuário.
+Decisões que ficaram do desenho original: carteiras são **da casa** (todos veem); a padrão é criada automaticamente e recebe o que não tem carteira escolhida; o fluxo de pagar continua em um toque.
 
 ## Feito: redesign de navegação, Ajustes, Mês e Importação (#34 a #39)
 
@@ -94,18 +66,18 @@ a cada janeiro (`api/internal/tax/tables.go`).
 ## Melhorias de curto prazo
 
 - Ajustes: novas preferências da casa entram como novas seções (o painel já comporta).
-- Segurança: token de convite/reset no fragmento (`#`) em vez da query; limite de login atrás do Tailscale vira balde único (avaliar chave por usuário/e-mail).
+- Segurança: token de convite/reset no fragmento (`#`) em vez da query (PT-6 do plano); limite de login atrás do Tailscale vira balde único (avaliar chave por usuário/e-mail).
 - Boleto: mais layouts reais para calibrar as regras de nome, vencimento e competência (cada boleto novo que falhar vira caso de teste, sempre com dados sintéticos).
 - [feito: tela Importar, lote e conta sem boleto/lista] Importação de vários boletos de uma vez (duplicidade pela linha digitável; aviso suave de "parece duplicada" para segunda via com outra linha: mesmo favorecido, competência e valor).
 - Nomes de favorecido/empresa: normalizar caixa só na sugestão.
-- CI mais rápido (dívida): o job `api` leva ~10 min; cache dos pacotes do sistema e testes de integração em paralelo.
+- CI mais rápido (dívida): o job `api` leva ~10 min; cache dos pacotes do sistema e testes de integração em paralelo (PT-6 do plano).
 
 ## Pós-MVP: investimentos e reserva de emergência
 
-Já previsto desde o início; novas tabelas, sem backfill.
+PT-5 do [plano](plano-proximas-etapas.md), em 3 PRs; cada um começa com uma proposta curta para o dono aprovar.
 
-- Metas de reserva de emergência (meta em meses de despesa, progresso).
-- Cadastro de investimentos e aportes por casa.
+- Metas de reserva de emergência (meta em meses de gasto essencial, carteiras que contam como reserva, progresso).
+- Investimentos e aportes por casa. **Recomendação do agente** (a confirmar na proposta do PT-5b): investimento como **carteira especial** (tipo "investimento"), reaproveitando transferência (aporte e resgate), Conferir saldo (atualizar o valor / rendimento) e o saldo transportado; com campos próprios (tipo, instituição, taxa contratada), fora do "saldo projetado" e fora da escolha de carteira ao pagar. Alternativa: entidade à parte (mais código duplicado).
 - **Taxas de referência pela BrasilAPI** (`/taxas`: CDI, Selic, IPCA): comparar rendimento com o CDI e mostrar inflação do período. Confirmar a documentação da API antes de desenhar.
 - Cotação de ações e fundos: a BrasilAPI não cobre; escolher outra fonte quando a fase começar.
 - Regras para qualquer API de terceiros: chamada só pelo servidor, cache, degradação graciosa (o app nunca depende dela) e nenhum dado pessoal na requisição.
@@ -118,7 +90,7 @@ Já previsto desde o início; novas tabelas, sem backfill.
 
 - VPS com certbot (hoje: Tailscale com `tailscale serve`).
 - Revisar rate limit, cookies e HSTS para exposição pública antes de sair do Tailscale.
-- Backup automático agendado e enviado para fora da máquina.
+- **Backup automático** agendado e enviado para fora da máquina (criptografado, com retenção e verificação por `make test-restore`). Adiado pelo dono (10/2026): fica aqui até ele escolher o destino; até lá, `make backup` manual.
 
 ## Ideias sem prioridade
 
