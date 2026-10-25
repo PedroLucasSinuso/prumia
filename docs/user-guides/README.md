@@ -4,6 +4,7 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 
 | Guia | Status | Ensina a |
 |---|---|---|
+| [o-que-e-o-prumia.md](o-que-e-o-prumia.md) | pronto | Entender para que serve o app, as ideias principais e as telas |
 | [primeiros-passos.md](primeiros-passos.md) | pronto | Criar a conta e a casa, entrar e sair |
 | [convidar-pessoas.md](convidar-pessoas.md) | pronto | Convidar quem mora com você, mudar papéis, sair da casa e redefinir senhas |
 | [cadastrar-e-pagar-contas.md](cadastrar-e-pagar-contas.md) | pronto | Lançar uma conta e marcar como paga em poucos toques |
@@ -16,8 +17,13 @@ Passo a passo para quem usa o prumia no dia a dia. Escritos em pt-BR, curtos, **
 | [fazer-backup.md](fazer-backup.md) | pronto | Fazer backup, conferir, restaurar e quando fazer |
 | [acessar-pelo-celular.md](acessar-pelo-celular.md) | pronto | Acessar o prumia pelo celular com o Tailscale (HTTPS) |
 | [instalar-no-celular.md](instalar-no-celular.md) | pronto (teste em celular: pendente) | Instalar o app (PWA) no Android e no iPhone |
+| [perguntas-frequentes.md](perguntas-frequentes.md) | pronto | Respostas curtas para as dúvidas mais comuns |
+| [glossario.md](glossario.md) | pronto | Os termos do app, em ordem alfabética |
 
 Os guias são criados junto com a funcionalidade (ver o plano de construção, mantido localmente em `docs/product/plan.md`).
+
+Estes guias também viram o **site de documentação** (`site/`, ver [docs/README.md](../README.md)): ao criar um guia, inclua-o
+no menu em `site/astro.config.mjs`. Os links entre guias (`outro-guia.md#secao`) são conferidos no build.
 
 ## Padrão de cada guia
 
