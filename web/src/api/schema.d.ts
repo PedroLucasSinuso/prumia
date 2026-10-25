@@ -392,6 +392,26 @@ export interface paths {
         patch: operations["updateCategory"];
         trace?: never;
     };
+    "/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CDI, Selic e IPCA (12 meses) da BrasilAPI, com cache no servidor. Nunca falha por causa da BrasilAPI
+         * @description Sem a BrasilAPI (fora do ar ou RATES_URL=off), responde 200 com available=false e a última leitura boa, se houver.
+         */
+        get: operations["getReferenceRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cnpj/{cnpj}": {
         parameters: {
             query?: never;
@@ -1470,6 +1490,25 @@ export interface components {
              * @description Move para dentro de uma categoria principal; null = volta ao topo
              */
             parentId?: string | null;
+        };
+        ReferenceRates: {
+            /** @description false = a última consulta falhou ou está desligada (rates pode trazer a última leitura boa, ou vir vazia) */
+            available: boolean;
+            /**
+             * Format: date-time
+             * @description Quando as taxas foram lidas da BrasilAPI
+             */
+            fetchedAt?: string | null;
+            /** @description Na ordem CDI, Selic, IPCA; só as que vieram */
+            rates: components["schemas"]["ReferenceRate"][];
+        };
+        ReferenceRate: {
+            /** @enum {string} */
+            code: "cdi" | "selic" | "ipca";
+            /** @description Para exibir: CDI, Selic, IPCA */
+            name: string;
+            /** @description Centésimos de ponto percentual: 1490 = 14,90% ao ano (IPCA: acumulado em 12 meses) */
+            basisPoints: number;
         };
         CnpjInfo: {
             cnpj: string;
@@ -3018,6 +3057,27 @@ export interface operations {
                     "application/json": components["schemas"]["Category"];
                 };
             };
+        };
+    };
+    getReferenceRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Taxas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceRates"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     lookupCnpj: {

@@ -24,6 +24,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/rates"
 	"github.com/PedroLucasSinuso/prumia/api/internal/reserve"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
@@ -51,6 +52,8 @@ type opts struct {
 	company CNPJLooker
 	// extractor troca o leitor de boleto (nil = testExtractor).
 	extractor *boleto.Extractor
+	// ratesURL aponta as taxas de referência para um servidor de teste ("" = desligado).
+	ratesURL string
 }
 
 func newApp(t *testing.T, o opts) *app {
@@ -94,7 +97,7 @@ func newApp(t *testing.T, o opts) *app {
 		&Incomes{Svc: incSvc, Log: log},
 		&Summaries{Svc: sumSvc, Log: log, Horizons: []HorizonEnsurer{incSvc, recSvc}},
 		NewBoletos(o.extractorOrDefault(), invSvc, payeeSvc, o.company, log),
-	), auth.Middleware(svc, hs, cookie, log))
+	).WithRates(&Rates{Client: rates.New(o.ratesURL)}), auth.Middleware(svc, hs, cookie, log))
 	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
 }
 

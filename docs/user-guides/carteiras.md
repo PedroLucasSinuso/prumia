@@ -123,6 +123,9 @@ entra e sai por transferência, e o rendimento entra quando você atualiza o val
 - O **saldo projetado** do mês não conta os investimentos: o aporte sai da carteira de origem como uma transferência.
 - O bloco **investimentos** mostra o total e, em cada um, o valor, os aportes, os resgates e o rendimento do mês.
 - Um investimento pode contar como **reserva de emergência** (marque-o no card da reserva).
+- **Comparar com o CDI**: o bloco mostra as taxas de referência do dia (CDI e Selic ao ano, IPCA em 12 meses, da BrasilAPI). Quando
+  você atualiza o valor de um investimento, o card mostra **rendeu no mês** e, ao lado, quanto o CDI rende num mês. Se a BrasilAPI
+  estiver fora do ar, aparece a última leitura ("última leitura") ou nada: o resto funciona igual.
 - Investimento não pode ser a carteira padrão.
 
 ## Qual carteira recebe a receita

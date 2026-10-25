@@ -46,7 +46,14 @@ type Server struct {
 	*Incomes
 	*Summaries
 	*Boletos
+	*Rates
 	DB Pinger
+}
+
+// WithRates liga as taxas de referência (GET /rates). Fica fora do NewServer para não mexer na assinatura usada por todos.
+func (s Server) WithRates(r *Rates) Server {
+	s.Rates = r
+	return s
 }
 
 func NewServer(db Pinger, a *auth.Handler, h *Households, c *Categories, pa *Payees, wa *Wallets, tr *Transfers, ad *Adjustments, rs *Reserves, cl *CNPJLookups, i *Invoices, p *Purchases, r *Recurrences, in *Incomes, sm *Summaries, b *Boletos) Server {

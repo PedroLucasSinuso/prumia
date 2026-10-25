@@ -2,7 +2,7 @@ import { ArrowLeftRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
-import { useAdjustmentActions, useAdjustments, useReserve, useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
+import { useAdjustmentActions, useAdjustments, useReferenceRates, useReserve, useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
 import type { Transfer, TransferInput, TransferResult, WalletAdjustment, WalletBalance } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AdjustmentsSection } from '../components/AdjustmentsSection'
@@ -31,6 +31,7 @@ import { commitments, monthShort } from '../lib/history'
 import { formatCents, formatSignedCents } from '../lib/money'
 import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
+import { formatBasisPoints } from '../lib/rates'
 import { walletName } from '../lib/wallets'
 
 const label = 'text-caption font-medium uppercase tracking-wider text-muted'
@@ -115,6 +116,9 @@ export default function SummaryPage() {
   // sai da carteira de origem como transferência).
   const regular = s ? s.wallets.filter((w) => w.kind !== 'investment') : []
   const investments = s ? s.wallets.filter((w) => w.kind === 'investment') : []
+  // Taxas de referência (BrasilAPI pelo servidor) só quando há investimento para comparar.
+  const rates = useReferenceRates(investments.length > 0).data
+  const cdi = rates?.rates.find((r) => r.code === 'cdi')?.basisPoints
   const noIncome = s !== undefined && regular.every((w) => w.expectedIncomeCents === 0)
   const rows = rollup(s?.byCategory ?? [], cats)
   const projected = regular.reduce((sum, w) => sum + w.projectedCents, 0)
@@ -219,9 +223,21 @@ export default function SummaryPage() {
                     total {formatCents(investments.reduce((sum, w) => sum + w.balanceCents, 0))}
                   </p>
                 </div>
+                {rates && rates.rates.length > 0 && (
+                  <p className="text-meta text-muted">
+                    referências{rates.available ? '' : ' (última leitura)'}:{' '}
+                    {rates.rates.map((r, i) => (
+                      <span key={r.code}>
+                        {i > 0 && ' · '}
+                        {r.name} <span className="font-mono tabular-nums">{formatBasisPoints(r.basisPoints)}</span> {r.code === 'ipca' ? 'em 12 meses' : 'ao ano'}
+                      </span>
+                    ))}{' '}
+                    (BrasilAPI)
+                  </p>
+                )}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {investments.map((w) => (
-                    <InvestmentCard key={w.walletId} balance={w} institution={walletList.find((x) => x.id === w.walletId)?.institution ?? undefined}
+                    <InvestmentCard key={w.walletId} balance={w} cdi={cdi} institution={walletList.find((x) => x.id === w.walletId)?.institution ?? undefined}
                       onCheck={canCheck && !w.archived ? () => setChecking(w) : undefined} />
                   ))}
                 </div>

@@ -100,9 +100,11 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 - **HSTS** ativo de forma condicional: só sai quando a requisição chega com `X-Forwarded-Proto: https` (o `tailscale serve`
   manda); acesso http local não recebe. Detalhes em [deployment.md](deployment.md#hsts-condicional).
 
-## Saída de rede: consulta de CNPJ e feriados
+## Saída de rede: consulta de CNPJ, feriados e taxas
 
-A API faz duas chamadas de saída, ambas à BrasilAPI. A segunda é `GET /api/feriados/v1/{ano}` (`HOLIDAYS_URL`; `off` desliga): só o ANO vai
+A API faz três chamadas de saída, todas à BrasilAPI. A terceira é `GET /api/taxas/v1` (`RATES_URL`; `off` desliga): URL fixa, sem
+nenhum dado na requisição, prazo de 4 s, resposta limitada a 64 KB, cache de 12 h em memória (10 min depois de uma falha) e, se falhar,
+o app mostra a última leitura boa marcada como "última leitura" ou simplesmente não mostra a comparação (`api/internal/rates`). A segunda é `GET /api/feriados/v1/{ano}` (`HOLIDAYS_URL`; `off` desliga): só o ANO vai
 na URL, prazo de 4 s, resposta limitada a 1 MB, cache de 30 dias em memória e, se falhar, os feriados nacionais são calculados localmente
 (`api/internal/calendar`). A primeira: `GET` na BrasilAPI (`CNPJ_LOOKUP_URL`; `off` desliga). Só o CNPJ (dado público, já validado
 pelos dígitos verificadores e reduzido a 14 dígitos, então nada de texto livre na URL) sai do servidor; nunca o boleto, a linha

@@ -30,10 +30,12 @@ services:
       # Limites de segurança (ver docs/developer-guide/authentication.md): casas ativas criadas por usuário e validade absoluta da sessão
       MAX_HOUSEHOLDS_PER_USER: ${MAX_HOUSEHOLDS_PER_USER:-5}
       SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-90}
-      # Consulta de CNPJ na BrasilAPI (com os feriados abaixo, as únicas chamadas de saída do app). "off" desliga.
+      # Consulta de CNPJ na BrasilAPI (com os feriados e as taxas abaixo, as únicas chamadas de saída do app). "off" desliga.
       CNPJ_LOOKUP_URL: ${CNPJ_LOOKUP_URL:-https://brasilapi.com.br/api/cnpj/v1}
       # Feriados nacionais na BrasilAPI (dias úteis das receitas; só o ano vai na URL). "off" usa só o cálculo local.
       HOLIDAYS_URL: ${HOLIDAYS_URL:-https://brasilapi.com.br/api/feriados/v1}
+      # Taxas de referência (CDI, Selic, IPCA) na BrasilAPI, para comparar investimentos; nenhum dado vai na URL. "off" desliga.
+      RATES_URL: ${RATES_URL:-https://brasilapi.com.br/api/taxas/v1}
       # Endereço público do app, usado nos links de convite e de nova senha (vazio = o endereço do navegador de quem gera o link)
       PUBLIC_URL: ${PUBLIC_URL:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-prumia}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prumia}?sslmode=disable

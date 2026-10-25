@@ -32,6 +32,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/rates"
 	"github.com/PedroLucasSinuso/prumia/api/internal/reserve"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
 	"github.com/PedroLucasSinuso/prumia/api/internal/summary"
@@ -120,7 +121,7 @@ func run(args []string) error {
 		&api.Incomes{Svc: incomes, Log: log},
 		&api.Summaries{Svc: summaries, Log: log, Horizons: []api.HorizonEnsurer{incomes, recurrences}},
 		api.NewBoletos(boleto.NewExtractor(), invoices, payeeSvc, cnpjClient, log),
-	)
+	).WithRates(&api.Rates{Client: rates.New(cfg.RatesURL)}) // taxas de referência: BrasilAPI com cache, "off" desliga
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 
 	if cfg.AutoMigrate {
