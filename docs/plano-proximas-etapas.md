@@ -10,7 +10,7 @@ Leia antes de começar: [CLAUDE.md](../CLAUDE.md) (regras inegociáveis), [devel
 2. **Commits de uma linha** `tag: descrição` (≤72 caracteres; `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`, `perf`), **sem trailer** (nada de `Co-Authored-By` ou "Generated with"). Nunca `--force`, `rebase` ou `--no-verify`; para atualizar a branch use `git merge origin/main`.
 3. **Dados pessoais do dono nunca entram no repositório** (commits, PR, comentários, testes, docs, nomes de arquivo): nada de boletos reais, empresas que a casa usa, CNPJ/CPF, valores ou datas reais. Fixtures **sintéticos** (CNPJs fictícios com dígitos válidos, empresas inventadas, linhas digitáveis geradas). Releia o diff e o corpo do PR antes de abrir.
 4. **Contrato primeiro**: mudou endpoint ⇒ edite `openapi/openapi.yaml`, rode `make generate`, depois implemente. `make lint` precisa passar (inclui "código gerado em dia").
-5. **Migrations**: só **novas** e numeradas, nunca editar as aplicadas. Próximo número livre: **00012**. Dois PRs com migration não podem correr em paralelo: o primeiro a ser mergeado fica com o número menor; o outro renumera depois de atualizar com a `main`. Testes de migration devem subir até a versão **exata** com `gooseTo(t, gdb, N)`; `db.Rollback` desfaz só a última, e `db.Migrate` sobe tudo (já quebrou testes de PRs vizinhos).
+5. **Migrations**: só **novas** e numeradas, nunca editar as aplicadas. Próximo número livre: **00013**. Dois PRs com migration não podem correr em paralelo: o primeiro a ser mergeado fica com o número menor; o outro renumera depois de atualizar com a `main`. Testes de migration devem subir até a versão **exata** com `gooseTo(t, gdb, N)`; `db.Rollback` desfaz só a última, e `db.Migrate` sobe tudo (já quebrou testes de PRs vizinhos).
 6. **Testes**: rodar `make lint`, `make test` (integração com testcontainers; Docker disponível), `tsc -b`, oxlint, build e a suíte **completa** do front (`npx vitest run`) antes de abrir o PR, e relatar o resultado no corpo. Depois de editar testes do front, rode `tsc -b` (a CI pega erro de tipo em teste).
 7. **Não toque no stack em uso do dono** (porta 8080, banco real, túnel). Teste com testcontainers ou suba outra stack em outra porta/projeto. Se precisar de navegador, use um perfil/endereço separado (`127.0.0.1` em vez de `localhost` isola os cookies) e **nunca** use uma sessão já logada do dono.
 8. **O que o agente não consegue testar** (celular real, PWA instalado, boleto real, domínio): escrever no PR um **guia de teste manual** (passos numerados, resultado esperado, o que reportar). PT que mexe no banco avisa "rode `make backup` antes de subir".
@@ -19,7 +19,7 @@ Leia antes de começar: [CLAUDE.md](../CLAUDE.md) (regras inegociáveis), [devel
 
 ## 2. Onde estamos (já feito, não refazer)
 
-Favorecidos, subcategorias, gráficos, temas (9), Receitas v2 (recebimento automático, valor por unidade, dia útil, mês anterior, descontos com INSS/IRRF, escopo "este e os seguintes"), importação (boleto, conta sem boleto, lista por foto ou texto, vencimento na linha, modal no computador), **carteiras configuráveis** (saldo que continua entre os meses, mês de início do saldo, transferência entre carteiras), papéis com nomes claros (Responsável, Participante, Só leitura), acesso por domínio com Cloudflare Tunnel e `PUBLIC_URL` nos links. Migrations aplicadas: 00001 a 00011.
+Favorecidos, subcategorias, gráficos, temas (9), Receitas v2 (recebimento automático, valor por unidade, dia útil, mês anterior, descontos com INSS/IRRF, escopo "este e os seguintes"), importação (boleto, conta sem boleto, lista por foto ou texto, vencimento na linha, modal no computador), **carteiras configuráveis** (saldo que continua entre os meses, mês de início do saldo, transferência entre carteiras), papéis com nomes claros (Responsável, Participante, Só leitura), acesso por domínio com Cloudflare Tunnel e `PUBLIC_URL` nos links, redesign "Instrumento calmo" (#58), **Conferir saldo** (PT-2, #60) e os ajustes de importação (PT-4, #61). Migrations aplicadas: 00001 a 00012.
 
 ## 3. Ordem e dependências
 
@@ -40,7 +40,7 @@ Regra prática: **um PR com migration aberto por vez**. PTs de baixo risco (4, 7
 
 A auditoria de interface já foi feita e as correções já estão no código (feitas pelo dono). **Não executar este pacote.** Se uma tela ainda parecer errada, abra uma pergunta no PR em vez de refazer o trabalho.
 
-### PT-2 · Conferir saldo (ajuste de saldo) — risco alto (migration 00012)
+### PT-2 · Conferir saldo (ajuste de saldo) — **feito (#60)**; teste manual do dono pendente
 
 **Problema**: o saldo de uma carteira soma só o que está cadastrado. Se a pessoa lança a receita e esquece de lançar os gastos, sobra dinheiro falso nos meses seguintes. Já existe o "mês de início" (começar do saldo real), mas falta um jeito de **reconciliar com a realidade** a qualquer momento.
 
@@ -66,7 +66,7 @@ A auditoria de interface já foi feita e as correções já estão no código (f
 
 **Aceite**: testes de integração (token inválido/expirado/usado/revogado, quem não é dono não gera, cadastro cria usuário + casa com carteiras e categorias padrão), varreduras de segurança com as rotas novas, documentação em [authentication.md](developer-guide/authentication.md) e guia de usuário.
 
-### PT-4 · Importação: pequenos ajustes — risco baixo/médio
+### PT-4 · Importação: pequenos ajustes — **feito (#61)**, exceto o pré-processamento da foto de conta; teste manual do dono pendente
 
 - **Aviso do mês depois de importar**: hoje o app salta para a competência da primeira conta criada. Opção preferida: ficar no mês em que a pessoa estava e mostrar no toast "N contas criadas em <mês(es)>" com ação "Ver". (Se o lote cair em vários meses, listar.)
 - **Mais formatos de lista**: ponto decimal sem `R$` (`98.40`) e quantidade (`2x`), sempre com a regra de "item forte/fraco" de [boleto-extraction.md](developer-guide/boleto-extraction.md) e testes em tabela com texto sintético.
@@ -85,7 +85,6 @@ Depende do PT-2. Novas tabelas, sem backfill. **Antes de desenhar**, escreva no 
 ### PT-6 · Segurança e infraestrutura — risco alto (cada item é um PR)
 
 - **Token no fragmento**: links de convite e de nova senha levam o token na query (`?token=`); mover para o fragmento (`#`), que não vai ao servidor nem aos logs de proxy. Ajustar front, `lib/links.ts`, testes e guias.
-- **Backup automático agendado e enviado para fora da máquina** (`scripts/backup.sh` + agendador do sistema ou container; destino configurável; criptografia; retenção; verificação com `make test-restore`). Nada de segredo no Git.
 - **Exposição pública**: revisar rate limit, cookies e HSTS agora que o app está na internet; limite de login por IP **e** por e-mail já existe: avaliar bloqueio progressivo.
 - **CI mais rápido**: o job `api` leva ~10 min (cache dos pacotes do sistema, testes de integração em paralelo).
 - **Coleção Postman** ([developer-guide/postman](developer-guide/postman)): atualizar com carteiras, transferências, convites e `income-dates` (já defasada).
@@ -93,6 +92,7 @@ Depende do PT-2. Novas tabelas, sem backfill. **Antes de desenhar**, escreva no 
 ### Fora de escopo por enquanto
 
 - **Cloudflare Access / Zero Trust**: descartado pelo dono. Não propor nem preparar guia.
+- **Backup automático para fora da máquina**: adiado pelo dono (10/2026); está no [roadmap.md](roadmap.md), "Fase 2 de infraestrutura".
 - **Modo demo, onboarding simplificado e disparo de e-mails**: só fariam sentido se o prumia virasse um produto comercial; hoje são duas pessoas usando. Não implementar nem antecipar (ver [roadmap.md](roadmap.md), "Ideias sem prioridade"). O PT-3 (convite de cadastro) continua valendo, mas **sem e-mail**: o link é copiado e enviado pela própria pessoa.
 
 ### PT-7 · Manutenção recorrente — risco baixo
