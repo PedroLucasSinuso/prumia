@@ -35,6 +35,9 @@ type Config struct {
 	OpenRegistration bool          // permite cadastro sem convite mesmo já havendo usuários
 	ResetTTL         time.Duration // validade do link de redefinição de senha (padrão 1h)
 	Now              func() time.Time
+	// FastPasswordHash: argon2id com custo baixo, SÓ para os testes (cada cadastro e login custaria ~100 ms). Nunca em produção:
+	// o main não liga isto.
+	FastPasswordHash bool
 }
 
 type Service struct {
@@ -57,11 +60,21 @@ func NewService(db *gorm.DB, households *household.Service, cfg Config) (*Servic
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	dummy, err := HashPassword("senha-descartavel-para-igualar-tempo")
+	s := &Service{db: db, households: households, cfg: cfg}
+	dummy, err := s.hash("senha-descartavel-para-igualar-tempo")
 	if err != nil {
 		return nil, err
 	}
-	return &Service{db: db, households: households, cfg: cfg, dummyHash: dummy}, nil
+	s.dummyHash = dummy
+	return s, nil
+}
+
+// hash é o HashPassword com o custo do Config (o normal, ou o baixo dos testes).
+func (s *Service) hash(password string) (string, error) {
+	if s.cfg.FastPasswordHash {
+		return hashPassword(password, fastTime, fastMemoryKiB)
+	}
+	return HashPassword(password)
 }
 
 // Meta são dados da requisição guardados na sessão (úteis para o usuário revisar onde está logado).
@@ -127,7 +140,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta Meta) (Us
 	if err != nil {
 		return User{}, "", err
 	}
-	hash, err := HashPassword(in.Password) // caro: feito fora da transação para não segurar a conexão
+	hash, err := s.hash(in.Password) // caro: feito fora da transação para não segurar a conexão
 	if err != nil {
 		return User{}, "", err
 	}

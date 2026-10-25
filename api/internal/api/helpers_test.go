@@ -58,14 +58,11 @@ type opts struct {
 
 func newApp(t *testing.T, o opts) *app {
 	t.Helper()
-	gdb := dbtest.New(t)
+	gdb := dbtest.NewMigrated(t) // cópia de um banco já migrado (as migrations rodam uma vez só por pacote)
 	sqlDB, _ := gdb.DB()
-	if err := migrate(t, sqlDB); err != nil {
-		t.Fatal(err)
-	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	hs := household.NewService(gdb)
-	svc, err := auth.NewService(gdb, hs, auth.Config{OpenRegistration: o.openRegistration, Now: o.now})
+	svc, err := auth.NewService(gdb, hs, auth.Config{OpenRegistration: o.openRegistration, Now: o.now, FastPasswordHash: true})
 	if err != nil {
 		t.Fatal(err)
 	}

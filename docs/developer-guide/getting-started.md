@@ -88,6 +88,9 @@ Um push novo no mesmo PR cancela a execução anterior. Para reproduzir localmen
 | `docker` | valida o compose e constrói as imagens `api` e `web` (sem push) | `POSTGRES_PASSWORD=x docker compose -p prumia-ci -f deploy/compose.yaml build api web` |
 
 No CI, o job `api` falha se o Docker não estiver disponível (localmente, sem Docker, os testes de integração são só pulados).
+
+**Sem Docker**, os testes de integração rodam contra um Postgres seu: `TEST_DATABASE_URL=postgres://usuario@localhost:5432/postgres?sslmode=disable make test`
+(o usuário precisa poder criar bancos; cada teste cria e apaga o seu, com o PID do processo no nome).
 No build local, `-p prumia-ci` evita sobrescrever as imagens do `make up`.
 
 ## Variáveis de ambiente
