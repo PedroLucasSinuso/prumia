@@ -93,7 +93,7 @@ Depende do PT-2. Novas tabelas, sem backfill. **Antes de desenhar**, escreva no 
 
 - **Cloudflare Access / Zero Trust**: descartado pelo dono. Não propor nem preparar guia.
 - **Backup automático para fora da máquina**: adiado pelo dono (10/2026); está no [roadmap.md](roadmap.md), "Fase 2 de infraestrutura".
-- **Disparo de e-mails**: só faria sentido se o prumia virasse um produto comercial. Não implementar nem antecipar. (Modo demo e onboarding foram liberados pelo dono em 10/2026: ver [plano-docs-onboarding.md](plano-docs-onboarding.md).) (ver [roadmap.md](roadmap.md), "Ideias sem prioridade"). O PT-3 (convite de cadastro) continua valendo, mas **sem e-mail**: o link é copiado e enviado pela própria pessoa.
+- **Disparo de e-mails**: só faria sentido se o prumia virasse um produto comercial. Não implementar nem antecipar (ver [roadmap.md](roadmap.md), "Ideias sem prioridade"). Modo demo e onboarding foram liberados pelo dono em 10/2026: ver [plano-docs-onboarding.md](plano-docs-onboarding.md). O PT-3 (convite de cadastro) continua valendo, mas **sem e-mail**: o link é copiado e enviado pela própria pessoa.
 
 ### PT-7 · Manutenção recorrente — risco baixo
 
