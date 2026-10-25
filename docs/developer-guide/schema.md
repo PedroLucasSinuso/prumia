@@ -194,7 +194,13 @@ Meta da reserva de emergência (ver [incomes-and-wallets.md](incomes-and-wallets
 `smallint`, `CHECK (NULL ou 1 a 36)`; `NULL` = sem meta. `wallets.counts_as_reserve`: `boolean NOT NULL DEFAULT false`. Nenhuma tabela
 nova; o progresso é calculado. O `Down` remove as duas colunas (a configuração se perde; saldos e lançamentos ficam).
 
+### wallets.kind e wallets.institution (migration 00015)
+
+Investimento como carteira especial (ver [incomes-and-wallets.md](incomes-and-wallets.md), seção 5.6). `kind`: `text NOT NULL DEFAULT
+'regular'`, `CHECK (kind IN ('regular', 'investment'))`; `institution`: `text`, `CHECK (NULL ou 1 a 60 caracteres)`; e
+`wallets_default_not_investment`: `CHECK (NOT (is_default AND kind = 'investment'))`. Sem backfill (toda carteira existente é
+`regular`). O `Down` remove as colunas e o `CHECK`: os investimentos viram carteiras comuns, com saldo e histórico intactos.
+
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 
-Reserva de emergência e investimentos. Previsto como **novas tabelas** (ex.: `goals`, `goal_contributions`), referenciando
-`households` e `categories.is_essential`. Como é adição pura, não exige backfill.
+Taxa contratada de investimentos e cotação de ações e fundos (a reserva de emergência e os investimentos já existem: `00014` e `00015`).

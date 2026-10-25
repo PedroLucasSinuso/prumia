@@ -76,8 +76,8 @@ a cada janeiro (`api/internal/tax/tables.go`).
 
 PT-5 do [plano](plano-proximas-etapas.md), em 3 PRs; cada um começa com uma proposta curta para o dono aprovar.
 
-- Metas de reserva de emergência (meta em meses de gasto essencial, carteiras que contam como reserva, progresso).
-- Investimentos e aportes por casa. **Recomendação do agente** (a confirmar na proposta do PT-5b): investimento como **carteira especial** (tipo "investimento"), reaproveitando transferência (aporte e resgate), Conferir saldo (atualizar o valor / rendimento) e o saldo transportado; com campos próprios (tipo, instituição, taxa contratada), fora do "saldo projetado" e fora da escolha de carteira ao pagar. Alternativa: entidade à parte (mais código duplicado).
+- Metas de reserva de emergência — **feito no PT-5a** (migration 00014): meta em meses de gasto essencial, carteiras que contam como reserva, progresso.
+- Investimentos e aportes por casa — **feito no PT-5b** (migration 00015), como recomendado: investimento como **carteira especial** (tipo "investimento"), reaproveitando transferência (aporte e resgate), Conferir saldo (atualizar o valor / rendimento) e o saldo transportado; com tipo e instituição, fora do "saldo projetado" e fora da escolha de carteira ao pagar. Falta a taxa contratada (vai com o PT-5c).
 - **Taxas de referência pela BrasilAPI** (`/taxas`: CDI, Selic, IPCA): comparar rendimento com o CDI e mostrar inflação do período. Confirmar a documentação da API antes de desenhar.
 - Cotação de ações e fundos: a BrasilAPI não cobre; escolher outra fonte quando a fase começar.
 - Regras para qualquer API de terceiros: chamada só pelo servidor, cache, degradação graciosa (o app nunca depende dela) e nenhum dado pessoal na requisição.

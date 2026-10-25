@@ -317,6 +317,25 @@ Na UI: card "Reserva de emergência (opcional)" em Ajustes > Carteiras (o Respon
 veem quando há meta) e o bloco "Reserva de emergência" no Resumo (só com meta): guardado, quantos meses cobre, a meta e o medidor.
 Testes: `api/reserve_test.go`, `platform/db/migrate_reserve_test.go` e `web/src/pages/Reserve.test.tsx`.
 
+### 5.6 Investimentos (carteira especial)
+
+PT-5b. Um investimento (CDB, Tesouro, poupança...) é uma **carteira com `kind = 'investment'`** (migration `00015`), e não uma
+entidade à parte: reaproveita o saldo transportado, as transferências e o Conferir saldo, sem duplicar a conta do saldo.
+
+| Regra | Detalhe |
+|---|---|
+| Tipo | `wallets.kind`: `regular` (padrão) ou `investment`. Escolhido **só ao criar** (`WalletInput.kind`); o PATCH não muda o tipo. |
+| Instituição | `wallets.institution` (opcional, até 60 caracteres; vazio = `NULL`). Só etiqueta. Editável no PATCH (`null` limpa). |
+| Aporte e resgate | **Transferências** (`CheckUsable`): aporte = da carteira comum para o investimento; resgate = o contrário. |
+| Rendimento | **Conferir saldo** (ajuste): a pessoa informa o valor atual e a diferença vira ajuste do mês. |
+| Não paga nem recebe | `wallet.CheckSpendable` (pagar invoice, receita e molde de receita, carteira padrão de categoria) recusa investimento com 400 no campo. A sugestão de carteira para Vale (`BenefitOrDefaultID`) só olha carteiras `regular`. |
+| Não é padrão | `CHECK (NOT (is_default AND kind = 'investment'))` no banco e 400 em `isDefault` no PATCH. |
+| Resumo | `WalletBalance.kind` vai na resposta; o cálculo é o mesmo de qualquer carteira. O **front** separa: o saldo projetado da casa soma só as `regular`, e os investimentos aparecem no bloco "investimentos" (`InvestmentCard`: valor, aportes, resgates, rendimento e atualizações). |
+| Reserva | Um investimento pode contar como reserva (5.5), como qualquer carteira. |
+
+Fora de escopo: taxa contratada e comparação com CDI (PT-5c), cotação de ações e fundos.
+Testes: `api/investments_test.go`, `platform/db/migrate_investment_wallets_test.go` e `web/src/pages/Investments.test.tsx`.
+
 ## 6. Resumo mensal (`GET /summary?month=`)
 
 Escopado por `household_id`, tudo por competência, em **7 consultas** (sem N+1): carteiras da casa, receitas por carteira (mês e meses

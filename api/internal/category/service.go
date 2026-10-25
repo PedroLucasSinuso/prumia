@@ -69,7 +69,7 @@ func checkWallet(db *gorm.DB, householdID uuid.UUID, w *uuid.UUID, v *validation
 	if w == nil {
 		return nil
 	}
-	return wallet.CheckUsable(db, householdID, *w, "defaultWalletId", v)
+	return wallet.CheckSpendable(db, householdID, *w, "defaultWalletId", v)
 }
 
 // checkParent confere a regra dos dois níveis: a mãe é da mesma casa, é de topo (não é filha de ninguém) e está ativa.

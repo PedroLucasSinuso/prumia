@@ -19,9 +19,17 @@ type Wallets struct {
 	Log *slog.Logger
 }
 
+// genKind: carteira lida do banco sempre tem tipo; o vazio (struct montada à mão) conta como regular.
+func genKind(k wallet.Kind) gen.WalletKind {
+	if k == "" {
+		return gen.Regular
+	}
+	return gen.WalletKind(k)
+}
+
 func toGenWalletItem(w wallet.Wallet) gen.Wallet {
 	return gen.Wallet{
-		Id: w.ID, Name: w.Name, OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, WarnOnOverdraft: w.WarnOnOverdraft,
+		Id: w.ID, Name: w.Name, Kind: genKind(w.Kind), Institution: w.Institution, OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, WarnOnOverdraft: w.WarnOnOverdraft,
 		OpeningBalanceCents: w.OpeningBalanceCents, OpeningBalanceMonth: w.OpeningBalanceMonth, SortOrder: w.SortOrder, Archived: w.Archived(),
 	}
 }
@@ -48,8 +56,11 @@ func (h *Wallets) CreateWallet(c *gin.Context, householdId gen.HouseholdId) {
 		badJSON(c)
 		return
 	}
-	in := wallet.CreateInput{Name: body.Name, OwnerUserID: body.OwnerUserId, WarnOnOverdraft: body.WarnOnOverdraft, SortOrder: body.SortOrder,
+	in := wallet.CreateInput{Name: body.Name, Institution: body.Institution, OwnerUserID: body.OwnerUserId, WarnOnOverdraft: body.WarnOnOverdraft, SortOrder: body.SortOrder,
 		OpeningBalanceMonth: body.OpeningBalanceMonth}
+	if body.Kind != nil {
+		in.Kind = wallet.Kind(*body.Kind) // valor fora do enum vira 400 no service
+	}
 	if body.OpeningBalanceCents != nil {
 		in.OpeningBalanceCents = *body.OpeningBalanceCents
 	}
@@ -69,7 +80,7 @@ func (h *Wallets) UpdateWallet(c *gin.Context, householdId gen.HouseholdId, wall
 		return
 	}
 	updated, err := h.Svc.Update(c.Request.Context(), householdId, auth.CurrentUser(c).ID, walletId, wallet.Patch{
-		Name: body.Name, OwnerSet: present["ownerUserId"], OwnerUserID: body.OwnerUserId,
+		Name: body.Name, InstitutionSet: present["institution"], Institution: body.Institution, OwnerSet: present["ownerUserId"], OwnerUserID: body.OwnerUserId,
 		WarnOnOverdraft: body.WarnOnOverdraft, OpeningBalanceCents: body.OpeningBalanceCents,
 		OpeningMonthSet: present["openingBalanceMonth"], OpeningBalanceMonth: body.OpeningBalanceMonth, IsDefault: body.IsDefault, SortOrder: body.SortOrder,
 	})

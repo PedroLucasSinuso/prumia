@@ -69,7 +69,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
   const walletList = useWallets(houseId).data
   const [walletId, setWalletId] = useState(income?.walletId ?? '')
   const walletTouched = useRef(false)
-  const choices = (walletList ?? []).filter((w) => !w.archived || w.id === income?.walletId)
+  const choices = (walletList ?? []).filter((w) => (!w.archived && w.kind !== 'investment') || w.id === income?.walletId)
   useEffect(() => {
     if (editing || walletTouched.current || !walletList) return
     setWalletId(suggestWalletId(walletList, kind))

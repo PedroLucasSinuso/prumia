@@ -38,7 +38,7 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
       <button aria-label={`Abrir carteira ${w.name}`} onClick={() => setEditing({ kind: 'edit', id: w.id })} className="flex min-h-14 w-full min-w-0 flex-col justify-center px-3 py-2 text-left">
         <span className={`block truncate text-body font-medium ${w.archived ? 'text-muted' : ''}`}>{w.name}</span>
         <span className="block truncate text-meta text-muted">
-          {[w.isDefault ? 'padrão' : null, ownerName(w) ?? 'de todos', w.warnOnOverdraft ? 'avisa saldo negativo' : null, w.openingBalanceMonth ? `começa em ${monthLabel(w.openingBalanceMonth)}` : null].filter(Boolean).join(' · ')}
+          {[w.isDefault ? 'padrão' : null, w.kind === 'investment' ? 'investimento' : null, w.institution ?? null, ownerName(w) ?? 'de todos', w.warnOnOverdraft ? 'avisa saldo negativo' : null, w.openingBalanceMonth ? `começa em ${monthLabel(w.openingBalanceMonth)}` : null].filter(Boolean).join(' · ')}
         </span>
       </button>
     </li>
@@ -48,7 +48,7 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
     <div>
       <SectionHeader
         title="Carteiras"
-        description="Onde o dinheiro da casa fica: uma geral e quantas mais vocês quiserem (benefício, reserva...). Cada receita entra numa carteira e cada conta é paga com uma. O saldo continua de um mês para o outro."
+        description="Onde o dinheiro da casa fica: uma geral e quantas mais vocês quiserem (benefício, reserva, investimentos...). Cada receita entra numa carteira e cada conta é paga com uma. O saldo continua de um mês para o outro."
         actions={
           isAdmin && (
             <Button onClick={() => setEditing({ kind: 'new' })} className="flex items-center gap-2 md:h-9">

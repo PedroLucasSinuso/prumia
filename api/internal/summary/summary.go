@@ -23,6 +23,7 @@ import (
 type WalletBalance struct {
 	WalletID    uuid.UUID
 	Name        string
+	Kind        wallet.Kind // investimento: o front mostra à parte e fora do saldo projetado da casa
 	OwnerUserID *uuid.UUID
 	IsDefault   bool
 	Archived    bool
@@ -371,7 +372,7 @@ func (s *Service) WalletMonth(ctx context.Context, householdID, walletID uuid.UU
 		}
 	}
 	// Arquivada, sem saldo nem movimento: o assemble a deixa de fora, mas o saldo dela é conhecido (zero).
-	return WalletBalance{WalletID: w.ID, Name: w.Name, Archived: true, Opening: w.OpeningBalanceCents, OpeningMonth: w.OpeningBalanceMonth}, w, nil
+	return WalletBalance{WalletID: w.ID, Name: w.Name, Kind: w.Kind, Archived: true, Opening: w.OpeningBalanceCents, OpeningMonth: w.OpeningBalanceMonth}, w, nil
 }
 
 // assemble junta as linhas agregadas no resumo. É PURA (sem banco) para ser testada em tabela. `ws` já vem na ordem de
@@ -387,7 +388,7 @@ func assemble(month caldate.Date, ws []wallet.Wallet, inc []incomeRow, paid []pa
 		if w.OpeningBalanceMonth != nil && month.Before(*w.OpeningBalanceMonth) {
 			carry = 0
 		}
-		list[i] = &WalletBalance{WalletID: w.ID, Name: w.Name, OwnerUserID: w.OwnerUserID, IsDefault: w.IsDefault,
+		list[i] = &WalletBalance{WalletID: w.ID, Name: w.Name, Kind: w.Kind, OwnerUserID: w.OwnerUserID, IsDefault: w.IsDefault,
 			Archived: w.Archived(), Opening: w.OpeningBalanceCents, OpeningMonth: w.OpeningBalanceMonth, CarryOver: carry}
 		byID[w.ID] = list[i]
 	}

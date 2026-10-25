@@ -451,7 +451,7 @@ func (s *Service) patchMold(ctx context.Context, tx *gorm.DB, cur *Source, p Sou
 		out.touch.Identity = true
 	}
 	if p.WalletID != nil {
-		if err := wallet.CheckUsable(tx, cur.HouseholdID, *p.WalletID, "walletId", v); err != nil {
+		if err := wallet.CheckSpendable(tx, cur.HouseholdID, *p.WalletID, "walletId", v); err != nil {
 			return out, err
 		}
 		cur.WalletID = *p.WalletID

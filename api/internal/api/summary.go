@@ -20,7 +20,7 @@ type Summaries struct {
 
 func toGenWallet(w summary.WalletBalance) gen.WalletBalance {
 	return gen.WalletBalance{
-		WalletId: w.WalletID, Name: w.Name, OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, Archived: w.Archived,
+		WalletId: w.WalletID, Name: w.Name, Kind: genKind(w.Kind), OwnerUserId: w.OwnerUserID, IsDefault: w.IsDefault, Archived: w.Archived,
 		OpeningBalanceCents: w.Opening, OpeningBalanceMonth: w.OpeningMonth, CarryOverCents: w.CarryOver,
 		ExpectedIncomeCents: w.Expected, ReceivedIncomeCents: w.Received, PaidCents: w.Paid, TransfersInCents: w.TransfersIn, TransfersOutCents: w.TransfersOut, AdjustmentsCents: w.Adjustments, BalanceCents: w.Balance(),
 		MonthBalanceCents: w.MonthBalance(), PendingCents: w.Pending, ProjectedCents: w.Projected(),

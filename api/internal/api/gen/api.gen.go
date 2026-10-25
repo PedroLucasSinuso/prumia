@@ -390,6 +390,24 @@ func (e Theme) Valid() bool {
 	}
 }
 
+// Defines values for WalletKind.
+const (
+	Investment WalletKind = "investment"
+	Regular    WalletKind = "regular"
+)
+
+// Valid indicates whether the value is a known member of the WalletKind enum.
+func (e WalletKind) Valid() bool {
+	switch e {
+	case Investment:
+		return true
+	case Regular:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WeekendAdjust.
 const (
 	Backward WeekendAdjust = "backward"
@@ -1535,9 +1553,15 @@ type Wallet struct {
 	Archived bool               `json:"archived"`
 	Id       openapi_types.UUID `json:"id"`
 
+	// Institution Onde o investimento está (banco, corretora); só etiqueta
+	Institution *string `json:"institution,omitempty"`
+
 	// IsDefault Exatamente uma por casa
-	IsDefault bool   `json:"isDefault"`
-	Name      string `json:"name"`
+	IsDefault bool `json:"isDefault"`
+
+	// Kind regular = conta do dia a dia. investment = investimento: só se move por transferência (aporte e resgate) e por Conferir saldo (valor atual); não paga conta, não recebe receita e não entra no saldo projetado
+	Kind WalletKind `json:"kind"`
+	Name string     `json:"name"`
 
 	// OpeningBalanceCents Saldo inicial (pode ser negativo); vale a partir de openingBalanceMonth (sem mês, entra no saldo anterior de todos os meses)
 	OpeningBalanceCents Cents `json:"openingBalanceCents"`
@@ -1597,6 +1621,9 @@ type WalletBalance struct {
 	ExpectedIncomeCents Cents `json:"expectedIncomeCents"`
 	IsDefault           bool  `json:"isDefault"`
 
+	// Kind regular = conta do dia a dia. investment = investimento: só se move por transferência (aporte e resgate) e por Conferir saldo (valor atual); não paga conta, não recebe receita e não entra no saldo projetado
+	Kind WalletKind `json:"kind"`
+
 	// MonthBalanceCents Só o mês: recebido - pago + transferências recebidas - enviadas + ajustes
 	MonthBalanceCents Cents  `json:"monthBalanceCents"`
 	Name              string `json:"name"`
@@ -1630,6 +1657,11 @@ type WalletBalance struct {
 
 // WalletInput defines model for WalletInput.
 type WalletInput struct {
+	Institution *string `json:"institution,omitempty"`
+
+	// Kind Padrão regular. Não muda depois de criada
+	Kind *WalletKind `json:"kind,omitempty"`
+
 	// Name Único entre as carteiras ativas da casa (sem diferenciar maiúsculas)
 	Name string `json:"name"`
 
@@ -1647,9 +1679,15 @@ type WalletInput struct {
 	WarnOnOverdraft *bool `json:"warnOnOverdraft,omitempty"`
 }
 
+// WalletKind regular = conta do dia a dia. investment = investimento: só se move por transferência (aporte e resgate) e por Conferir saldo (valor atual); não paga conta, não recebe receita e não entra no saldo projetado
+type WalletKind string
+
 // WalletPatch defines model for WalletPatch.
 type WalletPatch struct {
-	// IsDefault true troca a carteira padrão da casa; false = 400
+	// Institution null ou vazio limpa
+	Institution *string `json:"institution,omitempty"`
+
+	// IsDefault true troca a carteira padrão da casa (investimento não pode ser a padrão); false = 400
 	IsDefault *bool   `json:"isDefault,omitempty"`
 	Name      *string `json:"name,omitempty"`
 

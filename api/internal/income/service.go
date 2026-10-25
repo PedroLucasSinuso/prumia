@@ -309,7 +309,7 @@ func (s *Service) Create(ctx context.Context, householdID, createdBy uuid.UUID, 
 // carteira, então não há mais coerência tipo <-> carteira. Erro de validação vai para o campo `walletId`.
 func (s *Service) resolveWallet(db *gorm.DB, householdID uuid.UUID, kind string, requested *uuid.UUID, v *validation.Collector) (uuid.UUID, error) {
 	if requested != nil {
-		return *requested, wallet.CheckUsable(db, householdID, *requested, "walletId", v)
+		return *requested, wallet.CheckSpendable(db, householdID, *requested, "walletId", v)
 	}
 	if kind == KindBenefit {
 		return wallet.BenefitOrDefaultID(db, householdID)

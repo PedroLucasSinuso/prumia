@@ -9,6 +9,8 @@ import (
 type walletOut struct {
 	ID                  string  `json:"id"`
 	Name                string  `json:"name"`
+	Kind                string  `json:"kind"`
+	Institution         *string `json:"institution"`
 	OwnerUserID         *string `json:"ownerUserId"`
 	IsDefault           bool    `json:"isDefault"`
 	WarnOnOverdraft     bool    `json:"warnOnOverdraft"`
