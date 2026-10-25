@@ -6,6 +6,10 @@
 // um BANCO novo dentro dele (criar um custa milissegundos): isolamento total, sem o custo de um container por teste.
 // NewMigrated vai além: as migrations rodam UMA vez num banco-modelo, e cada teste recebe uma cópia dele
 // (CREATE DATABASE ... TEMPLATE), em vez de rodar as 14+ migrations de novo a cada teste.
+//
+// Sem Docker (ou para ir mais rápido), aponte TEST_DATABASE_URL para um Postgres seu (ex.:
+// postgres://prumia@localhost:5432/postgres?sslmode=disable): o usuário precisa poder criar bancos. Os nomes levam o PID do
+// processo, porque os pacotes de teste rodam em paralelo contra o mesmo servidor.
 package dbtest
 
 import (
@@ -13,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -35,7 +40,7 @@ var (
 )
 
 // templateDB é o banco-modelo já migrado. Ninguém fica conectado nele (o Postgres só copia modelo sem conexões).
-const templateDB = "t_migrated"
+var templateDB = fmt.Sprintf("t_%d_migrated", os.Getpid())
 
 // migratedTemplate cria e migra o banco-modelo uma vez por processo de teste.
 func migratedTemplate(base string) error {
@@ -46,7 +51,8 @@ func migratedTemplate(base string) error {
 			tmplErr = err
 			return
 		}
-		defer admin.Close() // defer: roda quando a função anônima termina, como um finally
+		defer admin.Close()                                                          // defer: roda quando a função anônima termina, como um finally
+		_, _ = admin.Exec("DROP DATABASE IF EXISTS " + templateDB + " WITH (FORCE)") // sobra de uma execução anterior com o mesmo PID
 		if _, err := admin.Exec("CREATE DATABASE " + templateDB); err != nil {
 			tmplErr = fmt.Errorf("criando o banco-modelo: %w", err)
 			return
@@ -71,6 +77,10 @@ func migratedTemplate(base string) error {
 // (Ryuk) quando o processo termina.
 func server() (string, error) {
 	once.Do(func() {
+		if u := os.Getenv("TEST_DATABASE_URL"); u != "" {
+			baseURL = u // Postgres externo: nada de container
+			return
+		}
 		ctx := context.Background()
 		ctr, err := tcpostgres.Run(ctx, "postgres:16-alpine",
 			tcpostgres.WithDatabase("postgres"),
@@ -114,13 +124,15 @@ func create(t *testing.T, migrated bool) *gorm.DB {
 	if testing.Short() {
 		t.Skip("teste de integração (Docker) pulado com -short")
 	}
-	testcontainers.SkipIfProviderIsNotHealthy(t)
+	if os.Getenv("TEST_DATABASE_URL") == "" {
+		testcontainers.SkipIfProviderIsNotHealthy(t)
+	}
 
 	base, err := server()
 	if err != nil {
 		t.Fatalf("subindo postgres: %v", err)
 	}
-	name := fmt.Sprintf("t_%d", counter.Add(1))
+	name := fmt.Sprintf("t_%d_%d", os.Getpid(), counter.Add(1))
 	stmt := "CREATE DATABASE " + name
 	if migrated {
 		if err := migratedTemplate(base); err != nil {

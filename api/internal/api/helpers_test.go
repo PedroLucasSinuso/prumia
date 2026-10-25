@@ -58,7 +58,7 @@ func newApp(t *testing.T, o opts) *app {
 	sqlDB, _ := gdb.DB()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	hs := household.NewService(gdb)
-	svc, err := auth.NewService(gdb, hs, auth.Config{OpenRegistration: o.openRegistration, Now: o.now})
+	svc, err := auth.NewService(gdb, hs, auth.Config{OpenRegistration: o.openRegistration, Now: o.now, FastPasswordHash: true})
 	if err != nil {
 		t.Fatal(err)
 	}
