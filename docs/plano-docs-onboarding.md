@@ -4,7 +4,7 @@ Pedido do dono (10/2026): documentação **visualmente bonita e fácil de entend
 prumia e uma **landing page com demo**. Isto revoga a nota do roadmap ("modo demo e onboarding só se virar produto comercial"):
 continua **sem** e-mail, cobrança ou planos; o foco é deixar o app fácil de conhecer, experimentar e começar a usar.
 
-Status: **proposta, aguardando o dono** (decisões na seção 2). Nada implementado.
+Status: **decidido em 10/2026** (seção 2). Próximo passo: F1.
 
 ## 1. Onde estamos
 
@@ -14,7 +14,9 @@ Status: **proposta, aguardando o dono** (decisões na seção 2). Nada implement
 - Não há página pública que explique o que é o prumia nem como ele é por dentro.
 - O front já tem uma camada de API simulada nos testes (`web/src/test/utils.tsx`, `mockApi`): base para uma demo sem servidor.
 
-## 2. Decisões do dono (antes de começar)
+## 2. Decisões
+
+Decididas pelo dono: **D1 ambos**, **D2 Cloudflare Pages** e **D3 demo no navegador**. D4 e D5 seguem a recomendação.
 
 | # | Pergunta | Recomendação do agente |
 |---|---|---|
