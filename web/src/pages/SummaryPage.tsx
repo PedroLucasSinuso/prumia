@@ -122,7 +122,11 @@ export default function SummaryPage() {
   const cdi = rates?.rates.find((r) => r.code === 'cdi')?.basisPoints
   const noIncome = s !== undefined && regular.every((w) => w.expectedIncomeCents === 0)
   const rows = rollup(s?.byCategory ?? [], cats)
-  const projected = regular.reduce((sum, w) => sum + w.projectedCents, 0)
+  // O destaque é a carteira PADRÃO (o dinheiro livre da casa), não a soma de todas: o que sobra no Benefício (VR) não
+  // paga o aluguel. As outras carteiras aparecem nos cards; as que vão ficar negativas ganham um aviso no destaque.
+  const main = regular.find((w) => w.isDefault) ?? regular[0]
+  const projected = main?.projectedCents ?? 0
+  const othersShort = regular.filter((w) => w !== main && w.projectedCents < 0)
   // No computador o painel nunca fica vazio: sem escolha, mostra a categoria que mais pesa.
   const selected = picked ?? (desktop ? (rows[0]?.id ?? null) : null)
   const selectedName = selected ? (cats.find((c) => c.id === selected)?.name ?? 'Sem categoria') : ''
@@ -162,7 +166,7 @@ export default function SummaryPage() {
             {/* UM destaque (o saldo projetado, em `alert-text` se vai faltar) e, ao lado, sem caixa, a pagar · atrasado · pago. */}
             <section aria-label="Destaques do mês" className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-8">
               <Surface className="flex min-w-0 flex-col gap-2">
-                <Eyebrow as="h2" tone={projected < 0 ? 'alert' : 'muted'}>saldo projetado</Eyebrow>
+                <Eyebrow as="h2" tone={projected < 0 ? 'alert' : 'muted'}>saldo projetado{main ? ` · ${main.name}` : ''}</Eyebrow>
                 <p className={`font-mono text-figure font-semibold tracking-tight tabular-nums md:text-figure-lg ${projected < 0 ? 'text-alert-text' : 'text-heading'}`}>
                   {formatCents(Math.abs(projected))}
                 </p>
@@ -177,8 +181,17 @@ export default function SummaryPage() {
                     </>
                   )}
                 </p>
+                {othersShort.map((w) => (
+                  <p key={w.walletId} className="flex items-center gap-2 text-ui">
+                    <span className="font-mono text-alert" aria-hidden="true">[ ✖ ]</span>
+                    <span className="text-alert-text">
+                      {w.name}: vai faltar <span className="font-mono tabular-nums">{formatCents(Math.abs(w.projectedCents))}</span>
+                    </span>
+                  </p>
+                ))}
                 <p className="mt-2 text-meta text-muted">
                   Projetado = tudo o que está previsto para entrar menos o que já foi pago e o que falta pagar no mês.
+                  {regular.length > 1 && ' Só desta carteira: o dinheiro de uma carteira (como o benefício) não paga o que é de outra. Cada uma tem o seu card abaixo.'}
                 </p>
               </Surface>
               <div className="flex min-w-0 flex-col divide-y divide-line px-1 lg:px-0">

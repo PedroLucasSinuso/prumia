@@ -31,7 +31,7 @@ describe('investimentos (carteira especial)', () => {
     mockApi({ me: ok(me), wallets: ok([...wallets, cdb]), summary: ok(summary) })
     renderAt('/resumo?mes=2026-10')
     const destaques = await screen.findByRole('region', { name: 'Destaques do mês' })
-    expect(within(destaques).getByText('R$ 500,00')).toBeInTheDocument() // só Geral + Benefício
+    expect(within(destaques).getByText('R$ 500,00')).toBeInTheDocument() // só a Geral (padrão); o investimento fica à parte
     const inv = screen.getByRole('region', { name: 'Investimentos' })
     const card = within(inv).getByRole('region', { name: 'CDB' })
     expect(within(card).getByText('R$ 1.015,00')).toBeInTheDocument()

@@ -11,8 +11,10 @@ Selecione **resumo** no menu. Use ‹ e › para trocar de mês; o mês que voc�
 
 A primeira linha tem quatro números:
 
-- **Saldo projetado**: tudo o que está **previsto para entrar** no mês menos o que **já foi pago** e o que **falta pagar**. É o
-  número principal. Diz **deve sobrar** ou, se vai faltar, **vai faltar** com o marcador `[ ✖ ]`.
+- **Saldo projetado** da carteira padrão (a Geral): tudo o que está **previsto para entrar** nela no mês menos o que **já foi pago**
+  e o que **falta pagar**. É o número principal. Diz **deve sobrar** ou, se vai faltar, **vai faltar** com o marcador `[ ✖ ]`.
+  Não soma as outras carteiras: o que sobra no Benefício (VR) não paga o aluguel. Se outra carteira vai ficar negativa, aparece
+  logo abaixo um aviso como "`[ ✖ ]` Benefício: vai faltar R$ 120,00".
 - **A pagar**: o que ainda não foi pago (inclui as atrasadas).
 - **Atrasado**: quanto já venceu sem pagar e em quantas contas. O marcador `[ ✖ ]` só aparece se houver alguma.
 - **Pago**: o que já saiu, pelo valor efetivamente pago (com juros ou desconto).
@@ -31,8 +33,8 @@ Há um bloco para cada carteira da casa (a **padrão** em destaque; veja [cartei
 - Por fim: **previsto para entrar**, **já recebido**, **já pago** e **a pagar (estimado)**. Se houve transferência entre carteiras no mês, aparecem também **transferências recebidas** e **transferências enviadas** (e entram no saldo de hoje e no projetado).
 
 "A pagar (estimado)": a carteira de uma conta só é conhecida quando você paga. Até lá, o app usa a carteira sugerida da
-categoria (ex.: Mercado → Benefício; veja [categorias-e-ajustes.md](categorias-e-ajustes.md)). Sem sugestão, conta na carteira padrão. O
-saldo projetado **da casa** (nos destaques) não depende dessa estimativa. Veja também [carteiras.md](carteiras.md).
+categoria (ex.: Mercado → Benefício; veja [categorias-e-ajustes.md](categorias-e-ajustes.md)). Sem sugestão, conta na carteira padrão. Por isso o
+saldo projetado de cada carteira, inclusive o do destaque, depende dessa estimativa: marque a carteira sugerida nas categorias. Veja também [carteiras.md](carteiras.md).
 
 ## Transferir entre carteiras
 
