@@ -150,10 +150,13 @@ do corpo da requisição: ele vem da rota autorizada. O banco reforça o isolame
   (hash no banco, uso único e corrida, expiração, revogação), papéis, último admin, saída/reentrada, casa e redefinição
   de senha (escopo multi-casa, sessões encerradas). `signup_invites_test.go` cobre o convite de cadastro (dono do sistema,
   hash no banco, uso único, vencido, revogado, teto de 5, validações, nada gravado quando falha).
-- **Postman**: importe `docs/developer-guide/postman/prumia.postman_collection.json` (66 requisições com asserções).
-  Variável `base_url` = `http://localhost:8080`. Rode as pastas em ordem; o Postman guarda o cookie sozinho (a pasta 6 alterna entre Pedro e Ana trocando de login).
-  Contra um banco já usado, o limite de tentativas de login (5 seguidas por e-mail) pode dar 429 em execuções seguidas: espere um minuto. Em linha de
-  comando: `npx newman run docs/developer-guide/postman/prumia.postman_collection.json`.
+- **Postman**: importe `docs/developer-guide/postman/prumia.postman_collection.json` (13 pastas, ~170 asserções; atualizada em 10/2026
+  com carteiras, receitas v2, transferências, conferir saldo, reserva, investimentos, taxas e convites de cadastro). Variável `base_url` =
+  `http://localhost:8080`. Use um **banco novo** (o primeiro cadastro vira o dono do sistema) e rode as pastas em ordem; o Postman guarda o
+  cookie sozinho (as pastas 9 e 9c trocam de usuário por login). A pasta **9b** (boleto) precisa de arquivos reais: rode à mão. O
+  cadastro tem limite de 5 por IP e o login de 5 seguidas por e-mail: em execuções repetidas, espere um minuto (ou recrie o banco). Em
+  linha de comando, sem a 9b: `npx newman run docs/developer-guide/postman/prumia.postman_collection.json --folder "1. Sistema" ...`
+  (uma `--folder` por pasta).
 
 ## Armadilhas já encontradas
 

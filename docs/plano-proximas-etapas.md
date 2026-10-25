@@ -87,7 +87,7 @@ Depende do PT-2. Novas tabelas, sem backfill. **Antes de desenhar**, escreva no 
 - **Token no fragmento** — **feito**: links de convite e de nova senha levam o token no fragmento (`#token=`), que não vai ao servidor nem aos logs de proxy; links antigos com `?token=` continuam abrindo.
 - **Exposição pública**: revisar rate limit, cookies e HSTS agora que o app está na internet; limite de login por IP **e** por e-mail já existe: avaliar bloqueio progressivo.
 - **CI mais rápido**: o job `api` leva ~10 min (cache dos pacotes do sistema, testes de integração em paralelo).
-- **Coleção Postman** ([developer-guide/postman](developer-guide/postman)): atualizar com carteiras, transferências, convites e `income-dates` (já defasada).
+- **Coleção Postman** — **feito**: pasta 8 reescrita (receitas v2 e carteiras por id) e pastas novas 8b (carteiras, transferências, conferir saldo, reserva, investimentos, taxas) e 9c (convites de cadastro); 170 asserções passando no newman contra a API local.
 
 ### Fora de escopo por enquanto
 
