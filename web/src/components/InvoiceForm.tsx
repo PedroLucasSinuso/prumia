@@ -484,7 +484,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
                   if (e.key === 'Enter') { e.preventDefault(); void createCategory() }
                   if (e.key === 'Escape') { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setNewCat(null) }
                 }}
-                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-line-strong bg-raised/40 px-3 text-base text-ink transition-colors hover:border-ink/45 focus-visible:border-accent md:h-9 md:text-sm"
+                className="h-11 min-w-0 flex-1 basis-40 rounded-md border border-line-strong bg-raised px-3 text-base text-ink transition-colors hover:border-ink/50 focus-visible:border-accent md:h-9 md:text-sm"
               />
               <Button type="button" disabled={!newCat.name.trim()} loading={newCat.busy} loadingLabel="Criando…" onClick={() => void createCategory()}>
                 Criar categoria
@@ -506,7 +506,7 @@ export function InvoiceForm({ month, houseId, categories: baseCategories, payees
 
       <details className="rounded-md border border-line px-3 py-2" open={Boolean(fields.competence || fields.notes || fields.payeeId || competenceImported)}>
         <summary className="flex min-h-9 cursor-pointer items-center justify-between text-sm font-semibold transition-colors hover:text-heading">
-          Mais opções <span className="text-xs font-normal text-muted">favorecido · competência · observação</span>
+          Mais opções <span className="text-meta font-normal text-muted">favorecido · competência · observação</span>
         </summary>
         <div className="mt-3 flex flex-col gap-4 pb-1">
           {!editing && kind === 'recurring' && (

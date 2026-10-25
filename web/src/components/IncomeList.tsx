@@ -34,10 +34,10 @@ export function IncomeList({ incomes, members, today, onOpen }: Props) {
                   <span className="truncate text-body font-medium">{i.description}</span>
                   <IncomeBadges income={i} />
                 </span>
-                <span className="mt-0.5 block truncate text-xs text-muted">
+                <span className="mt-0.5 block truncate text-meta text-muted">
                   {person(i.userId)} · {kindShort[i.kind]}
                 </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+                <span className="mt-0.5 flex items-center gap-1.5 text-meta">
                   <span aria-hidden="true" className={`font-mono ${stateTone[state]}`}>{stateMark[state]}</span>
                   {stateText(i, today)}
                 </span>

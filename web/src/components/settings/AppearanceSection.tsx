@@ -68,7 +68,7 @@ export function AppearanceSection() {
         role="radio"
         aria-checked={on}
         onClick={() => void choose(t.id)}
-        className={`flex flex-col overflow-hidden rounded-md border text-left transition-colors duration-150 ${on ? 'border-structure ring-1 ring-structure' : 'border-line hover:border-ink/40'}`}
+        className={`flex flex-col overflow-hidden rounded-md border text-left transition-colors duration-150 ${on ? 'border-structure ring-1 ring-structure' : 'border-line hover:border-ink/50'}`}
       >
         <div className="flex h-24 border-b border-line">
           {t.id === 'sistema' ? (
@@ -83,7 +83,7 @@ export function AppearanceSection() {
         <div className="flex items-start gap-3 p-3">
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">{t.label}</span>
-            <span className="block text-xs text-muted">{t.description}</span>
+            <span className="block text-meta text-muted">{t.description}</span>
           </span>
           <span aria-hidden="true" className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${on ? 'border-structure bg-structure text-on-structure' : 'border-line-strong'}`}>
             {on && <Check size={14} strokeWidth={2.5} />}
@@ -99,7 +99,7 @@ export function AppearanceSection() {
       <div role="radiogroup" aria-label="Tema" className="flex max-w-6xl flex-col gap-6">
         {groups.map((g) => (
           <section key={g.title} aria-label={g.title}>
-            <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">{g.title}</h3>
+            <h3 className="mb-2 text-meta font-medium uppercase tracking-wider text-muted">{g.title}</h3>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{g.items.map(card)}</div>
           </section>
         ))}

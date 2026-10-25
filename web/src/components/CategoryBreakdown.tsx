@@ -5,7 +5,7 @@ import { formatCents } from '../lib/money'
 
 /**
  * Lista "por categoria": uma barra por categoria principal (a soma das filhas incluída) e, embaixo, o detalhe das filhas em
- * texto pequeno. `split` mostra pago (structure) e a pagar (accent) na mesma barra; sem ele, uma barra só.
+ * texto pequeno. `split` mostra pago (`done`, discreto) e a pagar (`accent`) na mesma barra; sem ele, uma barra só.
  * `onSelect` torna cada categoria (e cada filha) clicável: o resumo abre o histórico dela. `selectedId` marca a escolhida.
  */
 export function CategoryBreakdown({
@@ -19,7 +19,7 @@ export function CategoryBreakdown({
         type="button"
         onClick={() => onSelect(id)}
         aria-pressed={selectedId === id}
-        className={`-mx-1.5 block min-h-11 w-[calc(100%+0.75rem)] rounded-sm px-1.5 py-1 text-left md:min-h-0 transition-colors duration-150 hover:bg-ink/5 ${selectedId === id ? 'bg-accent/10' : ''} ${extra}`}
+        className={`-mx-1.5 block min-h-11 w-[calc(100%+0.75rem)] rounded-sm px-1.5 py-1 text-left md:min-h-0 transition-colors duration-150 hover:bg-sunken ${selectedId === id ? 'bg-accent/10' : ''} ${extra}`}
       >
         {children}
         <span className="sr-only">{`, ver histórico de ${label}`}</span>
@@ -36,10 +36,10 @@ export function CategoryBreakdown({
             <span className="font-medium">{r.name}</span>
             <span className="font-mono tabular-nums">{formatCents(r.totalCents)}</span>
           </span>
-          <span className="mt-1 flex h-2 rounded-xs bg-ink/10" aria-hidden="true">
+          <span className="mt-1 flex h-2 rounded-xs bg-sunken" aria-hidden="true">
             {split ? (
               <>
-                <span className="h-2 rounded-l-xs bg-structure" style={{ width: `${(r.paidCents / max) * 100}%` }} />
+                <span className="h-2 rounded-l-xs bg-done" style={{ width: `${(r.paidCents / max) * 100}%` }} />
                 <span className="h-2 bg-accent" style={{ width: `${((r.totalCents - r.paidCents) / max) * 100}%` }} />
               </>
             ) : (

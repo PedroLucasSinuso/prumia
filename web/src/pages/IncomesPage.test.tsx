@@ -84,7 +84,7 @@ describe('topo: recebido, a receber, por pessoa e sobra', () => {
     withIncomes({ summary: ok(summaryWith({ totalPendingCents: 900000 })) })
     renderAt(mes)
     expect(await screen.findByText(/receitas R\$ 8\.615,00 − despesas R\$ 10\.000,00/)).toBeInTheDocument()
-    expect(screen.getByText('-R$ 1.385,00')).toHaveClass('text-alert')
+    expect(screen.getByText('-R$ 1.385,00')).toHaveClass('text-alert-text')
   })
 
   it('não existe mais o bloco "Previsto" nem "Previsão mensal · Fontes"', async () => {

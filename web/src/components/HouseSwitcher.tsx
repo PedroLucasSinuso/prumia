@@ -39,7 +39,7 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
         className={`flex min-h-11 min-w-0 items-center gap-2 rounded-md px-1 ${inverse ? 'hover:bg-on-structure/8' : 'hover:bg-ink/5'}`}
       >
         {text}
-        <span aria-hidden="true" className={`font-mono text-xs ${caption}`}>▾</span>
+        <span aria-hidden="true" className={`font-mono text-meta ${caption}`}>▾</span>
       </button>
       {open && (
         // text-ink: na barra lateral (teal) o texto herdado seria marfim sobre o painel marfim
@@ -59,7 +59,7 @@ export function HouseSwitcher({ tone = 'light' }: { tone?: 'light' | 'inverse' }
                     }}
                     className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left ${active ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
                   >
-                    <span aria-hidden="true" className={`font-mono text-xs ${active ? 'text-heading' : 'text-muted'}`}>
+                    <span aria-hidden="true" className={`font-mono text-meta ${active ? 'text-heading' : 'text-muted'}`}>
                       {active ? '[ ▪ ]' : '[ ▫ ]'}
                     </span>
                     <span className="min-w-0 flex-1">

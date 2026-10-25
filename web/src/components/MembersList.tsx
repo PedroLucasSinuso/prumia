@@ -24,25 +24,25 @@ export function MembersList({ members, meId, isAdmin, busy, onRole, onRemove, on
         const self = m.userId === meId
         return (
           <li key={m.userId} className="relative flex gap-3 py-3 pl-0">
-            <span aria-hidden="true" className="z-10 mt-1 flex size-6 shrink-0 items-center justify-center border-2 border-structure bg-surface font-mono text-xs font-semibold text-heading">
+            <span aria-hidden="true" className="z-10 mt-1 flex size-6 shrink-0 items-center justify-center border-2 border-structure bg-surface font-mono text-meta font-semibold text-heading">
               {m.name.slice(0, 1).toUpperCase()}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-body font-medium">
-                {m.name} {self && <span className="text-xs font-normal text-muted">(você)</span>}
+                {m.name} {self && <span className="text-meta font-normal text-muted">(você)</span>}
               </p>
-              <p className="truncate text-xs text-muted">{m.email}</p>
+              <p className="truncate text-meta text-muted">{m.email}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
                 {/* O próprio papel não se troca por aqui: tirar o próprio admin sem querer trancaria a pessoa fora da gestão. */}
                 {isAdmin && !self ? (
-                  <label className="flex items-center gap-2 text-xs text-muted">
+                  <label className="flex items-center gap-2 text-meta text-muted">
                     papel
                     <select
                       aria-label={`Papel de ${m.name}`}
                       value={m.role}
                       disabled={busy}
                       onChange={(e) => onRole(m.userId, e.target.value as Role)}
-                      className="h-11 rounded-md border border-line-strong bg-raised/40 px-2 text-sm text-ink"
+                      className="h-11 rounded-md border border-line-strong bg-raised px-2 text-sm text-ink"
                     >
                       {(Object.keys(roleLabel) as Role[]).map((r) => (
                         <option key={r} value={r}>{roleLabel[r]} — {roleHelp[r]}</option>

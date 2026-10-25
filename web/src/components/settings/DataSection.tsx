@@ -7,6 +7,7 @@ import { ICON } from '../../lib/navigation'
 import { Button } from '../ui/Button'
 import { Field } from '../Field'
 import { Card, SectionHeader } from './ui'
+import { Notice } from '../ui/Notice'
 
 /**
  * Ajustes > Dados: exporta as contas da casa em CSV (abre direto no Excel/Planilhas).
@@ -55,9 +56,7 @@ export function DataSection() {
           <Field label="Vencimento até" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         {error && (
-          <p role="alert" className="mt-3 text-sm">
-            <span className="font-mono text-alert">[ ✖ ]</span> {error}
-          </p>
+          <Notice className="mt-3">{error}</Notice>
         )}
         <Button className="mt-4 inline-flex items-center gap-2" onClick={() => void download()} disabled={busy}>
           <Download aria-hidden="true" size={ICON.size - 2} strokeWidth={ICON.strokeWidth} />

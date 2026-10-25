@@ -107,7 +107,7 @@ export function WalletForm({ wallet, members, canWrite, onCreate, onUpdate, onAr
         onChange={(v) => { setOwnerId(v); clear('ownerUserId') }}
         error={fields.ownerUserId}
       />
-      <p className="-mt-2 text-xs text-muted">É só uma etiqueta: quem pode lançar usa qualquer carteira.</p>
+      <p className="-mt-2 text-meta text-muted">É só uma etiqueta: quem pode lançar usa qualquer carteira.</p>
       <fieldset disabled={!canWrite} className="flex flex-col gap-1">
         <MoneyInput label="Saldo inicial" value={opening} onChange={setOpening} error={fields.openingBalanceCents} />
         <p className="text-meta text-muted">Quanto já havia nesta carteira antes do primeiro lançamento. Opcional.</p>

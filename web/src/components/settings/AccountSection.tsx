@@ -8,6 +8,7 @@ import { Button } from '../ui/Button'
 import { Field } from '../Field'
 import { useToast } from '../toastContext'
 import { Card, SectionHeader } from './ui'
+import { Notice } from '../ui/Notice'
 
 const MIN_PASSWORD = 10 // igual ao cadastro (openapi: newPassword.minLength)
 
@@ -104,9 +105,7 @@ function PasswordCard() {
         <Field label="Senha atual" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} error={errors.current} />
         <Field label="Nova senha" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} error={errors.next} hint={`Pelo menos ${MIN_PASSWORD} caracteres.`} />
         {errors.general && (
-          <p role="alert" className="text-sm">
-            <span className="font-mono text-alert">[ ✖ ]</span> {errors.general}
-          </p>
+          <Notice>{errors.general}</Notice>
         )}
         <div>
           <Button type="submit" disabled={busy || !current || !next}>

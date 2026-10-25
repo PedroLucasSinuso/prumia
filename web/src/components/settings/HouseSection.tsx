@@ -15,9 +15,10 @@ import { LinkBox } from '../LinkBox'
 import { MembersList } from '../MembersList'
 import { useToast } from '../toastContext'
 import { Card, SectionHeader } from './ui'
+import { Notice } from '../ui/Notice'
 
-const label = 'text-xs font-medium uppercase tracking-wider text-muted'
-const select = 'h-11 rounded-md border border-line-strong bg-raised/40 px-3 text-base md:h-9 md:text-sm'
+const label = 'text-meta font-medium uppercase tracking-wider text-muted'
+const select = 'h-11 rounded-md border border-line-strong bg-raised px-3 text-base md:h-9 md:text-sm'
 
 const errorText = (e: unknown) => (e instanceof ApiError ? (e.network ? 'Sem conexão com o servidor.' : problemMessage(e.problem)) : 'Algo deu errado.')
 const expiry = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -153,9 +154,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
       />
 
       {error && (
-        <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
-          <span className="font-mono text-alert">[ ✖ ]</span> {error}
-        </p>
+        <Notice>{error}</Notice>
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] xl:items-start">
@@ -178,7 +177,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
 
           <Card label="Pessoas" title={count !== undefined ? `pessoas da casa (${count})` : 'pessoas da casa'}>
             {members.isPending && <p role="status" className="mt-2 text-sm text-muted">carregando…</p>}
-            {members.isError && <p role="alert" className="mt-2 text-sm">Não foi possível carregar as pessoas.</p>}
+            {members.isError && <Notice className="mt-2" onRetry={() => void members.refetch()}>Não foi possível carregar as pessoas.</Notice>}
             {members.isSuccess && (
               <MembersList members={members.data} meId={me.id} isAdmin={isAdmin} busy={busy} onRole={onRole} onRemove={onRemove} onResetLink={onResetLink} />
             )}
@@ -230,7 +229,7 @@ export function HouseSection({ me, house }: { me: Me; house: House }) {
               )}
             </Card>
           ) : (
-            <p className="rounded-md border border-dashed border-line-strong p-4 text-sm text-muted">Só quem administra a casa pode convidar pessoas.</p>
+            <p className="rounded-md bg-sunken p-4 text-sm text-muted">Só quem administra a casa pode convidar pessoas.</p>
           )}
 
           <Card label="Outra casa" title="outra casa">

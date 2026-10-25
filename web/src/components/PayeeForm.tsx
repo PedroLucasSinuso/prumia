@@ -106,7 +106,7 @@ export function PayeeForm({ payee, categories, canWrite, onCreate, onUpdate, onD
           }
         }} />
       {found && (
-        <p className="-mt-2 text-xs text-muted" aria-live="polite">
+        <p className="-mt-2 text-meta text-muted" aria-live="polite">
           <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> CNPJ conferido: {found.legalName}
           {found.tradeName ? ` (${found.tradeName})` : ''}
         </p>

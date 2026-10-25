@@ -1,12 +1,11 @@
 import { ArrowLeftRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 
 import { useCategories, useCategoryHistory, useMembers, useSummary, useTransferActions, useTransfers, useWallets } from '../api/queries'
 import type { Transfer, TransferInput, TransferResult } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
-import { Button } from '../components/ui/Button'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
@@ -16,6 +15,12 @@ import { useToast } from '../components/toastContext'
 import { TransferForm } from '../components/TransferForm'
 import { TransfersSection } from '../components/TransfersSection'
 import { WalletCard } from '../components/WalletCard'
+import { Button, ButtonLink } from '../components/ui/Button'
+import { Eyebrow } from '../components/ui/Eyebrow'
+import { ListSkeleton } from '../components/ui/ListSkeleton'
+import { Notice } from '../components/ui/Notice'
+import { Stat } from '../components/ui/Stat'
+import { Surface } from '../components/ui/Surface'
 import { rollup } from '../lib/categories'
 import { addMonths, monthLabel } from '../lib/dates'
 import { commitments, monthShort } from '../lib/history'
@@ -24,19 +29,9 @@ import { useIsDesktop } from '../lib/useIsDesktop'
 import { useMonthParam } from '../lib/useMonthParam'
 import { walletName } from '../lib/wallets'
 
-const label = 'text-xs font-medium uppercase tracking-wider text-muted'
-const card = 'rounded-md border border-line p-4'
-
-/** Um destaque da linha do topo: rótulo, valor em mono e uma nota curta. */
-function Tile({ title, value, note, strong = false }: { title: string; value: string; note?: ReactNode; strong?: boolean }) {
-  return (
-    <div className={`rounded-md p-3 md:p-4 ${strong ? 'border-2 border-structure' : 'border border-line'}`}>
-      <p className={label}>{title}</p>
-      <p className={`mt-1 font-mono text-xl font-semibold tabular-nums md:text-2xl ${strong ? 'text-heading' : 'text-ink'}`}>{value}</p>
-      {note && <p className="mt-0.5 text-xs text-muted">{note}</p>}
-    </div>
-  )
-}
+const label = 'text-caption font-medium uppercase tracking-wider text-muted'
+// Blocos do resumo: profundidade por TOM (raised), sem borda.
+const card = 'rounded-md bg-raised p-4 md:p-5'
 
 /**
  * Resumo do mês. Número principal: o SALDO PROJETADO (previsto para entrar − pago − a pagar), da casa e de cada carteira;
@@ -99,12 +94,12 @@ export default function SummaryPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-5 md:px-8 md:pb-10 md:pt-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-8 md:px-8 md:pb-10 md:pt-8">
         <header>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <MonthSelector month={month} onChange={setMonth} />
             {canTransfer && (
-              <Button variant="secondary" onClick={() => setTransferring(true)} className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setTransferring(true)}>
                 <ArrowLeftRight aria-hidden="true" size={18} strokeWidth={1.5} /> Transferir
               </Button>
             )}
@@ -112,20 +107,13 @@ export default function SummaryPage() {
           <p className="mt-2 hidden text-sm text-muted md:block">Resumo do mês: o que entra, o que sai e para onde vai.</p>
         </header>
 
-        {summary.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
-        {summary.isError && (
-          <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
-            <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar o resumo.{' '}
-            <button className="font-semibold underline" onClick={() => void summary.refetch()}>
-              Tentar de novo
-            </button>
-          </p>
-        )}
+        {summary.isPending && <ListSkeleton label="Carregando o resumo" rows={4} />}
+        {summary.isError && <Notice onRetry={() => void summary.refetch()}>Não foi possível carregar o resumo.</Notice>}
 
         {s && (
           <>
             {noIncome && (
-              <p className="rounded-md border border-dashed border-line p-4 text-sm text-muted">
+              <p className="rounded-md bg-sunken p-4 text-sm text-muted">
                 Ainda não há receitas neste mês, então o saldo mostra só o que sai. Cadastre o salário e o vale em{' '}
                 <Link to="/receitas" className="font-semibold text-accent underline underline-offset-2">
                   receitas
@@ -134,28 +122,35 @@ export default function SummaryPage() {
               </p>
             )}
 
-            <section aria-label="Destaques do mês">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Tile
-                  strong
-                  title="saldo projetado"
-                  value={formatCents(Math.abs(projected))}
-                  note={
-                    projected < 0 ? (
-                      <>
-                        <span className="font-mono text-alert" aria-hidden="true">[ ✖ ]</span> vai faltar no mês
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-mono" aria-hidden="true">[ ▪ ]</span> deve sobrar no mês
-                      </>
-                    )
-                  }
-                />
-                <Tile title="a pagar" value={formatCents(s.totalPendingCents)} note="inclui as atrasadas" />
-                <Tile
-                  title="atrasado"
+            {/* UM destaque (o saldo projetado, em `alert-text` se vai faltar) e, ao lado, sem caixa, a pagar · atrasado · pago. */}
+            <section aria-label="Destaques do mês" className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-8">
+              <Surface className="flex min-w-0 flex-col gap-2">
+                <Eyebrow as="h2" tone={projected < 0 ? 'alert' : 'muted'}>saldo projetado</Eyebrow>
+                <p className={`font-mono text-figure font-semibold tracking-tight tabular-nums md:text-figure-lg ${projected < 0 ? 'text-alert-text' : 'text-heading'}`}>
+                  {formatCents(Math.abs(projected))}
+                </p>
+                <p className="flex items-center gap-2 text-ui text-muted">
+                  {projected < 0 ? (
+                    <>
+                      <span className="font-mono text-alert" aria-hidden="true">[ ✖ ]</span> <span className="font-medium text-alert-text">vai faltar no mês</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-mono text-accent" aria-hidden="true">[ ▪ ]</span> deve sobrar no mês
+                    </>
+                  )}
+                </p>
+                <p className="mt-2 text-meta text-muted">
+                  Projetado = tudo o que está previsto para entrar menos o que já foi pago e o que falta pagar no mês.
+                </p>
+              </Surface>
+              <div className="flex min-w-0 flex-col divide-y divide-line px-1 lg:px-0">
+                <Stat label="a pagar" value={formatCents(s.totalPendingCents)} size="sm" note="inclui as atrasadas" className="pb-4" />
+                <Stat
+                  label="atrasado"
                   value={formatCents(s.overdueCents)}
+                  emphasis={s.overdueCount > 0 ? 'alert' : 'muted'}
+                  size="sm"
                   note={
                     s.overdueCount > 0 ? (
                       <>
@@ -165,12 +160,10 @@ export default function SummaryPage() {
                       'nenhuma conta vencida'
                     )
                   }
+                  className="py-4"
                 />
-                <Tile title="pago" value={formatCents(s.totalPaidCents)} note="valor efetivamente pago" />
+                <Stat label="pago" value={formatCents(s.totalPaidCents)} size="sm" note="valor efetivamente pago" className="pt-4" />
               </div>
-              <p className="mt-2 text-xs text-muted">
-                Projetado = tudo o que está previsto para entrar menos o que já foi pago e o que falta pagar no mês.
-              </p>
             </section>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -192,14 +185,14 @@ export default function SummaryPage() {
                   <p className="mt-2 text-sm text-muted">Nenhuma conta neste mês.</p>
                 ) : (
                   <>
-                    <p className="mt-1 text-xs text-muted">Selecione uma categoria para ver o histórico.</p>
+                    <p className="mt-1 text-meta text-muted">Selecione uma categoria para ver o histórico.</p>
                     <div className="mt-3">
                       <CategoryBreakdown rows={rows} split onSelect={setPicked} selectedId={selected} />
                     </div>
                   </>
                 )}
-                <p className="mt-3 flex items-center gap-4 text-xs text-muted">
-                  <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-structure" />pago</span>
+                <p className="mt-3 flex items-center gap-4 text-meta text-muted">
+                  <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-done" />pago</span>
                   <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-xs bg-accent" />a pagar</span>
                 </p>
               </section>
@@ -215,17 +208,17 @@ export default function SummaryPage() {
               <section aria-label="Compromissos futuros" className={card}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className={label}>compromissos futuros</h2>
-                  <Link to="/parcelas" className="text-sm font-semibold text-accent underline underline-offset-2">
+                  <ButtonLink to="/parcelas" variant="quiet" size="sm">
                     ver parcelas e fixas
-                  </Link>
+                  </ButtonLink>
                 </div>
-                <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-heading">{formatCents(aheadTotal)}</p>
+                <p className="mt-1 font-mono text-title font-semibold tabular-nums text-heading">{formatCents(aheadTotal)}</p>
                 <p className="text-meta text-muted">em parcelas e contas fixas nos próximos 3 meses</p>
                 <ul className="mt-3 grid grid-cols-3 gap-3 text-sm">
                   {ahead.map((m) => (
                     <li key={m.month} className="border-t border-line pt-2">
-                      <span className="block text-xs text-muted">{monthShort(m.month)}</span>
-                      <span className="font-mono tabular-nums">{formatCents(m.cents)}</span>
+                      <span className="block text-meta text-muted">{monthShort(m.month)}</span>
+                      <span className="font-mono tabular-nums text-ink">{formatCents(m.cents)}</span>
                     </li>
                   ))}
                 </ul>

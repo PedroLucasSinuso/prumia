@@ -58,7 +58,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
           <span aria-hidden="true" className={`font-mono ${stateTone[state]}`}>{stateMark[state]}</span>
           {stateText(income, today)}
         </p>
-        {state === 'held' && <p className="mt-1 text-xs text-muted">Fora do saldo até você dizer que caiu.</p>}
+        {state === 'held' && <p className="mt-1 text-meta text-muted">Fora do saldo até você dizer que caiu.</p>}
       </div>
 
       <dl className="grid grid-cols-[minmax(0,6.5rem)_minmax(0,1fr)] gap-x-4 gap-y-2.5 border-t border-line pt-4 text-sm">
@@ -66,7 +66,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
           <dt className="text-muted">Valor bruto</dt>
           <dd className="font-mono font-medium tabular-nums">
             {formatCents(income.grossAmountCents)}
-            {unit && <span className="block font-sans text-xs font-normal text-muted">{unit}</span>}
+            {unit && <span className="block font-sans text-meta font-normal text-muted">{unit}</span>}
           </dd>
         </div>
         <div className="contents">
@@ -75,7 +75,7 @@ export function IncomeDetail({ income, personName, today, canWrite, busy, onRece
             {discounts > 0 ? (
               <>
                 <span className="font-mono tabular-nums">− {formatCents(discounts)}</span>
-                <ul className="mt-0.5 text-xs font-normal text-muted">
+                <ul className="mt-0.5 text-meta font-normal text-muted">
                   {income.deductions.map((d, i) => (
                     <li key={i} className="flex justify-between gap-3">
                       <span>{d.name}</span>

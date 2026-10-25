@@ -41,7 +41,7 @@ type FileEntry = {
 /** Estado que o formulário de conta passa ao "Abrir em Importar" (uma lista lida lá). */
 export type ImportState = { extraction: DocumentExtraction; fileName: string }
 
-const label = 'text-xs font-medium uppercase tracking-wider text-muted'
+const label = 'text-meta font-medium uppercase tracking-wider text-muted'
 const input = 'h-11 w-full rounded-md border border-line bg-surface px-2 text-sm text-ink md:h-9'
 const link = 'text-sm font-semibold text-accent underline underline-offset-4'
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
@@ -395,7 +395,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
         {files.length > 0 && (
           <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-8">
             <aside aria-label="Arquivos lidos" className="flex flex-col gap-3 lg:sticky lg:top-0">
-              <ul className="flex flex-col divide-y divide-ink/10 rounded-md border border-line">
+              <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
                 {files.map((f) => (
                   <FileItem
                     key={f.id}
@@ -473,11 +473,11 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
   return (
     <li className={`flex flex-col gap-2 px-3 py-2 ${selected ? 'bg-accent/10' : ''}`}>
       <div className="flex items-center gap-2">
-        <span aria-hidden="true" className={`font-mono text-xs ${file.status === 'error' || file.status === 'password' ? 'text-alert' : 'text-accent'}`}>{mark}</span>
+        <span aria-hidden="true" className={`font-mono text-meta ${file.status === 'error' || file.status === 'password' ? 'text-alert' : 'text-accent'}`}>{mark}</span>
         <button type="button" onClick={onSelect} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 truncate text-left text-sm md:min-h-8">
           {file.name}
         </button>
-        <span className="shrink-0 text-xs text-muted">
+        <span className="shrink-0 text-meta text-muted">
           {file.status === 'done' ? (file.found === 1 ? '1 conta' : `${file.found} contas`) : statusText[file.status]}
         </span>
         <button type="button" onClick={onRemove} aria-label={`Tirar ${file.name}`} className="h-11 w-11 shrink-0 rounded-md text-muted hover:bg-ink/5 md:h-8 md:w-8">
@@ -486,9 +486,9 @@ function FileItem({ file, selected, onSelect, onRemove, onPassword, onRetry }: {
       </div>
       {file.status === 'error' && file.message && (
         <div className="flex flex-col gap-1">
-          <p className="text-xs">{file.message}</p>
+          <p className="text-meta">{file.message}</p>
           {((file.file && file.file.size <= MAX_BOLETO_BYTES) || file.text !== undefined) && (
-            <button type="button" className={`${link} self-start text-xs`} onClick={onRetry}>
+            <button type="button" className={`${link} self-start text-meta`} onClick={onRetry}>
               Tentar de novo
             </button>
           )}
@@ -550,7 +550,7 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
       onFocusCapture={onFocus}
       className={`flex flex-col gap-3 rounded-md border p-3 transition-colors duration-150 ${active ? 'border-accent' : 'border-line'} ${row.include ? '' : 'opacity-60'}`}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
         <span className={`font-mono ${row.ocr ? 'font-semibold' : ''}`}>
           {row.ocr ? (
             <><span aria-hidden="true" className="text-alert">[ ✖ ]</span> OCR: confira</>
@@ -564,13 +564,13 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
           <input type="checkbox" checked={row.include} onChange={(e) => onChange({ include: e.target.checked })} />
           criar
         </label>
-        <button type="button" onClick={onRemove} className={`${link} min-h-11 text-xs md:min-h-8`}>
+        <button type="button" onClick={onRemove} className={`${link} min-h-11 text-meta md:min-h-8`}>
           remover
         </button>
       </div>
 
       {row.duplicateOf && (
-        <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-xs">
+        <p role="alert" className="rounded-md border-l-2 border-alert bg-sunken px-3 py-2 text-meta text-ink">
           <span aria-hidden="true" className="font-mono text-alert">[ ✖ ]</span>{' '}
           {row.duplicateOf === 'batch' ? 'Este boleto já está em outra linha desta importação.' : 'Já existe uma conta com este boleto.'}{' '}
           {row.include ? 'Será criada mesmo assim.' : 'Fica de fora; marque "criar" para incluir mesmo assim.'}
@@ -629,7 +629,7 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
       </div>
 
       {row.boleto && (
-        <p className="break-words font-mono text-xs tabular-nums text-muted">{formatDigitableLine(row.boleto.digitableLine)}</p>
+        <p className="break-words font-mono text-meta tabular-nums text-muted">{formatDigitableLine(row.boleto.digitableLine)}</p>
       )}
       {otherErrors.map(([k, msg]) => (
         <p key={k} className="text-meta font-medium text-alert-text">{msg}</p>

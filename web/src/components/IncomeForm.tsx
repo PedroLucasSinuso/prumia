@@ -40,7 +40,7 @@ type Props = {
 
 type RuleChoice = 'date' | DateRule['rule']
 
-const legend = 'mb-2 p-0 text-xs font-semibold uppercase tracking-wider text-muted'
+const legend = 'mb-2 p-0 text-meta font-semibold uppercase tracking-wider text-muted'
 const group = 'border-t border-line pt-4'
 const inner = 'flex flex-col gap-3'
 
@@ -356,12 +356,12 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
         )}
         {currentRule && dates && (
           <div className="rounded-md border border-line px-3 py-2 text-ui text-muted" aria-live="polite">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted">Próximas datas</span>
+            <span className="text-meta font-medium uppercase tracking-wider text-muted">Próximas datas</span>
             <span className="mt-0.5 block font-mono tabular-nums">
               {dates.upcoming.map((d) => `${dayMonth(d)} (${weekdayShort(d)})`).join(' · ')}
             </span>
             {dates.passedThisMonth && (
-              <span className="mt-1 block text-xs text-muted">
+              <span className="mt-1 block text-meta text-muted">
                 {offset === -1 ? `Competência de ${monthName(monthOf(today))}` : 'Este mês'}: {dayMonth(dates.passedThisMonth)} ({weekdayShort(dates.passedThisMonth)}), já passou: conta como recebida.
               </span>
             )}
@@ -421,7 +421,7 @@ export function IncomeForm({ houseId, month, members, defaultUserId, income, sta
       </div>
 
       <div className={`rounded-md border-2 px-3 py-2.5 ${net < 0 ? 'border-alert' : 'border-structure'}`}>
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">líquido{sumDeductions(deductions) > 0 ? ' (valor − descontos)' : ''}</p>
+        <p className="text-meta font-medium uppercase tracking-wider text-muted">líquido{sumDeductions(deductions) > 0 ? ' (valor − descontos)' : ''}</p>
         <p className="font-mono text-figure font-semibold leading-tight tabular-nums text-heading">{formatCents(net)}</p>
         {net < 0 && <p className="text-meta font-medium text-alert-text">Os descontos passam do valor.</p>}
       </div>

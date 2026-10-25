@@ -24,7 +24,7 @@ export function BoletoBox({ boleto, method }: { boleto: Boleto; method?: Method 
   return (
     <div className="flex flex-col gap-2">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">Linha digitável</p>
+        <p className="text-meta font-medium uppercase tracking-wider text-muted">Linha digitável</p>
         <p className="mt-1 select-all break-words font-mono text-sm leading-relaxed tabular-nums">
           {formatDigitableLine(boleto.digitableLine)}
         </p>
@@ -33,14 +33,14 @@ export function BoletoBox({ boleto, method }: { boleto: Boleto; method?: Method 
         <p className="text-sm">
           <span className="text-muted">Beneficiário:</span> {boleto.beneficiaryName}
           {boleto.beneficiaryVerified && (
-            <span className="ml-1 text-xs text-muted">
+            <span className="ml-1 text-meta text-muted">
               <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span> conferido pelo CNPJ
             </span>
           )}
         </p>
       )}
       {method && (
-        <p className={`text-xs ${method === 'ocr' ? 'font-semibold text-ink' : 'text-muted'}`}>
+        <p className={`text-meta ${method === 'ocr' ? 'font-semibold text-ink' : 'text-muted'}`}>
           <span aria-hidden="true" className={`font-mono ${method === 'ocr' ? 'text-alert' : 'text-accent'}`}>
             {method === 'ocr' ? '[ ✖ ]' : '[ ▪ ]'}
           </span>{' '}

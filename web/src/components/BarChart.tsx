@@ -124,7 +124,7 @@ export function BarChart({ stack, label, height = 200 }: Props) {
         </svg>
       </div>
 
-      <p aria-live="polite" className="mt-1 min-h-5 text-xs text-muted">
+      <p aria-live="polite" className="mt-1 min-h-5 text-meta text-muted">
         {current ? (
           <>
             <span className="font-medium">{monthShort(current.month)}</span>{' '}
@@ -149,7 +149,7 @@ export function BarChart({ stack, label, height = 200 }: Props) {
         )}
       </p>
 
-      <ul aria-label="Legenda" className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+      <ul aria-label="Legenda" className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted">
         {segments.length > 1 &&
           segments.map((s) => (
             <li key={s.key} className="flex items-center gap-1.5">

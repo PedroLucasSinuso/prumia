@@ -134,7 +134,7 @@ export function InvoiceDetail({ invoice, categoryLabel, payeeName, purchase, tod
               <select
                 value={payWallet}
                 onChange={(e) => setChosen(e.target.value)}
-                className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-raised/40 px-2 text-sm md:h-9"
+                className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-raised px-2 text-sm md:h-9"
               >
                 {wallets.map((w) => (
                   <option key={w.id} value={w.id}>{w.name}</option>

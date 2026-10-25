@@ -45,7 +45,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
           className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left transition-colors hover:bg-ink/4"
         >
           <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
-          <span className="text-xs font-semibold uppercase tracking-wider">
+          <span className="text-meta font-semibold uppercase tracking-wider">
             Receitas que se repetem <span className="font-mono font-medium text-muted">({sources.length})</span>
           </span>
         </button>
@@ -65,7 +65,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className={`truncate text-sm font-medium ${finished ? 'text-muted' : ''}`}>{s.name}</p>
-                    <p className="truncate text-xs text-muted">
+                    <p className="truncate text-meta text-muted">
                       {person(s.userId)} · {kindShort[s.kind]} · {ruleText(s.dateRule)}
                     </p>
                     <p className="text-meta text-muted">
@@ -81,7 +81,7 @@ export function RepeatingIncomes({ sources, members, month, incomeOf, canWrite, 
                         disabled={!current}
                         title={current ? undefined : 'Esta repetição não tem receita neste mês: troque de mês para editar.'}
                         onClick={() => current && onEdit(current)}
-                        className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-ink/40 disabled:no-underline md:h-9"
+                        className="h-11 text-sm font-semibold text-accent underline underline-offset-4 disabled:text-muted disabled:no-underline md:h-9"
                       >
                         Editar
                       </button>

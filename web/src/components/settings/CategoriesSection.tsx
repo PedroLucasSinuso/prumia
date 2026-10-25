@@ -160,7 +160,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
             onPointerDown={() => setArmed(c.id)}
             onPointerUp={() => !dragId && setArmed(undefined)}
             onKeyDown={(e) => onHandleKey(e, c)}
-            className="flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded-sm text-ink/45 hover:bg-ink/6 hover:text-ink active:cursor-grabbing"
+            className="flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted hover:bg-ink/6 hover:text-ink active:cursor-grabbing"
           >
             <GripVertical aria-hidden="true" size={16} strokeWidth={ICON.strokeWidth} />
           </button>
@@ -233,14 +233,14 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
           {categories.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
           {categories.isError && <LoadError what="as categorias" onRetry={() => void categories.refetch()} />}
           {categories.isSuccess && active.length === 0 && (
-            <p className="rounded-md border border-dashed border-line-strong p-4 text-sm text-muted">
+            <p className="rounded-md bg-sunken p-4 text-sm text-muted">
               Nenhuma categoria ativa{canWrite ? '. Crie a primeira em Nova categoria.' : '.'}
             </p>
           )}
 
           {active.length > 0 && (
             <div className="rounded-md border border-line">
-              <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 text-xs text-muted">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 text-meta text-muted">
                 <span>
                   {tops.length} {tops.length === 1 ? 'categoria' : 'categorias'}
                   {subCount > 0 && ` · ${subCount} ${subCount === 1 ? 'subcategoria' : 'subcategorias'}`}
@@ -255,7 +255,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
           <p aria-live="polite" className="sr-only">{announce}</p>
 
           {archived.length > 0 && (
-            <details className="mt-4 rounded-md border border-line px-3">
+            <details className="mt-4 rounded-md bg-sunken px-3">
               <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-muted md:min-h-10">arquivadas ({archived.length})</summary>
               <ul aria-label="Categorias arquivadas" className="flex flex-col pb-1">
                 {archived.map((c) => row(c, false))}
@@ -309,7 +309,7 @@ export function CategoriesSection({ houseId, canWrite, desktop }: { houseId: str
                     }
                     className={`flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left text-sm ${current ? 'border-structure bg-structure/8' : 'border-line hover:bg-ink/5'}`}
                   >
-                    <span aria-hidden="true" className="font-mono text-xs text-muted">{current ? '[ ▪ ]' : '[ ▫ ]'}</span>
+                    <span aria-hidden="true" className="font-mono text-meta text-muted">{current ? '[ ▪ ]' : '[ ▫ ]'}</span>
                     {target.name}
                   </button>
                 </li>

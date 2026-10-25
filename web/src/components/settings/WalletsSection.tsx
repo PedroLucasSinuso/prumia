@@ -36,7 +36,7 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
     <li key={w.id} className={`border-t border-line/60 first:border-t-0 ${selected?.id === w.id ? 'bg-accent/8' : ''}`}>
       <button aria-label={`Abrir carteira ${w.name}`} onClick={() => setEditing({ kind: 'edit', id: w.id })} className="flex min-h-14 w-full min-w-0 flex-col justify-center px-3 py-2 text-left">
         <span className={`block truncate text-body font-medium ${w.archived ? 'text-muted' : ''}`}>{w.name}</span>
-        <span className="block truncate text-xs text-muted">
+        <span className="block truncate text-meta text-muted">
           {[w.isDefault ? 'padrão' : null, ownerName(w) ?? 'de todos', w.warnOnOverdraft ? 'avisa saldo negativo' : null, w.openingBalanceMonth ? `começa em ${monthLabel(w.openingBalanceMonth)}` : null].filter(Boolean).join(' · ')}
         </span>
       </button>
@@ -62,9 +62,9 @@ export function WalletsSection({ houseId, isAdmin, desktop }: { houseId: string;
           {wallets.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
           {wallets.isError && <LoadError what="as carteiras" onRetry={() => void wallets.refetch()} />}
           {active.length > 0 && <ul aria-label="Carteiras ativas" className="flex flex-col rounded-md border border-line">{active.map(item)}</ul>}
-          {!isAdmin && wallets.isSuccess && <p className="mt-3 text-xs text-muted">Só o Responsável da casa cria e altera carteiras.</p>}
+          {!isAdmin && wallets.isSuccess && <p className="mt-3 text-meta text-muted">Só o Responsável da casa cria e altera carteiras.</p>}
           {archived.length > 0 && (
-            <details className="mt-4 rounded-md border border-line px-3">
+            <details className="mt-4 rounded-md bg-sunken px-3">
               <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-muted md:min-h-10">arquivadas ({archived.length})</summary>
               <ul aria-label="Carteiras arquivadas" className="flex flex-col">{archived.map(item)}</ul>
             </details>

@@ -7,7 +7,6 @@ import type { Income, IncomeSource, SeriesScope } from '../api/types'
 import { useAuth } from '../auth/context'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
-import { Button } from '../components/ui/Button'
 import { IncomeDetail } from '../components/IncomeDetail'
 import { IncomeForm } from '../components/IncomeForm'
 import { IncomeList } from '../components/IncomeList'
@@ -19,6 +18,15 @@ import { Sheet } from '../components/Sheet'
 import { ShortcutsHelp, type Shortcut } from '../components/ShortcutsHelp'
 import { SlideOver } from '../components/SlideOver'
 import { useToast } from '../components/toastContext'
+import { Button } from '../components/ui/Button'
+import { EmptyState } from '../components/ui/EmptyState'
+import { Eyebrow } from '../components/ui/Eyebrow'
+import { FilterChips } from '../components/ui/FilterChips'
+import { ListSkeleton } from '../components/ui/ListSkeleton'
+import { Notice } from '../components/ui/Notice'
+import { SectionTitle } from '../components/ui/SectionTitle'
+import { Stat } from '../components/ui/Stat'
+import { Surface } from '../components/ui/Surface'
 import { Tooltip } from '../components/ui/Tooltip'
 import { addMonths, dayMonth, monthLabel, todayISO } from '../lib/dates'
 import { incomeSections, incomeTotals, monthSurplus, personTotals, stateOf, type GroupBy, type SectionId } from '../lib/income'
@@ -31,7 +39,6 @@ import { useMonthParam } from '../lib/useMonthParam'
 /** A receita aberta: em leitura (detalhe) ou no formulário (editar). `scope` pré-marca "este e os seguintes". */
 type Panel = { id: string; mode: 'view' | 'edit'; scope?: SeriesScope } | null
 
-const label = 'text-xs font-medium uppercase tracking-wider'
 const COLLAPSED_KEY = 'prumia.receitas.secoesRecolhidas'
 const GROUP_KEY = 'prumia.receitas.agrupar'
 
@@ -237,50 +244,56 @@ export default function IncomesPage() {
   )
   const newForm = ready && <IncomeForm key="nova" {...formProps} onDone={() => setCreating(false)} />
 
+  // Qual número é o destaque do topo: a sobra negativa (vai faltar), o que falta receber (nada caiu ainda) ou o recebido.
+  const focus: 'short' | 'pending' | 'received' = surplus && surplus.surplus < 0 ? 'short' : totals.received === 0 && totals.pending > 0 ? 'pending' : 'received'
+  const surplusLine = surplus && (
+    <p className="text-meta text-muted">
+      receitas {formatCents(surplus.income)} − despesas {formatCents(surplus.expenses)}
+    </p>
+  )
+  const summaryLink = (
+    <Link to={{ pathname: '/resumo', search }} className="mt-1 inline-flex min-h-8 items-center text-ui font-medium text-accent underline underline-offset-2">
+      Ver no resumo
+    </Link>
+  )
+
   const groupSwitch = (
-    <div role="group" aria-label="Agrupar a lista" className="flex gap-1.5">
-      {([['state', 'Por situação'], ['person', 'Por pessoa']] as const).map(([key, text]) => (
-        <button
-          key={key}
-          aria-pressed={groupBy === key}
-          onClick={() => setGroupBy(key)}
-          className={`h-9 whitespace-nowrap rounded-md border px-3 text-ui transition-colors ${groupBy === key ? 'border-structure bg-structure font-semibold text-on-structure' : 'border-line-strong font-medium hover:bg-ink/5'}`}
-        >
-          {text}
-        </button>
-      ))}
-    </div>
+    <FilterChips<GroupBy>
+      label="Agrupar a lista"
+      value={groupBy}
+      onChange={setGroupBy}
+      options={[{ value: 'state', label: 'Por situação' }, { value: 'person', label: 'Por pessoa' }]}
+    />
   )
 
   const emptyState = empty ? (
-    <div className="mt-2 flex flex-col items-start gap-3 rounded-md border border-dashed border-line-strong p-5">
-      <p className="text-sm text-muted">
-        {hasSources || !canWrite ? (
-          'Nenhuma receita neste mês.'
-        ) : (
-          <>Cadastre o seu salário <strong>uma vez</strong> e ele se repete todo mês, no dia útil certo. Você só ajusta o que mudar.</>
-        )}
-      </p>
-      {canWrite && (
-        <Button onClick={openNew} className="flex items-center gap-2">
-          <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> {hasSources ? 'Nova receita' : 'Cadastrar salário'}
-        </Button>
-      )}
-    </div>
+    <EmptyState
+      className="mt-2"
+      title={hasSources || !canWrite ? 'Nenhuma receita neste mês.' : 'Nenhuma receita cadastrada.'}
+      actions={
+        canWrite && (
+          <Button onClick={openNew}>
+            <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> {hasSources ? 'Nova receita' : 'Cadastrar salário'}
+          </Button>
+        )
+      }
+    >
+      {!hasSources && canWrite && <>Cadastre o seu salário <strong>uma vez</strong> e ele se repete todo mês, no dia útil certo. Você só ajusta o que mudar.</>}
+    </EmptyState>
   ) : null
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-6 md:px-8 md:pb-10 md:pt-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-36 pt-2 md:max-w-[1600px] md:gap-8 md:px-8 md:pb-10 md:pt-8">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <MonthSelector month={month} onChange={setMonth} />
           {desktop && (
             <div className="flex flex-wrap items-center gap-2">
               {canWrite && (
                 <Tooltip label="Nova receita" shortcut="N">
-                  <Button onClick={openNew} className="flex items-center gap-2">
+                  <Button onClick={openNew}>
                     <Plus size={18} strokeWidth={1.5} aria-hidden="true" /> Nova receita
-                    <kbd className="ml-1 rounded-sm border border-on-structure/40 px-1 font-mono text-caption leading-4">N</kbd>
+                    <kbd className="ml-1 rounded-sm bg-on-structure/15 px-1 font-mono text-caption leading-4">N</kbd>
                   </Button>
                 </Tooltip>
               )}
@@ -289,79 +302,96 @@ export default function IncomesPage() {
           )}
         </header>
 
-        {/* Topo: recebido (grande), a receber (pequeno), por pessoa e sobra do mês */}
-        <section aria-label="Resumo das receitas" className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="rounded-md px-1 md:bg-structure md:px-4 md:py-3.5 md:text-on-structure">
-            <div className={`flex justify-between ${label} text-muted md:text-on-structure/85`}>
-              <span>recebido</span>
-              <span className="font-mono">{Math.round(fraction * 100)}% do mês</span>
-            </div>
-            <p className="font-mono text-[40px] font-semibold leading-tight tracking-tight tabular-nums text-heading md:text-figure-lg md:text-on-structure">{formatCents(totals.received)}</p>
-            <PaidGauge fraction={fraction} tone={desktop ? 'dark' : 'light'} className="mt-2" />
-            <p className="mt-2 text-ui text-muted md:text-on-structure/85">
-              a receber <span className="font-mono font-semibold tabular-nums">{formatCents(totals.pending)}</span>
-            </p>
-          </div>
-
-          <div className="rounded-md border border-line px-3 py-3 md:px-4 md:py-3.5">
-            <p className={`${label} text-muted`}>por pessoa</p>
-            {people.length === 0 ? (
-              <p className="mt-1 text-sm text-muted">Sem receitas neste mês.</p>
-            ) : (
-              <table className="mt-1 w-full text-sm">
-                <thead className="sr-only">
-                  <tr><th scope="col">Pessoa</th><th scope="col">Recebido</th><th scope="col">A receber</th></tr>
-                </thead>
-                <tbody>
-                  {people.map((p) => (
-                    <tr key={p.userId}>
-                      <th scope="row" className="py-0.5 pr-2 text-left font-medium">{p.name}</th>
-                      <td className="py-0.5 text-right font-mono font-semibold tabular-nums text-accent">{formatCents(p.received)}</td>
-                      <td className="py-0.5 pl-3 text-right font-mono text-xs tabular-nums text-muted">
-                        <span className="sr-only">a receber </span>{p.pending > 0 ? `+ ${formatCents(p.pending)}` : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="rounded-md border border-line px-3 py-3 md:px-4 md:py-3.5">
-            <p className={`${label} text-muted`}>sobra do mês</p>
-            {surplus ? (
+        {/* Topo: UM destaque (Surface raised) que muda com o estado do mês e, ao lado, sem caixa, o resto do contexto.
+            Sobra negativa vira o destaque; sem nada recebido, o destaque é o que falta receber (nunca um "R$ 0,00" grande). */}
+        <section aria-label="Resumo das receitas" className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-8">
+          <Surface as="section" aria-label="Destaque das receitas" className="flex min-w-0 flex-col gap-2">
+            {focus === 'short' && surplus ? (
               <>
-                <p className={`font-mono text-[30px] font-semibold leading-tight tabular-nums ${surplus.surplus < 0 ? 'text-alert' : 'text-heading'}`}>
-                  {surplus.surplus < 0 && <span aria-hidden="true" className="mr-1.5 text-base">[ ✖ ]</span>}
+                <Eyebrow as="h2" tone="alert">vai faltar no mês</Eyebrow>
+                <p className="font-mono text-figure font-semibold tracking-tight tabular-nums text-alert-text md:text-figure-lg">
+                  <span aria-hidden="true" className="mr-2 text-ui text-alert">[ ✖ ]</span>
                   {formatCents(surplus.surplus)}
                 </p>
-                <p className="text-meta text-muted">
-                  receitas {formatCents(surplus.income)} − despesas {formatCents(surplus.expenses)}
-                </p>
+                {surplusLine}
+                {summaryLink}
+              </>
+            ) : focus === 'pending' ? (
+              <>
+                <Eyebrow as="h2">a receber neste mês</Eyebrow>
+                <p className="font-mono text-figure font-semibold tracking-tight tabular-nums text-heading md:text-figure-lg">{formatCents(totals.pending)}</p>
+                <p className="text-ui text-muted">Nada recebido ainda.</p>
               </>
             ) : (
-              <p className="mt-1 text-sm text-muted" role="status">{summary.isError ? 'Indisponível agora.' : 'calculando…'}</p>
+              <>
+                <div className="flex items-baseline justify-between gap-2">
+                  <Eyebrow as="h2">recebido</Eyebrow>
+                  <span className="font-mono text-caption text-muted">{Math.round(fraction * 100)}% do mês</span>
+                </div>
+                <p className="font-mono text-figure font-semibold tracking-tight tabular-nums text-heading md:text-figure-lg">{formatCents(totals.received)}</p>
+                <PaidGauge fraction={fraction} />
+                <p className="text-ui text-muted">
+                  a receber <span className="font-mono font-semibold tabular-nums text-ink">{formatCents(totals.pending)}</span>
+                </p>
+              </>
             )}
-            <Link to={{ pathname: '/resumo', search }} className="mt-1.5 inline-block text-ui font-medium text-accent underline underline-offset-2">
-              Ver no resumo
-            </Link>
+          </Surface>
+
+          <div className="flex min-w-0 flex-col divide-y divide-line px-1 lg:px-0">
+            {focus !== 'received' && (
+              <div className="pb-4">
+                <Stat label="recebido" value={formatCents(totals.received)} emphasis={totals.received === 0 ? 'muted' : 'default'} size="sm" aside={`${Math.round(fraction * 100)}%`} />
+              </div>
+            )}
+            <div className={focus !== 'received' ? 'py-4' : 'pb-4'}>
+              <Eyebrow>por pessoa</Eyebrow>
+              {people.length === 0 ? (
+                <p className="mt-1 text-sm text-muted">Sem receitas neste mês.</p>
+              ) : (
+                <table className="mt-1 w-full text-sm">
+                  <thead className="sr-only">
+                    <tr><th scope="col">Pessoa</th><th scope="col">Recebido</th><th scope="col">A receber</th></tr>
+                  </thead>
+                  <tbody>
+                    {people.map((p) => (
+                      <tr key={p.userId}>
+                        <th scope="row" className="py-0.5 pr-2 text-left font-medium text-ink">{p.name}</th>
+                        <td className="py-0.5 text-right font-mono font-semibold tabular-nums text-ink">{formatCents(p.received)}</td>
+                        <td className="py-0.5 pl-3 text-right font-mono text-meta tabular-nums text-muted">
+                          <span className="sr-only">a receber </span>{p.pending > 0 ? `+ ${formatCents(p.pending)}` : ''}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {focus !== 'short' && (
+              <div className="pt-4">
+                <Eyebrow>sobra do mês</Eyebrow>
+                {surplus ? (
+                  <>
+                    <p className="mt-1 font-mono text-title font-semibold tabular-nums text-heading">{formatCents(surplus.surplus)}</p>
+                    {surplusLine}
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted" role="status">{summary.isError ? 'Indisponível agora.' : 'calculando…'}</p>
+                )}
+                {summaryLink}
+              </div>
+            )}
           </div>
         </section>
 
-        {incomes.isPending && <p role="status" className="text-sm text-muted">carregando…</p>}
-        {incomes.isError && (
-          <p role="alert" className="rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
-            <span className="font-mono text-alert">[ ✖ ]</span> Não foi possível carregar as receitas.{' '}
-            <button className="font-semibold underline" onClick={() => void incomes.refetch()}>Tentar de novo</button>
-          </p>
-        )}
+        {incomes.isPending && <ListSkeleton label="Carregando as receitas" rows={4} />}
+        {incomes.isError && <Notice onRetry={() => void incomes.refetch()}>Não foi possível carregar as receitas.</Notice>}
 
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-6">
             <section aria-label="Receitas do mês" className="@container min-w-0">
               {desktop ? (
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <h2 className="mr-auto font-display text-section font-bold text-heading font-stretch-condensed">Receitas do mês</h2>
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <SectionTitle className="mr-auto">Receitas do mês</SectionTitle>
                   {list.length > 0 && groupSwitch}
                 </div>
               ) : (
@@ -403,17 +433,17 @@ export default function IncomesPage() {
           {sidePanel && (
             <aside className="flex w-full shrink-0 flex-col gap-4 xl:sticky xl:top-6 xl:max-h-[calc(100dvh-3rem)] xl:w-[380px] xl:overflow-y-auto 2xl:w-[440px]">
               {panelIncome ? (
-                <section aria-label="Detalhes da receita" className="rounded-md border-2 border-structure p-4 motion-safe:animate-fade-in">
+                <Surface as="section" aria-label="Detalhes da receita" className="motion-safe:animate-fade-in">
                   <div className="mb-3 flex items-start justify-between gap-2">
-                    <h2 className="min-w-0 break-words font-display text-title font-bold leading-tight text-heading font-stretch-condensed">{panelIncome.description}</h2>
+                    <SectionTitle size="title" className="min-w-0 break-words leading-tight">{panelIncome.description}</SectionTitle>
                     <Tooltip label="Fechar" shortcut="Esc">
-                      <button aria-label="Fechar detalhes" onClick={() => setPanel(null)} className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-ink/5">
+                      <Button variant="icon" aria-label="Fechar detalhes" onClick={() => setPanel(null)}>
                         <X size={20} strokeWidth={1.5} aria-hidden="true" />
-                      </button>
+                      </Button>
                     </Tooltip>
                   </div>
                   {detail}
-                </section>
+                </Surface>
               ) : (
                 <NextUp list={list} today={today} onOpen={(inc) => setPanel({ id: inc.id, mode: 'view' })} canWrite={canWrite} />
               )}
@@ -426,7 +456,7 @@ export default function IncomesPage() {
         <button
           aria-label="Nova receita"
           onClick={openNew}
-          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-structure text-on-structure shadow-[0_2px_0_var(--color-ink)] transition-colors hover:bg-structure/90"
+          className="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-md bg-structure text-on-structure transition-colors hover:bg-structure/90 motion-safe:active:scale-95"
         >
           <Plus size={28} strokeWidth={1.75} aria-hidden="true" />
         </button>
@@ -459,13 +489,13 @@ export default function IncomesPage() {
       {/* Detalhe: computador estreito (sem painel fixo) usa o painel lateral; celular, o Sheet. */}
       {panelIncome && panel?.mode === 'view' && desktop && !sidePanel && (
         <SlideOver title="Detalhes da receita" onClose={() => setPanel(null)}>
-          <h3 className="mb-3 text-lg font-semibold">{panelIncome.description}</h3>
+          <SectionTitle as="h3" size="title" className="mb-3">{panelIncome.description}</SectionTitle>
           {detail}
         </SlideOver>
       )}
       {panelIncome && panel?.mode === 'view' && !desktop && (
         <Sheet title="Detalhes da receita" onClose={() => setPanel(null)}>
-          <h3 className="mb-3 text-lg font-semibold">{panelIncome.description}</h3>
+          <SectionTitle as="h3" size="title" className="mb-3">{panelIncome.description}</SectionTitle>
           {detail}
         </Sheet>
       )}
@@ -473,15 +503,16 @@ export default function IncomesPage() {
   )
 }
 
-/** O painel ao lado da lista quando nenhuma receita está aberta: as próximas a cair neste mês e a dica de atalhos. */
+/** O painel ao lado da lista quando nenhuma receita está aberta: as próximas a cair neste mês e a dica de atalhos (sem caixa). */
 function NextUp({ list, today, onOpen, canWrite }: { list: Income[]; today: string; onOpen: (inc: Income) => void; canWrite: boolean }) {
   const items = list.filter((i) => stateOf(i) !== 'received').slice(0, 8)
   return (
-    <section aria-label="Próximas a receber" className="flex flex-col gap-3 rounded-md border border-line p-4">
+    <section aria-label="Próximas a receber" className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className={`${label} text-muted`}>a receber neste mês</h2>
-        {items.length > 0 && <span className="font-mono text-ui font-semibold tabular-nums">{formatCents(items.reduce((s, i) => s + i.netAmountCents, 0))}</span>}
+        <Eyebrow as="h2">a receber neste mês</Eyebrow>
+        {items.length > 0 && <span className="font-mono text-ui font-semibold tabular-nums text-ink">{formatCents(items.reduce((s, i) => s + i.netAmountCents, 0))}</span>}
       </div>
+      <span aria-hidden="true" className="h-px bg-line" />
       {items.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-muted">
           <span aria-hidden="true" className="font-mono text-accent">[ ▪ ]</span>
@@ -491,11 +522,11 @@ function NextUp({ list, today, onOpen, canWrite }: { list: Income[]; today: stri
         <ul className="-mx-2 flex flex-col">
           {items.map((i) => (
             <li key={i.id}>
-              <button onClick={() => onOpen(i)} className="flex min-h-9 w-full items-center gap-3 rounded-sm px-2 text-left text-sm transition-colors hover:bg-ink/5">
-                <span aria-hidden="true" className={`font-mono text-xs ${stateOf(i) === 'held' ? 'text-alert' : 'text-muted'}`}>{stateOf(i) === 'held' ? '[ ✖ ]' : '[ ▫ ]'}</span>
-                <span className="w-11 font-mono text-xs tabular-nums text-muted">{dayMonth(i.expectedDate)}</span>
-                <span className="min-w-0 flex-1 truncate">{i.description}</span>
-                <span className="font-mono text-ui font-semibold tabular-nums">{formatCents(i.netAmountCents)}</span>
+              <button onClick={() => onOpen(i)} className="flex min-h-9 w-full items-center gap-3 rounded-sm px-2 text-left text-sm transition-colors hover:bg-raised">
+                <span aria-hidden="true" className={`font-mono text-caption ${stateOf(i) === 'held' ? 'text-alert' : 'text-muted'}`}>{stateOf(i) === 'held' ? '[ ✖ ]' : '[ ▫ ]'}</span>
+                <span className="w-11 font-mono text-meta tabular-nums text-muted">{dayMonth(i.expectedDate)}</span>
+                <span className="min-w-0 flex-1 truncate text-ink">{i.description}</span>
+                <span className="font-mono text-ui font-semibold tabular-nums text-ink">{formatCents(i.netAmountCents)}</span>
               </button>
             </li>
           ))}

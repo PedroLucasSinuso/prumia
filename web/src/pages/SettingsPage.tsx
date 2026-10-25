@@ -74,7 +74,7 @@ function SettingsView() {
             <Icon aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-heading" />
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-base font-medium">{s.label}</span>
-              <span className="truncate text-xs text-muted">{s.hint}</span>
+              <span className="truncate text-meta text-muted">{s.hint}</span>
             </span>
             <ChevronRight aria-hidden="true" size={ICON.size} strokeWidth={ICON.strokeWidth} className="shrink-0 text-muted" />
           </NavLink>

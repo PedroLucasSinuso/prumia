@@ -114,13 +114,13 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
           role="menu"
           aria-label={`Conta de ${name}`}
           onKeyDown={onMenuKey}
-          className={`absolute z-40 w-64 rounded-md border border-line bg-surface p-1.5 text-ink shadow-lg ${
+          className={`absolute z-40 w-64 rounded-md border border-line bg-surface p-1.5 text-ink ${
             placement === 'above' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-1'
           }`}
         >
           <div className="px-2.5 pb-2 pt-1.5">
             <p className="truncate text-sm font-semibold">{name}</p>
-            <p className="truncate text-xs text-muted">{email}</p>
+            <p className="truncate text-meta text-muted">{email}</p>
           </div>
 
           {houses.length > 1 && (
@@ -145,7 +145,7 @@ export function UserMenu({ tone = 'light', placement = 'below' }: Props) {
                       {active && <Check aria-hidden="true" size={16} strokeWidth={2} />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{h.name}</span>
-                    <span className="shrink-0 text-xs text-muted">{roleLabel[h.role]}</span>
+                    <span className="shrink-0 text-meta text-muted">{roleLabel[h.role]}</span>
                   </button>
                 )
               })}

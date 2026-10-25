@@ -213,7 +213,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
             </p>
           </div>
           {duplicateId && showDuplicate && (
-            <div role="alert" className="flex flex-col gap-1 rounded-md border border-alert/60 bg-alert/10 px-3 py-2 text-sm">
+            <div role="alert" className="flex flex-col gap-1 rounded-md border-l-2 border-alert bg-sunken px-3 py-2 text-sm text-ink">
               <p>
                 <span aria-hidden="true" className="font-mono text-alert">[ ✖ ]</span> Já existe uma conta com este boleto.
               </p>
@@ -235,7 +235,7 @@ export function BoletoImport({ onExtract, onExtracted, onDiscard, onManual, onOp
               method={step.extraction.method === 'text' ? undefined : step.extraction.method}
             />
           ) : (
-            <p className="text-xs">
+            <p className="text-meta">
               <span aria-hidden="true" className={`font-mono ${step.extraction.method === 'ocr' ? 'text-alert' : 'text-accent'}`}>
                 {step.extraction.method === 'ocr' ? '[ ✖ ]' : '[ ▪ ]'}
               </span>{' '}

@@ -44,7 +44,7 @@ export function IncomeSections({ sections, collapsed, onToggle, ...rows }: Props
                 className="flex h-10 w-full items-center gap-2 rounded-md px-3 text-left transition-colors hover:bg-ink/4"
               >
                 <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" className={`transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} />
-                <span className="text-xs font-semibold uppercase tracking-wider">
+                <span className="text-meta font-semibold uppercase tracking-wider">
                   {s.title} <span className="font-mono font-medium text-muted">({s.items.length})</span>
                 </span>
                 <span className="ml-auto font-mono text-ui font-semibold tabular-nums text-muted">{formatCents(s.totalCents)}</span>
@@ -95,7 +95,7 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
             <span className="truncate text-sm font-medium">{i.description}</span>
             <IncomeBadges income={i} />
           </span>
-          <span className="block truncate text-xs text-muted @3xl:hidden">
+          <span className="block truncate text-meta text-muted @3xl:hidden">
             {person} · {kindShort[i.kind]}
             <span className="@lg:hidden"> · {stateText(i, today)}</span>
           </span>
@@ -103,7 +103,7 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
         <span className="hidden truncate text-ui text-muted @3xl:block">{person}</span>
         <span className="hidden truncate text-ui text-muted @3xl:block">{kindShort[i.kind]}</span>
         <span className="hidden items-center gap-1.5 text-ui @lg:flex">
-          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-xs ${stateTone[state]}`}>{stateMark[state]}</span>
+          <span aria-hidden="true" className={`shrink-0 whitespace-nowrap font-mono text-meta ${stateTone[state]}`}>{stateMark[state]}</span>
           <span className="truncate">{stateText(i, today)}</span>
         </span>
         <span className={`text-right font-mono text-sm font-semibold tabular-nums ${state === 'received' ? 'text-accent' : state === 'held' ? 'text-ink' : 'text-muted'}`}>
@@ -118,7 +118,7 @@ function IncomeRow({ income: i, members, today, selectedId, canWrite, busy, onRe
             aria-hidden="true"
             disabled={busy}
             onClick={() => (state === 'received' ? onHold(i) : onReceive(i))}
-            className="h-8 rounded-sm px-2 text-xs font-semibold text-accent underline underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:text-ink/40"
+            className="h-8 rounded-sm px-2 text-meta font-semibold text-accent underline underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 disabled:text-muted"
           >
             {state === 'received' ? 'não caiu' : 'caiu'}
           </button>
