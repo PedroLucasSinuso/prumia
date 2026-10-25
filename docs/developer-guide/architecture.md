@@ -66,8 +66,10 @@ módulo, apague os stubs correspondentes de `unimplemented.go`.
 ## Testes
 
 - Unitários nos pacotes `platform/*` e nas regras de negócio.
-- Integração com **Postgres real** via `dbtest.New(t)` (testcontainers): um container por pacote de testes e um **banco novo por
-  teste** (isolamento total, ~12 s para a suíte inteira da API). Sem Docker, ou com `-short`, o teste é **pulado**, não falha.
+- Integração com **Postgres real** via testcontainers: um container por pacote de testes e um **banco novo por teste** (isolamento
+  total). `dbtest.NewMigrated(t)` entrega o banco já na última migration, copiado (`CREATE DATABASE ... TEMPLATE`) de um banco-modelo
+  migrado uma vez por pacote: é o que os testes da API usam. `dbtest.New(t)` entrega um banco vazio, para os testes de migration
+  (que sobem a versão exata com `gooseTo`). Sem Docker, ou com `-short`, o teste é **pulado**, não falha.
 - `make test` roda tudo; `make test-short` pula o que precisa de Docker (use `-short` nos testes pesados).
 
 ## Comandos
