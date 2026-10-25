@@ -7,7 +7,7 @@ const messages: Record<string, string> = {
   email_taken: 'Já existe uma conta com este e-mail.',
   registration_closed:
     'O cadastro livre está desativado. Peça um convite a quem administra a casa.',
-  too_many_requests: 'Muitas tentativas. Aguarde um minuto e tente de novo.',
+  too_many_requests: 'Muitas tentativas. Aguarde alguns minutos e tente de novo.',
   bad_origin: 'Requisição bloqueada por segurança. Recarregue a página e tente de novo.',
   invalid_invite: 'Este convite é inválido, expirou ou foi revogado. Peça um novo a quem administra a casa.',
   invite_used: 'Este convite já foi usado.',

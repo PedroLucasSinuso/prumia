@@ -9,7 +9,7 @@ O prumia é um app privado de poucas casas, exposto primeiro pelo Tailscale (fas
 
 | Quem | O que pode tentar | Defesa principal |
 |---|---|---|
-| Alguém sem conta que alcança a URL | adivinhar senha, cadastrar-se, explorar a API | cadastro só com convite; limite de tentativas por IP e por e-mail; argon2id; respostas que não revelam se o e-mail existe |
+| Alguém sem conta que alcança a URL | adivinhar senha, cadastrar-se, explorar a API | cadastro só com convite; limite de tentativas por IP e por e-mail, com bloqueio progressivo por e-mail; argon2id; respostas que não revelam se o e-mail existe |
 | Membro de **outra** casa (conta válida) | ler ou mexer em dados da sua casa trocando ids na URL | todo acesso passa pelo porteiro (membro ativo da casa da URL) e todo serviço filtra por `household_id`; FKs compostas no banco |
 | `viewer` / `member` da sua casa | escrever sendo viewer; fazer operação de admin sendo member | papel conferido no middleware (viewer) e no serviço (admin); testes de varredura em todas as rotas |
 | Site malicioso aberto no navegador de um membro | CSRF (POST com o cookie da sessão) | cookie `SameSite=Lax` + checagem de `Origin` em toda escrita |
@@ -64,6 +64,16 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 - Limitação conhecida: atrás de `tailscale serve` (ou do `docker-proxy` acessando por `127.0.0.1`), o nginx vê **o mesmo IP**
   para todo mundo (o gateway do Docker); o limite por IP vira um balde compartilhado da casa. O limite por e-mail continua
   individual. Se incomodar, publique a porta direto no IP do Tailscale (`WEB_BIND=100.x.y.z`), que preserva o IP de origem.
+
+### Revisão da exposição pública (PT-6, 10/2026)
+- **Força bruta no login**: o balde por e-mail sozinho deixava ~300 tentativas por hora numa conta (5/min o dia todo). Agora há
+  **bloqueio progressivo por e-mail** (5 erros seguidos → 1, 2, 4, 8, 15 min): uma conta passa a aguentar ~100 tentativas por dia.
+  O teto de 15 min é de propósito: quem erra de propósito no e-mail de outra pessoa consegue, no máximo, fazê-la esperar 15 min.
+- **Cookies**: `HttpOnly`, `SameSite=Lax`, `Secure` em produção, validade absoluta de 90 dias e renovação por uso (ver
+  [authentication.md](authentication.md)). Sem mudança.
+- **HSTS**: condicional ao `X-Forwarded-Proto: https` (ver [deployment.md](deployment.md#hsts-condicional)). Sem mudança: ligar sempre
+  quebraria o acesso local por http.
+- **Cadastro**: fechado por padrão; convite de casa, convite de cadastro (uso único, só o dono do sistema) e limite por IP.
 
 ### Entrada
 - Corpo JSON até **64 KB** (413 `body_too_large`, antes do argon2 do login); upload de boleto até 5 MB (o nginx aceita 6 MB só em `/api`).
