@@ -121,7 +121,7 @@ func (e *Extractor) documentFromImages(ctx context.Context, imgs [][]byte, texts
 		}
 	}
 	for _, t := range texts {
-		if d, found := analyze(t.body); found {
+		if d, found := analyze(t.body, ref); found {
 			d.Method = t.method
 			return d, nil
 		}
@@ -139,7 +139,7 @@ func (e *Extractor) documentFromImages(ctx context.Context, imgs [][]byte, texts
 		if b, found := FindInText(body, ref); found {
 			return boletoDocument(b, body, MethodOCR), nil
 		}
-		if d, found := analyze(body); found && fallback == nil {
+		if d, found := analyze(body, ref); found && fallback == nil {
 			d.Method = MethodOCR
 			fallback = &d
 		}
@@ -169,7 +169,7 @@ func boletoDocument(b Boleto, body string, m Method) Document {
 //  4. valor com rótulo fraco ("total") ou, sem rótulo, o maior "R$ x" do texto => conta.
 //
 // Conta com itens detalhados (consumo, bandeira, total) cai em 1 antes de virar lista, porque traz "total a pagar".
-func analyze(body string) (Document, bool) {
+func analyze(body string, ref time.Time) (Document, bool) {
 	amount, strong := findAmount(body)
 	due := findDueDate(body)
 	bill := func(desc string, cents int64) (Document, bool) {
@@ -188,7 +188,7 @@ func analyze(body string) (Document, bool) {
 	if amount > 0 && (strong || !due.IsZero()) {
 		return bill("", amount)
 	}
-	items := findListItems(body)
+	items := findListItems(body, ref)
 	switch {
 	case len(items) >= 2:
 		return Document{Kind: KindList, Items: items}, true

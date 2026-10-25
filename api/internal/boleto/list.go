@@ -2,6 +2,7 @@ package boleto
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -53,6 +54,91 @@ type listItem struct {
 	weak bool
 }
 
+// Vencimento escrito na própria linha do item ("Luz: R$ 210,35 vence 10/11", "Aluguel 05/12/2026: 1500", "Gás dia 10 R$ 150").
+// A data é tirada da linha antes de ler a conta (e vira Item.DueDate); sem ela a tela usa a data de hoje.
+var (
+	// dd/mm/aaaa, dd-mm-aaaa (4 dígitos no ano) e dd/mm/aa: o ano completo vale; "-" só com ano de 4 dígitos.
+	dueFullRe = regexp.MustCompile(`(?:^|[^\d./,\-])(\d{1,2})(?:/(\d{1,2})/(\d{4}|\d{2})|-(\d{1,2})-(\d{4}))(?:[^\d/]|$)`)
+	// dd/mm sem ano.
+	dueShortRe = regexp.MustCompile(`(?:^|[^\d./,\-])(\d{1,2})/(\d{1,2})(?:[^\d/]|$)`)
+	// "dia 10" / "vence dia 10": só o dia.
+	dueDayRe = regexp.MustCompile(`(?i)(?:\bvence[ \t]+)?\bdia[ \t]+(\d{1,2})\b`)
+	// separadores repetidos que sobram depois de tirar a data ("Aluguel - - R$ 10").
+	doubleSepRe = regexp.MustCompile(`([:=\-–])[ \t]*[:=\-–]+`)
+)
+
+// extractDue procura UM vencimento na linha. Devolve a data (zero se não houver) e a linha sem ela.
+// Sem ano ("10/11", "dia 10"): usa o ano de ref, ou o próximo se a data já ficou mais de 6 meses para trás;
+// só o dia: este mês, ou o próximo se o dia já passou. Data impossível (31/02) não vale e a linha fica como está.
+func extractDue(line string, ref time.Time) (time.Time, string) {
+	cut := func(loc []int) string {
+		// leva junto a palavra de ligação imediatamente antes ("vence ", "até ")
+		start := loc[0]
+		pre := line[:start]
+		if w := regexp.MustCompile(`(?i)(?:vence(?:[ \t]+em)?|venc(?:imento)?\.?|at[eé])[ \t]*[:\-]?[ \t]*$`).FindStringIndex(pre); w != nil {
+			start = w[0]
+		}
+		return doubleSepRe.ReplaceAllString(line[:start]+" "+line[loc[1]:], "$1")
+	}
+	if m := dueFullRe.FindStringSubmatchIndex(line); m != nil {
+		g := func(i int) string {
+			if m[2*i] < 0 {
+				return ""
+			}
+			return line[m[2*i]:m[2*i+1]]
+		}
+		day, mon, year := g(1), g(2), g(3)
+		if year == "" { // forma com hífen
+			mon, year = g(4), g(5)
+		}
+		if len(year) == 2 {
+			year = "20" + year
+		}
+		if d := validDate(year, mon, day); !d.IsZero() {
+			end := m[7] // fim do ano na forma com barras
+			if end < 0 {
+				end = m[11] // ... ou na forma com hífen
+			}
+			return d, cut([]int{m[2], end})
+		}
+		return time.Time{}, line
+	}
+	if m := dueShortRe.FindStringSubmatchIndex(line); m != nil {
+		day, mon := line[m[2]:m[3]], line[m[4]:m[5]]
+		year := ref.Year()
+		d := validDate(strconv.Itoa(year), mon, day)
+		if d.IsZero() {
+			return time.Time{}, line
+		}
+		if d.Before(ref.AddDate(0, -6, 0)) {
+			d = validDate(strconv.Itoa(year+1), mon, day)
+		}
+		if d.IsZero() {
+			return time.Time{}, line
+		}
+		return d, cut([]int{m[2], m[5]})
+	}
+	if m := dueDayRe.FindStringSubmatchIndex(line); m != nil {
+		day := toInt(line[m[2]:m[3]])
+		y, mo := ref.Year(), int(ref.Month())
+		if day < ref.Day() {
+			mo++
+			if mo > 12 {
+				mo, y = 1, y+1
+			}
+		}
+		if day >= 1 && day <= 31 {
+			// "dia 31" em mês curto: último dia do mês (conta que vence "no fim do mês").
+			last := time.Date(y, time.Month(mo)+1, 0, 0, 0, 0, 0, time.UTC).Day()
+			if day > last {
+				day = last
+			}
+			return time.Date(y, time.Month(mo), day, 0, 0, 0, 0, time.UTC), cut([]int{m[0], m[1]})
+		}
+	}
+	return time.Time{}, line
+}
+
 // ignoredLine: linhas que nunca são conta (link, e-mail, token, hora, data, CPF/CNPJ).
 func ignoredLine(line string) bool {
 	low := strings.ToLower(line)
@@ -92,8 +178,9 @@ func parseMoney(tok string, hasRS bool) (cents int64, twoDecimals, ok bool) {
 }
 
 // parseListLine lê UMA conta de um trecho de linha. ok=false: não é item (ou é ruído).
-func parseListLine(line string) (listItem, bool) {
+func parseListLine(line string, ref time.Time) (listItem, bool) {
 	line = trailingTimeRe.ReplaceAllString(line, "")
+	due, line := extractDue(line, ref)
 	if ignoredLine(line) {
 		return listItem{}, false
 	}
@@ -122,11 +209,11 @@ func parseListLine(line string) (listItem, bool) {
 	if weak && cents > maxWeakReais*100 {
 		return listItem{}, false
 	}
-	return listItem{Item: Item{Description: desc, AmountCents: cents}, weak: weak}, true
+	return listItem{Item: Item{Description: desc, AmountCents: cents, DueDate: due}, weak: weak}, true
 }
 
 // findListItems devolve as contas do texto, na ordem. Itens fracos só entram se houver 2+ itens fortes.
-func findListItems(body string) []Item {
+func findListItems(body string, ref time.Time) []Item {
 	var all []listItem
 	strong := 0
 	for _, line := range strings.Split(body, "\n") {
@@ -135,14 +222,14 @@ func findListItems(body string) []Item {
 		// Vários itens na mesma linha: só vale a divisão se ao menos 2 partes forem itens.
 		if parts := itemSeparatorRe.Split(line, -1); len(parts) > 1 {
 			for _, p := range parts {
-				if it, ok := parseListLine(p); ok {
+				if it, ok := parseListLine(p, ref); ok {
 					found = append(found, it)
 				}
 			}
 		}
 		if len(found) < 2 {
 			found = nil
-			if it, ok := parseListLine(line); ok {
+			if it, ok := parseListLine(line, ref); ok {
 				found = append(found, it)
 			}
 		}
@@ -172,7 +259,7 @@ func (e *Extractor) ExtractText(body string) (Document, error) {
 	if b, ok := FindInText(body, ref); ok {
 		return boletoDocument(b, body, MethodText), nil
 	}
-	if d, ok := analyze(body); ok {
+	if d, ok := analyze(body, ref); ok {
 		d.Method = MethodText
 		return d, nil
 	}

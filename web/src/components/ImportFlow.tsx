@@ -10,11 +10,13 @@ import { useActiveHouse } from '../auth/useActiveHouse'
 import { Button } from './Button'
 import { FormError } from './FormError'
 import { MoneyInput } from './MoneyInput'
+import { DatePicker } from './ui/DatePicker'
+import { MonthPicker } from './ui/MonthPicker'
 import { useToast } from './toastContext'
 import { MAX_BOLETO_BYTES } from '../lib/boleto'
 import { buildTree } from '../lib/categories'
 import { formatDigitableLine } from '../lib/boleto'
-import { todayISO } from '../lib/dates'
+import { isValidISO, todayISO } from '../lib/dates'
 import { markRepeated, progressMarks, RETRY_DELAYS_MS, rowErrors, rowsFrom, toInput, type ImportRow } from '../lib/importing'
 import { formatCents } from '../lib/money'
 
@@ -46,6 +48,9 @@ const ACCEPT = 'application/pdf,image/png,image/jpeg'
 
 const originText: Record<ImportRow['origin'], string> = { boleto: 'boleto', bill: 'conta', list: 'lista' }
 
+/** Vencimento só aceito se for uma data real e de um ano plausível (o servidor recusa o lote inteiro com uma data torta). */
+const validDueDate = (iso: string) => isValidISO(iso) && Number(iso.slice(0, 4)) >= 2000 && Number(iso.slice(0, 4)) <= 2100
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 let fileSeq = 0
@@ -59,7 +64,7 @@ let fileSeq = 0
 const examples = [
   { Icon: Receipt, title: 'Boleto ou fatura', text: 'Linha digitável, valor, vencimento e quem recebe. Reconhece o favorecido pelo CNPJ.' },
   { Icon: ScanText, title: 'Conta em foto, sem código de barras', text: 'Lê valor, vencimento e mês de referência direto da imagem.' },
-  { Icon: ListChecks, title: 'Lista, print de conversa ou texto', text: 'Uma conta por linha, "descrição: valor": Gás: R$ 150,00 / Mercado: 310,25. Pode colar o texto.' },
+  { Icon: ListChecks, title: 'Lista, print de conversa ou texto', text: 'Uma conta por linha, "descrição: valor", com o vencimento se quiser: Gás: R$ 150,00 vence 10/11. Pode colar o texto.' },
 ]
 
 export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }) {
@@ -243,6 +248,8 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
       if (r.amountCents <= 0) e.amountCents = 'informe o valor'
       if (!r.categoryId) e.categoryId = 'escolha a categoria'
       if (!r.dueDate) e.dueDate = 'informe o vencimento'
+      else if (!validDueDate(r.dueDate)) e.dueDate = 'data de vencimento inválida'
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(r.competence)) e.competenceMonth = 'informe o mês de competência'
       if (Object.keys(e).length) local[r.key] = e
     }
     if (Object.keys(local).length) {
@@ -351,7 +358,7 @@ export function ImportFlow({ onCreated }: { onCreated: (month: string) => void }
               className="w-full rounded-md border border-line bg-surface p-2 font-mono text-sm text-ink"
             />
             <p className="text-xs text-ink/70">
-              Uma conta por linha: <strong>descrição: valor</strong>. Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
+              Uma conta por linha: <strong>descrição: valor</strong>, e se quiser o vencimento: <strong>Luz: R$ 210,35 vence 10/11</strong> (também vale 10/11/2026, 10/11/26 ou "dia 10"; sem ano, o app escolhe o próximo). Aceita R$ 1.234,56, R$150, 154,72 e 150 (número inteiro só vale em lista com 2 ou mais contas com R$ ou vírgula).
             </p>
             <div className="flex gap-2">
               <Button type="button" disabled={!pasted.trim()} onClick={addText} className="md:h-9">Ler texto</Button>
@@ -580,14 +587,16 @@ function RowEditor({ row, index, tree, categories, errors = {}, active, onFocus,
           <MoneyInput id={id('valor')} label="Valor" value={row.amountCents} onChange={(amountCents) => onChange({ amountCents })} error={errors.amountCents} />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor={id('venc')} className={label}>Vencimento</label>
-          <input id={id('venc')} type="date" value={row.dueDate} onChange={(e) => onChange({ dueDate: e.target.value })} className={`${input} font-mono tabular-nums`} />
-          {err('dueDate')}
+          {/* Calendário do app (e não o type="date" do navegador): no celular o campo nativo deixa digitar ano de 5 dígitos
+              ou ficar incompleto, e o servidor recusava o lote inteiro sem dizer qual conta. */}
+          <DatePicker
+            id={id('venc')} label="Vencimento" value={row.dueDate} error={errors.dueDate}
+            // A competência acompanha o vencimento enquanto a pessoa não a tiver escolhido à parte.
+            onChange={(d) => onChange({ dueDate: d, ...(d && row.competence === row.dueDate.slice(0, 7) ? { competence: d.slice(0, 7) } : {}) })}
+          />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor={id('comp')} className={label}>Competência</label>
-          <input id={id('comp')} type="month" value={row.competence} onChange={(e) => onChange({ competence: e.target.value })} className={`${input} font-mono tabular-nums`} />
-          {err('competenceMonth')}
+          <MonthPicker id={id('comp')} label="Competência" value={row.competence} onChange={(m) => onChange({ competence: m })} error={errors.competenceMonth} />
         </div>
       </div>
 

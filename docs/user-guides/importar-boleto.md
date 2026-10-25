@@ -42,8 +42,23 @@ A descrição precisa de ao menos uma letra e tem até uns 40 caracteres, sem n�
 | `Teste: 567` sozinho (ou com só 1 linha com R$) | inteiro sem R$ é ambíguo (pode ser número de medidor ou de cliente): precisa de 2 contas "fortes" |
 | `Gás 150` | sem R$ e sem separador |
 | `Estava aparecendo westgroup 727` | número solto na descrição |
-| Links, e-mails, horas (`22:45`), datas (`10/11/2026`), CNPJ/CPF | ignorados de propósito (por isso um print inteiro de conversa funciona) |
+| Links, e-mails, horas (`22:45`), CNPJ/CPF e linhas só com data | ignorados de propósito (por isso um print inteiro de conversa funciona) |
 | `Total: R$ 926,80` | "total" e "saldo" não são contas |
+
+### Vencimento na própria linha
+
+Cada linha pode trazer o **vencimento** da conta, em texto colado ou em foto/print. O app tira a data da descrição, usa como vencimento
+e coloca a competência no mesmo mês (você confere e corrige na tela, como tudo).
+
+| Escreva | Vira |
+|---|---|
+| `Luz: R$ 210,35 vence 10/11`, `Gás: 150,00 venc. 12/11` | vencimento 10/11 e 12/11 |
+| `Aluguel 05/12/2026: R$ 1.500,00`, `10/11/26`, `10-11-2026` | data completa |
+| `10/11 Luz R$ 210,35`, `Luz - 10/11 - R$ 210,35` | a data pode vir no começo ou no meio |
+| `Gás: R$ 150,00 dia 10` | dia 10 deste mês, ou do próximo se o dia já passou |
+
+Sem o ano (`10/11`), o app usa o ano atual; se a data já ficou mais de 6 meses para trás (`10/01` em outubro), usa o ano seguinte.
+Linha sem data continua valendo, com o vencimento de hoje. Data impossível (`31/02`) é ignorada. Horas (`14:32`) e CNPJ continuam sendo ignorados.
 
 Com **uma** só linha válida, vira uma conta comum (não lista). Sempre confira a tabela antes de criar.
 

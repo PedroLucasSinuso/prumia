@@ -16,6 +16,7 @@ const messages: Record<string, string> = {
   last_admin: 'A casa precisa de pelo menos uma pessoa administradora.',
   forbidden: 'Apenas administradores da casa podem fazer isso.',
   validation_error: 'Confira os campos destacados.',
+  bad_request: 'Algum campo está num formato inválido (data, mês ou valor). Confira cada conta e tente de novo.',
   not_implemented: 'Este recurso ainda não está disponível.',
   category_exists: 'Já existe uma categoria com este nome (maiúsculas não contam).',
   category_in_use: 'Esta categoria está em uso. Arquive em vez de apagar.',

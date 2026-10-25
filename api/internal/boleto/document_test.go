@@ -33,7 +33,7 @@ func TestAnalyzeContaSemBoletoEmTabela(t *testing.T) {
 		"pdftotext célula": "Gasco Distribuidora SA\nREF: MÊS/ANO\nVENCIMENTO\nTOTAL A PAGAR\nJUN/2026\n17/07/2026\nR$130,43",
 	} {
 		t.Run(name, func(t *testing.T) {
-			d, ok := analyze(body)
+			d, ok := analyze(body, testRef)
 			if !ok || d.Kind != KindBill || len(d.Items) != 1 {
 				t.Fatalf("%+v %v", d, ok)
 			}
@@ -47,7 +47,7 @@ func TestAnalyzeContaSemBoletoEmTabela(t *testing.T) {
 		})
 	}
 	// Sem rótulo de beneficiário, o CNPJ é o primeiro válido.
-	d, _ := analyze(contaSemBoleto)
+	d, _ := analyze(contaSemBoleto, testRef)
 	if d.Items[0].BeneficiaryCNPJ != "11222333000181" {
 		t.Errorf("cnpj = %q", d.Items[0].BeneficiaryCNPJ)
 	}
@@ -124,7 +124,7 @@ func TestAnalyzeLista(t *testing.T) {
 		"com marcadores": "- Gás - R$ 157,82\n• Mercado: R$ 568,99\n* Ração gatos = R$ 199,99",
 	} {
 		t.Run(name, func(t *testing.T) {
-			d, ok := analyze(body)
+			d, ok := analyze(body, testRef)
 			if !ok || d.Kind != KindList {
 				t.Fatalf("%+v %v", d, ok)
 			}
@@ -143,26 +143,26 @@ func TestAnalyzeLista(t *testing.T) {
 
 func TestAnalyzeOrdemDeDecisao(t *testing.T) {
 	// Conta detalhada (itens + "total a pagar") é UMA conta, não lista.
-	d, _ := analyze("Netlink Provedor Ltda\nInternet 500 mega R$ 99,90\nTV R$ 30,00\nTotal a pagar R$ 129,90")
+	d, _ := analyze("Netlink Provedor Ltda\nInternet 500 mega R$ 99,90\nTV R$ 30,00\nTotal a pagar R$ 129,90", testRef)
 	if d.Kind != KindBill || d.Items[0].AmountCents != 12990 || d.Items[0].Description != "Netlink Provedor Ltda" {
 		t.Errorf("conta detalhada: %+v", d)
 	}
 	// Um item só vira conta com a descrição do item.
-	d, _ = analyze("Gás R$157,82")
+	d, _ = analyze("Gás R$157,82", testRef)
 	if d.Kind != KindBill || d.Items[0].Description != "Gás" || d.Items[0].AmountCents != 15782 {
 		t.Errorf("um item: %+v", d)
 	}
 	// Valor sem rótulo, no meio do texto: o maior R$.
-	d, _ = analyze("Seu pedido de R$ 12,00 de frete e R$ 340,50 de produtos")
+	d, _ = analyze("Seu pedido de R$ 12,00 de frete e R$ 340,50 de produtos", testRef)
 	if d.Kind != KindBill || d.Items[0].AmountCents != 34050 {
 		t.Errorf("maior valor: %+v", d)
 	}
 	// Valor com vencimento (rótulo fraco) é conta.
-	d, _ = analyze("Total R$ 80,00\nVencimento: 10/08/2026\nAluguel R$ 10,00\nCondomínio R$ 70,00")
+	d, _ = analyze("Total R$ 80,00\nVencimento: 10/08/2026\nAluguel R$ 10,00\nCondomínio R$ 70,00", testRef)
 	if d.Kind != KindBill || fmtDate(d.Items[0].DueDate) != "2026-08-10" {
 		t.Errorf("com vencimento: %+v", d)
 	}
-	if _, ok := analyze("Bom dia! Tudo certo por aí?"); ok {
+	if _, ok := analyze("Bom dia! Tudo certo por aí?", testRef); ok {
 		t.Error("texto sem valor virou conta")
 	}
 }
@@ -263,7 +263,7 @@ func TestExtractDocumentCascata(t *testing.T) {
 // cabeçalho de tabela com texto de outra coluna colado. Valores e nomes aqui são inventados.
 func TestOCRDeLista(t *testing.T) {
 	text := "\" Gás R$98,40\n' Mercado R$310,25 M\n1 Ração gatos: R$120,00 2519 ,\nqA\n"
-	d, ok := analyze(text)
+	d, ok := analyze(text, testRef)
 	if !ok || d.Kind != KindList || len(d.Items) != 3 {
 		t.Fatalf("lista: %+v ok=%v", d, ok)
 	}
@@ -282,7 +282,7 @@ func TestOCRDeContaComCabecalhoSujo(t *testing.T) {
 	text := "DANF3E - DOCUMENTO AUXILIAR DA NOTA\n" +
 		"REF: MÊS / ANO | VENCIMENTO TOTAL A PAGAR E rªtj;% Protocolo de autorização: 3332600044341839 - 25/06/2028 às\n" +
 		"SET/2026 | 12/10/2026 | R$ 88,15 [) RRAA\n"
-	d, ok := analyze(text)
+	d, ok := analyze(text, testRef)
 	if !ok || d.Kind != KindBill || len(d.Items) != 1 {
 		t.Fatalf("conta: %+v ok=%v", d, ok)
 	}
@@ -291,7 +291,7 @@ func TestOCRDeContaComCabecalhoSujo(t *testing.T) {
 		t.Errorf("campos: %d %v %v", it.AmountCents, it.DueDate, it.Competence)
 	}
 	// o mês também com a barra lida como "I" ("SETI2026")
-	d, _ = analyze(strings.Replace(text, "SET/2026", "SETI2026", 1))
+	d, _ = analyze(strings.Replace(text, "SET/2026", "SETI2026", 1), testRef)
 	if got := d.Items[0].Competence.Format("2006-01"); got != "2026-09" {
 		t.Errorf("mês com barra trocada: %s", got)
 	}
@@ -306,12 +306,12 @@ func TestRotuloEValorNaMesmaLinhaNaoEhCabecalho(t *testing.T) {
 
 func TestDescricaoPeloTipoDeServico(t *testing.T) {
 	text := "DANF3E - DOCUMENTO AUXILIAR DA NOTA\nFISCAL DE ENERGIA ELÉTRICA ELETRÔNICA\nTOTAL A PAGAR\nR$ 88,15\n"
-	d, ok := analyze(text)
+	d, ok := analyze(text, testRef)
 	if !ok || d.Items[0].Description != "Luz" {
 		t.Fatalf("descrição = %+v ok=%v", d, ok)
 	}
 	// com nome de empresa lido, o nome vence o tipo de serviço
-	d, _ = analyze("RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nSERVIÇO DE COMUNICAÇÃO ELETRÔNICA\nTOTAL A PAGAR R$ 50,00\n")
+	d, _ = analyze("RAZÃO SOCIAL: NETLINK PROVEDOR LTDA\nSERVIÇO DE COMUNICAÇÃO ELETRÔNICA\nTOTAL A PAGAR R$ 50,00\n", testRef)
 	if d.Items[0].Description != "NETLINK PROVEDOR LTDA" {
 		t.Errorf("descrição = %q", d.Items[0].Description)
 	}

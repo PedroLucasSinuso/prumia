@@ -100,6 +100,8 @@ Sem `R$` a regra é mais dura: separador obrigatório, descrição de até 40 ca
 | **Forte** | tem `R$` (com ou sem centavos) **ou** vírgula com 2 casas (`154,72`) com separador |
 | **Fraco** | inteiro (ou vírgula com 1 casa) sem `R$`, com separador; teto R$ 100.000 |
 
+**Vencimento na linha** (`extractDue`, `list.go`): antes de ler o item, a linha perde a data e a palavra de ligação (`vence`, `venc.`, `vencimento`, `até`) e a data vira `Item.DueDate` (a tela já usava `dueDate` e a competência por item). Formas: `dd/mm/aaaa`, `dd/mm/aa`, `dd-mm-aaaa`, `dd/mm` e `dia dd`. Sem ano usa o de `ref` (a hora do extrator, `Extractor.Now`), ou o seguinte se a data ficou mais de 6 meses atrás; só o dia usa este mês, ou o próximo se já passou (dia 31 em mês curto cai no último dia). Data impossível não vale e a linha fica como está. Linha só com data/hora, CNPJ e CPF continuam ignorados; a hora no fim da linha é tirada antes. `analyze` e `findListItems` recebem `ref` (testes usam `testRef`).
+
 `findListItems` só devolve os fracos se o texto tem **2 ou mais itens fortes** (contexto de lista). Assim "Medidor: 3789363" ou "Cliente: 46198"
 de uma fatura nunca viram conta. Várias contas na mesma linha (`/`, `;`, `|`) só são divididas se ao menos 2 partes forem itens. A ordem de
 decisão de `analyze` não mudou (bill por rótulo forte/vencimento, depois lista, depois 1 item = conta). Testes em tabela: `list_test.go`.

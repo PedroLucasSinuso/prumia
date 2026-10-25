@@ -36,7 +36,9 @@ const MARGIN = 8
  */
 export function Popover({ open, anchorRef, onClose, children, matchWidth, role, id, className = '', trapEscape = true, ...rest }: Props) {
   const box = useRef<HTMLDivElement>(null)
-  const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' })
+  const [style, setStyle] = useState<CSSProperties>({ position: 'fixed', top: 0, left: 0, visibility: 'hidden' })
+  // Já nasce `fixed`: medido como bloco comum, o popover ocupava a largura da tela e o cálculo de `left` o jogava para a
+  // borda esquerda sempre que o pai não re-renderizava logo depois (ex.: o calendário dentro do modal de importação).
   const close = useRef(onClose)
   useEffect(() => {
     close.current = onClose

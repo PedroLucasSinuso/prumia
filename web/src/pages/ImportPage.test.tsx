@@ -68,11 +68,11 @@ describe('importar contas', () => {
     // item da lista lido por OCR: selo pede conferência; categoria casada pelo nome
     expect(within(rows[1]).getByText(/OCR: confira/)).toBeInTheDocument()
     expect(within(rows[1]).getByLabelText('Categoria (sugerida)')).toHaveValue('c2')
-    expect(within(rows[0]).getByLabelText('Vencimento')).toHaveValue('2026-10-22')
+    expect(within(rows[0]).getByLabelText('Vencimento')).toHaveValue('22/10/2026')
     // conta sem boleto: vencimento e competência do documento; oferece cadastrar o favorecido do CNPJ
     expect(within(rows[3]).getByText('conta')).toBeInTheDocument()
-    expect(within(rows[3]).getByLabelText('Vencimento')).toHaveValue('2026-07-17')
-    expect(within(rows[3]).getByLabelText('Competência')).toHaveValue('2026-06')
+    expect(within(rows[3]).getByLabelText('Vencimento')).toHaveValue('17/07/2026')
+    expect(within(rows[3]).getByLabelText('Competência')).toHaveTextContent(/junho de 2026/i)
     await user.type(within(rows[3]).getByLabelText(/Apelido do favorecido/), 'Gás')
 
     // tira uma linha do lote e corrige a descrição de outra
@@ -223,6 +223,60 @@ describe('importar contas colando texto', () => {
     await paste(user, 'Gás: R$ 150,00\nMercado: 310,25')
     expect(await screen.findByText(/1 arquivo lido · 2 contas/i)).toBeInTheDocument()
     expect(parseCalls()).toHaveLength(2)
+  })
+
+  it('o vencimento usa o calendário do app: ano de 5 dígitos não passa, e o lote não sai com data torta', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: ok(list) })
+    renderAt('/importar')
+    await paste(user, 'Gás: R$ 150,00')
+    const row = (await screen.findAllByRole('listitem', { name: /^Conta \d/ }))[0]
+    const venc = within(row).getByLabelText('Vencimento')
+    await user.clear(venc)
+    await user.type(venc, '221020266')
+    // a máscara corta no ano de 4 dígitos
+    expect(venc).toHaveValue('22/10/2026')
+    await user.click(screen.getByRole('button', { name: /^Criar \d+ contas?$/ }))
+    const bodies = batchCalls().map(([, init]) => (init as { body: { items: { dueDate: string }[] } }).body.items.map((i) => i.dueDate))
+    for (const dates of bodies) for (const d of dates) expect(d).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('a competência acompanha o vencimento enquanto não foi escolhida à parte', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: ok(list) })
+    renderAt('/importar')
+    await paste(user, 'Gás: R$ 150,00')
+    const row = (await screen.findAllByRole('listitem', { name: /^Conta \d/ }))[0]
+    const venc = within(row).getByLabelText('Vencimento')
+    await user.clear(venc)
+    await user.type(venc, '05112026')
+    expect(venc).toHaveValue('05/11/2026')
+    expect(within(row).getByLabelText('Competência')).toHaveTextContent(/novembro de 2026/i)
+  })
+
+  it('item de lista com vencimento vem com a data e a competência do mês dela', async () => {
+    const user = userEvent.setup()
+    mockApi({
+      me: ok(me),
+      parseText: ok({ kind: 'list', method: 'text', items: [{ description: 'Luz', amountCents: 21035, dueDate: '2026-11-10' }, { description: 'Gás', amountCents: 15000 }] } as DocumentExtraction),
+    })
+    renderAt('/importar')
+    await paste(user, 'Luz: R$ 210,35 vence 10/11\nGás: R$ 150,00')
+    const rows = await screen.findAllByRole('listitem', { name: /^Conta \d/ })
+    expect(within(rows[0]).getByLabelText('Vencimento')).toHaveValue('10/11/2026')
+    expect(within(rows[0]).getByLabelText('Competência')).toHaveTextContent(/novembro de 2026/i)
+    // sem data na linha: hoje
+    expect(within(rows[1]).getByLabelText('Vencimento')).toHaveValue('22/10/2026')
+  })
+
+  it('400 genérico do servidor mostra uma mensagem que explica (não o "algo deu errado")', async () => {
+    const user = userEvent.setup()
+    mockApi({ me: ok(me), parseText: ok(list), createBatch: fail(400, 'bad_request') })
+    renderAt('/importar')
+    await paste(user, 'Gás: R$ 150,00')
+    await screen.findAllByRole('listitem', { name: /^Conta \d/ })
+    await user.click(screen.getByRole('button', { name: /^Criar \d+ contas?$/ }))
+    expect(await screen.findByText(/formato inválido \(data, mês ou valor\)/)).toBeInTheDocument()
   })
 
   it('429 que não passa vira erro com "Tentar de novo"', async () => {
