@@ -92,7 +92,7 @@ Decididas pelo dono: **D1 ambos**, **D2 Cloudflare Pages** e **D3 demo no navega
 - **Estados vazios** com orientação e link para o guia certo; ícone "?" discreto em cada tela levando à página do site.
 - Sem tabela nova se der: o progresso sai dos próprios dados; "dispensado" fica no aparelho.
 
-### F5 · Instalar o seu (1 a 2 PRs)
+### F5 · Instalar o seu — fora de escopo (decisão do dono, 10/2026)
 
 - Guia "Instalar no seu servidor em 15 minutos": requisitos, `.env` comentado, `make up`, primeiro acesso, celular, backup.
 - Avaliar **imagens prontas** no GitHub Container Registry (`docker compose pull` em vez de compilar) e um `scripts/instalar.sh`

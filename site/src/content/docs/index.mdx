@@ -1,49 +1,76 @@
 ---
 title: prumia
-description: Clareza para construir o futuro. As contas, as receitas e o que deve sobrar no mês, num app da sua casa.
+description: Clareza para construir o futuro. As contas, as receitas e o que deve sobrar no mês, num app da sua casa, sem anúncio e sem rastreamento.
 template: splash
 hero:
-  tagline: Clareza para construir o futuro. As contas que vencem, o dinheiro que entra e o que deve sobrar no fim do mês, num app só da sua casa.
+  title: Clareza para construir o futuro.
+  tagline: As contas que vencem, o dinheiro que entra e o que deve sobrar no fim do mês. Num app só da sua casa, sem planilha, sem anúncio e sem rastreamento.
   image:
     light: ../../assets/simbolo.svg
     dark: ../../assets/simbolo-escuro.svg
     alt: ''
   actions:
-    - text: Comece aqui
-      link: /guias/o-que-e-o-prumia/
-      icon: right-arrow
     - text: Ver a demonstração
       link: /demo/
-      variant: secondary
+      icon: right-arrow
       attrs:
         rel: nofollow
-    - text: Primeiros passos
-      link: /guias/primeiros-passos/
+    - text: Como começar
+      link: '#como-começar'
       variant: minimal
 ---
 
+import { Image } from 'astro:assets'
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components'
+import mes from '../../assets/landing/mes.png'
+import resumo from '../../assets/landing/resumo.png'
+import receitas from '../../assets/landing/receitas.png'
+import celular from '../../assets/landing/celular.png'
 
-<CardGrid stagger>
-  <Card title="Nenhuma conta esquecida" icon="list-format">
-    Cada mês mostra o que vence, o que já foi pago (riscado) e o que atrasou. Pagar é um toque.
-  </Card>
-  <Card title="Saber se vai sobrar" icon="information">
-    O saldo projetado avisa antes: previsto para entrar, menos o que já foi pago e o que falta pagar.
-  </Card>
-  <Card title="Menos digitação" icon="document">
-    Parcelas e contas fixas se repetem sozinhas. Boleto em PDF, foto ou print vira conta.
-  </Card>
-  <Card title="Dinheiro por carteira" icon="seti:folder">
-    Geral, Benefício, reserva e investimentos, cada um com o seu saldo. O VR não paga o aluguel.
-  </Card>
-</CardGrid>
+## Nenhuma conta esquecida
 
-## Guias mais usados
+Cada mês mostra o que vence, o que já foi pago (fica na lista, riscado) e o que atrasou. Pagar é um toque. Parcelas e
+contas fixas se repetem sozinhas, e o boleto em PDF, foto ou print vira conta.
+
+<Image src={mes} alt="Tela do mês na demonstração: uma conta atrasada em destaque, o total pago e a régua com os vencimentos do mês." />
+
+## Saber se vai sobrar, antes de acontecer
+
+O **saldo projetado** soma o que está previsto para entrar e tira o que já foi pago e o que falta pagar. Cada carteira tem
+o seu: o que sobra no vale-refeição não paga o aluguel. A reserva de emergência mostra quantos meses você aguentaria.
+
+<Image src={resumo} alt="Resumo do mês na demonstração: saldo projetado da carteira Geral e um card por carteira." />
+
+## O salário no dia certo
+
+O salário entra previsto mês a mês, com INSS, IRRF e outros descontos, no dia em que cai de verdade: o 5º dia útil, o
+último dia útil, já contando fins de semana e feriados.
+
+<Image src={receitas} alt="Receitas do mês na demonstração: o que já foi recebido, o que falta receber e por pessoa." />
 
 <CardGrid>
-  <LinkCard title="Cadastrar e pagar contas" href="/guias/cadastrar-e-pagar-contas/" description="Lançar uma conta e marcar como paga em poucos toques." />
-  <LinkCard title="Salário e previsão" href="/guias/salario-e-previsao/" description="Salário com descontos, VR e o dia em que o dinheiro cai." />
-  <LinkCard title="Resumo do mês" href="/guias/resumo-do-mes/" description="Quanto deve sobrar e para onde vai o dinheiro." />
-  <LinkCard title="Perguntas frequentes" href="/guias/perguntas-frequentes/" description="Respostas curtas para as dúvidas comuns." />
+  <Card title="Feito para o celular" icon="phone">
+    Instala na tela inicial como um app. Os fluxos do dia a dia, lançar e pagar, levam poucos toques.
+    <Image src={celular} alt="O app no celular" width={260} />
+  </Card>
+  <Card title="Seus dados, seu servidor" icon="seti:lock">
+    Roda num servidor da sua casa (ou de quem convidou você). Sem anúncio, sem rastreamento, nada vendido ou compartilhado.
+  </Card>
+  <Card title="Para a casa toda" icon="seti:folder">
+    Cada pessoa entra com a sua conta e vê a mesma casa. Dá para escolher quem lança, quem paga e quem só olha.
+  </Card>
+  <Card title="Dinheiro por carteira" icon="list-format">
+    Geral, Benefício, reserva e investimentos, cada um com o seu saldo, que continua de um mês para o outro.
+  </Card>
 </CardGrid>
+
+## Como começar
+
+<CardGrid>
+  <LinkCard title="Recebi um convite" href="/guias/primeiros-passos/" description="Abra o link que recebeu e crie a sua conta: leva dois minutos." />
+  <LinkCard title="Quero só experimentar" href="/demo/" description="A demonstração tem uma casa de exemplo com dados fictícios. Nada é salvo." />
+  <LinkCard title="O que é o prumia" href="/guias/o-que-e-o-prumia/" description="As ideias principais e as telas do app, em dois minutos de leitura." />
+  <LinkCard title="Perguntas frequentes" href="/guias/perguntas-frequentes/" description="Respostas curtas para as dúvidas mais comuns." />
+</CardGrid>
+
+<small>O prumia é um projeto pessoal, feito para uso doméstico. Sem suporte comercial nem garantias.</small>
