@@ -12,6 +12,12 @@ Como criar sua conta, entrar e sair do prumia. Use na primeira vez que abrir o a
 
 A pessoa que cria a casa é a **administradora** dela. Para convidar quem mora com você, veja [Convidar pessoas](convidar-pessoas.md).
 
+## Os primeiros passos dentro do app
+
+Na tela do **Mês**, uma casa nova vê o cartão **Primeiros passos**: cadastrar o salário, lançar a primeira conta, conferir as
+carteiras, instalar no celular e convidar quem mora com você. Cada passo fica riscado quando é feito. Toque em **Dispensar**
+para esconder o cartão (neste aparelho).
+
 ## Entrar
 
 1. Na tela **Entrar**, digite seu **E-mail** e sua **Senha**.

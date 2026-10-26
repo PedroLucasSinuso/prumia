@@ -6,6 +6,7 @@ import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvo
 import type { Category, Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
+import { FirstSteps } from '../components/FirstSteps'
 import { InvoiceDetail } from '../components/InvoiceDetail'
 import { InvoiceForm } from '../components/InvoiceForm'
 import { InvoiceSheet } from '../components/InvoiceSheet'
@@ -465,6 +466,7 @@ export default function MonthPage() {
             </div>
           )}
         </header>
+        {canWrite && <FirstSteps houseId={houseId} hasInvoices={(invoices.data?.length ?? 0) > 0} onNewInvoice={openNew} />}
 
         {invoices.isPending && <ListSkeleton label="Carregando as contas" rows={4} />}
         {invoices.isError && <Notice onRetry={() => void invoices.refetch()}>Não foi possível carregar as contas.</Notice>}
