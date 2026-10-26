@@ -14,7 +14,7 @@ Finanças da casa sem planilha: as contas que vencem, o dinheiro que entra e o q
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-203D40)
+![Licença PolyForm Noncommercial](https://img.shields.io/badge/licen%C3%A7a-PolyForm%20Noncommercial-203D40)
 
 <sub>A household finance app (pt-BR): bills, income forecasting and month-end balance, self-hosted. Go + React + PostgreSQL.</sub>
 
@@ -93,6 +93,10 @@ scripts/    backup, restore e utilitários
 
 ## Licença
 
-Código sob a [licença MIT](LICENSE). O nome **prumia** e o símbolo são a identidade do projeto: use o código à vontade, mas com outro nome e outra marca.
+Código sob a [PolyForm Noncommercial 1.0.0](LICENSE): você pode **ler, estudar, rodar e adaptar para uso pessoal, de estudo e sem fins comerciais**. **Uso comercial** (vender, oferecer como serviço, usar em empresa) precisa de autorização do autor. Não é uma licença de código aberto da OSI: o objetivo é deixar o código visível como portfólio e manter a porta comercial com o autor.
+
+O nome **prumia** e o símbolo são a identidade do projeto: ao adaptar o código, use outro nome e outra marca.
+
+Para reportar uma falha de segurança, veja o [SECURITY.md](SECURITY.md).
 
 Projeto pessoal, feito para uso doméstico, sem suporte comercial.
