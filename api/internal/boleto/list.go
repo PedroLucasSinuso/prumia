@@ -96,6 +96,10 @@ var (
 	doubleSepRe = regexp.MustCompile(`([:=\-–])[ \t]*[:=\-–]+`)
 )
 
+// Palavras que antecedem a data e saem junto com ela: "vencimento", "vencimento dia", "vence em", "com vencimento no dia",
+// "vencendo dia", "até dia", ou só "dia" / "no dia". Sempre colado à data (no fim do trecho que vem antes dela).
+var dueLeadRe = regexp.MustCompile(`(?i)(?:(?:\bcom[ \t]+)?\b(?:vence(?:ndo)?|venc(?:imento)?\.?|at[eé])[ \t]*[:\-]?[ \t]*(?:(?:no[ \t]+)?dia[ \t]+|em[ \t]+)?|\b(?:no[ \t]+)?dia[ \t]+)$`)
+
 // extractDue procura UM vencimento na linha. Devolve a data (zero se não houver) e a linha sem ela.
 // Sem ano ("10/11", "dia 10"): usa o ano de ref, ou o próximo se a data já ficou mais de 6 meses para trás;
 // só o dia: este mês, ou o próximo se o dia já passou. Data impossível (31/02) não vale e a linha fica como está.
@@ -104,7 +108,7 @@ func extractDue(line string, ref time.Time) (time.Time, string) {
 		// leva junto a palavra de ligação imediatamente antes ("vence ", "até ")
 		start := loc[0]
 		pre := line[:start]
-		if w := regexp.MustCompile(`(?i)(?:vence(?:[ \t]+em)?|venc(?:imento)?\.?|at[eé])[ \t]*[:\-]?[ \t]*$`).FindStringIndex(pre); w != nil {
+		if w := dueLeadRe.FindStringIndex(pre); w != nil {
 			start = w[0]
 		}
 		return doubleSepRe.ReplaceAllString(line[:start]+" "+line[loc[1]:], "$1")
