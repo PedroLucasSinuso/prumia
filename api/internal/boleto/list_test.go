@@ -197,3 +197,47 @@ func TestListaVencimentoArmadilhas(t *testing.T) {
 		t.Errorf("valor virou data: %+v", d)
 	}
 }
+
+// Formato real que falhou: "<nome>: R$ valor vencimento dia dd/mm" (com "dia" entre a palavra e a data). Nomes inventados.
+func TestListaVencimentoComPalavraDia(t *testing.T) {
+	ref := time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)
+	due := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	body := "Feira do Zé: R$193,60 vencimento dia 01/11\n" +
+		"Hortifruti Sol: R$64,08 vencimento dia 01/11\n" +
+		"Feira do Zé: R$17,75 vencimento dia 01/11\n" +
+		"Padaria Lua: R$245 vencimento dia 01/11\n" + // sem centavos
+		"Massas da Vó: R$21,50 vencimento dia 01/11\n" +
+		"ABC: R$88,36 vencimento dia 01/11\n" + // nome curto em maiúsculas
+		"Doces Ouro: R$ 30,45 vencimento dia 01/11\n" + // espaço depois do R$
+		"Mercado Norte: R$30,45 vencimento dia 01/11\n" +
+		"Peixaria Mar: R$291,5 vencimento dia 01/11\n" + // um dígito de centavo
+		"Bar do Beto: R$100,20 vencimento dia 01/11\n" +
+		"Cantina: R$20 vencimento 01/11\n" // sem "dia"
+	doc, ok := analyze(body, ref)
+	if !ok || doc.Kind != KindList || len(doc.Items) != 11 {
+		t.Fatalf("esperava 11 itens, veio %d: %+v", len(doc.Items), doc)
+	}
+	want := []int64{19360, 6408, 1775, 24500, 2150, 8836, 3045, 3045, 29150, 10020, 2000}
+	for i, it := range doc.Items {
+		if it.AmountCents != want[i] || !it.DueDate.Equal(due) {
+			t.Errorf("item %d (%q) = %d vence %v; quero %d vence %v", i, it.Description, it.AmountCents, it.DueDate, want[i], due)
+		}
+	}
+	// outras formas de dizer o mesmo
+	for _, line := range []string{
+		"Luz: R$ 10,00 vencimento: dia 01/11", "Luz: R$ 10,00 vence dia 01/11", "Luz: R$ 10,00 venc. dia 01/11",
+		"Luz: R$ 10,00 com vencimento em 01/11", "Luz: R$ 10,00 vencimento no dia 01/11", "Luz: R$ 10,00 no dia 01/11",
+		"Luz: R$ 10,00 vencendo dia 01/11", "Luz: R$ 10,00 até dia 01/11",
+	} {
+		d, ok := analyze(line+"\nGás: R$ 20,00 dia 01/11", ref)
+		if !ok || len(d.Items) != 2 || !d.Items[0].DueDate.Equal(due) || d.Items[0].Description != "Luz" {
+			t.Errorf("%q -> %+v", line, d)
+		}
+	}
+	// só o dia, também com a palavra "dia": hoje é 01/11, então dia 10 é neste mês
+	d, ok := analyze("Luz: R$ 10,00 vencimento dia 10\nGás: R$ 20,00 vence dia 15", ref)
+	if !ok || len(d.Items) != 2 || !d.Items[0].DueDate.Equal(time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)) ||
+		!d.Items[1].DueDate.Equal(time.Date(2026, 11, 15, 0, 0, 0, 0, time.UTC)) || d.Items[0].Description != "Luz" {
+		t.Errorf("só o dia com a palavra dia: %+v", d)
+	}
+}

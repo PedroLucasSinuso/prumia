@@ -61,6 +61,7 @@ e coloca a competência no mesmo mês (você confere e corrige na tela, como tud
 | Escreva | Vira |
 |---|---|
 | `Luz: R$ 210,35 vence 10/11`, `Gás: 150,00 venc. 12/11` | vencimento 10/11 e 12/11 |
+| `Luz: R$ 210,35 vencimento dia 10/11`, `vence no dia 10/11`, `com vencimento em 10/11`, `até dia 10/11` | vencimento 10/11 (a palavra "dia", "no dia" ou "em" antes da data é aceita) |
 | `Aluguel 05/12/2026: R$ 1.500,00`, `10/11/26`, `10-11-2026` | data completa |
 | `10/11 Luz R$ 210,35`, `Luz - 10/11 - R$ 210,35` | a data pode vir no começo ou no meio |
 | `Gás: R$ 150,00 dia 10` | dia 10 deste mês, ou do próximo se o dia já passou |
