@@ -1,0 +1,102 @@
+---
+title: prumia
+description: Clarity to build the future. Bills, income and what should be left at the end of the month, in a private household app with no ads and no tracking.
+template: splash
+hero:
+  title: Clarity to build the future.
+  tagline: The bills that are due, the money coming in and what should be left at the end of the month. In an app that belongs to your household only, with no spreadsheets, no ads and no tracking.
+  image:
+    light: ../../../assets/simbolo.svg
+    dark: ../../../assets/simbolo-escuro.svg
+    alt: ''
+  actions:
+    - text: Try the live demo
+      link: /demo/
+      icon: right-arrow
+      attrs:
+        rel: nofollow
+    - text: How it is built
+      link: '#under-the-hood'
+      variant: minimal
+---
+
+import { Image } from 'astro:assets'
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components'
+import mes from '../../../assets/landing/mes.png'
+import resumo from '../../../assets/landing/resumo.png'
+import receitas from '../../../assets/landing/receitas.png'
+import celular from '../../../assets/landing/celular.png'
+
+prumia is a household finance app built for two real users (and a portfolio): Brazilian reais, Brazilian rules, in
+production on a home server. The interface and the user guides are in Brazilian Portuguese; this page explains what it
+does and how it is built.
+
+## No bill forgotten
+
+Each month shows what is due, what is already paid (it stays in the list, struck through) and what is overdue. Paying is
+one tap. Installments and fixed bills repeat on their own, and a PDF, photo or screenshot of a payment slip (boleto)
+becomes a bill through local OCR.
+
+<Image src={mes} alt="Month view in the demo: an overdue bill highlighted, the total paid and a ruler with the due dates of the month." />
+
+## Know whether money will be left, before it happens
+
+The **projected balance** adds what is expected to come in and subtracts what was paid and what is still due. Each wallet
+has its own: what is left on the meal voucher does not pay the rent. The emergency fund shows how many months you could
+hold on.
+
+<Image src={resumo} alt="Monthly summary in the demo: projected balance of the General wallet and one card per wallet." />
+
+## Salary on the right day
+
+Salary is forecast month by month with Brazilian payroll deductions (INSS and income tax), landing on the day it really
+arrives: the 5th business day or the last business day, accounting for weekends and national holidays.
+
+<Image src={receitas} alt="Monthly income in the demo: what was received, what is still expected, and per person." />
+
+<CardGrid>
+  <Card title="Mobile first" icon="phone">
+    Installs on the home screen as a PWA. The everyday flows, adding and paying a bill, take a few taps.
+    <Image src={celular} alt="The app on a phone" width={260} />
+  </Card>
+  <Card title="Your data, your server" icon="seti:lock">
+    Self-hosted with Docker Compose. No ads, no tracking, nothing sold or shared. Passwords use argon2id and sessions are httpOnly cookies.
+  </Card>
+  <Card title="For the whole household" icon="seti:folder">
+    Everyone signs in with their own account and sees the same household, with roles to decide who edits, who pays and who only looks.
+  </Card>
+  <Card title="Money per wallet" icon="list-format">
+    General, benefits, reserve and investments, each with its own balance carried over from month to month.
+  </Card>
+</CardGrid>
+
+## Under the hood
+
+<CardGrid>
+  <Card title="Backend" icon="seti:go">
+    Go, Gin and GORM as a modular monolith (handler, service, repository), PostgreSQL, goose SQL migrations, 300+ tests with real Postgres through testcontainers.
+  </Card>
+  <Card title="Spec-first API" icon="document">
+    The OpenAPI contract is the source of truth: Go types and interfaces are generated from it, and so are the frontend's TypeScript types.
+  </Card>
+  <Card title="Frontend" icon="laptop">
+    React 19, Vite, TypeScript and Tailwind 4, with a themeable design system (nine themes) and Vitest tests on the main flows.
+  </Card>
+  <Card title="Correctness by design" icon="approve-check">
+    Money as int64 cents, never floats; calendar dates without time zones; per-household isolation enforced in every query and by composite foreign keys.
+  </Card>
+  <Card title="Delivery" icon="rocket">
+    GitHub Actions CI on every pull request, Docker Compose deployment behind nginx and a Cloudflare Tunnel, backup and restore scripts.
+  </Card>
+</CardGrid>
+
+## Explore
+
+<CardGrid>
+  <LinkCard title="Live demo" href="/demo/" description="A sample household with fictional data, running entirely in your browser. Nothing is saved." />
+  <LinkCard title="Source code" href="https://github.com/PedroLucasSinuso/prumia" description="The full history of how it was built, pull request by pull request." />
+  <LinkCard title="Architecture (developer guide)" href="/dev/architecture/" description="Layers, contract flow and decisions. Documentation in Portuguese." />
+  <LinkCard title="What is prumia (user guide)" href="/guias/o-que-e-o-prumia/" description="The main ideas and screens in a two-minute read. In Portuguese." />
+</CardGrid>
+
+<small>prumia is a personal project made for home use. No commercial support or warranties. Licensed under PolyForm Noncommercial 1.0.0.</small>
