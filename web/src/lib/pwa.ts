@@ -27,3 +27,12 @@ export function registerServiceWorker({ prod, win }: Env = { prod: import.meta.e
   else win.addEventListener('load', register, { once: true })
   return true
 }
+
+/** Nomes dos caches do sw.js que guardam dados da conta. */
+const DATA_CACHES = ['prumia-data-v2']
+
+/** Ao sair da conta: apaga as cópias dos dados financeiros guardadas para o modo offline. */
+export async function clearOfflineData(): Promise<void> {
+  if (typeof caches === 'undefined') return
+  await Promise.all(DATA_CACHES.map((name) => caches.delete(name))).catch(() => {})
+}

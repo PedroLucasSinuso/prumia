@@ -306,27 +306,34 @@ O `public/favicon.svg` é um **placeholder**; falta o símbolo oficial (os ícon
 
 ## PWA (instalar no celular)
 
-**O que é:** o mínimo para o navegador oferecer "Instalar app"/"Adicionar à tela inicial": abre em tela cheia
-(`display: standalone`), com ícone e barra na cor da marca. **O que não é:** modo offline. O prumia mostra dados
-financeiros que vêm da API; abrir com dados guardados no aparelho mostraria contas velhas como se fossem atuais. Por isso
-nada do app nem de `/api/` é cacheado pelo service worker.
+**O que é:** instalável (o navegador oferece "Instalar app"/"Adicionar à tela inicial": tela cheia, ícone e barra na cor da
+marca) e com **leitura offline**: com o PC da casa desligado ou sem sinal, o app abre e mostra o que já foi visto, com um
+aviso de quando são os dados. **O que não é:** escrita offline. Lançar, pagar e editar exigem o servidor (não há fila de
+sincronização; ver a análise em `docs/roadmap.md`).
 
 | Arquivo | Papel |
 |---|---|
 | `public/manifest.webmanifest` | nome, `start_url`/`scope` `/`, `standalone`, `theme_color` teal, `background_color` ivory, ícones |
 | `public/icons/*.png` | `icon-192`, `icon-512` (`any`), `maskable-512` (símbolo dentro do círculo seguro de 80%), `apple-touch-icon` (180) |
 | `index.html` | `<link rel="manifest">`, `theme-color`, `apple-touch-icon` e metas do iOS (`apple-mobile-web-app-*`) |
-| `public/sw.js` | service worker: navegação vai **sempre à rede**; sem rede, mostra uma página "Sem conexão". Não intercepta `/api/` nem JS/CSS/imagens |
+| `public/sw.js` | service worker: navegação e `GET /api/*` com **rede primeiro** e cópia guardada como reserva; `/assets/*` e ícones, cache primeiro. Escritas não passam por ele |
+| `src/lib/offline.ts` + `components/OfflineBanner.tsx` | estado "mostrando dados guardados" (a partir do cabeçalho `x-prumia-cached-at`) e o aviso no topo do app |
 | `src/lib/pwa.ts` | `registerServiceWorker()`, chamado no `main.tsx`: só em **produção**, só em **contexto seguro** (HTTPS ou `localhost`) |
 
+- **Como o modo offline decide:** `GET /api/*` vai à rede (prazo de 6 s). Só respostas **200** são guardadas. Se a rede falhar,
+  der timeout ou o servidor responder **5xx** (o túnel da Cloudflare devolve 502/530 com o PC desligado), o SW entrega a
+  cópia com `x-prumia-cached-at`; **4xx (inclui 401) nunca é trocado por cópia**. Não entram no cache `/api/documents/*`
+  (boleto nunca vai a disco) nem `/api/auth/*`, exceto `/api/auth/me`. O `QueryClient` usa `networkMode: 'always'`
+  (senão o TanStack Query pausa tudo offline e a tela fica carregando) e refaz as consultas no evento `online`.
+- **Privacidade:** as cópias são dados financeiros no aparelho (Cache Storage). `logout()` as apaga (`clearOfflineData`).
 - **Atualização:** o nginx serve `sw.js` com `Cache-Control: no-cache` e o registro usa `updateViaCache: 'none'`, então
-  o navegador confere a versão a cada abertura. Como o SW não guarda o app, a versão nova assume na hora (`skipWaiting`) sem
-  recarregar a tela; o JS novo vale no próximo carregamento. Mudou `sw.js`? Suba `CACHE_VERSION` (o `activate` apaga os caches antigos).
+  o navegador confere a versão a cada abertura. A versão nova do SW assume na hora (`skipWaiting`) sem recarregar a
+  tela; o JS novo vale no próximo carregamento. Mudou `sw.js`? Suba a versão dos caches `prumia-shell-vN`/`prumia-data-vN` (o `activate` apaga os antigos) e o `DATA_CACHES` de `lib/pwa.ts`.
 - **HTTPS é obrigatório** para instalar (exceto `localhost`). Pelo IP da rede local ou `http://` via Tailscale o app funciona,
   mas não instala; ver `docs/user-guides/acessar-pelo-celular.md` (HTTPS pelo Tailscale).
 - **nginx:** `location = /sw.js` (sem cache imutável) e `location = /manifest.webmanifest` (`application/manifest+json`).
 - **Testes:** `src/lib/pwa.test.ts` (quando registra) e `src/pwa.test.ts` (manifesto válido, ícones existem com o tamanho
-  declarado, e o `sw.js` rodado com `self`/`caches`/`fetch` falsos: ignora `/api/`, network-first, página offline, limpeza).
+  declarado, e o `sw.js` rodado com `self`/`caches`/`fetch` falsos: rede primeiro, cópia em falha/5xx/timeout, 4xx intocado, o que não é guardado, limpeza) e `src/lib/offline.test.tsx` (aviso).
 - **Conferir no navegador:** `npm run build && npx vite preview --port <porta alta>`, abrir em `http://localhost:<porta>` e ver
   DevTools → Application → Manifest / Service workers (a seção "Installability" deve vir sem erros).
 

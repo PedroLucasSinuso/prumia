@@ -19,7 +19,17 @@ import './index.css'
 
 // Dados do servidor ficam em cache e são refeitos sozinhos depois de cada ação. Sem retentativa automática
 // em erros de negócio (4xx); a tela oferece "Tentar de novo".
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: true } } })
+// networkMode 'always': o padrão do TanStack Query pausa tudo quando o navegador diz que está offline, e a tela
+// ficaria carregando para sempre. Aqui a chamada sempre sai: o service worker responde com os dados guardados (leitura)
+// ou a escrita falha logo, com a mensagem de sem conexão.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, refetchOnWindowFocus: true, networkMode: 'always' },
+    mutations: { networkMode: 'always' },
+  },
+})
+// Voltou a conexão: refaz o que está na tela (troca os dados guardados pelos de agora).
+window.addEventListener('online', () => void queryClient.invalidateQueries())
 
 // Tema de cor (Marfim, Grafite, Contraste, Sistema): ver src/lib/theme.ts.
 startThemeSync()
@@ -45,5 +55,5 @@ function start() {
 if (import.meta.env.VITE_DEMO === '1') void import('./demo/install').then(start)
 else start()
 
-// PWA: só para o app ser instalável (sem modo offline). Não registra em dev nem fora de HTTPS/localhost.
+// PWA: instalável e com leitura offline (public/sw.js). Não registra em dev nem fora de HTTPS/localhost.
 if (import.meta.env.VITE_DEMO !== '1') registerServiceWorker()

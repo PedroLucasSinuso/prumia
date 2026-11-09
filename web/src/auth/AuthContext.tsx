@@ -2,6 +2,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { api } from '../api/client'
+import { resetOffline } from '../lib/offline'
+import { clearOfflineData } from '../lib/pwa'
 import { setTheme } from '../lib/theme'
 import { readActiveHouse, writeActiveHouse } from './activeHouseStorage'
 import { AuthContext, type AuthValue, type Session } from './context'
@@ -79,6 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // Mesmo se a rede falhar, o usuário sai da tela; o servidor encerra a sessão quando conseguir.
       setSession({ status: 'anonymous' })
+      // Os dados guardados para o modo offline são da conta que saiu.
+      resetOffline()
+      void clearOfflineData()
     }
   }, [])
 

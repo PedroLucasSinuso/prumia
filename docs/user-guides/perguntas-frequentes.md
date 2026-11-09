@@ -48,6 +48,10 @@ rendimento entra pelo **Atualizar valor**. Veja [Carteiras](carteiras.md#investi
 
 ## Casa e privacidade
 
+**E se o computador do prumia estiver desligado?** O app instalado no celular ainda abre e mostra o que você já tinha visto,
+com um aviso no topo dizendo de quando são os dados. Nesse modo só dá para olhar: para lançar ou pagar uma conta, espere o
+computador ligar. Ao sair da conta, os dados guardados no aparelho são apagados.
+
 **Quem vê os meus dados?** Só quem participa da sua casa e quem administra o servidor. Não há anúncio nem rastreamento.
 
 **Posso ter mais de uma casa?** Sim, por exemplo a sua e a dos seus pais. Troque pelo nome da casa no topo da tela. Veja

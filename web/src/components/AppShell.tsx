@@ -5,6 +5,7 @@ import { useAuth } from '../auth/context'
 import { ICON, NAV_ITEMS, isActive } from '../lib/navigation'
 import { HouseSwitcher } from './HouseSwitcher'
 import { Logo } from './Logo'
+import { OfflineBanner } from './OfflineBanner'
 import { UserMenu } from './UserMenu'
 
 /**
@@ -68,6 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <OfflineBanner />
         {/* Faixa superior (celular) */}
         <header className="flex items-center justify-between gap-3 px-4 pt-3 md:hidden">
           <div className="flex min-w-0 items-center gap-2.5">

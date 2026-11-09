@@ -54,31 +54,28 @@ describe('manifest.webmanifest', () => {
 
 // --- service worker: roda o sw.js com um `self`, `caches` e `fetch` falsos -------------------------------------
 
-class FakeResponse {
-  body: string
-  constructor(body: string) {
-    this.body = body
-  }
-}
+type Reply = Response | 'offline' | 'hang'
 
-function loadServiceWorker({ online = true, existingCaches = [] as string[] } = {}) {
+function loadServiceWorker({ existingCaches = [] as string[] } = {}) {
   const listeners: Record<string, (event: unknown) => void> = {}
-  const store = new Map<string, Map<string, FakeResponse>>(existingCaches.map((k) => [k, new Map()]))
+  const store = new Map<string, Map<string, Response>>(existingCaches.map((k) => [k, new Map()]))
   const caches = {
     open: async (name: string) => {
       if (!store.has(name)) store.set(name, new Map())
       const cache = store.get(name)!
       return {
-        put: async (url: string, res: FakeResponse) => void cache.set(url, res),
-        match: async (url: string) => cache.get(url),
+        put: async (url: string, res: Response) => void cache.set(url, res),
+        match: async (url: string) => cache.get(url)?.clone(),
       }
     },
     keys: async () => [...store.keys()],
     delete: async (name: string) => store.delete(name),
   }
+  let reply: Reply = new Response('online')
   const fetch = vi.fn(async () => {
-    if (!online) throw new TypeError('Failed to fetch')
-    return new FakeResponse('online')
+    if (reply === 'offline') throw new TypeError('Failed to fetch')
+    if (reply === 'hang') return new Promise<Response>(() => {})
+    return reply.clone()
   })
   const self = {
     location: { origin: 'https://prumia.test' },
@@ -86,7 +83,7 @@ function loadServiceWorker({ online = true, existingCaches = [] as string[] } = 
     skipWaiting: vi.fn(async () => {}),
     clients: { claim: vi.fn(async () => {}) },
   }
-  new Function('self', 'caches', 'fetch', 'Response', swSource)(self, caches, fetch, FakeResponse)
+  new Function('self', 'caches', 'fetch', swSource)(self, caches, fetch)
 
   // Dispara um evento e devolve a promessa passada a waitUntil/respondWith (ou undefined se o SW ignorou).
   const dispatch = (type: string, extra: object = {}) => {
@@ -95,51 +92,134 @@ function loadServiceWorker({ online = true, existingCaches = [] as string[] } = 
     listeners[type]({ ...extra, waitUntil: settle, respondWith: settle })
     return promise
   }
-  const request = (path: string, mode = 'navigate', method = 'GET') => ({
-    url: `https://prumia.test${path}`,
-    mode,
-    method,
-  })
-  return { dispatch, request, fetch, self, store }
+  const request = (path: string, mode = 'cors', method = 'GET') => ({ url: `https://prumia.test${path}`, mode, method })
+  const get = async (path: string, mode = 'cors') => (await dispatch('fetch', { request: request(path, mode) })) as Response
+  return { dispatch, request, get, fetch, self, store, setReply: (r: Reply) => (reply = r) }
 }
 
 describe('sw.js', () => {
   it('install guarda só a página offline e assume sem esperar', async () => {
     const sw = loadServiceWorker()
     await sw.dispatch('install')
-    const [name] = [...sw.store.keys()]
-    expect(name).toMatch(/^prumia-v\d+$/)
-    expect([...sw.store.get(name)!.keys()]).toEqual(['/__offline'])
+    expect([...sw.store.keys()]).toEqual(['prumia-shell-v2'])
+    expect([...sw.store.get('prumia-shell-v2')!.keys()]).toEqual(['/__offline'])
     expect(sw.self.skipWaiting).toHaveBeenCalled()
   })
 
-  it('activate apaga caches de versões antigas', async () => {
-    const sw = loadServiceWorker({ existingCaches: ['prumia-v0', 'outro'] })
+  it('activate apaga caches de versões antigas e mantém os atuais', async () => {
+    const sw = loadServiceWorker({ existingCaches: ['prumia-v1', 'prumia-data-v1', 'outro'] })
     await sw.dispatch('install')
+    await sw.get('/api/invoices')
     await sw.dispatch('activate')
-    expect([...sw.store.keys()]).toEqual([expect.stringMatching(/^prumia-v\d+$/)])
+    expect([...sw.store.keys()].sort()).toEqual(['prumia-data-v2', 'prumia-shell-v2'])
     expect(sw.self.clients.claim).toHaveBeenCalled()
   })
 
-  it('nunca intercepta /api/ nem pedidos que não são navegação', () => {
+  it('não intercepta escritas, outros sites, documentos e rotas de autenticação (exceto /auth/me)', () => {
     const sw = loadServiceWorker()
-    expect(sw.dispatch('fetch', { request: sw.request('/api/auth/me') })).toBeUndefined()
-    expect(sw.dispatch('fetch', { request: sw.request('/api/invoices', 'cors') })).toBeUndefined()
-    expect(sw.dispatch('fetch', { request: sw.request('/assets/index.js', 'no-cors') })).toBeUndefined()
-    expect(sw.dispatch('fetch', { request: sw.request('/', 'navigate', 'POST') })).toBeUndefined()
+    const ignored = [
+      sw.request('/api/invoices', 'cors', 'POST'),
+      sw.request('/api/invoices/1', 'cors', 'DELETE'),
+      sw.request('/api/documents/extract'),
+      sw.request('/api/auth/invite'),
+      sw.request('/api/auth/login', 'cors', 'POST'),
+      { url: 'https://outro.site/api/x', mode: 'cors', method: 'GET' },
+      sw.request('/outro.js', 'no-cors'),
+      sw.request('/api/qualquer', 'navigate'),
+    ]
+    for (const req of ignored) expect(sw.dispatch('fetch', { request: req })).toBeUndefined()
   })
 
-  it('navegação vai à rede (network-first)', async () => {
+  it('navegação: rede primeiro e guarda a moldura; sem rede serve a moldura guardada', async () => {
     const sw = loadServiceWorker()
-    const res = (await sw.dispatch('fetch', { request: sw.request('/mes') })) as FakeResponse
-    expect(res.body).toBe('online')
+    sw.setReply(new Response('<html>app</html>'))
+    expect(await (await sw.get('/mes', 'navigate')).text()).toBe('<html>app</html>')
+    sw.setReply('offline')
+    expect(await (await sw.get('/resumo', 'navigate')).text()).toBe('<html>app</html>')
   })
 
-  it('sem rede mostra a página "sem conexão"', async () => {
-    const sw = loadServiceWorker({ online: false })
+  it('navegação com o túnel respondendo 530 (PC desligado) serve a moldura guardada', async () => {
+    const sw = loadServiceWorker()
+    sw.setReply(new Response('<html>app</html>'))
+    await sw.get('/', 'navigate')
+    sw.setReply(new Response('erro do túnel', { status: 530 }))
+    expect(await (await sw.get('/', 'navigate')).text()).toBe('<html>app</html>')
+  })
+
+  it('sem rede e sem visita anterior mostra a página "sem conexão"', async () => {
+    const sw = loadServiceWorker()
     await sw.dispatch('install')
-    const res = (await sw.dispatch('fetch', { request: sw.request('/mes') })) as FakeResponse
-    expect(res.body).toContain('Sem conexão')
-    expect(res.body).toContain('precisa de internet')
+    sw.setReply('offline')
+    const text = await (await sw.get('/mes', 'navigate')).text()
+    expect(text).toContain('Sem conexão')
+    expect(text).toContain('precisa de internet')
+  })
+
+  it('arquivos de /assets/ vão para o cache e dali saem sem rede', async () => {
+    const sw = loadServiceWorker()
+    sw.setReply(new Response('js'))
+    await sw.get('/assets/index-abc.js', 'no-cors')
+    sw.setReply('offline')
+    expect(await (await sw.get('/assets/index-abc.js', 'no-cors')).text()).toBe('js')
+  })
+
+  describe('GET /api/', () => {
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
+
+    it('online: devolve o dado novo, sem marca de cópia, e guarda uma cópia', async () => {
+      const sw = loadServiceWorker()
+      sw.setReply(json({ total: 1 }))
+      const res = await sw.get('/api/households/h1/invoices?month=2026-11-01')
+      expect(res.headers.get('x-prumia-cached-at')).toBeNull()
+      expect(await res.json()).toEqual({ total: 1 })
+      expect(sw.store.get('prumia-data-v2')!.size).toBe(1)
+    })
+
+    it.each([
+      ['sem rede', 'offline' as Reply],
+      ['servidor 502', json({}, 502)],
+      ['túnel 530', json({}, 530)],
+      ['demora demais', 'hang' as Reply],
+    ])('%s: responde com a cópia e marca o instante', async (_n, failure) => {
+      vi.useFakeTimers()
+      try {
+        const sw = loadServiceWorker()
+        sw.setReply(json({ total: 1 }))
+        await sw.get('/api/households/h1/invoices')
+        sw.setReply(failure)
+        const pending = sw.get('/api/households/h1/invoices')
+        await vi.advanceTimersByTimeAsync(7000)
+        const res = await pending
+        expect(Number(res.headers.get('x-prumia-cached-at'))).toBeGreaterThan(0)
+        expect(await res.json()).toEqual({ total: 1 })
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('4xx (ex.: 401) passa como veio e nunca é trocado pela cópia', async () => {
+      const sw = loadServiceWorker()
+      sw.setReply(json({ total: 1 }))
+      await sw.get('/api/auth/me')
+      sw.setReply(json({ code: 'unauthorized' }, 401))
+      const res = await sw.get('/api/auth/me')
+      expect(res.status).toBe(401)
+      expect(res.headers.get('x-prumia-cached-at')).toBeNull()
+    })
+
+    it('4xx e 5xx não são guardados', async () => {
+      const sw = loadServiceWorker()
+      sw.setReply(json({}, 404))
+      await sw.get('/api/a')
+      sw.setReply(json({}, 500))
+      await sw.get('/api/b')
+      expect(sw.store.get('prumia-data-v2')?.size ?? 0).toBe(0)
+    })
+
+    it('sem cópia e sem rede o erro segue para o app', async () => {
+      const sw = loadServiceWorker()
+      sw.setReply('offline')
+      await expect(sw.get('/api/nunca-visto')).rejects.toThrow()
+    })
   })
 })
