@@ -89,7 +89,7 @@ Um push novo no mesmo PR cancela a execução anterior. Para reproduzir localmen
 | `hooks` | testes do guard de Git | `make hooks-test` |
 | `docker` | valida o compose e constrói as imagens `api` e `web` (sem push) | `POSTGRES_PASSWORD=x docker compose -p prumia-ci -f deploy/compose.yaml build api web` |
 | `e2e` | sobe o app inteiro pelo compose e roda os testes de ponta a ponta (Playwright, Chromium em tamanho de celular) | `make e2e-up && make e2e && make e2e-down` |
-| `security` | `govulncheck` no Go (só acusa o que o código realmente chama) e `npm audit` das dependências de produção de `web` e `site` (alta ou crítica) | `cd web && npm audit --omit=dev --audit-level=high` |
+| `security` | `govulncheck` no Go (só acusa o que o código realmente chama) e `npm audit` das dependências de produção de `web` (alta ou crítica reprova) e de `site` (só informa: depende do Astro 7, que o Starlight ainda não aceita) | `cd web && npm audit --omit=dev --audit-level=high` |
 
 No CI, o job `api` falha se o Docker não estiver disponível (localmente, sem Docker, os testes de integração são só pulados).
 

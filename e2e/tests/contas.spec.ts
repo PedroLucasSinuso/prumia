@@ -80,3 +80,34 @@ test('avisos: servidor sem chaves explica que o recurso está desligado', async 
   await page.goto('/ajustes/avisos')
   await expect(page.getByRole('region', { name: 'Avisos de vencimento' })).toContainText('não estão ligados neste servidor')
 })
+
+// Pagamento otimista: com o servidor demorando 1,5 s, a conta já aparece paga logo depois do toque.
+test('pagar muda a linha na hora, sem esperar o servidor', async ({ page }) => {
+  const agua = unico('Água fictícia')
+  await abrirMes(page)
+  await lancarConta(page, agua, '8000')
+  await page.route('**/api/households/*/invoices/*/pay', async (route) => {
+    await new Promise((r) => setTimeout(r, 1500))
+    await route.continue()
+  })
+  await page.getByRole('button', { name: `Pagar ${agua}`, exact: true }).click()
+  await expect(page.getByRole('button', { name: `Desfazer pagamento de ${agua}` })).toBeVisible({ timeout: 700 })
+  // E o servidor confirma: depois de recarregar continua paga.
+  await expect(page.getByText(`${agua} paga na carteira Geral.`)).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: `Desfazer pagamento de ${agua}` })).toBeVisible()
+})
+
+// Troca de mês com a transição de visão: o título muda e a marca da transição não fica presa no <html>.
+test('trocar de mês anima e termina limpo', async ({ page }) => {
+  await abrirMes(page)
+  const titulo = await page.getByRole('heading', { level: 1 }).getAttribute('aria-label')
+  await page.getByRole('button', { name: 'Próximo mês' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).not.toHaveAttribute('aria-label', titulo!)
+  // A transição é curta: se a tela ficasse congelada (já aconteceu: 4 s), a marca não sairia a tempo e o clique seguinte travaria.
+  await expect(page.locator('html')).not.toHaveAttribute('data-vt', /.+/, { timeout: 1500 })
+  const antes = Date.now()
+  await page.getByRole('link', { name: 'Resumo' }).click()
+  await expect(page).toHaveURL(/\/resumo/)
+  expect(Date.now() - antes).toBeLessThan(2000)
+})

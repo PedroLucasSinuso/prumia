@@ -190,15 +190,22 @@ jobs:
           node-version: 22
 
       # govulncheck só acusa vulnerabilidade em código que o prumia realmente chama (não em qualquer dependência listada).
+      # @latest de propósito: é ferramenta oficial do Go e precisa acompanhar a versão da linguagem (uma versão antiga
+      # fixada quebrou com o Go do projeto).
       - name: Go (govulncheck)
         working-directory: api
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
       # npm audit lê só o package-lock (não instala nada). Dependências de produção, severidade alta ou crítica.
       - name: npm audit (web)
         working-directory: web
         run: npm audit --omit=dev --audit-level=high
-      - name: npm audit (site)
+      # Site: só informa, não reprova. Os avisos atuais (astro, sharp/libvips, esbuild) só se resolvem com o Astro 7, que o
+      # Starlight ainda não aceita (conflito de peer dependency em 11/2026). O site é estático: essas bibliotecas rodam só no
+      # build, sobre os nossos próprios arquivos, e nada delas vai para quem visita. Tirar o continue-on-error quando o
+      # Starlight suportar o Astro 7 (o Dependabot vai propor a atualização).
+      - name: npm audit (site, informativo)
         working-directory: site
+        continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
 
