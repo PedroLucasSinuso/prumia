@@ -35,7 +35,9 @@ export function transition(update: () => void, direction?: Direction): void {
         const done = () => {
           observer.disconnect()
           clearTimeout(timer)
-          requestAnimationFrame(() => resolve())
+          // Resolve direto, sem requestAnimationFrame: enquanto este callback não termina o navegador SUSPENDE o desenho da
+          // página, e um rAF só rodaria quando o Chrome desistisse de esperar (4 s de tela congelada).
+          resolve()
         }
         const observer = new MutationObserver(done)
         observer.observe(document.body, { childList: true, subtree: true, characterData: true })

@@ -104,7 +104,10 @@ test('trocar de mês anima e termina limpo', async ({ page }) => {
   const titulo = await page.getByRole('heading', { level: 1 }).getAttribute('aria-label')
   await page.getByRole('button', { name: 'Próximo mês' }).click()
   await expect(page.getByRole('heading', { level: 1 })).not.toHaveAttribute('aria-label', titulo!)
-  await expect(page.locator('html')).not.toHaveAttribute('data-vt', /.+/)
+  // A transição é curta: se a tela ficasse congelada (já aconteceu: 4 s), a marca não sairia a tempo e o clique seguinte travaria.
+  await expect(page.locator('html')).not.toHaveAttribute('data-vt', /.+/, { timeout: 1500 })
+  const antes = Date.now()
   await page.getByRole('link', { name: 'Resumo' }).click()
   await expect(page).toHaveURL(/\/resumo/)
+  expect(Date.now() - antes).toBeLessThan(2000)
 })
