@@ -97,6 +97,7 @@ PT-5 do [plano](plano-proximas-etapas.md), em 3 PRs; cada um começa com uma pro
 - **Modo demo e onboarding**: saíram desta lista em 10/2026, a pedido do dono; ver [plano-docs-onboarding.md](plano-docs-onboarding.md). Continua aqui: **disparo de e-mails** (boas-vindas, convite, nova senha, avisos). Isso traria decisões novas (provedor de e-mail, domínio e reputação de envio, LGPD, planos e cobrança, limites por casa) e **não deve ser antecipado** nas escolhas de hoje além de manter o cadastro e os convites desacoplados da tela.
 - Escrita offline no PWA com fila de sincronização (idempotência e `version` na API). A leitura offline já existe.
 - Resumo: projeção de saldo dos próximos meses e orçamento por categoria (o bloco "o que mudou" já compara o mês com a média).
+- Site: subir para o Astro 7 quando o Starlight aceitar (resolve os avisos do `npm audit` do site, hoje só informativos na CI).
 - Exportação (CSV) e importação de extratos.
 - Notificação de vencimento próximo — **feito** (Web Push, migration 00016; `docs/developer-guide/push-notifications.md`). Pendente do dono: `make push-keys`, `make up` e o teste no celular.
 - Anexar o arquivo do boleto (hoje o arquivo nunca é salvo, por decisão de privacidade; mudar exigiria rever essa regra).
