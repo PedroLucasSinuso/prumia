@@ -1,4 +1,4 @@
-import { ArrowLeftRight } from 'lucide-react'
+import { ArrowLeftRight, ChartColumn } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
@@ -10,6 +10,7 @@ import { AppShell } from '../components/AppShell'
 import { BalanceCheckForm } from '../components/BalanceCheckForm'
 import { ReserveBlock } from '../components/ReserveBlock'
 import { CategoryBreakdown } from '../components/CategoryBreakdown'
+import { MonthComparison } from '../components/MonthComparison'
 import { HistoryPanel } from '../components/HistoryPanel'
 import { MonthSelector } from '../components/MonthSelector'
 import { Sheet } from '../components/Sheet'
@@ -63,6 +64,7 @@ export default function SummaryPage() {
   const desktop = useIsDesktop()
   const [picked, setPicked] = useState<string | null>(null)
   const [transferring, setTransferring] = useState(false)
+  const [houseHistory, setHouseHistory] = useState(false) // celular: gráfico "Gasto por mês" da casa aberto
   // Carteira em conferência de saldo (o painel "Conferir saldo" fica aberto enquanto houver uma).
   const [checking, setChecking] = useState<WalletBalance | null>(null)
 
@@ -260,10 +262,16 @@ export default function SummaryPage() {
             {reserve.data && <ReserveBlock reserve={reserve.data} />}
             <TransfersSection transfers={transfers.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteTransfer} />
             <AdjustmentsSection adjustments={adjustments.data ?? []} walletName={nameOf} canWrite={canWrite} onDelete={deleteAdjustment} />
-            {desktop && (
+            <MonthComparison houseId={houseId} month={month} categories={cats} onSelect={setPicked} />
+            {desktop ? (
               <div className={card}>
                 <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} />
               </div>
+            ) : (
+              // No celular o gráfico da casa abre sob demanda (o resumo já é longo): um toque e ele sobe da base.
+              <Button variant="secondary" onClick={() => setHouseHistory(true)}>
+                <ChartColumn aria-hidden="true" size={18} strokeWidth={1.5} /> Ver gasto por mês
+              </Button>
             )}
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -323,6 +331,12 @@ export default function SummaryPage() {
               <TransferPanel title="Conferir saldo" subtitle={`${checking.name} · ${monthLabel(month)}`} onClose={() => setChecking(null)}>
                 <BalanceCheckForm balance={checking} month={month} onCreate={(body) => adjustmentActions.create.mutateAsync(body)} onDone={afterCheck} />
               </TransferPanel>
+            )}
+
+            {!desktop && houseHistory && (
+              <Sheet title="Gasto por mês" onClose={() => setHouseHistory(false)}>
+                <HistoryPanel houseId={houseId} month={month} categoryId={null} categories={cats} hideTitle />
+              </Sheet>
             )}
 
             {!desktop && selected && (

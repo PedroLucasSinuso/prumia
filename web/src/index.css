@@ -409,3 +409,58 @@
     transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, fill 150ms ease, stroke 150ms ease !important;
   }
 }
+
+/* Troca de mês e de tela (View Transitions API; disparada por lib/motion.ts). O navegador fotografa o conteúdo
+   (`data-vt-conteudo`, no AppShell) antes e depois: o antigo some e o novo entra. Na troca de mês o <html>
+   leva `data-vt` e o deslize segue o sentido do tempo: o mês seguinte entra pela direita, o anterior pela esquerda.
+   Curto de propósito (o app é um instrumento, não um espetáculo). Estes pseudo-elementos só existem em CSS. */
+/* O nome só existe DURANTE a transição (enquanto o <html> tem `data-vt`): `view-transition-name` cria um contexto de
+   empilhamento, e se ficasse sempre ligado os painéis abertos de dentro do conteúdo passariam para trás da barra inferior. */
+html[data-vt] [data-vt-conteudo] {
+  view-transition-name: conteudo;
+}
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(conteudo) {
+    animation: 110ms ease-in both vt-out;
+  }
+  ::view-transition-new(conteudo) {
+    animation: 180ms ease-out both vt-in;
+  }
+  html[data-vt='next']::view-transition-old(conteudo) {
+    animation-name: vt-out-left;
+  }
+  html[data-vt='next']::view-transition-new(conteudo) {
+    animation-name: vt-in-right;
+  }
+  html[data-vt='prev']::view-transition-old(conteudo) {
+    animation-name: vt-out-right;
+  }
+  html[data-vt='prev']::view-transition-new(conteudo) {
+    animation-name: vt-in-left;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+@keyframes vt-out {
+  to { opacity: 0; }
+}
+@keyframes vt-in {
+  from { opacity: 0; }
+}
+@keyframes vt-out-left {
+  to { opacity: 0; transform: translateX(-28px); }
+}
+@keyframes vt-in-right {
+  from { opacity: 0; transform: translateX(28px); }
+}
+@keyframes vt-out-right {
+  to { opacity: 0; transform: translateX(28px); }
+}
+@keyframes vt-in-left {
+  from { opacity: 0; transform: translateX(-28px); }
+}
