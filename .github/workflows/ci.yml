@@ -40,7 +40,7 @@ jobs:
       # Ferramentas da leitura de boleto: sem elas o TestRealPDFTools é pulado. Os .deb ficam em cache: o espelho do apt às
       # vezes leva minutos para entregar ~30 MB. Primeiro tenta sem `apt-get update` (índice da imagem + .deb do cache); se a
       # imagem mudou e o índice não bate, atualiza e baixa de novo.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/apt-archives
           key: apt-boleto-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
