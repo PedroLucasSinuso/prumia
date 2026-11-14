@@ -172,7 +172,9 @@ self.addEventListener('push', (event) => {
       body: msg.body || 'Há contas para conferir.',
       tag: msg.tag || 'prumia',
       icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      // badge: o selo pequeno da barra de status do Android. Tem que ser monocromático com fundo transparente
+      // (scripts/pwa-icons.py); um PNG opaco aparece como quadrado branco.
+      badge: '/icons/badge-96.png',
       data: { url: msg.url || '/' },
     }),
   )

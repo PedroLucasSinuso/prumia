@@ -314,7 +314,7 @@ sincronização; ver a análise em `docs/roadmap.md`).
 | Arquivo | Papel |
 |---|---|
 | `public/manifest.webmanifest` | nome, `start_url`/`scope` `/`, `standalone`, `theme_color` teal, `background_color` ivory, ícones |
-| `public/icons/*.png` | `icon-192`, `icon-512` (`any`), `maskable-512` (símbolo dentro do círculo seguro de 80%), `apple-touch-icon` (180) |
+| `public/icons/*.png` | `icon-192`, `icon-512` (`any`), `maskable-512` (símbolo dentro do círculo seguro de 80%), `apple-touch-icon` (180) e `badge-96` (selo **monocromático com fundo transparente** da notificação: o Android usa só a transparência, e um PNG opaco vira quadrado branco) |
 | `index.html` | `<link rel="manifest">`, `theme-color`, `apple-touch-icon` e metas do iOS (`apple-mobile-web-app-*`) |
 | `public/sw.js` | service worker: navegação e `GET /api/*` com **rede primeiro** e cópia guardada como reserva; `/assets/*` e ícones, cache primeiro. Escritas não passam por ele |
 | `src/lib/offline.ts` + `components/OfflineBanner.tsx` | estado "mostrando dados guardados" (a partir do cabeçalho `x-prumia-cached-at`) e o aviso no topo do app |
