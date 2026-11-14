@@ -241,3 +241,17 @@ func TestListaVencimentoComPalavraDia(t *testing.T) {
 		t.Errorf("só o dia com a palavra dia: %+v", d)
 	}
 }
+
+// Uma linha só vira conta (bill), não lista: o vencimento escrito nela não pode se perder.
+func TestContaDeUmaLinhaMantemVencimento(t *testing.T) {
+	for _, body := range []string{"Internet: R$ 99,90 vence 20/11", "Internet: R$ 99,90 dia 20/11\nGás 2: 150,00"} {
+		d, ok := analyze(body, testRef)
+		if !ok || d.Kind != KindBill || len(d.Items) != 1 {
+			t.Fatalf("%q: %+v", body, d)
+		}
+		want := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+		if it := d.Items[0]; it.Description != "Internet" || it.AmountCents != 9990 || !it.DueDate.Equal(want) {
+			t.Errorf("%q: %+v", body, it)
+		}
+	}
+}

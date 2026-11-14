@@ -193,6 +193,10 @@ func analyze(body string, ref time.Time) (Document, bool) {
 	case len(items) >= 2:
 		return Document{Kind: KindList, Items: items}, true
 	case len(items) == 1:
+		// "Internet: R$ 99,90 vence 20/11" sozinha: o vencimento escrito na linha vale (findDueDate só conhece os rótulos de fatura).
+		if due.IsZero() {
+			due = items[0].DueDate
+		}
 		return bill(items[0].Description, items[0].AmountCents)
 	case amount > 0:
 		return bill("", amount)
