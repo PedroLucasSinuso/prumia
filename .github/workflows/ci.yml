@@ -175,3 +175,30 @@ jobs:
             e2e/playwright-report
             e2e/test-results
           retention-days: 7
+
+  security:
+    name: security (vulnerabilidades conhecidas)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # govulncheck só acusa vulnerabilidade em código que o prumia realmente chama (não em qualquer dependência listada).
+      - name: Go (govulncheck)
+        working-directory: api
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
+      # npm audit lê só o package-lock (não instala nada). Dependências de produção, severidade alta ou crítica.
+      - name: npm audit (web)
+        working-directory: web
+        run: npm audit --omit=dev --audit-level=high
+      - name: npm audit (site)
+        working-directory: site
+        run: npm audit --omit=dev --audit-level=high
+

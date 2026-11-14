@@ -1,8 +1,9 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { RedirectIfAuthenticated, RequireAuth } from './auth/RequireAuth'
 import { AppShell } from './components/AppShell'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { PageSkeleton } from './components/PageSkeleton'
 import LoginPage from './pages/LoginPage'
 import MonthPage from './pages/MonthPage'
@@ -37,7 +38,9 @@ function LoggedInSuspense() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
   return (
+    <ErrorBoundary resetKey={pathname}>
     <Suspense fallback={null}>
       <Routes>
         <Route element={<RedirectIfAuthenticated />}>
@@ -65,5 +68,6 @@ export default function App() {
         <Route path="*" element={<RequireAuth />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   )
 }

@@ -304,6 +304,12 @@ minúscula. Status com os marcadores `[ ▪ ]`, `[ ▫ ]`, `[ ✖ ]`.
 
 O `public/favicon.svg` é um **placeholder**; falta o símbolo oficial (os ícones do PWA também; ver a seção PWA).
 
+## Quando uma tela quebra
+
+`components/ErrorBoundary.tsx` envolve as rotas (`App.tsx`): se um componente lançar erro ao desenhar, a pessoa vê "Algo deu
+errado nesta tela" com **Recarregar** e **Ir para o Mês**, em vez de tela em branco. Trocar de endereço tenta de novo sozinho
+(`resetKey`). O erro vai só para o console do navegador (pode citar dados da tela).
+
 ## PWA (instalar no celular)
 
 **O que é:** instalável (o navegador oferece "Instalar app"/"Adicionar à tela inicial": tela cheia, ícone e barra na cor da
