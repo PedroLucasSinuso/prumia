@@ -91,3 +91,23 @@ starlight-menu-button button,
   border: 1px solid var(--sl-color-gray-5);
   border-radius: 6px;
 }
+
+/* Landing: imagem do celular ao lado de dois cartões empilhados (no celular, um embaixo do outro). */
+.lado-a-lado {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+.lado-a-lado .pilha {
+  display: grid;
+  gap: 1rem;
+}
+.lado-a-lado .pilha > * {
+  margin-top: 0;
+}
+@media (min-width: 50rem) {
+  .lado-a-lado {
+    grid-template-columns: auto 1fr;
+    gap: 2.5rem;
+  }
+}

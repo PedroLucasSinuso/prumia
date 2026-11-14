@@ -54,21 +54,22 @@ arrives: the 5th business day or the last business day, accounting for weekends 
 
 <Image src={receitas} alt="Monthly income in the demo: what was received, what is still expected, and per person." />
 
-<CardGrid>
-  <Card title="Mobile first" icon="phone">
-    Installs on the home screen as a PWA. The everyday flows, adding and paying a bill, take a few taps.
-    <Image src={celular} alt="The app on a phone" width={260} />
-  </Card>
-  <Card title="Your data, your server" icon="seti:lock">
-    Self-hosted with Docker Compose. No ads, no tracking, nothing sold or shared. Passwords use argon2id and sessions are httpOnly cookies.
-  </Card>
+## Mobile first
+
+Installs on the home screen as a PWA and sends a reminder when a bill is about to be due. The everyday flows, adding and
+paying a bill, take a few taps, and what you have already seen still opens without a connection.
+
+<div class="lado-a-lado">
+  <Image src={celular} alt="The app on a phone" width={300} />
+  <div class="pilha">
   <Card title="For the whole household" icon="seti:folder">
     Everyone signs in with their own account and sees the same household, with roles to decide who edits, who pays and who only looks.
   </Card>
   <Card title="Money per wallet" icon="list-format">
     General, benefits, reserve and investments, each with its own balance carried over from month to month.
   </Card>
-</CardGrid>
+  </div>
+</div>
 
 ## Under the hood
 
