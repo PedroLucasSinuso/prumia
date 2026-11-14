@@ -44,6 +44,17 @@ ou tirar de lá. Escolha o valor, **De**, **Para**, a data e (se quiser) uma obs
 Mais abaixo, **Transferências do mês** lista cada uma (data, de → para, valor, observação) com o botão de excluir. Transferência **não é
 receita nem conta**: não entra em "pago", "a pagar" nem em "para onde vai o dinheiro", só muda o saldo das carteiras. Passo a passo em [carteiras.md](carteiras.md).
 
+## O que mudou
+
+Depois de alguns meses de uso, o resumo passa a dizer como o mês se compara com o normal da casa: *"Novembro está 18% acima da
+média"*, com o total do mês e a média dos meses anteriores (até seis). Logo abaixo vêm as categorias que mais **subiram** e as
+que mais **caíram** em relação à média de cada uma. Toque numa delas para ver o histórico.
+
+- Só aparece quando há pelo menos dois meses anteriores com contas para comparar.
+- Uma categoria só é citada se a diferença for relevante (pelo menos R$ 50,00 e 20% da média dela).
+- No mês atual a comparação usa o que já está lançado, então ela muda conforme as contas entram.
+- No celular, **Ver gasto por mês** abre o gráfico da casa inteira.
+
 ## Para onde vai o dinheiro
 
 Cada categoria aparece com o total do mês e uma barra: a parte **escura** é o que já foi pago e a **azul** é o que ainda falta pagar.
