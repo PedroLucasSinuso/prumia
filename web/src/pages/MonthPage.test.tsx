@@ -188,7 +188,24 @@ describe('pagar', () => {
     mockApi({ me: ok(me), invoices: ok({ items: [luz] }), pay: fail(409, 'already_paid') })
     renderAt(mes)
     await userEvent.click(await screen.findByRole('button', { name: 'Pagar Luz' }))
-    expect(await screen.findByText(/Não foi possível marcar como paga/)).toBeInTheDocument()
+    expect(await screen.findByText(/Não foi possível marcar Luz como paga/)).toBeInTheDocument()
+    // pagamento otimista desfeito: a conta volta a aparecer como pendente
+    expect(await screen.findByRole('button', { name: 'Pagar Luz' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Desfazer pagamento de Luz' })).not.toBeInTheDocument()
+  })
+
+  it('a conta aparece paga no toque, antes de o servidor responder (otimista)', async () => {
+    mockApi({ me: ok(me), invoices: ok({ items: [luz] }) })
+    renderAt(mes)
+    const pagar = await screen.findByRole('button', { name: 'Pagar Luz' })
+    // O servidor "demora": a resposta do pagamento só chega quando o teste liberar.
+    let responder!: (r: unknown) => void
+    vi.mocked(api.POST).mockImplementationOnce((() => new Promise((resolve) => (responder = resolve))) as never)
+    await userEvent.click(pagar)
+    expect(await screen.findByRole('button', { name: 'Desfazer pagamento de Luz' })).toBeInTheDocument()
+    expect(screen.queryByText(/Luz paga na carteira/)).not.toBeInTheDocument() // o aviso só vem com a confirmação
+    responder(ok({ invoice: {}, warnings: [] }))
+    expect(await screen.findByText(/Luz paga na carteira Geral/)).toBeInTheDocument()
   })
 })
 

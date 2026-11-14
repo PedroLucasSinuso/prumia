@@ -23,6 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
+    // oxlint-disable-next-line react/no-did-update-set-state -- é o jeito de "tentar de novo" quando a tela muda; só roda depois de um erro
     if (this.state.failed && prev.resetKey !== this.props.resetKey) this.setState({ failed: false })
   }
 
