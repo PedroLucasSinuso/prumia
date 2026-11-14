@@ -141,8 +141,6 @@ tailscale-status: ## Mostra o que o tailscale serve está publicando e o endere�
 ps: ## Estado dos containers
 	$(COMPOSE) ps
 
-# Backup e restore: ver docs/developer-guide/backup-restore.md. Os scripts leem o .env e falam com o container db.
-.PHONY: backup
 # Testes de ponta a ponta (Playwright): o app inteiro num projeto de compose à parte (porta 18080, banco próprio e
 # descartável), sem tocar no app em uso nem no .env. Cadastro aberto para os testes criarem as próprias contas.
 E2E_COMPOSE = POSTGRES_PASSWORD=e2esenha WEB_PORT=18080 WEB_BIND=127.0.0.1 OPEN_REGISTRATION=true \
@@ -161,6 +159,8 @@ e2e: ## Roda os testes de ponta a ponta contra o app de teste (antes: make e2e-u
 e2e-down: ## Derruba o app de teste e apaga o banco dele
 	$(E2E_COMPOSE) down -v
 
+# Backup e restore: ver docs/developer-guide/backup-restore.md. Os scripts leem o .env e falam com o container db.
+.PHONY: backup
 backup: ## Gera um backup do banco em backups/ (rotação: mantém os 14 mais recentes)
 	@scripts/backup.sh
 
@@ -172,3 +172,24 @@ restore: ## Restaura um backup: make restore FILE=backups/prumia-....dump [TARGE
 .PHONY: test-restore
 test-restore: ## Testa o restore num banco temporário e compara com o banco real [FILE=... para um backup específico]
 	@scripts/test-restore.sh $(FILE)
+
+.PHONY: backup-offsite
+backup-offsite: ## Backup conferido + cópia criptografada para fora do computador (configure o backup.env)
+	@scripts/backup-offsite.sh
+
+.PHONY: backup-decrypt
+backup-decrypt: ## Abre uma cópia criptografada: make backup-decrypt FILE=...dump.gpg (depois: make restore FILE=...)
+	@test -n "$(FILE)" || { echo "uso: make backup-decrypt FILE=/caminho/prumia-AAAAMMDD-HHMMSS.dump.gpg"; exit 2; }
+	@scripts/backup-decrypt.sh "$(FILE)"
+
+.PHONY: backup-schedule
+backup-schedule: ## Agenda o backup-offsite diário (systemd do usuário); HORA=03:15 para mudar o horário
+	@scripts/backup-schedule.sh install $(HORA)
+
+.PHONY: backup-unschedule
+backup-unschedule: ## Remove o agendamento do backup
+	@scripts/backup-schedule.sh remove
+
+.PHONY: backup-status
+backup-status: ## Mostra o agendamento e o resultado da última execução
+	@scripts/backup-schedule.sh status

@@ -9,6 +9,9 @@ Scripts em [`scripts/`](../../scripts/) (bash, `set -euo pipefail`), com atalhos
 | `make backup` | `scripts/backup.sh` | Gera um backup do banco e aplica a rotação |
 | `make restore FILE=... [TARGET=...]` | `scripts/restore.sh [--target <banco>] <arquivo>` | Restaura um backup no banco real (com confirmação) ou em outro banco |
 | `make test-restore [FILE=...]` | `scripts/test-restore.sh [arquivo\|latest]` | Restaura num banco temporário, compara com o real e apaga |
+| `make backup-offsite` | `scripts/backup-offsite.sh` | Backup conferido, criptografado e copiado para fora do computador |
+| `make backup-schedule [HORA=HH:MM]` / `backup-unschedule` / `backup-status` | `scripts/backup-schedule.sh` | Agenda (ou remove) o backup externo diário e mostra a última execução |
+| `make backup-decrypt FILE=...` | `scripts/backup-decrypt.sh` | Abre uma cópia criptografada para o `make restore` |
 
 ## Como funciona
 
@@ -111,47 +114,55 @@ lançou algo depois. Com `FILE=...`, divergência pode ser legítima; olhe quais
 Rode depois de mudar migrations, de atualizar o Postgres e, de vez em quando, para ter certeza de que o backup diário
 está bom. Um backup que nunca foi restaurado é só uma esperança.
 
-## Agendar o backup diário (exemplo, não instalado)
+## Backup automático para fora do computador
 
-Nada é instalado no sistema pelo projeto. Exemplos para copiar, ajustando o caminho do repositório:
+`backups/` fica no mesmo disco do banco: protege contra erro humano, bug e banco corrompido, mas **não** contra perda do
+disco, roubo da máquina ou ransomware. O `make backup-offsite` (`scripts/backup-offsite.sh`) fecha essa lacuna:
 
-```cron
-# crontab -e  — todo dia às 03:15; log em backups/cron.log
-15 3 * * * /caminho/para/prumia/scripts/backup.sh >> /caminho/para/prumia/backups/cron.log 2>&1
+1. gera um backup novo e **confere que ele restaura** (`test-restore.sh`: banco temporário comparado com o real);
+2. **criptografa** com `gpg` simétrico (AES-256) e a senha de `.backup-passphrase`, e confere que a cópia abre e é idêntica;
+3. copia o `prumia-AAAAMMDD-HHMMSS.dump.gpg` para o(s) destino(s), com rotação própria;
+4. registra o resultado em `backups/last-run.txt` e, se configurado, avisa um monitor.
+
+Para no primeiro passo que falhar (código de saída ≠ 0): **nada é enviado sem ter sido conferido**.
+
+### Configurar (uma vez)
+
+```bash
+cp backup.env.example backup.env     # defina ao menos um destino
+make backup-schedule                 # cria a senha (se não existir) e agenda todo dia às 03:15; HORA=02:00 muda
+make backup-offsite                  # roda agora, para ver funcionando
+make backup-status                   # próximo horário e resultado da última execução
 ```
 
-```ini
-# ~/.config/systemd/user/prumia-backup.service
-# [Unit]
-# Description=Backup do banco do prumia
-# [Service]
-# Type=oneshot
-# ExecStart=/caminho/para/prumia/scripts/backup.sh
-#
-# ~/.config/systemd/user/prumia-backup.timer
-# [Unit]
-# Description=Backup diário do prumia
-# [Timer]
-# OnCalendar=*-*-* 03:15
-# Persistent=true
-# [Install]
-# WantedBy=timers.target
-#
-# Ativar: systemctl --user daemon-reload && systemctl --user enable --now prumia-backup.timer
-# (para rodar sem sessão aberta: loginctl enable-linger $USER)
+| Variável (`backup.env` ou ambiente) | Padrão | Uso |
+|---|---|---|
+| `BACKUP_OFFSITE_DIR` | vazio | Pasta fora deste disco: Syncthing, Nextcloud, Drive montado, HD externo, NAS. **Precisa existir**: se a montagem sumir, o backup falha em vez de gravar no disco local sem avisar |
+| `BACKUP_RCLONE_REMOTE` | vazio | Remoto do [rclone](https://rclone.org) (ex.: `gdrive:prumia-backups`), para storage na nuvem |
+| `BACKUP_OFFSITE_KEEP` | `30` | Cópias mantidas em cada destino |
+| `BACKUP_PASSPHRASE_FILE` | `.backup-passphrase` | Arquivo (modo 600, fora do git) com a senha da criptografia |
+| `BACKUP_VERIFY` | `1` | `0` pula o teste de restore (não recomendado) |
+| `BACKUP_HEALTHCHECK_URL` | vazio | Monitor "dead man's switch" (ex.: healthchecks.io): recebe um GET a cada sucesso e avisa você se parar de receber. Nenhum dado vai na requisição |
+
+- **A senha é o ponto único de falha.** O `make backup-schedule` cria `.backup-passphrase` e manda copiar para um gerenciador de
+  senhas: se o computador se perder, as cópias externas só abrem com ela. Ela nunca aparece em log nem na linha de comando
+  (`--passphrase-file`).
+- **Agendamento:** timer do systemd **do usuário** (`~/.config/systemd/user/prumia-backup.{service,timer}`), sem root.
+  `Persistent=true` roda o backup perdido quando a máquina liga. Para rodar sem sessão aberta: `sudo loginctl enable-linger $USER`.
+  O usuário precisa ter acesso ao Docker. Remover: `make backup-unschedule`. Logs: `journalctl --user -u prumia-backup`.
+- **O `backup.env` não é executado:** o script lê só as chaves conhecidas, linha a linha.
+
+### Restaurar a partir de uma cópia externa
+
+```bash
+make backup-decrypt FILE=/caminho/prumia-AAAAMMDD-HHMMSS.dump.gpg   # abre em backups/ (usa .backup-passphrase; sem o arquivo, o gpg pergunta)
+make restore FILE=backups/prumia-AAAAMMDD-HHMMSS.dump
 ```
 
-O usuário que roda o agendamento precisa ter acesso ao Docker. `Persistent=true` faz o backup perdido (máquina
-desligada às 03:15) rodar quando ela ligar.
+Numa máquina nova: clone o repositório, `make up`, recrie `.backup-passphrase` com a senha guardada e siga os dois comandos.
 
-## Atenção: backup no mesmo disco não é backup completo
+### Como foi testado
 
-`backups/` fica no mesmo disco do banco. Isso protege contra erro humano, bug e banco corrompido, mas **não** contra
-perda do disco, roubo da máquina ou ransomware. Copie os arquivos para outro lugar regularmente, por exemplo:
-
-- `rclone copy backups/ remoto:prumia-backups` (para um storage na nuvem, de preferência com criptografia `rclone crypt`);
-- uma pasta sincronizada (Syncthing, Nextcloud, Drive) em outro aparelho;
-- um HD externo de vez em quando.
-
-Os dumps não são criptografados pelo prumia: quem tem o arquivo tem os dados. Trate a cópia externa como dado sensível.
-Isto ainda não é automatizado.
+Contra uma stack isolada (`PRUMIA_COMPOSE_PROJECT`), com pasta de destino: sem destino e com pasta ausente (falha e registra),
+ciclo completo, rotação, abrir a cópia (idêntica ao dump) e senha errada (falha sem deixar arquivo). **Não testados
+automaticamente:** o envio por `rclone` e a instalação do timer (dependem da máquina e da conta de quem hospeda).

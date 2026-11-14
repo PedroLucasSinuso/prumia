@@ -90,7 +90,7 @@ PT-5 do [plano](plano-proximas-etapas.md), em 3 PRs; cada um começa com uma pro
 
 - VPS com certbot (hoje: Tailscale com `tailscale serve`).
 - Revisar rate limit, cookies e HSTS para exposição pública antes de sair do Tailscale.
-- **Backup automático** agendado e enviado para fora da máquina (criptografado, com retenção e verificação por `make test-restore`). Adiado pelo dono (10/2026): fica aqui até ele escolher o destino; até lá, `make backup` manual.
+- **Backup automático** — **feito**: `make backup-schedule` agenda o `make backup-offsite` (conferido por restore, criptografado com gpg, enviado para uma pasta externa ou remoto do rclone, com rotação e registro). Pendente do dono: escolher o destino no `backup.env` e guardar a senha.
 
 ## Ideias sem prioridade
 

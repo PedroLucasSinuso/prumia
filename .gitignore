@@ -42,3 +42,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Backup automático: configuração local e senha da criptografia
+/backup.env
+/.backup-passphrase

@@ -97,7 +97,7 @@ e `oxlint --fix` em `web/**/*.ts(x)` após cada edição. Se um hook bloquear al
 ## Comandos
 Na raiz: `make help` lista tudo. Principais: `make test` (integração precisa de Docker), `make test-short`, `make lint`
 (gofmt, vet, OpenAPI e código gerado em dia), `make generate` (OpenAPI → Go), `make migrate`, `make run`.
-Fluxo de contrato e arquitetura: `docs/developer-guide/architecture.md`. Subir tudo: `make up` / `make down` / `make logs` (compose em `deploy/`, app em http://localhost:8080). Guia: `docs/developer-guide/getting-started.md`. Backup: `make backup` / `make restore FILE=...` / `make test-restore` (scripts em `scripts/`; guia em `docs/developer-guide/backup-restore.md`).
+Fluxo de contrato e arquitetura: `docs/developer-guide/architecture.md`. Subir tudo: `make up` / `make down` / `make logs` (compose em `deploy/`, app em http://localhost:8080). Guia: `docs/developer-guide/getting-started.md`. Backup: `make backup` / `make restore FILE=...` / `make test-restore`; automático e criptografado para fora da máquina: `make backup-schedule` / `make backup-offsite` (scripts em `scripts/`; guia em `docs/developer-guide/backup-restore.md`).
 
 ## Estado atual e próximos passos
 Feito: spec, marca, schema inicial validado (Up/Down/Up + constraints), OpenAPI (esqueleto), plano. Status por fase em `docs/product/plan.md`.

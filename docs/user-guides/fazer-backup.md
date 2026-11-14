@@ -30,9 +30,25 @@ Só faça isso se os dados se perderam ou estragaram. **Tudo o que foi lançado 
 
 Antes de restaurar, o prumia faz sozinho uma cópia do estado atual. Se escolheu a data errada, dá para voltar.
 
+## Backup automático, guardado fora do computador
+
+A pasta `backups` fica no mesmo computador do prumia: se o disco estragar ou o computador for roubado, ela vai junto. O
+backup automático faz uma cópia todo dia, **confere** se ela funciona, **tranca com senha** e manda para outro lugar (uma
+pasta sincronizada com outro aparelho, um HD externo ou a nuvem).
+
+1. Digite `cp backup.env.example backup.env`, abra o arquivo `backup.env` e escreva o destino (as instruções estão nele).
+2. Digite `make backup-schedule`. Na primeira vez ele cria a senha das cópias e mostra onde ela está.
+3. **Guarde essa senha num gerenciador de senhas ou em papel, fora do computador.** Sem ela, as cópias não abrem.
+4. Digite `make backup-offsite` para fazer a primeira cópia agora. Espere `backup externo ok`.
+
+Para saber se está funcionando: `make backup-status` mostra a próxima cópia e o resultado da última.
+
+Para voltar a uma cópia guardada fora: `make backup-decrypt FILE=caminho-do-arquivo.dump.gpg` e depois o passo a passo de
+restaurar, abaixo, com o arquivo que apareceu na pasta `backups`.
+
 ## Quando fazer
 
-- **Todo dia**, de preferência automático (quem cuida do servidor pode agendar; ver o guia técnico).
+- **Todo dia**, de preferência automático (veja acima).
 - **Antes** de atualizar o prumia ou mexer no computador onde ele roda.
 - **Uma vez por mês**, rode `make test-restore` para ter certeza de que as cópias funcionam.
 
