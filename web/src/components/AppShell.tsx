@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
-import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
+import type { MouseEvent, ReactNode } from 'react'
+import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../auth/context'
+import { transition } from '../lib/motion'
 import { ICON, NAV_ITEMS, isActive } from '../lib/navigation'
 import { HouseSwitcher } from './HouseSwitcher'
 import { Logo } from './Logo'
@@ -22,10 +23,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   if (session.status !== 'authenticated') return null
   const mes = params.get('mes')
   const search = mes ? `?mes=${mes}` : ''
   const mobileItems = NAV_ITEMS.filter((i) => i.mobile !== false)
+  // Trocar de tela com transição (lib/motion.ts). Clique com Ctrl/Shift/botão do meio continua abrindo em outra aba.
+  const go = (e: MouseEvent, to: string) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    e.preventDefault()
+    if (to !== pathname) transition(() => navigate({ pathname: to, search }))
+  }
 
   return (
     <div className="min-h-dvh md:flex">
@@ -43,6 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavLink
                 key={item.to}
                 to={{ pathname: item.to, search }}
+                onClick={(e) => go(e, item.to)}
                 aria-current={active ? 'page' : undefined}
                 title={item.label}
                 className={`group flex h-10 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-150 lg:px-3 ${
@@ -78,7 +87,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <UserMenu />
         </header>
-        {children}
+        {/* Só o conteúdo anima na troca de mês/tela; a navegação fica parada (ver `::view-transition-*` em index.css). */}
+        <div data-vt-conteudo>{children}</div>
       </div>
 
       {/* Navegação inferior (celular): ícone + rótulo, alvo de toque inteiro (≥ 44 px) */}
@@ -94,6 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink
               key={item.to}
               to={{ pathname: item.to, search }}
+                onClick={(e) => go(e, item.to)}
               aria-current={active ? 'page' : undefined}
               className={`relative flex h-16 flex-col items-center justify-center gap-1 text-caption tracking-wide transition-colors duration-150 ${
                 active ? 'font-semibold text-heading' : 'font-medium text-muted'
