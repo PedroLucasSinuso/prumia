@@ -99,6 +99,10 @@ Testes das telas simulam a API por rota com `test/utils.tsx` (`mockApi`, `render
   `accent`, `structure`, `accent/45`, `ink/45`, `ink/20`; nunca `text-accent`, que em alguns temas escuros muda de cor e confundiria as fatias), **pago sólido e a pagar tracejado** (`<pattern>` a 45° + contorno, mesma cor da fatia). Eixo em mono com valor curto (`R$ 1,5 mil`), rótulo `out/26`, largura medida por `ResizeObserver`. Acessível:
   `role="img"` com resumo dos valores, grupo focável (setas/Home/End mostram o valor exato numa dica `aria-live`) e tabela `sr-only`.
   Média do período e variação do último mês contra o anterior em números simples. As funções de `lib/history.ts` são puras e testadas.
+- **O que mudou** (`components/MonthComparison`, `lib/insights.ts`): compara o mês com a média dos meses anteriores (até 6, só os
+  que tiveram gasto; mínimo de 2) e lista as categorias que mais subiram e caíram (diferença de pelo menos R$ 50,00 e 20%;
+  subcategoria soma na principal). Usa o histórico por categoria que a API já entrega: nenhuma rota nova. Sem histórico
+  suficiente o bloco não aparece. No celular o gráfico da casa abre sob demanda (**Ver gasto por mês**).
 - **`pages/IncomesPage`** (receitas v2): lista única. Topo: **Recebido** (número grande, com medidor) e **a receber** (pequeno), **por pessoa**
   (tabela recebido + a receber, `lib/income.personTotals`) e **sobra do mês** (`monthSurplus` com os números de `/summary`: receitas −
   despesas; coral só se negativa; link para o Resumo). O recebimento é **automático** (derivado no servidor); a exceção é **Não caiu** / **Caiu**
@@ -325,6 +329,8 @@ conteúdo (`data-vt-conteudo` no `AppShell`) anima. Detalhes que custaram um bug
 - `view-transition-name` cria contexto de empilhamento. Se ficasse sempre ligado, os painéis abertos de dentro do conteúdo iam
   para trás da barra inferior (o teste de ponta a ponta pegou). Por isso o nome só vale enquanto o `<html>` tem `data-vt`.
 - O React Router navega em baixa prioridade; a função espera a primeira mudança no DOM (ou 250 ms) antes da "foto depois".
+- Enquanto o callback da transição não resolve, o navegador **suspende o desenho da página**: nada de `requestAnimationFrame`
+  lá dentro (ele só rodaria quando o Chrome desistisse, 4 s depois, com a tela congelada). O teste de ponta a ponta mede isso.
 - Sem suporte no navegador ou com "reduzir movimento", tudo acontece na hora, sem animação.
 
 ## Quando uma tela quebra
