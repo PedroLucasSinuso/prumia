@@ -2,7 +2,7 @@ import { FileUp, Layers, Plus, Search, X } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvoiceActions, useInvoices, usePayees, usePurchase, useWallets } from '../api/queries'
+import { getInvoice, useCategories, useCategoryActions, extractDocument, useInvoiceActions, useInvoices, usePayees, usePrefetchInvoices, usePurchase, useWallets } from '../api/queries'
 import type { Category, Invoice, SeriesScope } from '../api/types'
 import { useActiveHouse } from '../auth/useActiveHouse'
 import { AppShell } from '../components/AppShell'
@@ -84,6 +84,7 @@ export default function MonthPage() {
   const categoryActions = useCategoryActions(houseId)
   const payees = usePayees(houseId)
   const invoices = useInvoices(houseId, month)
+  usePrefetchInvoices(houseId, [addMonths(month, -1), addMonths(month, 1)]) // a troca de mês já abre com a lista
   const actions = useInvoiceActions(houseId)
 
   const allCategories = useMemo(() => categories.data ?? [], [categories.data])
@@ -126,11 +127,11 @@ export default function MonthPage() {
       return
     }
     const walletId = chosen ?? walletFor(inv)
+    pulsePaid(inv.id) // junto com o toque: a linha já mudou (pagamento otimista)
     actions.pay.mutate(
       { id: inv.id, walletId },
       {
         onSuccess: (result) => {
-          pulsePaid(inv.id)
           toast({
             // O servidor avisa (sem bloquear) quando o saldo de uma carteira com aviso ligado fica negativo.
             message: result?.warnings?.includes('wallet_balance_insufficient')
@@ -140,7 +141,7 @@ export default function MonthPage() {
             onAction: () => actions.unpay.mutate(inv.id),
           })
         },
-        onError: () => toast({ message: 'Não foi possível marcar como paga. Tente de novo.' }),
+        onError: () => toast({ message: `Não foi possível marcar ${inv.description} como paga. Ela voltou para a lista; tente de novo.` }),
       },
     )
   }
@@ -289,7 +290,9 @@ export default function MonthPage() {
 
 
   if (!house) return null
-  const busy = actions.pay.isPending || actions.unpay.isPending
+  // Pagar é otimista (a linha muda no toque), então as linhas não travam enquanto o servidor responde; só o lote trava.
+  const busy = false
+  const bulkBusy = actions.pay.isPending || actions.unpay.isPending
   const activeCategories = allCategories.filter((c) => !c.archived || c.id === panelInvoice?.categoryId)
   const empty = invoices.isSuccess && list.length === 0
   const filtering = Boolean(query.trim() || categoryFilter)
@@ -564,7 +567,7 @@ export default function MonthPage() {
                 </span>
                 {checkedOpen.length > 0 && (
                   <button
-                    disabled={busy}
+                    disabled={bulkBusy}
                     onClick={() => void payChecked()}
                     className="h-9 rounded-md bg-on-structure px-3.5 text-sm font-semibold text-structure transition-opacity hover:opacity-90 disabled:opacity-60"
                   >
