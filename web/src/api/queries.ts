@@ -1,4 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
+
+import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query'
+
+import { todayISO } from '../lib/dates'
 
 import { api } from './client'
 import { ApiError, unwrap } from './errors'
@@ -22,6 +26,24 @@ const keys = {
   members: (house: string) => ['members', house] as const,
   purchases: (house: string) => ['purchases', house] as const,
   recurrences: (house: string) => ['recurrences', house] as const,
+}
+
+/**
+ * Atualização otimista: a tela muda NA HORA do toque e o servidor confirma depois (pelo túnel, a resposta leva um instante que
+ * no celular se sente). `optimistic` aplica `change` a cada item das listas em cache sob `prefix` (devolver null tira o item)
+ * e devolve como desfazer, para o caso de o servidor recusar. Em Laravel/Livewire seria o `wire:model` que já mostra o valor
+ * novo antes do round-trip; aqui é o cache do TanStack Query que é editado à mão.
+ */
+type Rollback = () => void
+async function optimistic<T extends { id: string }>(qc: QueryClient, prefix: QueryKey, id: string, change: (item: T) => T | null): Promise<Rollback> {
+  // Uma busca em andamento traria o estado antigo e passaria por cima do otimista: cancela antes.
+  await qc.cancelQueries({ queryKey: prefix })
+  const before = qc.getQueriesData<unknown>({ queryKey: prefix })
+  qc.setQueriesData<unknown>({ queryKey: prefix }, (data: unknown) => {
+    if (!Array.isArray(data) || !data.some((x: T) => x?.id === id)) return data // só as listas que têm o item
+    return (data as T[]).flatMap((x) => (x.id === id ? (change(x) ?? []) : x))
+  })
+  return () => before.forEach(([key, data]) => qc.setQueryData(key, data))
 }
 
 /**
@@ -193,25 +215,39 @@ export function useAdjustmentActions(houseId: string) {
 }
 
 /** Todas as invoices de um mês de competência (segue o cursor se passar de uma página). */
+async function fetchInvoices(houseId: string, month: string): Promise<Invoice[]> {
+  const items: Invoice[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < 10; page++) {
+    const data = await unwrap(
+      api.GET('/households/{householdId}/invoices', {
+        params: { path: { householdId: houseId }, query: { month, limit: 200, cursor } },
+      }),
+    )
+    items.push(...data.items)
+    if (!data.nextCursor) break
+    cursor = data.nextCursor
+  }
+  return items
+}
+
 export function useInvoices(houseId: string, month: string) {
-  return useQuery({
-    queryKey: keys.invoices(houseId, month),
-    queryFn: async (): Promise<Invoice[]> => {
-      const items: Invoice[] = []
-      let cursor: string | undefined
-      for (let page = 0; page < 10; page++) {
-        const data = await unwrap(
-          api.GET('/households/{householdId}/invoices', {
-            params: { path: { householdId: houseId }, query: { month, limit: 200, cursor } },
-          }),
-        )
-        items.push(...data.items)
-        if (!data.nextCursor) break
-        cursor = data.nextCursor
-      }
-      return items
-    },
-  })
+  return useQuery({ queryKey: keys.invoices(houseId, month), queryFn: () => fetchInvoices(houseId, month) })
+}
+
+/**
+ * Busca em segundo plano as contas dos meses indicados (o anterior e o próximo), para a troca de mês abrir já com a lista.
+ * `staleTime`: não refaz se a cópia tem menos de um minuto. Falha em silêncio (é só adiantamento).
+ */
+export function usePrefetchInvoices(houseId: string, months: string[]) {
+  const qc = useQueryClient()
+  const list = months.join(',')
+  useEffect(() => {
+    if (!houseId) return
+    for (const month of list.split(',').filter(Boolean)) {
+      void qc.prefetchQuery({ queryKey: keys.invoices(houseId, month), queryFn: () => fetchInvoices(houseId, month), staleTime: 60_000 })
+    }
+  }, [qc, houseId, list])
 }
 
 /** Ações sobre invoices. Cada uma atualiza a lista do mês ao terminar (sucesso ou erro). */
@@ -248,14 +284,31 @@ export function useInvoiceActions(houseId: string) {
       unwrap(api.POST('/households/{householdId}/invoices/{invoiceId}/restore', { params: { ...path(id).params, query: { scope } } })),
     onSettled: refresh,
   })
+  // Pagar e desfazer são otimistas: a conta muda de estado no toque; se o servidor recusar, volta como estava (onError).
+  // A lista só é refeita quando a ÚLTIMA dessas ações termina: com várias em sequência, refazer no meio traria do servidor
+  // um estado sem as que ainda estão a caminho, e as contas "piscariam" de volta.
+  const paidKey = ['invoices', houseId, 'paid'] as const
+  const settlePaid = () => (qc.isMutating({ mutationKey: paidKey }) === 1 ? refresh() : undefined)
   const pay = useMutation({
+    mutationKey: paidKey,
     mutationFn: ({ id, walletId }: { id: string; walletId: string }) =>
       unwrap(api.POST('/households/{householdId}/invoices/{invoiceId}/pay', { ...path(id), body: { walletId } })),
-    onSettled: refresh,
+    onMutate: ({ id, walletId }) =>
+      optimistic<Invoice>(qc, keys.allInvoices(houseId), id, (inv) => ({
+        ...inv, status: 'paid', paid: { paidAt: todayISO(), walletId, amountCents: inv.amountCents },
+      })),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: settlePaid,
   })
   const unpay = useMutation({
+    mutationKey: paidKey,
     mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/invoices/{invoiceId}/pay', path(id))),
-    onSettled: refresh,
+    onMutate: (id) =>
+      optimistic<Invoice>(qc, keys.allInvoices(houseId), id, ({ paid: _paid, ...inv }) => ({
+        ...inv, status: inv.dueDate < todayISO() ? 'overdue' : 'pending',
+      })),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: settlePaid,
   })
 
   const createPurchase = useMutation({
@@ -429,13 +482,22 @@ export function useIncomeActions(houseId: string) {
     mutationFn: ({ id, scope }: { id: string; scope?: SeriesScope }) => unwrap(api.POST('/households/{householdId}/incomes/{incomeId}/restore', withScope(id, scope))),
     onSettled: refresh,
   })
+  // "Caiu" / "não caiu" também são otimistas (mesma ideia do pagar; ver `optimistic`).
+  const receivedKey = ['incomes', houseId, 'received'] as const
+  const settleReceived = () => (qc.isMutating({ mutationKey: receivedKey }) === 1 ? refresh() : undefined)
   const receive = useMutation({
+    mutationKey: receivedKey,
     mutationFn: (id: string) => unwrap(api.POST('/households/{householdId}/incomes/{incomeId}/receive', { ...path(id), body: {} })),
-    onSettled: refresh,
+    onMutate: (id) => optimistic<Income>(qc, keys.allIncomes(houseId), id, (inc) => ({ ...inc, received: true, held: false, receivedAt: inc.receivedAt ?? todayISO() })),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: settleReceived,
   })
   const unreceive = useMutation({
+    mutationKey: receivedKey,
     mutationFn: (id: string) => unwrap(api.DELETE('/households/{householdId}/incomes/{incomeId}/receive', path(id))),
-    onSettled: refresh,
+    onMutate: (id) => optimistic<Income>(qc, keys.allIncomes(houseId), id, (inc) => ({ ...inc, received: false, held: true, receivedAt: null })),
+    onError: (_err, _vars, rollback) => rollback?.(),
+    onSettled: settleReceived,
   })
   return { create, update, remove, restore, receive, unreceive }
 }
