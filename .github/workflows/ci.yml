@@ -190,9 +190,11 @@ jobs:
           node-version: 22
 
       # govulncheck só acusa vulnerabilidade em código que o prumia realmente chama (não em qualquer dependência listada).
+      # @latest de propósito: é ferramenta oficial do Go e precisa acompanhar a versão da linguagem (uma versão antiga
+      # fixada quebrou com o Go do projeto).
       - name: Go (govulncheck)
         working-directory: api
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
       # npm audit lê só o package-lock (não instala nada). Dependências de produção, severidade alta ou crítica.
       - name: npm audit (web)
