@@ -209,3 +209,45 @@ describe('resumo do mês', () => {
     expect(links[0]).toHaveAttribute('href', '/resumo?mes=2026-08')
   })
 })
+
+describe('resumo · o que mudou', () => {
+  // Histórico sintético: a API responde pelo intervalo pedido; Moradia (com a filha Luz) sobe em outubro, Mercado cai.
+  const history = (q: { from: string; to: string }) => {
+    const months = monthsBetween(q.from, q.to)
+    const serie = (categoryId: string, normal: number, october: number) => ({
+      categoryId,
+      points: months.map((month) => ({ month, totalCents: month === '2026-10-01' ? october : month > '2026-10-01' ? 0 : normal, paidCents: 0, seriesCents: 0 })),
+    })
+    return ok({ months, series: [serie('c1', 200000, 200000), serie('c6', 20000, 80000), serie('c2', 150000, 60000)] } satisfies CategoryHistory)
+  }
+
+  it('compara o mês com a média e aponta as categorias que fugiram do normal', async () => {
+    mockApi({ me: ok(me), summary: ok(summary), categories: ok(cats), history })
+    renderAt('/resumo?mes=2026-10')
+    const bloco = await screen.findByRole('region', { name: 'O que mudou neste mês' })
+    // casa: 340.000 em outubro contra 370.000 de média = 8% abaixo
+    expect(within(bloco).getByText('Outubro está 8% abaixo da média')).toBeInTheDocument()
+    expect(within(bloco).getByText(/nos 6 meses anteriores/)).toBeInTheDocument()
+    expect(within(bloco).getByText(/O mês ainda não fechou/)).toBeInTheDocument()
+    const subiram = within(bloco).getByRole('list', { name: 'Categorias que subiram' })
+    expect(within(subiram).getByRole('button', { name: /^Moradia: R\$ 2\.800,00, acima da média de R\$ 2\.200,00/ })).toHaveTextContent('+R$ 600,00')
+    const cairam = within(bloco).getByRole('list', { name: 'Categorias que caíram' })
+    expect(within(cairam).getByRole('button', { name: /^Mercado/ })).toHaveTextContent('−60%')
+  })
+
+  it('tocar numa categoria abre o histórico dela', async () => {
+    mockApi({ me: ok(me), summary: ok(summary), categories: ok(cats), history })
+    renderAt('/resumo?mes=2026-10')
+    const bloco = await screen.findByRole('region', { name: 'O que mudou neste mês' })
+    await userEvent.click(within(bloco).getByRole('button', { name: /^Mercado/ }))
+    expect(await screen.findByRole('region', { name: 'Histórico de Mercado' })).toBeInTheDocument()
+  })
+
+  it('casa sem histórico não ganha um bloco vazio; no celular o gráfico da casa abre sob demanda', async () => {
+    mockApi({ me: ok(me), summary: ok(summary), categories: ok(cats) })
+    renderAt('/resumo?mes=2026-10')
+    await userEvent.click(await screen.findByRole('button', { name: /Ver gasto por mês/ }))
+    expect(await screen.findByRole('region', { name: 'Gasto por mês' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'O que mudou neste mês' })).not.toBeInTheDocument()
+  })
+})
