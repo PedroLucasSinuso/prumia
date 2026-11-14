@@ -1,0 +1,12 @@
+{
+  "name": "prumia-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.13.3"
+  }
+}

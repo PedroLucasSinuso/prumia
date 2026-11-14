@@ -74,6 +74,7 @@ Para iterar no backend, rode os testes (`make test`) e reconstrua a API com `doc
 | `make web-test` | lint, typecheck e testes do front |
 | `make lint` | gofmt, vet, OpenAPI e código gerado em dia |
 | `make hooks-test` | testes do guard de Git do Claude Code |
+| `make e2e-up` / `make e2e` / `make e2e-down` | testes de ponta a ponta (Playwright): sobe o app de teste, roda, derruba |
 
 ## Integração contínua
 
@@ -87,8 +88,22 @@ Um push novo no mesmo PR cancela a execução anterior. Para reproduzir localmen
 | `site` | gera e constrói o site de documentação (`site/`), conferindo os links internos | `make site-build` |
 | `hooks` | testes do guard de Git | `make hooks-test` |
 | `docker` | valida o compose e constrói as imagens `api` e `web` (sem push) | `POSTGRES_PASSWORD=x docker compose -p prumia-ci -f deploy/compose.yaml build api web` |
+| `e2e` | sobe o app inteiro pelo compose e roda os testes de ponta a ponta (Playwright, Chromium em tamanho de celular) | `make e2e-up && make e2e && make e2e-down` |
 
 No CI, o job `api` falha se o Docker não estiver disponível (localmente, sem Docker, os testes de integração são só pulados).
+
+### Testes de ponta a ponta (`e2e/`)
+
+Um navegador de verdade (Playwright) dirige o app inteiro: nginx, API Go e Postgres, subidos pelo **mesmo compose de produção**
+num projeto à parte (`prumia-e2e`, porta 18080, banco próprio). Não usa o `.env` nem toca no app em uso na porta 8080.
+
+- `make e2e-up` sobe (com `OPEN_REGISTRATION=true` e as consultas externas desligadas), `make e2e` roda, `make e2e-down` derruba e apaga o banco.
+- O projeto `preparo` cria uma conta pela tela de cadastro e guarda a sessão em `e2e/.auth/`; os testes a reaproveitam e criam
+  contas com nome único (`unico()`), então podem rodar de novo sem limpar o banco e sem esbarrar no limite de cadastros por IP.
+- Cobrem: redirecionamento sem sessão, cadastro/sair/entrar, senha errada, lançar/pagar/desfazer, parcelas nos meses seguintes,
+  importação de lista colada e a **leitura offline** (service worker de verdade, rede cortada pelo navegador).
+- Todos os dados são fictícios. Falhou? `e2e/test-results/` tem o trace (`npx playwright show-trace <arquivo>`); no CI ele vira artefato.
+- Localize elementos por papel e nome acessível (`getByRole`, `getByLabel`), como um leitor de tela: o teste também acusa perda de acessibilidade.
 
 **Sem Docker**, os testes de integração rodam contra um Postgres seu: `TEST_DATABASE_URL=postgres://usuario@localhost:5432/postgres?sslmode=disable make test`
 (o usuário precisa poder criar bancos; cada teste cria e apaga o seu, com o PID do processo no nome).

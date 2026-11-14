@@ -21,8 +21,8 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 | Frontend | React 19 + Vite + TypeScript 5.9 + Tailwind 4, mobile-first, PWA básico (instalável, sem offline). Lint: oxlint. Testes: Vitest + Testing Library. Cliente tipado: openapi-fetch + openapi-typescript |
 | Auth | argon2id; sessão por cookie httpOnly SameSite; rate limit no login |
 | Boleto | extração local: texto do PDF → código de barras → Tesseract; arquivo só em memória (nunca disco/log) |
-| Testes | unit nas regras críticas; integração com Postgres real (testcontainers); front só fluxos principais |
-| CI | GitHub Actions (`.github/workflows/ci.yml`): jobs `api`, `web`, `site`, `hooks`, `docker` em todo PR; mantenha verde |
+| Testes | unit nas regras críticas; integração com Postgres real (testcontainers); front só fluxos principais; ponta a ponta com Playwright em `e2e/` (`make e2e-up && make e2e`) |
+| CI | GitHub Actions (`.github/workflows/ci.yml`): jobs `api`, `web`, `site`, `hooks`, `docker`, `e2e` em todo PR; mantenha verde |
 | Infra | Docker Compose (`deploy/compose.yaml`), 3 containers: `api`, `db`, `web` (nginx: estático + proxy `/api`; config em `deploy/nginx/default.conf`). Só o `web` publica porta (127.0.0.1:8080; nginx sem root). Fase 1: `tailscale serve` HTTPS + `APP_ENV=production` (`docs/developer-guide/deployment.md`); fase 2 VPS + certbot |
 
 ## Layout do repositório
@@ -30,6 +30,7 @@ nada de framework próprio; SOLID e DRY na medida certa; interface só onde há 
 api/            backend Go (cmd/, internal/<domínio>/, migrations/)
 web/            frontend React (a criar)
 openapi/        openapi.yaml (contrato)
+e2e/            testes de ponta a ponta (Playwright) contra o compose
 site/           site público de documentação (Astro + Starlight); páginas geradas de docs/ no build
 deploy/         compose, nginx, Dockerfiles
 scripts/        backup/restore e utilitários

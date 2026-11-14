@@ -78,7 +78,8 @@ flowchart LR
   SHA-256 hashes and sent in the URL fragment, login rate limits per IP and per e-mail with **progressive lockout**.
 - **Real tests**: about 180 integration tests against a **real PostgreSQL** (testcontainers, one database per test, cloned from an
   already migrated template), plus unit tests and UI tests (Vitest + Testing Library).
-- **CI** on every pull request: API, frontend, site, Git hooks and Docker images.
+- **End-to-end tests**: Playwright drives a real browser against the full stack (nginx, API, PostgreSQL) started from the production Compose file, including the offline mode.
+- **CI** on every pull request: API, frontend, site, Git hooks, Docker images and end-to-end tests.
 - **The demo has no server**: it is the app itself with an in-memory fake API, typed by the contract and left out of the production build.
 - **Offline without stale surprises**: the service worker serves cached reads only when the server is unreachable, never replaces
   a 4xx, and the UI always says how old the data is.

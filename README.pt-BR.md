@@ -63,7 +63,8 @@ web/ (React 19 + Vite)  ──►  nginx  ──►  api/ (Go, Gin)  ──►  
   SHA-256 e enviados no fragmento da URL, limite de tentativas por IP e por e-mail com **bloqueio progressivo**.
 - **Testes de verdade**: cerca de 180 testes de integração contra **PostgreSQL real** (testcontainers, um banco por teste, copiado de
   um modelo já migrado), além de testes de unidade e da interface (Vitest + Testing Library).
-- **CI** com 5 jobs (API, front, site, hooks de Git e imagens Docker) a cada PR.
+- **Ponta a ponta**: o Playwright dirige um navegador de verdade contra o app inteiro (nginx, API, PostgreSQL) subido pelo compose de produção, incluindo o modo offline.
+- **CI** com 6 jobs (API, front, site, hooks de Git, imagens Docker e ponta a ponta) a cada PR.
 - **A demonstração não tem servidor**: é o próprio app com uma API falsa em memória, tipada pelo contrato, que fica fora do build de produção.
 
 ## Rodar localmente

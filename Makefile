@@ -143,6 +143,24 @@ ps: ## Estado dos containers
 
 # Backup e restore: ver docs/developer-guide/backup-restore.md. Os scripts leem o .env e falam com o container db.
 .PHONY: backup
+# Testes de ponta a ponta (Playwright): o app inteiro num projeto de compose à parte (porta 18080, banco próprio e
+# descartável), sem tocar no app em uso nem no .env. Cadastro aberto para os testes criarem as próprias contas.
+E2E_COMPOSE = POSTGRES_PASSWORD=e2esenha WEB_PORT=18080 WEB_BIND=127.0.0.1 OPEN_REGISTRATION=true \
+	CNPJ_LOOKUP_URL=off HOLIDAYS_URL=off RATES_URL=off \
+	docker compose -p prumia-e2e --env-file /dev/null -f deploy/compose.yaml
+
+.PHONY: e2e-up
+e2e-up: ## Sobe o app de teste em http://127.0.0.1:18080 (banco separado; não mexe no app em uso)
+	$(E2E_COMPOSE) up -d --build --wait
+
+.PHONY: e2e
+e2e: ## Roda os testes de ponta a ponta contra o app de teste (antes: make e2e-up)
+	cd e2e && npm ci && npx playwright install chromium && npx playwright test
+
+.PHONY: e2e-down
+e2e-down: ## Derruba o app de teste e apaga o banco dele
+	$(E2E_COMPOSE) down -v
+
 backup: ## Gera um backup do banco em backups/ (rotação: mantém os 14 mais recentes)
 	@scripts/backup.sh
 
