@@ -304,6 +304,29 @@ minúscula. Status com os marcadores `[ ▪ ]`, `[ ▫ ]`, `[ ✖ ]`.
 
 O `public/favicon.svg` é um **placeholder**; falta o símbolo oficial (os ícones do PWA também; ver a seção PWA).
 
+## Resposta na hora e movimento
+
+**Atualização otimista** (`optimistic` em `src/api/queries.ts`): pagar, desfazer o pagamento, "caiu" e "não caiu" mudam a tela
+**no toque**; o servidor confirma depois. O cache do TanStack Query é editado em `onMutate`, e `onError` devolve o estado
+anterior (a pessoa vê um aviso e a conta volta para a lista). Regras:
+
+- antes de editar o cache, as buscas em andamento da lista são canceladas (senão a resposta antiga passaria por cima);
+- a lista só é refeita quando a **última** ação daquele tipo termina (`mutationKey` + `isMutating`): pagar três contas seguidas
+  não faz nenhuma "piscar" de volta;
+- o aviso "paga na carteira X" só aparece com a confirmação do servidor; o que é derivado (saldos, resumo) continua vindo dele;
+- as linhas não ficam mais desabilitadas enquanto o servidor responde (só o pagamento em lote trava).
+
+`usePrefetchInvoices` busca em segundo plano o mês anterior e o próximo: a troca de mês abre já com a lista.
+
+**Transições** (`transition` em `src/lib/motion.ts` + o fim de `src/index.css`): trocar de mês e de tela usa a View Transitions
+API. O mês seguinte entra pela direita e o anterior pela esquerda; entre telas, um esmaecer curto. A navegação fica parada, só o
+conteúdo (`data-vt-conteudo` no `AppShell`) anima. Detalhes que custaram um bug:
+
+- `view-transition-name` cria contexto de empilhamento. Se ficasse sempre ligado, os painéis abertos de dentro do conteúdo iam
+  para trás da barra inferior (o teste de ponta a ponta pegou). Por isso o nome só vale enquanto o `<html>` tem `data-vt`.
+- O React Router navega em baixa prioridade; a função espera a primeira mudança no DOM (ou 250 ms) antes da "foto depois".
+- Sem suporte no navegador ou com "reduzir movimento", tudo acontece na hora, sem animação.
+
 ## Quando uma tela quebra
 
 `components/ErrorBoundary.tsx` envolve as rotas (`App.tsx`): se um componente lançar erro ao desenhar, a pessoa vê "Algo deu
