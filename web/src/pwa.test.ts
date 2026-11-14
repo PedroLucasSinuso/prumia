@@ -47,6 +47,15 @@ describe('manifest.webmanifest', () => {
     expect(manifest.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true)
   })
 
+  // Selo do aviso: o Android só usa a transparência; PNG sem canal alfa vira quadrado branco na barra de status.
+  it('o selo da notificação é 96x96, tem transparência e é o que o sw.js usa', () => {
+    const badge = icons['../public/icons/badge-96.png']
+    expect(pngSize(badge)).toEqual({ width: 96, height: 96 })
+    const bytes = Uint8Array.from(atob(badge.split(',')[1]), (c) => c.charCodeAt(0))
+    expect([4, 6]).toContain(bytes[25]) // tipo de cor do IHDR: 4 e 6 são os que têm canal alfa
+    expect(swSource).toContain("badge: '/icons/badge-96.png'")
+  })
+
   it('apple-touch-icon é 180x180', () => {
     expect(pngSize(icons['../public/icons/apple-touch-icon.png'])).toEqual({ width: 180, height: 180 })
   })

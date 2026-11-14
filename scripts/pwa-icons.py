@@ -47,6 +47,25 @@ def render(size, symbol_height):
     return img.resize((size, size), Image.LANCZOS)
 
 
+# Selo do aviso (notificação): o Android usa SÓ a transparência da imagem e pinta o resto de branco. Um PNG opaco (como os
+# ícones acima) vira um quadrado branco na barra de status. Aqui o fundo é transparente e cada face do símbolo tem uma
+# opacidade, para o prumo continuar legível numa cor só.
+BADGE_ALPHAS = [1.0, 0.55, 0.8, 0.65]
+
+
+def render_badge(size, symbol_height=0.86):
+    ss = 4
+    big = size * ss
+    img = Image.new("RGBA", (big, big), (255, 255, 255, 0))
+    draw = ImageDraw.Draw(img)
+    scale = big * symbol_height / (MAX_Y - MIN_Y)
+    off_x = (big - (MAX_X - MIN_X) * scale) / 2
+    off_y = (big - (MAX_Y - MIN_Y) * scale) / 2
+    for (points, _), alpha in zip(POLYGONS, BADGE_ALPHAS):
+        draw.polygon([(off_x + (x - MIN_X) * scale, off_y + (y - MIN_Y) * scale) for x, y in points], fill=(255, 255, 255, round(255 * alpha)))
+    return img.resize((size, size), Image.LANCZOS)
+
+
 def main():
     out = Path(__file__).resolve().parent.parent / "web" / "public" / "icons"
     out.mkdir(parents=True, exist_ok=True)
@@ -58,6 +77,8 @@ def main():
     render(512, 0.52).save(out / "maskable-512.png", optimize=True)
     # iOS arredonda os cantos sozinho e não aceita transparência.
     render(180, 0.66).save(out / "apple-touch-icon.png", optimize=True)
+    # Selo monocromático da notificação (sw.js, opção `badge`): 96 px cobre as telas de alta densidade.
+    render_badge(96).save(out / "badge-96.png", optimize=True)
     print(f"ícones gerados em {out}")
 
 
