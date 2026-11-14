@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/caldate"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/dbtest"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/push"
 	"github.com/PedroLucasSinuso/prumia/api/internal/rates"
 	"github.com/PedroLucasSinuso/prumia/api/internal/reserve"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
@@ -42,6 +44,7 @@ type app struct {
 	cookie auth.CookieConfig
 	rec    *series.RecurrenceService
 	inc    *income.Service
+	push   *push.Service
 }
 
 type opts struct {
@@ -54,6 +57,8 @@ type opts struct {
 	extractor *boleto.Extractor
 	// ratesURL aponta as taxas de referência para um servidor de teste ("" = desligado).
 	ratesURL string
+	// pushSender liga os avisos por push com um envio falso (nil = desligado).
+	pushSender push.Sender
 }
 
 func newApp(t *testing.T, o opts) *app {
@@ -78,6 +83,16 @@ func newApp(t *testing.T, o opts) *app {
 	incSvc := income.NewService(gdb, today)
 	sumSvc := summary.NewService(gdb, today)
 	payeeSvc := payee.NewService(gdb)
+	// Avisos por push: com o.pushSender (falso) o módulo liga; sem ele fica desligado, como um servidor sem chaves VAPID.
+	var sender push.Sender
+	pushKey := ""
+	if o.pushSender != nil {
+		sender, pushKey = o.pushSender, "chave-publica-de-teste"
+	}
+	pushSvc := push.NewService(gdb, sender, nowFn, time.UTC)
+	pushSvc.AllowEndpoint = func(e string) bool {
+		return push.AllowedEndpoint(e) || strings.HasPrefix(e, "https://push.exemplo.test/")
+	}
 	Mount(router, NewServer(sqlDB,
 		auth.NewHandler(svc, cookie, log),
 		&Households{Svc: hs, Log: log},
@@ -94,8 +109,8 @@ func newApp(t *testing.T, o opts) *app {
 		&Incomes{Svc: incSvc, Log: log},
 		&Summaries{Svc: sumSvc, Log: log, Horizons: []HorizonEnsurer{incSvc, recSvc}},
 		NewBoletos(o.extractorOrDefault(), invSvc, payeeSvc, o.company, log),
-	).WithRates(&Rates{Client: rates.New(o.ratesURL)}), auth.Middleware(svc, hs, cookie, log))
-	return &app{t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
+	).WithRates(&Rates{Client: rates.New(o.ratesURL)}).WithPushes(NewPushes(pushSvc, pushKey, cookie, log)), auth.Middleware(svc, hs, cookie, log))
+	return &app{push: pushSvc, t: t, db: gdb, router: router, auth: svc, hs: hs, cookie: cookie, rec: recSvc, inc: incSvc}
 }
 
 type resp struct {

@@ -38,6 +38,11 @@ services:
       RATES_URL: ${RATES_URL:-https://brasilapi.com.br/api/taxas/v1}
       # Endereço público do app, usado nos links de convite e de nova senha (vazio = o endereço do navegador de quem gera o link)
       PUBLIC_URL: ${PUBLIC_URL:-}
+      # Avisos de vencimento por Web Push (opcional; `make push-keys` gera o par). Sem as chaves, os avisos ficam desligados.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      PUSH_DIGEST_HOUR: ${PUSH_DIGEST_HOUR:-9}
       DATABASE_URL: postgres://${POSTGRES_USER:-prumia}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prumia}?sslmode=disable
     # /tmp em memória: as ferramentas de leitura de boleto podem criar arquivos temporários, e boleto nunca deve tocar o disco.
     tmpfs:

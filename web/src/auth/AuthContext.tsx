@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { api } from '../api/client'
 import { resetOffline } from '../lib/offline'
 import { clearOfflineData } from '../lib/pwa'
+import { dropLocalPush } from '../lib/push'
 import { setTheme } from '../lib/theme'
 import { readActiveHouse, writeActiveHouse } from './activeHouseStorage'
 import { AuthContext, type AuthValue, type Session } from './context'
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Os dados guardados para o modo offline são da conta que saiu.
       resetOffline()
       void clearOfflineData()
+      void dropLocalPush()
     }
   }, [])
 

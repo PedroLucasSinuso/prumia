@@ -112,6 +112,10 @@ XSS por dependência comprometida no build do front (mitigado em parte pela CSP)
 
 ## Saída de rede: consulta de CNPJ, feriados e taxas
 
+Com os avisos por push ligados (chaves VAPID no `.env`), a API também chama os serviços de push dos navegadores, e só eles: o
+endereço vem do cliente, então passa por uma lista de hosts conhecidos e o cliente HTTP não segue redirecionamento (proteção
+contra SSRF; ver [push-notifications.md](push-notifications.md)). Fora isso:
+
 A API faz três chamadas de saída, todas à BrasilAPI. A terceira é `GET /api/taxas/v1` (`RATES_URL`; `off` desliga): URL fixa, sem
 nenhum dado na requisição, prazo de 4 s, resposta limitada a 64 KB, cache de 12 h em memória (10 min depois de uma falha) e, se falhar,
 o app mostra a última leitura boa marcada como "última leitura" ou simplesmente não mostra a comparação (`api/internal/rates`). A segunda é `GET /api/feriados/v1/{ano}` (`HOLIDAYS_URL`; `off` desliga): só o ANO vai

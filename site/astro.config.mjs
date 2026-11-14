@@ -35,6 +35,7 @@ export default defineConfig({
             'guias/parcelas-e-contas-fixas',
             { label: 'Importar boleto e listas', slug: 'guias/importar-boleto' },
             { label: 'Salário e outras receitas', slug: 'guias/salario-e-previsao' },
+            { label: 'Avisos de vencimento', slug: 'guias/avisos-de-vencimento' },
             'guias/resumo-do-mes',
           ],
         },

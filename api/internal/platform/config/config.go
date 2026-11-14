@@ -38,7 +38,17 @@ type Config struct {
 	// convite e de nova senha: sem ele o front usaria o endereço do navegador de quem gera o link (localhost no seu computador,
 	// que não abre no celular de quem recebe). Vazio = usa o endereço do navegador.
 	PublicURL string
+	// VAPID*: chaves dos avisos por Web Push (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, geradas por `api push-keys`) e o contato
+	// informado ao serviço de push (VAPID_SUBJECT, "mailto:..." ou URL https). Sem as duas chaves os avisos ficam desligados.
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+	VAPIDSubject    string
+	// PushDigestHour: a partir de que hora (0 a 23, no fuso do app) o aviso diário de vencimentos sai (PUSH_DIGEST_HOUR, padrão 9).
+	PushDigestHour int
 }
+
+// PushEnabled: os avisos por Web Push só ligam com o par de chaves completo.
+func (c Config) PushEnabled() bool { return c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" }
 
 // IsProduction indica se estamos em produção (ajusta modo do Gin, cookies Secure etc.).
 func (c Config) IsProduction() bool { return c.Env == "production" }
@@ -84,6 +94,29 @@ func load(get func(string) string) (Config, error) {
 		problems = append(problems, fmt.Errorf("SESSION_MAX_AGE_DAYS: %w", err))
 	}
 	cfg.SessionMaxAge = time.Duration(maxDays) * 24 * time.Hour
+
+	// Avisos por Web Push: opcionais. Meio configurado (só uma chave, ou sem contato) é erro, para não falhar calado.
+	cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey = strings.TrimSpace(get("VAPID_PUBLIC_KEY")), strings.TrimSpace(get("VAPID_PRIVATE_KEY"))
+	cfg.VAPIDSubject = strings.TrimSpace(get("VAPID_SUBJECT"))
+	if (cfg.VAPIDPublicKey == "") != (cfg.VAPIDPrivateKey == "") {
+		problems = append(problems, errors.New("VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY andam juntas: defina as duas (make push-keys) ou nenhuma"))
+	}
+	if cfg.PushEnabled() {
+		if cfg.VAPIDSubject == "" && strings.HasPrefix(cfg.PublicURL, "https://") {
+			cfg.VAPIDSubject = cfg.PublicURL
+		}
+		if !strings.HasPrefix(cfg.VAPIDSubject, "mailto:") && !strings.HasPrefix(cfg.VAPIDSubject, "https://") {
+			problems = append(problems, errors.New("VAPID_SUBJECT: informe um contato para o serviço de push (mailto:voce@exemplo.com ou uma URL https); sem ele vale o PUBLIC_URL https"))
+		}
+	}
+	cfg.PushDigestHour = 9
+	if v := strings.TrimSpace(get("PUSH_DIGEST_HOUR")); v != "" {
+		h, err := strconv.Atoi(v)
+		if err != nil || h < 0 || h > 23 {
+			problems = append(problems, fmt.Errorf("PUSH_DIGEST_HOUR: use uma hora de 0 a 23 (recebido %q)", v))
+		}
+		cfg.PushDigestHour = h
+	}
 
 	tz := valueOr(get("APP_TIMEZONE"), "America/Sao_Paulo")
 	loc, err := time.LoadLocation(tz)

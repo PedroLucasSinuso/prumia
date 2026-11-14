@@ -11,6 +11,7 @@
 //   `x-prumia-cached-at` (instante em ms da cópia). 4xx (inclui 401) nunca é trocado por cópia.
 //   Fora do cache: /api/auth/* (exceto /api/auth/me) e /api/documents/* (boleto nunca vai a disco).
 // - Escritas (POST/PATCH/DELETE) não passam por aqui: falham normalmente.
+// - Avisos de vencimento por Web Push: eventos `push` e `notificationclick`, no fim do arquivo.
 // - Os dados guardados são limpos ao sair da conta (lib/pwa.ts: clearOfflineData).
 //
 // Ao mudar este arquivo, suba a versão dos caches: o activate apaga os de versões antigas.
@@ -154,4 +155,38 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const handler = route(event.request)
   if (handler) event.respondWith(handler(event.request))
+})
+
+// --- Avisos de vencimento (Web Push) ---------------------------------------------------------------------------
+// O servidor manda {title, body, url, tag} cifrado (api/internal/push). Aqui só mostramos: nada é guardado.
+// `tag`: o aviso de hoje substitui o de ontem da mesma casa, em vez de empilhar.
+self.addEventListener('push', (event) => {
+  let msg = {}
+  try {
+    msg = event.data ? event.data.json() : {}
+  } catch {
+    // corpo que não é JSON: mostra o aviso genérico abaixo
+  }
+  event.waitUntil(
+    self.registration.showNotification(msg.title || 'prumia', {
+      body: msg.body || 'Há contas para conferir.',
+      tag: msg.tag || 'prumia',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: msg.url || '/' },
+    }),
+  )
+})
+
+// Tocar no aviso: traz o app já aberto para a frente, ou abre no endereço do aviso (sempre dentro do próprio site).
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin)
+  const href = target.origin === self.location.origin ? target.href : self.location.origin + '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const open = list.find((client) => 'focus' in client)
+      return open ? open.focus() : self.clients.openWindow(href)
+    }),
+  )
 })

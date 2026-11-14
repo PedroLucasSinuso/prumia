@@ -2,6 +2,7 @@
 //
 //	api          sobe o servidor (padrão)
 //	api migrate  aplica as migrations pendentes e sai
+//	api push-keys  gera um par de chaves VAPID para os avisos por Web Push e sai (não precisa de banco)
 //	api horizon  estende as contas recorrentes e as fontes de receita de todas as casas até o horizonte e sai (job diário, via cron)
 package main
 
@@ -32,6 +33,7 @@ import (
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/config"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/db"
 	"github.com/PedroLucasSinuso/prumia/api/internal/platform/httpx"
+	"github.com/PedroLucasSinuso/prumia/api/internal/push"
 	"github.com/PedroLucasSinuso/prumia/api/internal/rates"
 	"github.com/PedroLucasSinuso/prumia/api/internal/reserve"
 	"github.com/PedroLucasSinuso/prumia/api/internal/series"
@@ -49,6 +51,16 @@ func main() {
 }
 
 func run(args []string) error {
+	// Antes da configuração: gerar chaves não precisa de banco nem de .env.
+	if len(args) > 0 && args[0] == "push-keys" {
+		private, public, err := push.GenerateKeys()
+		if err != nil {
+			return fmt.Errorf("gerando chaves VAPID: %w", err)
+		}
+		fmt.Printf("VAPID_PUBLIC_KEY=%s\nVAPID_PRIVATE_KEY=%s\n", public, private)
+		return nil
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("configuração: %w", err)
@@ -122,6 +134,15 @@ func run(args []string) error {
 		&api.Summaries{Svc: summaries, Log: log, Horizons: []api.HorizonEnsurer{incomes, recurrences}},
 		api.NewBoletos(boleto.NewExtractor(), invoices, payeeSvc, cnpjClient, log),
 	).WithRates(&api.Rates{Client: rates.New(cfg.RatesURL)}) // taxas de referência: BrasilAPI com cache, "off" desliga
+
+	// Avisos por Web Push: sem chaves VAPID o sender fica nil e o módulo inteiro se declara desligado.
+	var sender push.Sender
+	if cfg.PushEnabled() {
+		sender = push.NewWebPushSender(push.VAPID{PublicKey: cfg.VAPIDPublicKey, PrivateKey: cfg.VAPIDPrivateKey, Subject: cfg.VAPIDSubject})
+	}
+	pushSvc := push.NewService(gdb, sender, time.Now, cfg.Location)
+	pushSvc.DigestHour = cfg.PushDigestHour
+	server = server.WithPushes(api.NewPushes(pushSvc, cfg.VAPIDPublicKey, cookie, log))
 	api.Mount(router, server, auth.Middleware(authSvc, households, cookie, log))
 
 	if cfg.AutoMigrate {
@@ -129,6 +150,28 @@ func run(args []string) error {
 			return fmt.Errorf("migrations: %w", err)
 		}
 		log.Info("migrations aplicadas")
+	}
+
+	// Agendador dos avisos: uma goroutine (thread leve do Go) que acorda a cada 10 minutos e manda os avisos do dia que
+	// ainda não saíram. O RunDue é idempotente (push_digests), então reiniciar a API não repete aviso. Para quando o
+	// contexto é cancelado (Ctrl+C / docker stop).
+	if pushSvc.Enabled() {
+		go func() {
+			ticker := time.NewTicker(10 * time.Minute)
+			defer ticker.Stop()
+			for {
+				if n, err := pushSvc.RunDue(ctx); err != nil {
+					log.Error("avisos por push", "erro", err)
+				} else if n > 0 {
+					log.Info("avisos por push enviados", "avisos", n)
+				}
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+				}
+			}
+		}()
 	}
 
 	srv := httpx.NewServer(cfg.HTTPAddr, router)

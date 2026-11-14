@@ -14,6 +14,7 @@ Guia de quem constrói e mantém o prumia. Leia na ordem se for novo no projeto.
 | [authentication.md](authentication.md) | pronto | Sessão, cadastro, convites, papéis, redefinição de senha, autorização por casa, testes e Postman |
 | [incomes-and-wallets.md](incomes-and-wallets.md) | pronto | Receitas, descontos, previsão, carteiras configuráveis, saldos (com saldo anterior), transferências entre carteiras, resumo mensal e aviso de saldo |
 | [boleto-extraction.md](boleto-extraction.md) | pronto | Cascata de extração, validação e limites |
+| [push-notifications.md](push-notifications.md) | pronto | Avisos de vencimento por Web Push: chaves VAPID, assinatura por sessão, aviso diário, proteção contra SSRF |
 | [deployment.md](deployment.md) | pronto (VPS: fase 2) | Compose, nginx, Tailscale com HTTPS, HSTS, produção x desenvolvimento |
 | [backup-restore.md](backup-restore.md) | pronto | Backup, rotação, restore (real e em outro banco), teste de restore e agendamento |
 | [security.md](security.md) | pronto | Modelo de ameaças, o que é protegido e como, checklist de produção, desempenho medido |

@@ -23,6 +23,7 @@ tags:
   - { name: categories, description: "Categorias de despesa" }
   - { name: payees, description: "Favorecidos (apelido + CNPJ opcional)" }
   - { name: rates, description: "Taxas de referência (CDI, Selic, IPCA) da BrasilAPI, com cache" }
+  - { name: push, description: "Avisos de vencimento por Web Push (por aparelho, opcional)" }
   - { name: wallets, description: "Carteiras da casa (saldo por carteira)" }
   - { name: transfers, description: "Transferências entre carteiras" }
   - { name: adjustments, description: "Ajustes de saldo das carteiras (Conferir saldo)" }
@@ -435,6 +436,55 @@ paths:
       responses:
         '200': { description: "Taxas", content: { application/json: { schema: { $ref: '#/components/schemas/ReferenceRates' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  # ------------------------------------------------------------------ push
+  /push/config:
+    get:
+      tags: [push]
+      operationId: getPushConfig
+      summary: Diz se os avisos por Web Push estão ligados no servidor e qual a chave pública (VAPID) para o navegador assinar
+      responses:
+        '200': { description: "Configuração", content: { application/json: { schema: { $ref: '#/components/schemas/PushConfig' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /push/subscriptions:
+    put:
+      tags: [push]
+      operationId: savePushSubscription
+      summary: Liga os avisos neste aparelho (guarda a assinatura do navegador, presa à sessão atual)
+      description: |
+        Idempotente pelo `endpoint`. A assinatura pertence ao usuário e à SESSÃO que a criou: sair da conta (ou a sessão
+        vencer) desliga os avisos do aparelho. O `endpoint` precisa ser HTTPS de um serviço de push conhecido (Chrome/FCM,
+        Firefox, Safari, Edge): o servidor nunca chama um endereço arbitrário. Uma vez por dia, quem tem contas atrasadas ou
+        vencendo até amanhã recebe um aviso por casa.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PushSubscriptionInput' } } }
+      responses:
+        '204': { description: "Assinatura guardada" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { description: "Avisos desligados no servidor (sem chaves VAPID)", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+  /push/unsubscribe:
+    post:
+      tags: [push]
+      operationId: deletePushSubscription
+      summary: Desliga os avisos neste aparelho (apaga a assinatura do usuário com este endpoint)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PushUnsubscribeInput' } } }
+      responses:
+        '204': { description: "Assinatura apagada (ou já não existia)" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /push/test:
+    post:
+      tags: [push]
+      operationId: sendPushTest
+      summary: Envia um aviso de teste aos aparelhos do usuário
+      responses:
+        '200': { description: "Quantos aparelhos receberam", content: { application/json: { schema: { $ref: '#/components/schemas/PushTestResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { description: "Avisos desligados no servidor", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
   /cnpj/{cnpj}:
     parameters:
       - { name: cnpj, in: path, required: true, description: "14 dígitos", schema: { type: string, maxLength: 30 } }
@@ -1452,6 +1502,33 @@ components:
         code: { type: string, enum: [cdi, selic, ipca] }
         name: { type: string, description: "Para exibir: CDI, Selic, IPCA" }
         basisPoints: { type: integer, description: "Centésimos de ponto percentual: 1490 = 14,90% ao ano (IPCA: acumulado em 12 meses)" }
+    PushConfig:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean, description: "false = o servidor está sem chaves VAPID; a tela não oferece os avisos" }
+        publicKey: { type: string, nullable: true, description: "Chave pública VAPID (base64url) para o `applicationServerKey` do navegador" }
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint: { type: string, maxLength: 2000, description: "URL HTTPS do serviço de push do navegador" }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, maxLength: 200, description: "Chave pública do aparelho (base64url)" }
+            auth: { type: string, maxLength: 100, description: "Segredo de autenticação do aparelho (base64url)" }
+    PushUnsubscribeInput:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint: { type: string, maxLength: 2000 }
+    PushTestResult:
+      type: object
+      required: [sent]
+      properties:
+        sent: { type: integer, description: "Aparelhos que aceitaram o aviso (0 = nenhum aparelho com avisos ligados)" }
     CnpjInfo:
       type: object
       required: [cnpj, legalName]

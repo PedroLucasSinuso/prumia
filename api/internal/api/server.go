@@ -47,12 +47,19 @@ type Server struct {
 	*Summaries
 	*Boletos
 	*Rates
+	*Pushes
 	DB Pinger
 }
 
 // WithRates liga as taxas de referência (GET /rates). Fica fora do NewServer para não mexer na assinatura usada por todos.
 func (s Server) WithRates(r *Rates) Server {
 	s.Rates = r
+	return s
+}
+
+// WithPushes liga os avisos por Web Push (/push/*).
+func (s Server) WithPushes(p *Pushes) Server {
+	s.Pushes = p
 	return s
 }
 

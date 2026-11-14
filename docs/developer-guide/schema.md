@@ -201,6 +201,14 @@ Investimento como carteira especial (ver [incomes-and-wallets.md](incomes-and-wa
 `wallets_default_not_investment`: `CHECK (NOT (is_default AND kind = 'investment'))`. Sem backfill (toda carteira existente é
 `regular`). O `Down` remove as colunas e o `CHECK`: os investimentos viram carteiras comuns, com saldo e histórico intactos.
 
+### push_subscriptions e push_digests (migration 00016)
+
+Avisos de vencimento por Web Push ([push-notifications.md](push-notifications.md)). `push_subscriptions`: um aparelho por linha
+(`user_id`, `endpoint` único com `CHECK` de `https://`, chaves `p256dh`/`auth`), preso à sessão por `session_hash` →
+`sessions(token_hash) ON DELETE CASCADE`: sair da conta apaga a assinatura. `push_digests`: PK `(user_id, household_id, day)`,
+garante um aviso por pessoa, casa e dia. Não são dados da casa (pertencem ao usuário), por isso sem FK composta de `household_id`;
+o isolamento é feito na consulta, a partir de `household_members`. Sem backfill.
+
 ## 6. O que o schema ainda NÃO cobre (pós-MVP, de propósito)
 
 Taxa contratada de investimentos e cotação de ações e fundos (a reserva de emergência e os investimentos já existem: `00014` e `00015`).

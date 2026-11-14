@@ -1377,6 +1377,39 @@ type PurchasePage struct {
 	NextCursor *string    `json:"nextCursor,omitempty"`
 }
 
+// PushConfig defines model for PushConfig.
+type PushConfig struct {
+	// Enabled false = o servidor está sem chaves VAPID; a tela não oferece os avisos
+	Enabled bool `json:"enabled"`
+
+	// PublicKey Chave pública VAPID (base64url) para o `applicationServerKey` do navegador
+	PublicKey *string `json:"publicKey,omitempty"`
+}
+
+// PushSubscriptionInput defines model for PushSubscriptionInput.
+type PushSubscriptionInput struct {
+	// Endpoint URL HTTPS do serviço de push do navegador
+	Endpoint string `json:"endpoint"`
+	Keys     struct {
+		// Auth Segredo de autenticação do aparelho (base64url)
+		Auth string `json:"auth"`
+
+		// P256dh Chave pública do aparelho (base64url)
+		P256dh string `json:"p256dh"`
+	} `json:"keys"`
+}
+
+// PushTestResult defines model for PushTestResult.
+type PushTestResult struct {
+	// Sent Aparelhos que aceitaram o aviso (0 = nenhum aparelho com avisos ligados)
+	Sent int `json:"sent"`
+}
+
+// PushUnsubscribeInput defines model for PushUnsubscribeInput.
+type PushUnsubscribeInput struct {
+	Endpoint string `json:"endpoint"`
+}
+
 // Recurrence defines model for Recurrence.
 type Recurrence struct {
 	// AmountCents Valor em centavos (BRL)
@@ -2139,6 +2172,12 @@ type UpdateWalletJSONRequestBody = WalletPatch
 // AcceptInviteJSONRequestBody defines body for AcceptInvite for application/json ContentType.
 type AcceptInviteJSONRequestBody AcceptInviteJSONBody
 
+// SavePushSubscriptionJSONRequestBody defines body for SavePushSubscription for application/json ContentType.
+type SavePushSubscriptionJSONRequestBody = PushSubscriptionInput
+
+// DeletePushSubscriptionJSONRequestBody defines body for DeletePushSubscription for application/json ContentType.
+type DeletePushSubscriptionJSONRequestBody = PushUnsubscribeInput
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Login Login (define cookie de sessão)
@@ -2387,6 +2426,18 @@ type ServerInterface interface {
 	// AcceptInvite Usuário logado entra em outra casa com um token de convite
 	// (POST /invites/accept)
 	AcceptInvite(c *gin.Context)
+	// GetPushConfig Diz se os avisos por Web Push estão ligados no servidor e qual a chave pública (VAPID) para o navegador assinar
+	// (GET /push/config)
+	GetPushConfig(c *gin.Context)
+	// SavePushSubscription Liga os avisos neste aparelho (guarda a assinatura do navegador, presa à sessão atual)
+	// (PUT /push/subscriptions)
+	SavePushSubscription(c *gin.Context)
+	// SendPushTest Envia um aviso de teste aos aparelhos do usuário
+	// (POST /push/test)
+	SendPushTest(c *gin.Context)
+	// DeletePushSubscription Desliga os avisos neste aparelho (apaga a assinatura do usuário com este endpoint)
+	// (POST /push/unsubscribe)
+	DeletePushSubscription(c *gin.Context)
 	// GetReferenceRates CDI, Selic e IPCA (12 meses) da BrasilAPI, com cache no servidor. Nunca falha por causa da BrasilAPI
 	// (GET /rates)
 	GetReferenceRates(c *gin.Context)
@@ -4949,6 +5000,58 @@ func (siw *ServerInterfaceWrapper) AcceptInvite(c *gin.Context) {
 	siw.Handler.AcceptInvite(c)
 }
 
+// GetPushConfig operation middleware
+func (siw *ServerInterfaceWrapper) GetPushConfig(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetPushConfig(c)
+}
+
+// SavePushSubscription operation middleware
+func (siw *ServerInterfaceWrapper) SavePushSubscription(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SavePushSubscription(c)
+}
+
+// SendPushTest operation middleware
+func (siw *ServerInterfaceWrapper) SendPushTest(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SendPushTest(c)
+}
+
+// DeletePushSubscription operation middleware
+func (siw *ServerInterfaceWrapper) DeletePushSubscription(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeletePushSubscription(c)
+}
+
 // GetReferenceRates operation middleware
 func (siw *ServerInterfaceWrapper) GetReferenceRates(c *gin.Context) {
 
@@ -5017,6 +5120,10 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.DeleteCategory)
 	router.PATCH(options.BaseURL+"/households/:householdId/categories/:categoryId", wrapper.UpdateCategory)
 	router.GET(options.BaseURL+"/rates", wrapper.GetReferenceRates)
+	router.GET(options.BaseURL+"/push/config", wrapper.GetPushConfig)
+	router.PUT(options.BaseURL+"/push/subscriptions", wrapper.SavePushSubscription)
+	router.POST(options.BaseURL+"/push/unsubscribe", wrapper.DeletePushSubscription)
+	router.POST(options.BaseURL+"/push/test", wrapper.SendPushTest)
 	router.GET(options.BaseURL+"/cnpj/:cnpj", wrapper.LookupCnpj)
 	router.GET(options.BaseURL+"/households/:householdId/payees", wrapper.ListPayees)
 	router.POST(options.BaseURL+"/households/:householdId/payees", wrapper.CreatePayee)

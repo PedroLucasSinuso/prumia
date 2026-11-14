@@ -117,6 +117,8 @@ type Routes = {
   signupInvites?: Reply
   /** GET /rates (taxas de referência). Padrão: indisponível, sem taxas. */
   rates?: Reply
+  pushConfig?: Reply
+  pushTest?: Reply
   /** GET /reserve (meta da reserva). Padrão: sem meta. */
   reserve?: Reply
   /** PUT /reserve. Padrão: devolve o que foi enviado como status. */
@@ -204,6 +206,7 @@ export function mockApi(r: Routes = {}) {
     if (url === '/households/{householdId}/wallets') return r.wallets ?? ok(wallets)
     if (url === '/households/{householdId}/transfers') return r.transfers ?? ok([])
     if (url === '/auth/signup-invites') return r.signupInvites ?? ok([])
+    if (url === '/push/config') return r.pushConfig ?? ok({ enabled: false, publicKey: null })
     if (url === '/rates') return r.rates ?? ok({ available: false, fetchedAt: null, rates: [] })
     if (url === '/households/{householdId}/reserve') return r.reserve ?? ok(noReserve)
     if (url === '/households/{householdId}/wallet-adjustments') return r.adjustments ?? ok([])
@@ -284,6 +287,7 @@ export function mockApi(r: Routes = {}) {
       '/auth/password': r.changePassword,
       '/households': r.createHousehold,
       '/invites/accept': r.acceptInvite,
+      '/push/test': r.pushTest,
     }
     const reply = pick[url]
     if (reply instanceof Error) throw reply

@@ -52,6 +52,9 @@ on('PATCH', `${H}/members/{userId}`, ({ params, body }) => {
   return json(m)
 })
 on('GET', '/cnpj/{cnpj}', () => problem(503, 'lookup_unavailable'))
+// Avisos por push: a demonstração não tem servidor para enviar, então se declara desligada (a tela explica).
+on('GET', '/push/config', () => json({ enabled: false, publicKey: null }))
+
 on('GET', '/rates', () =>
   json({
     available: true, fetchedAt: new Date().toISOString(),

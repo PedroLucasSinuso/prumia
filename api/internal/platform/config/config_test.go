@@ -99,3 +99,42 @@ func TestLoadPublicURL(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadPush(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "postgres://x"}
+	with := func(extra map[string]string) func(string) string {
+		m := map[string]string{}
+		for k, v := range base {
+			m[k] = v
+		}
+		for k, v := range extra {
+			m[k] = v
+		}
+		return env(m)
+	}
+	// sem chaves: desligado, hora padrão 9
+	cfg, err := load(with(nil))
+	if err != nil || cfg.PushEnabled() || cfg.PushDigestHour != 9 {
+		t.Errorf("padrão: %+v %v", cfg, err)
+	}
+	// par completo + contato
+	cfg, err = load(with(map[string]string{"VAPID_PUBLIC_KEY": "pub", "VAPID_PRIVATE_KEY": "priv", "VAPID_SUBJECT": "mailto:alguem@exemplo.test", "PUSH_DIGEST_HOUR": "0"}))
+	if err != nil || !cfg.PushEnabled() || cfg.PushDigestHour != 0 {
+		t.Errorf("ligado: %+v %v", cfg, err)
+	}
+	// sem VAPID_SUBJECT vale o PUBLIC_URL https
+	cfg, err = load(with(map[string]string{"VAPID_PUBLIC_KEY": "pub", "VAPID_PRIVATE_KEY": "priv", "PUBLIC_URL": "https://app.exemplo.test"}))
+	if err != nil || cfg.VAPIDSubject != "https://app.exemplo.test" {
+		t.Errorf("contato pelo PUBLIC_URL: %q %v", cfg.VAPIDSubject, err)
+	}
+	for name, extra := range map[string]map[string]string{
+		"só uma chave":  {"VAPID_PUBLIC_KEY": "pub"},
+		"sem contato":   {"VAPID_PUBLIC_KEY": "pub", "VAPID_PRIVATE_KEY": "priv"},
+		"contato ruim":  {"VAPID_PUBLIC_KEY": "pub", "VAPID_PRIVATE_KEY": "priv", "VAPID_SUBJECT": "alguem"},
+		"hora inválida": {"PUSH_DIGEST_HOUR": "24"},
+	} {
+		if _, err := load(with(extra)); err == nil {
+			t.Errorf("%s: deveria falhar", name)
+		}
+	}
+}

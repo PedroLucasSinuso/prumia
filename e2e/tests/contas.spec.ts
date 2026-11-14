@@ -74,3 +74,9 @@ test('uma linha só colada também mantém o vencimento escrito', async ({ page 
   await page.getByRole('button', { name: 'Ler texto' }).click()
   await expect(page.getByRole('region', { name: 'Contas encontradas' }).getByLabel('Vencimento')).toHaveValue(`20/${mes}/${ano}`)
 })
+
+// O app de teste sobe sem chaves VAPID: a tela de avisos precisa explicar, em vez de oferecer um botão que não funciona.
+test('avisos: servidor sem chaves explica que o recurso está desligado', async ({ page }) => {
+  await page.goto('/ajustes/avisos')
+  await expect(page.getByRole('region', { name: 'Avisos de vencimento' })).toContainText('não estão ligados neste servidor')
+})

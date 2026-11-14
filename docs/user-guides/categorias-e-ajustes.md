@@ -2,7 +2,7 @@
 
 **Ajustes** é o painel da casa e da sua conta. No computador, as seções ficam numa lista à esquerda e a escolhida abre ao lado; no celular,
 **Ajustes** é um menu de seções e cada uma abre em tela própria (use **Ajustes** no topo para voltar). Seções: **Casa e pessoas**
-(veja o guia *Convidar pessoas*), **Categorias**, **Favorecidos**, **Aparência**, **Minha conta**, **Dados** e **Sobre**.
+(veja o guia *Convidar pessoas*), **Categorias**, **Carteiras**, **Favorecidos**, **Aparência**, **Avisos** (veja o guia *Avisos de vencimento*), **Minha conta**, **Dados** e **Sobre**.
 O menu da sua foto (canto da tela) leva direto a **Minha conta** e **Aparência**.
 
 ## Como organizar as categorias da casa

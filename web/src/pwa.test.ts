@@ -71,6 +71,7 @@ function loadServiceWorker({ existingCaches = [] as string[] } = {}) {
     keys: async () => [...store.keys()],
     delete: async (name: string) => store.delete(name),
   }
+  const openWindows: { focus: () => Promise<void> }[] = []
   let reply: Reply = new Response('online')
   const fetch = vi.fn(async () => {
     if (reply === 'offline') throw new TypeError('Failed to fetch')
@@ -81,7 +82,12 @@ function loadServiceWorker({ existingCaches = [] as string[] } = {}) {
     location: { origin: 'https://prumia.test' },
     addEventListener: (type: string, fn: (event: unknown) => void) => (listeners[type] = fn),
     skipWaiting: vi.fn(async () => {}),
-    clients: { claim: vi.fn(async () => {}) },
+    clients: {
+      claim: vi.fn(async () => {}),
+      matchAll: vi.fn(async () => openWindows),
+      openWindow: vi.fn(async (_url: string) => {}),
+    },
+    registration: { showNotification: vi.fn(async (_title: string, _options: object) => {}) },
   }
   new Function('self', 'caches', 'fetch', swSource)(self, caches, fetch)
 
@@ -94,7 +100,7 @@ function loadServiceWorker({ existingCaches = [] as string[] } = {}) {
   }
   const request = (path: string, mode = 'cors', method = 'GET') => ({ url: `https://prumia.test${path}`, mode, method })
   const get = async (path: string, mode = 'cors') => (await dispatch('fetch', { request: request(path, mode) })) as Response
-  return { dispatch, request, get, fetch, self, store, setReply: (r: Reply) => (reply = r) }
+  return { dispatch, request, get, fetch, self, store, openWindows, setReply: (r: Reply) => (reply = r) }
 }
 
 describe('sw.js', () => {
@@ -220,6 +226,52 @@ describe('sw.js', () => {
       const sw = loadServiceWorker()
       sw.setReply('offline')
       await expect(sw.get('/api/nunca-visto')).rejects.toThrow()
+    })
+  })
+
+  describe('avisos (push)', () => {
+    it('mostra o aviso recebido, com a tag e o endereço', async () => {
+      const sw = loadServiceWorker()
+      const msg = { title: 'prumia', body: '1 vence hoje (R$ 99,90)', url: '/', tag: 'prumia-vencimentos-x' }
+      await sw.dispatch('push', { data: { json: () => msg } })
+      expect(sw.self.registration.showNotification).toHaveBeenCalledWith(
+        'prumia',
+        expect.objectContaining({ body: '1 vence hoje (R$ 99,90)', tag: 'prumia-vencimentos-x', data: { url: '/' } }),
+      )
+    })
+
+    it('corpo ausente ou inválido vira um aviso genérico (nunca um aviso em branco)', async () => {
+      const sw = loadServiceWorker()
+      await sw.dispatch('push', { data: null })
+      await sw.dispatch('push', {
+        data: {
+          json: () => {
+            throw new Error('não é JSON')
+          },
+        },
+      })
+      expect(sw.self.registration.showNotification).toHaveBeenCalledTimes(2)
+      expect(sw.self.registration.showNotification).toHaveBeenLastCalledWith('prumia', expect.objectContaining({ body: 'Há contas para conferir.' }))
+    })
+
+    it('tocar no aviso foca o app aberto; sem janela, abre o endereço do aviso', async () => {
+      const sw = loadServiceWorker()
+      const close = vi.fn()
+      await sw.dispatch('notificationclick', { notification: { close, data: { url: '/resumo' } } })
+      expect(close).toHaveBeenCalled()
+      expect(sw.self.clients.openWindow).toHaveBeenCalledWith('https://prumia.test/resumo')
+
+      const focus = vi.fn(async () => {})
+      sw.openWindows.push({ focus })
+      await sw.dispatch('notificationclick', { notification: { close, data: { url: '/' } } })
+      expect(focus).toHaveBeenCalled()
+      expect(sw.self.clients.openWindow).toHaveBeenCalledTimes(1)
+    })
+
+    it('endereço de outro site no aviso é trocado pela página inicial', async () => {
+      const sw = loadServiceWorker()
+      await sw.dispatch('notificationclick', { notification: { close: vi.fn(), data: { url: 'https://outro.site/x' } } })
+      expect(sw.self.clients.openWindow).toHaveBeenCalledWith('https://prumia.test/')
     })
   })
 })

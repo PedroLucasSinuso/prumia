@@ -50,6 +50,10 @@ run: ## Sobe a API local (precisa de DATABASE_URL)
 migrate: ## Aplica as migrations (precisa de DATABASE_URL)
 	cd $(API) && go run ./cmd/api migrate
 
+.PHONY: push-keys
+push-keys: ## Gera o par de chaves VAPID dos avisos por push (cole a saída no .env e rode make up)
+	@cd $(API) && go run ./cmd/api push-keys
+
 .PHONY: web-install
 web-install: ## Instala as dependências do front
 	cd $(WEB) && npm ci

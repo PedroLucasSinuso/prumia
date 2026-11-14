@@ -412,6 +412,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/push/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diz se os avisos por Web Push estão ligados no servidor e qual a chave pública (VAPID) para o navegador assinar */
+        get: operations["getPushConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/push/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Liga os avisos neste aparelho (guarda a assinatura do navegador, presa à sessão atual)
+         * @description Idempotente pelo `endpoint`. A assinatura pertence ao usuário e à SESSÃO que a criou: sair da conta (ou a sessão
+         *     vencer) desliga os avisos do aparelho. O `endpoint` precisa ser HTTPS de um serviço de push conhecido (Chrome/FCM,
+         *     Firefox, Safari, Edge): o servidor nunca chama um endereço arbitrário. Uma vez por dia, quem tem contas atrasadas ou
+         *     vencendo até amanhã recebe um aviso por casa.
+         */
+        put: operations["savePushSubscription"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/push/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desliga os avisos neste aparelho (apaga a assinatura do usuário com este endpoint) */
+        post: operations["deletePushSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/push/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Envia um aviso de teste aos aparelhos do usuário */
+        post: operations["sendPushTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cnpj/{cnpj}": {
         parameters: {
             query?: never;
@@ -1509,6 +1583,29 @@ export interface components {
             name: string;
             /** @description Centésimos de ponto percentual: 1490 = 14,90% ao ano (IPCA: acumulado em 12 meses) */
             basisPoints: number;
+        };
+        PushConfig: {
+            /** @description false = o servidor está sem chaves VAPID; a tela não oferece os avisos */
+            enabled: boolean;
+            /** @description Chave pública VAPID (base64url) para o `applicationServerKey` do navegador */
+            publicKey?: string | null;
+        };
+        PushSubscriptionInput: {
+            /** @description URL HTTPS do serviço de push do navegador */
+            endpoint: string;
+            keys: {
+                /** @description Chave pública do aparelho (base64url) */
+                p256dh: string;
+                /** @description Segredo de autenticação do aparelho (base64url) */
+                auth: string;
+            };
+        };
+        PushUnsubscribeInput: {
+            endpoint: string;
+        };
+        PushTestResult: {
+            /** @description Aparelhos que aceitaram o aviso (0 = nenhum aparelho com avisos ligados) */
+            sent: number;
         };
         CnpjInfo: {
             cnpj: string;
@@ -3078,6 +3175,115 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    getPushConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Configuração */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushConfig"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    savePushSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionInput"];
+            };
+        };
+        responses: {
+            /** @description Assinatura guardada */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Avisos desligados no servidor (sem chaves VAPID) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deletePushSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushUnsubscribeInput"];
+            };
+        };
+        responses: {
+            /** @description Assinatura apagada (ou já não existia) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    sendPushTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quantos aparelhos receberam */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushTestResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+            /** @description Avisos desligados no servidor */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     lookupCnpj: {

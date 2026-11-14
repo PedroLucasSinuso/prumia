@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleUserRound, Database, Info, Palette, Store, Tags, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, CircleUserRound, Database, Info, Palette, Store, Tags, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import { useCategories } from '../api/queries'
@@ -12,13 +12,14 @@ import { AppearanceSection } from '../components/settings/AppearanceSection'
 import { CategoriesSection } from '../components/settings/CategoriesSection'
 import { DataSection } from '../components/settings/DataSection'
 import { HouseSection } from '../components/settings/HouseSection'
+import { NotificationsSection } from '../components/settings/NotificationsSection'
 import { PayeesSection } from '../components/settings/PayeesSection'
 import { WalletsSection } from '../components/settings/WalletsSection'
 import { SectionTitle } from '../components/ui/SectionTitle'
 import { ICON } from '../lib/navigation'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
-type SectionId = 'casa' | 'categorias' | 'carteiras' | 'favorecidos' | 'aparencia' | 'conta' | 'dados' | 'sobre'
+type SectionId = 'casa' | 'categorias' | 'carteiras' | 'favorecidos' | 'aparencia' | 'avisos' | 'conta' | 'dados' | 'sobre'
 
 /** As seções de Ajustes, na ordem do menu. O `id` é o último pedaço do endereço (/ajustes/casa). */
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: LucideIcon }[] = [
@@ -27,6 +28,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: LucideIcon }
   { id: 'carteiras', label: 'Carteiras', hint: 'Onde o dinheiro da casa fica', icon: Wallet },
   { id: 'favorecidos', label: 'Favorecidos', hint: 'Quem recebe: empresas e pessoas', icon: Store },
   { id: 'aparencia', label: 'Aparência', hint: 'Tema de cor', icon: Palette },
+  { id: 'avisos', label: 'Avisos', hint: 'Lembrete de vencimento', icon: Bell },
   { id: 'conta', label: 'Minha conta', hint: 'Nome, senha e aparelhos', icon: CircleUserRound },
   { id: 'dados', label: 'Dados', hint: 'Exportar para planilha', icon: Database },
   { id: 'sobre', label: 'Sobre', hint: 'Versão e guias', icon: Info },
@@ -118,6 +120,8 @@ function SectionBody({ id, me, house, desktop }: { id: SectionId; me: Me; house?
   switch (id) {
     case 'aparencia':
       return <AppearanceSection />
+    case 'avisos':
+      return <NotificationsSection />
     case 'conta':
       return <AccountSection me={me} />
     case 'sobre':
