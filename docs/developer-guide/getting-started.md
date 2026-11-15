@@ -4,7 +4,7 @@ Responde: como subir o prumia e rodar os testes numa máquina nova.
 
 ## Requisitos
 
-Go 1.27, Node 22, Docker com Compose v2 e `make`. (Para o OpenAPI: `npx` baixa o Redocly sob demanda.)
+Go 1.27, Node 22, Docker com Compose v2 e `make`. O site de documentação (`make site-dev` e `make site-build`) roda em contêiner com Node 22 atual, porque o Astro 7 pede 22.23.4 ou mais novo; não depende do Node da máquina. (Para o OpenAPI: `npx` baixa o Redocly sob demanda.)
 
 ## Subir o app completo
 
