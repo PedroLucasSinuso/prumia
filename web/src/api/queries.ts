@@ -215,7 +215,7 @@ export function useAdjustmentActions(houseId: string) {
 }
 
 /** Todas as invoices de um mês de competência (segue o cursor se passar de uma página). */
-async function fetchInvoices(houseId: string, month: string): Promise<Invoice[]> {
+export async function fetchInvoices(houseId: string, month: string): Promise<Invoice[]> {
   const items: Invoice[] = []
   let cursor: string | undefined
   for (let page = 0; page < 10; page++) {

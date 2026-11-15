@@ -13,6 +13,8 @@
 // - Escritas (POST/PATCH/DELETE) não passam por aqui: falham normalmente.
 // - Avisos de vencimento por Web Push: eventos `push` e `notificationclick`, no fim do arquivo.
 // - Os dados guardados são limpos ao sair da conta (lib/pwa.ts: clearOfflineData).
+// - Este arquivo só guarda o que passa por ele. Quem adianta o resto (código das telas nunca abertas, moldura e dados
+//   dos meses próximos) é o app, em src/lib/warmup.ts, fazendo os pedidos que caem em staticFile e apiRead.
 //
 // Ao mudar este arquivo, suba a versão dos caches: o activate apaga os de versões antigas.
 

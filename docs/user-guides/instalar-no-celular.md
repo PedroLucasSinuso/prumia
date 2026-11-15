@@ -25,7 +25,8 @@ Use quando quiser abrir o prumia como um app, pelo ícone na tela inicial, em te
 ## E se...
 
 - **Não aparece "Instalar app"?** Confira se o endereço começa com `https://`. Recarregue a página e espere alguns segundos.
-- **Aparece "Sem conexão"?** O prumia precisa de internet (e, de fora de casa, do Tailscale ligado) para mostrar suas contas.
-  Ele não guarda os dados no celular. Conecte e toque em **Tentar de novo**.
+- **Aparece "Sem conexão"?** Isso só acontece se o app nunca foi aberto com internet neste celular. Conecte, toque em
+  **Tentar de novo** e deixe o app aberto por alguns segundos: ele guarda sozinho as telas e os meses próximos. Daí em
+  diante ele abre mesmo sem conexão (só para consultar).
 - **Atualizou o prumia e o celular ainda mostra o antigo?** Feche o app e abra de novo.
 - **Quero tirar da tela inicial?** Remova o ícone como qualquer outro app. Seus dados continuam no servidor.

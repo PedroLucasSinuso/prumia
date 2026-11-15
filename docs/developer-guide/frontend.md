@@ -342,8 +342,8 @@ errado nesta tela" com **Recarregar** e **Ir para o Mês**, em vez de tela em br
 ## PWA (instalar no celular)
 
 **O que é:** instalável (o navegador oferece "Instalar app"/"Adicionar à tela inicial": tela cheia, ícone e barra na cor da
-marca) e com **leitura offline**: com o PC da casa desligado ou sem sinal, o app abre e mostra o que já foi visto, com um
-aviso de quando são os dados. **O que não é:** escrita offline. Lançar, pagar e editar exigem o servidor (não há fila de
+marca) e com **leitura offline**: com o PC da casa desligado ou sem sinal, o app abre e deixa navegar por todas as telas e
+pelos meses próximos (3 para trás, 2 para a frente), com um aviso de quando são os dados. **O que não é:** escrita offline. Lançar, pagar e editar exigem o servidor (não há fila de
 sincronização; ver a análise em `docs/roadmap.md`).
 
 | Arquivo | Papel |
@@ -353,6 +353,7 @@ sincronização; ver a análise em `docs/roadmap.md`).
 | `index.html` | `<link rel="manifest">`, `theme-color`, `apple-touch-icon` e metas do iOS (`apple-mobile-web-app-*`) |
 | `public/sw.js` | service worker: navegação e `GET /api/*` com **rede primeiro** e cópia guardada como reserva; `/assets/*` e ícones, cache primeiro. Escritas não passam por ele |
 | `src/lib/offline.ts` + `components/OfflineBanner.tsx` | estado "mostrando dados guardados" (a partir do cabeçalho `x-prumia-cached-at`) e o aviso no topo do app |
+| `src/lib/warmup.ts` + `precache.json` (gerado no build pelo `vite.config.ts`) | **preparo do modo offline**: 3 s depois de abrir, o `AppShell` chama `prepareOffline(casa)`, que baixa em segundo plano o código de todas as telas, as fontes e a moldura, e as leituras da API da janela de meses |
 | `src/lib/pwa.ts` | `registerServiceWorker()`, chamado no `main.tsx`: só em **produção**, só em **contexto seguro** (HTTPS ou `localhost`) |
 
 - **Como o modo offline decide:** `GET /api/*` vai à rede (prazo de 6 s). Só respostas **200** são guardadas. Se a rede falhar,
@@ -360,6 +361,15 @@ sincronização; ver a análise em `docs/roadmap.md`).
   cópia com `x-prumia-cached-at`; **4xx (inclui 401) nunca é trocado por cópia**. Não entram no cache `/api/documents/*`
   (boleto nunca vai a disco) nem `/api/auth/*`, exceto `/api/auth/me`. O `QueryClient` usa `networkMode: 'always'`
   (senão o TanStack Query pausa tudo offline e a tela fica carregando) e refaz as consultas no evento `online`.
+- **Preparo (navegar sem ter visitado):** o SW só guarda o que passa por ele, e as telas são carregadas sob demanda
+  (`lazy`); sozinho, isso só deixaria abrir offline o que já foi aberto. Por isso `lib/warmup.ts` faz dois adiantamentos:
+  `warmShell` lê `/precache.json` (JS, CSS e `.woff2` do build), pede o que falta, guarda o `index.html` como moldura e apaga
+  `/assets/` de builds antigos; `warmData` faz as mesmas leituras das telas (`/auth/me`, cadastros da casa e, para cada mês
+  de `WINDOW_BACK`=3 a `WINDOW_AHEAD`=2, contas, receitas, resumo, transferências, ajustes, reserva e históricos), 3 por
+  vez. Não roda sem rede, com a economia de dados do aparelho ligada, nem se o último preparo da casa tem menos de 6 h
+  (marca em `localStorage`, apagada no logout). **A cópia é guardada por URL:** ao mudar os parâmetros de uma consulta em
+  `api/queries.ts`, mude também em `dataRequests`; o E2E `offline.spec.ts` navega por tudo sem rede e acusa a diferença.
+  Mês fora da janela continua dependendo de ter sido visitado.
 - **Privacidade:** as cópias são dados financeiros no aparelho (Cache Storage). `logout()` as apaga (`clearOfflineData`).
 - **Atualização:** o nginx serve `sw.js` com `Cache-Control: no-cache` e o registro usa `updateViaCache: 'none'`, então
   o navegador confere a versão a cada abertura. A versão nova do SW assume na hora (`skipWaiting`) sem recarregar a

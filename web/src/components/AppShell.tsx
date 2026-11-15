@@ -1,9 +1,11 @@
-import type { MouseEvent, ReactNode } from 'react'
+import { useEffect, type MouseEvent, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../auth/context'
+import { useActiveHouse } from '../auth/useActiveHouse'
 import { transition } from '../lib/motion'
 import { ICON, NAV_ITEMS, isActive } from '../lib/navigation'
+import { prepareOffline } from '../lib/warmup'
 import { HouseSwitcher } from './HouseSwitcher'
 import { Logo } from './Logo'
 import { OfflineBanner } from './OfflineBanner'
@@ -24,6 +26,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [params] = useSearchParams()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  // Modo offline: um instante depois de abrir (para não disputar banda com a tela), baixa em segundo plano o código das
+  // outras telas e os dados dos meses próximos (lib/warmup.ts). Troca de casa prepara a outra.
+  const houseId = useActiveHouse().house?.id ?? ''
+  const logged = session.status === 'authenticated'
+  useEffect(() => {
+    if (!logged || !houseId) return
+    const timer = setTimeout(() => void prepareOffline(houseId), 3000)
+    return () => clearTimeout(timer)
+  }, [logged, houseId])
   if (session.status !== 'authenticated') return null
   const mes = params.get('mes')
   const search = mes ? `?mes=${mes}` : ''

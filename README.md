@@ -36,7 +36,7 @@ how it is built.
 - **Salary on the right day.** Income is forecast month by month with payroll deductions (INSS, income tax), on the 5th or the last business day, accounting for national holidays.
 - **Household money.** Wallets, transfers, balance reconciliation with the bank, an emergency fund goal and investments compared to the interbank rate (CDI).
 - **For the whole household.** One account per person, roles (owner, participant, read-only), invitation links and several households per account.
-- **Works with the server off.** The installed PWA opens offline in read-only mode, showing the last data seen and when it is from.
+- **Works with the server off.** The installed PWA opens offline in read-only mode: it downloads every screen and the nearby months in the background, so you can browse freely, and it shows when the data is from.
 
 | Monthly summary | Income |
 |---|---|
