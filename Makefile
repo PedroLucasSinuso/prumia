@@ -70,13 +70,17 @@ web-build: ## Build de produção do front
 web-dev: ## Sobe o front em desenvolvimento (proxy /api -> localhost:8080)
 	cd $(WEB) && npm run dev
 
+# O site (Astro 7) exige um Node 22 mais novo que o de várias distribuições; por isso roda num contêiner descartável,
+# com o seu usuário (os arquivos gerados não ficam com dono root). Não usa o Node da máquina.
+SITE_RUN = docker run --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -v "$(CURDIR)":/repo -w /repo/site
+
 .PHONY: site-dev
 site-dev: ## Sobe o site de documentação em desenvolvimento (http://localhost:4321; gera as páginas a partir de docs/)
-	cd site && npm ci --silent && npm run dev
+	$(SITE_RUN) -it -p 127.0.0.1:4321:4321 node:22 sh -c "npm ci --silent && npm run dev -- --host 0.0.0.0"
 
 .PHONY: site-build
 site-build: ## Build do site de documentação (falha com link interno quebrado)
-	cd site && npm ci --silent && npm run build
+	$(SITE_RUN) node:22 sh -c "npm ci --silent && npm run build"
 
 .PHONY: web-types
 web-types: ## Regenera os tipos TypeScript a partir do openapi.yaml
